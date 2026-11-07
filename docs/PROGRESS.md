@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Step 1 opens the split-screen browser panel again (D70)
+Om: the NHS complaint website no longer opened in a split-screen window. The panel only opens on a click since D46, and the restored step 1 page never asked for it. `LiveView` now has a `live-open` event; step 1 sends it when "Fill in NHS Lothian's form" starts, and an auto-opened panel closes again with the browser. Checked in headless Chrome with a control run (no event, no panel). Not seen with a real NHS form, because the cloud workspace cannot reach the site. tsc and eslint clean.
+
 ### 2026-11-07 · Om + Claude · DONE · Step 1 back to the earlier page (D69)
 Om asked for the previous version of the step 1 screen. `app/case/page.tsx` restored to its version before D65, so step 1 is the old fill-in-the-form page again and the complaint crew is not shown. Its files stay in the tree unused (list in D69). Not run in a browser; tsc and eslint clean. To bring the crew back, restore `app/case/page.tsx` from `bbe5df3`.
 

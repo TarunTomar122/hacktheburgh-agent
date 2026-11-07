@@ -93,6 +93,8 @@ export default function LiveView() {
   const [mode, setMode] = useState<Mode>("hidden");
   // Closed until the user clicks the floating button: the agents work in the background (Tarun, 2026-11-07).
   const [open, setOpen] = useState(false);
+  // True when a page opened the panel for the user (the "live-open" event) rather than the user clicking the button.
+  const autoOpened = useRef(false);
   const [url, setUrl] = useState("");
   const [control, setControl] = useState(false);
   // Panel width, remembered between reloads. 0 on the server (the panel renders nothing there anyway).
@@ -203,6 +205,10 @@ export default function LiveView() {
             modeRef.current = "hidden";
             lastSrc.current = "";
             setMode("hidden");
+            if (autoOpened.current) {
+              autoOpened.current = false;
+              setOpen(false);
+            }
             // Forget the old session's tabs so the next run starts clean.
             srcs.current.clear();
             sizes.current.clear();
@@ -296,6 +302,19 @@ export default function LiveView() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [slot, focused, control, focus]);
+
+  // A page that runs one browser the user is meant to watch (step 1, the NHS Lothian form) opens the panel by itself:
+  // window.dispatchEvent(new Event("live-open")). Every other flow still waits for the button (Tarun, 2026-11-07).
+  useEffect(() => {
+    const onOpen = () => {
+      setOpen((o) => {
+        if (!o) autoOpened.current = true;
+        return true;
+      });
+    };
+    window.addEventListener("live-open", onOpen);
+    return () => window.removeEventListener("live-open", onOpen);
+  }, []);
 
   // The run screen can ask to show one crew member's browser: window.dispatchEvent(new CustomEvent("live-focus", { detail: "Robin" })).
   useEffect(() => {
@@ -407,7 +426,7 @@ export default function LiveView() {
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => { autoOpened.current = false; setOpen(true); }}
         className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[13px] font-medium text-white hover:bg-brand/90"
       >
         <Dot live={mode === "live"} light />
@@ -552,7 +571,7 @@ export default function LiveView() {
             )}
           </div>
           {!inline && (
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the agents keep working)">
+            <Button variant="ghost" size="sm" onClick={() => { autoOpened.current = false; setOpen(false); }} title="Hide the panel (the agents keep working)">
               Hide
             </Button>
           )}

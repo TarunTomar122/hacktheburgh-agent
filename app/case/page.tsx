@@ -112,6 +112,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
   async function fill(extra?: ExtraAnswers) {
     if (!draft || filling) return;
     setFilling(true);
+    window.dispatchEvent(new Event("live-open")); // show the agent's browser beside the page, as soon as it starts
     setError(null);
     setResult(null);
     setLog(["Starting the browser agent…"]);
