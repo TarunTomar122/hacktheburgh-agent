@@ -46,7 +46,6 @@ import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 const MAX_TURNS = 18;
 const MAX_TABS = 4;
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
-const SEARCH = "https://search.brave.com/search?q=";
 
 export type Emit = (e: PlannerEvent) => void;
 
@@ -199,50 +198,94 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
 
 /* ------------------------------------------------------------------ web search and reading any page */
 
+/**
+ * Web search in a browser tab. Brave first (typed into its box, so the user sees it); when a search engine shows a bot
+ * check, wait once, then move to the next engine (Yahoo, DuckDuckGo's plain HTML page, then Bing) and remember that for a
+ * while. Search engines are not about any country, so this is not a site script. Returns at most 10 results, up to 3
+ * per site (a big portal must not hide its own deeper pages).
+ */
+const ENGINES = [
+  { name: "Brave", home: "https://search.brave.com/", url: (q: string) => `https://search.brave.com/search?q=${encodeURIComponent(q)}` },
+  { name: "Yahoo", home: "", url: (q: string) => `https://search.yahoo.com/search?p=${encodeURIComponent(q)}` },
+  { name: "DuckDuckGo", home: "", url: (q: string) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}` },
+  { name: "Bing", home: "", url: (q: string) => `https://www.bing.com/search?q=${encodeURIComponent(q)}&setlang=en` },
+];
+const engineCooldown = new Map<string, number>(); // engine -> walled until (ms)
+
 export async function webSearch(page: Page, query: string, note: Note, track: Tracker) {
   note(`Searching: ${short(query, 50)}`);
-  await page.goto("https://search.brave.com/", { waitUntil: "domcontentloaded", timeout: 20000 });
-  const box = page.locator("textarea[name=q], input[name=q]").first();
-  if (await box.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await pointAt(page, box);
-    await box.fill(query);
-    track.bump("action");
-    await box.press("Enter");
-  } else await page.goto(SEARCH + encodeURIComponent(query), { waitUntil: "domcontentloaded", timeout: 20000 });
-  await page.waitForLoadState("domcontentloaded");
-  await page.waitForTimeout(2500);
-  // A bot check on the search page: wait once for it to clear by itself, then say search was blocked (never pretend "no results").
-  const blocked = async () => /captcha|verify you are (a )?human|unusual traffic|are you a robot/i.test(await page.evaluate(() => document.body.innerText.slice(0, 3000)).catch(() => ""));
-  if (await blocked()) {
-    await note.log("recover", "The search engine showed a bot check; waiting for it to clear", { shot: true });
-    await page.waitForTimeout(6000);
-    if (await blocked()) {
-      await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
-      await page.waitForTimeout(3000);
-      if (await blocked()) throw new Error("Blocked: the search engine asked for a human check");
+  const walled = async () => /captcha|verify(ing)? you('| a)?re? (not )?(a )?(human|bot|robot)|not a bot|unusual traffic|are you a robot|drag the slider/i.test(await page.evaluate(() => document.body.innerText.slice(0, 3000)).catch(() => ""));
+  const engines = ENGINES.filter((e) => (engineCooldown.get(e.name) ?? 0) < Date.now());
+  for (const engine of engines.length ? engines : ENGINES) {
+    if (engine.home) {
+      await page.goto(engine.home, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
+      const box = page.locator("textarea[name=q], input[name=q]").first();
+      if (!(await walled()) && (await box.isVisible({ timeout: 4000 }).catch(() => false))) {
+        await pointAt(page, box);
+        await box.fill(query);
+        track.bump("action");
+        await box.press("Enter");
+      } else await page.goto(engine.url(query), { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
+    } else {
+      await page.goto(engine.url(query), { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
+      track.bump("action");
     }
+    await page.waitForLoadState("domcontentloaded").catch(() => {});
+    await page.waitForTimeout(1500);
+    // Consent screens (common for UK and EU visitors) hide the results; refuse and, if they sent us away, search again.
+    if ((await dismissCookies(page, 2500)) !== "none" || /consent|privacy/i.test(new URL(page.url()).hostname)) {
+      // Refusing can reload the page: load the results again so they are read from a settled page.
+      await page.waitForTimeout(1200);
+      await page.goto(engine.url(query), { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
+    }
+    await page.waitForTimeout(1500);
+    if (await walled()) {
+      await page.waitForTimeout(5000);
+      if (await walled()) {
+        engineCooldown.set(engine.name, Date.now() + 10 * 60 * 1000);
+        await note.log("recover", `${engine.name} asked for a human check; trying another search engine`, { shot: true });
+        continue;
+      }
+    }
+    const results = await page.evaluate(() => {
+      /** Search engines wrap result links in redirects: unwrap them to the real page. */
+      const real = (href: string) => {
+        try {
+          const u = new URL(href, location.href);
+          const yahoo = u.hostname.endsWith("search.yahoo.com") ? u.pathname.match(/\/RU=([^/]+)\//)?.[1] : null;
+          if (yahoo) return decodeURIComponent(yahoo);
+          const ddg = u.searchParams.get("uddg");
+          if (ddg) return decodeURIComponent(ddg);
+          const bing = u.hostname.endsWith("bing.com") && u.pathname.startsWith("/ck/") ? u.searchParams.get("u") : null;
+          if (bing && bing.startsWith("a1")) return atob(bing.slice(2).replace(/-/g, "+").replace(/_/g, "/"));
+          return u.href;
+        } catch {
+          return href;
+        }
+      };
+      const perHost = new Map<string, number>();
+      const urls = new Set<string>();
+      const out: { title: string; url: string; snippet: string }[] = [];
+      for (const a of [...document.querySelectorAll("a[href]")] as HTMLAnchorElement[]) {
+        const href = real(a.href);
+        if (!/^https?:/.test(href)) continue;
+        const host = new URL(href).hostname;
+        if (/brave\.com|bing\.com|duckduckgo\.com|yahoo\.com|yimg\.com|google\.|youtube\.com|facebook\.com|microsoft\.com/.test(host) || (perHost.get(host) ?? 0) >= 3 || urls.has(href.replace(/#.*$/, ""))) continue;
+        const title = (a.innerText || "").replace(/\s+/g, " ").trim();
+        if (title.length < 12) continue;
+        perHost.set(host, (perHost.get(host) ?? 0) + 1);
+        urls.add(href.replace(/#.*$/, ""));
+        const box = a.closest("div[class*=snippet], div[class*=result], li, article, div") as HTMLElement | null;
+        out.push({ title: title.slice(0, 100), url: href, snippet: (box?.innerText ?? "").replace(/\s+/g, " ").slice(0, 220) });
+        if (out.length >= 10) break;
+      }
+      return out;
+    });
+    await note.log("read", `${engine.name} search "${query}": ${results.length} results`, { shot: true, detail: results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}`).join("\n") });
+    note(`${results.length} results`);
+    if (results.length || engine === ENGINES[ENGINES.length - 1]) return results;
   }
-  const results = await page.evaluate(() => {
-    const perHost = new Map<string, number>();
-    const urls = new Set<string>();
-    const out: { title: string; url: string; snippet: string }[] = [];
-    for (const a of [...document.querySelectorAll("a[href^='http']")] as HTMLAnchorElement[]) {
-      const host = new URL(a.href).hostname;
-      // Up to 3 results per site: one big site (a national health portal) must not hide its own deeper pages.
-      if (/brave\.com|bing\.com|google\.|youtube\.com|facebook\.com/.test(host) || (perHost.get(host) ?? 0) >= 3 || urls.has(a.href.replace(/#.*$/, ""))) continue;
-      const title = (a.innerText || "").replace(/\s+/g, " ").trim();
-      if (title.length < 12) continue;
-      perHost.set(host, (perHost.get(host) ?? 0) + 1);
-      urls.add(a.href.replace(/#.*$/, ""));
-      const box = a.closest("div[class*=snippet], li, article, div") as HTMLElement | null;
-      out.push({ title: title.slice(0, 100), url: a.href, snippet: (box?.innerText ?? "").replace(/\s+/g, " ").slice(0, 220) });
-      if (out.length >= 10) break;
-    }
-    return out;
-  });
-  await note.log("read", `Search "${query}": ${results.length} results`, { shot: true, detail: results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}`).join("\n") });
-  note(`${results.length} results`);
-  return results;
+  throw new Error("Blocked: every search engine asked for a human check");
 }
 
 const Reading = z.object({

@@ -26,7 +26,7 @@ export async function openSession(): Promise<Session> {
   const context = await browser.newContext({
     locale: "en-GB",
     viewport: { width: 1300, height: 900 },
-    ...(channel ? {} : { userAgent: USER_AGENT }), // real Chrome sends its own, consistent user agent
+    userAgent: USER_AGENT, // also for real Chrome: its headless mode says "HeadlessChrome", which search engines wall
     // RECORD_VIDEO=<dir>: a video of every tab, for the night runs (night plan, Phase 5).
     ...(process.env.RECORD_VIDEO ? { recordVideo: { dir: process.env.RECORD_VIDEO, size: { width: 1300, height: 900 } } } : {}),
   });
