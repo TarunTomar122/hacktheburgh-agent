@@ -28,8 +28,8 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [spec, setSpec] = useState<InputSpec>(() => inputFor("name", emptyFacts()));
   const [nameDraft, setNameDraft] = useState("");
-  // Only the opening line so far: show the big one-question screen instead of the chat.
-  const naming = messages.length === 1 && !done;
+  // It stays up while the first reply is on its way, so the opening question never flashes back as a second name question.
+  const naming = !done && (messages.length === 1 || (thinking && spec.target === "name" && messages.length === 2));
 
   // The screen shows the latest question; while the next one loads, the old one stays up with the OK button busy.
   const question = [...messages].reverse().find((m) => m.role === "agent")?.content ?? OPENER.content;
