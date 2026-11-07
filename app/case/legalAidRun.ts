@@ -11,7 +11,10 @@ export const fixtureMode = () => typeof window !== "undefined" && new URLSearchP
  */
 export async function runStep3(body: { facts: CaseFacts; funding: Funding }, onEvent: (e: Step3Event) => void): Promise<Step3Result> {
   if (fixtureMode()) return replayFixture(onEvent);
-  const res = await fetch("/api/agent/step3", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const dropped = () => new Error("The connection to the app's server dropped (it may have restarted). Nothing was sent anywhere. Try again.");
+  const res = await fetch("/api/agent/step3", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => {
+    throw dropped();
+  });
   if (res.status === 404) throw new Error("The step 3 agents are not connected yet. Add ?fixture=1 to the address to see sample data.");
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the agents");
   if (!res.body) throw new Error("The agents returned no progress stream");
@@ -28,7 +31,9 @@ export async function runStep3(body: { facts: CaseFacts; funding: Funding }, onE
   };
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await reader.read().catch(() => {
+        throw dropped();
+      });
       pending += decoder.decode(value, { stream: !done });
       const lines = pending.split("\n");
       pending = lines.pop() ?? "";
