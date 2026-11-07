@@ -69,6 +69,39 @@ export type FirmFinding = {
   score: number; // higher is better; see `reasons`
   reasons: string[]; // plain words, shown to the user ("Takes legal aid", "Office 0.9 miles away")
   excluded: string | null; // why we dropped it, if we did
+  /** How the score is made up, one row per criterion (D39). Sum of `points` = `score`. */
+  breakdown?: ScoreItem[];
+  /** score / maximum possible score for this route, 0-100. "How well this firm fits what you need". NOT a chance of winning. */
+  fit?: number;
+};
+
+/** One row of a firm's score: what we checked, what we found, and the evidence. */
+export type ScoreItem = {
+  key: "legal_aid" | "active" | "distance" | "lawsoc" | "patients" | "nwnf" | "form" | "checked";
+  label: string; // "Acts for patients"
+  points: number; // what the firm got
+  max: number; // what it could have got
+  status: Tri; // yes = met, no = not met, unknown = could not tell
+  evidence: string; // "The model read their medical negligence page: yes (confidence 0.93)"
+};
+
+/**
+ * One thing an agent did (D39). The whole run is a list of these, so the UI can show exactly how each firm was
+ * found and checked. `firms` lists the firm ids the step is about; `shot` is a screenshot file served by
+ * GET /api/agent/step3/shot?run=<runId>&file=<shot>.
+ */
+export type TraceStep = {
+  i: number; // order
+  t: number; // ms since the run started
+  agent: string; // tile label, e.g. "SLAB lawyer list"
+  color: string;
+  kind: "open" | "click" | "type" | "pick" | "decide" | "read" | "found" | "check" | "recover" | "fail" | "result";
+  text: string; // one plain line: "Clicked 'Medical Negligence'"
+  url?: string;
+  detail?: string; // longer text: the links it chose between, the page excerpt it read, the model's answers
+  confidence?: number; // for model decisions, 0-1
+  shot?: string;
+  firms?: string[];
 };
 
 export type Step3Result = {
@@ -79,6 +112,8 @@ export type Step3Result = {
   shortlist: string[]; // ids of the top 3
   stats: Stats;
   runDir: string;
+  runId?: string; // for screenshot URLs
+  trace?: TraceStep[]; // everything every agent did, in order (D39)
 };
 
 export type Stats = { agents: number; sites: number; pages: number; actions: number };
@@ -105,5 +140,6 @@ export type Step3Event =
   | { type: "agent"; tile: AgentTile }
   | { type: "stats"; stats: Stats }
   | { type: "firm"; firm: FirmFinding }
+  | { type: "trace"; step: TraceStep }
   | { type: "result"; result: Step3Result }
   | { type: "error"; message: string };

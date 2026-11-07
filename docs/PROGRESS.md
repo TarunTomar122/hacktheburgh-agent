@@ -8,6 +8,34 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Tarun + Claude · DONE (backend) · Step 3 runner, traces and score breakdown (D36, D39)
+`lib/agent/legalAid.ts` + `POST /api/agent/step3` run 6–7 browser agents in tabs of one browser, each with its own cursor and grid tile:
+- **SLAB calculator:** the Decisions engine fills it. If it stops early, the remaining fields are filled directly.
+- **SLAB lawyer list:** Civil > Medical negligence > active only. The engine tries first. When the hidden radio buttons defeat it, direct clicks take over (recovery, logged).
+- **Law Society register:** each of the top firms is searched by name.
+- **4 firm websites:** the model picks the medical negligence link, reads the page and answers three typed questions (acts for patients, mainly defends, no win no fee), then looks for an enquiry form.
+
+Every step is recorded as a `TraceStep` (streamed live and returned) with screenshots served by `GET /api/agent/step3/shot`. Each firm gets a `breakdown` (8 rows: points / max / status / evidence) and a `fit` % (points / max for the route). Fit is how well a firm matches what the user needs; it is not a chance of winning. The weights are our judgement.
+
+**Verified 2026-11-07, fictional student (£9k income), 3 full runs from the CLI:**
+- **Verdict:** "You are likely to qualify for civil legal aid. You may not have to pay a contribution." (SLAB's own words).
+- **Run size:** 7 agents, 6 sites, about 15 pages, about 22 actions, 41–100 s.
+- **Shortlist:** Balfour and Manson 92%, Drummond Miller 83%, Lindsays 63%.
+- **Trace:** 71 steps and 20 screenshots in one run.
+
+**Bugs found and fixed:**
+1. The verdict was first read from SLAB's general guidance text ("…whether you are likely to qualify…"), which gave a false "likely". It now reads only the "Step 5: Estimate" block, checked against a low income ("likely to qualify"), a high income ("It is likely you do NOT qualify") and an unfilled form.
+2. SLAB has no `<main>`, and a locator waited 30 s for it.
+3. The Law Society results page repeats the search form, and a hidden copy was being typed into.
+4. "Balfour + Manson" did not match "Balfour and Manson".
+
+**Not verified:**
+- The run through the app UI. The frontend agent owns the screen.
+- The high-income route end to end. Only the verdict reading was checked.
+- Lindsays shows two "done" events (probably two SLAB names mapping to one short label).
+- Balfour and Manson's contact form was not detected (it may load late).
+- A Law Society match landed on "Balfour & Manson (Nominees) Limited", the same group but a different entity.
+
 ### 2026-11-07 · Claude (frontend agent) · DONE · Live grid tiles are only the picture
 Tarun: "remove top borders and borders and header and all these things from these agent browsers". Each tile is now just the live page (rounded corners, 8px gaps); the agent's name and colour come from its cursor pill inside the page. State is shown only when an agent fails: a thin red wash with its note along the bottom. The counter line above the grid stays. Checked with a screenshot (4 local test tabs, one failed; temporary route deleted).
 
