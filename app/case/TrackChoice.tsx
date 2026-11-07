@@ -41,7 +41,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
     <p className="text-ink-2">You asked for an explanation, an apology, or both. We can prepare one editable email from your story for the hospital or clinic involved.</p>
     <p className="text-sm text-muted">You check the recipient and send it yourself. It may take follow-up; no complaint form is filled and no ombudsman step starts automatically.</p>
     <div className="flex flex-wrap gap-3">
-      <Button onClick={() => { setTrack({ chosen: "complaint", complaintMode: "email" }); onChosen(1); }}>Draft an email</Button>
+      <Button onClick={() => { setTrack({ chosen: "complaint", complaintMode: "email" }); onChosen(1); }}>Ask for an explanation or apology</Button>
       <Button variant="secondary" onClick={() => choose("complaint")}>Make a formal complaint instead</Button>
       <Button variant="ghost" onClick={() => choose("compensation")}>Explore compensation</Button>
     </div>

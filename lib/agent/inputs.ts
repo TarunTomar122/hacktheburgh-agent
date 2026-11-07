@@ -34,6 +34,13 @@ export const OUTCOME_CHOICES = [
 /** Ticking this points towards the compensation track (D42). */
 export const COMPENSATION_CHOICE = "Compensation for what happened";
 
+export const HELP_ROUTES = [
+  { label: "Ask for an explanation or apology", value: "email" },
+  { label: "Make a formal complaint", value: "formal" },
+  { label: "Explore compensation", value: "compensation" },
+] as const;
+export type HelpRoute = (typeof HELP_ROUTES)[number]["value"];
+
 const blank = (v: string | null | undefined) => v === null || v === undefined || v.trim() === "";
 
 /**
@@ -191,7 +198,7 @@ export type InputSpec =
   | { kind: "text"; target: "name"; label: string; placeholder: string; autoComplete: string }
   | { kind: "textarea"; target: "story"; label: string; placeholder: string }
   | { kind: "form"; target: "details" | "contact"; fields: FormField[]; submit: string }
-  | { kind: "choice"; target: "who" | "contactMethod" | "emailRisk"; options: { label: string; value: string }[]; disclaimer?: string }
+  | { kind: "choice"; target: "who" | "contactMethod" | "emailRisk" | "outcome"; options: { label: string; value: string }[]; disclaimer?: string }
   | { kind: "checklist"; target: "outcome"; options: readonly string[]; otherLabel: string; noneLabel: string }
   | { kind: "none"; target: "done" };
 
@@ -252,7 +259,7 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         disclaimer: EMAIL_DISCLAIMER,
       };
     case "outcome":
-      return { kind: "checklist", target, options: OUTCOME_CHOICES, otherLabel: "Anything else you would like to add (optional)", noneLabel: "I have nothing to add" };
+      return { kind: "choice", target, options: [...HELP_ROUTES] };
     case "done":
       return { kind: "none", target };
   }
@@ -282,7 +289,7 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
     case "emailRisk":
       return "Email is quick, but it is not completely private. A message could, rarely, reach the wrong person or go missing, and NHS Lothian cannot take responsibility if that happens. Are you happy to be contacted by email on that basis?";
     case "outcome":
-      return "Last question. What would you most like to come out of this? Tick all that apply.";
+      return "What would you like help with?";
     case "done":
       return `Thank you${name ? `, ${name}` : ""}. I have what I need. Please check everything below. You can change any of it later in your profile. Nothing has been sent to the NHS yet.`;
   }
@@ -341,6 +348,8 @@ export function patchFromAnswer(
       return p;
     }
     case "outcome": {
+      const route = HELP_ROUTES.find((option) => option.value === answer.value);
+      if (route) return { desiredOutcome: route.value === "compensation" ? COMPENSATION_CHOICE + "." : "" };
       if (answer.none === true) return { desiredOutcome: "" };
       const chosen = Array.isArray(answer.chosen) ? answer.chosen : [];
       return { desiredOutcome: outcomeSentence(chosen, s("other")) };

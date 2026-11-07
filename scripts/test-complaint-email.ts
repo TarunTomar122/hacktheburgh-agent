@@ -18,8 +18,12 @@ async function main() {
     await page.goto("http://localhost:3000");
     await page.evaluate((profile) => localStorage.setItem("case-profile-v2", JSON.stringify(profile)), { facts, draft: SAMPLE_DRAFT, messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     await page.goto("http://localhost:3000/case");
-    await page.getByRole("button", { name: "Draft an email", exact: true }).click();
+    await page.getByRole("button", { name: "Ask for an explanation or apology", exact: true }).click();
     await page.getByRole("heading", { name: "Start with an email", exact: true }).waitFor();
+    await page.getByRole("checkbox", { name: "An explanation of what went wrong", exact: true }).uncheck();
+    await page.getByRole("button", { name: "Prepare email draft", exact: true }).click();
+    assert.match(await page.getByLabel("Email subject", { exact: true }).inputValue(), /an apology/);
+    assert.doesNotMatch(await page.getByLabel("Email message", { exact: true }).inputValue(), /Please explain what happened and why/);
     assert.equal(await page.getByRole("navigation", { name: "Steps", exact: true }).count(), 0);
     await page.getByLabel("Email subject", { exact: true }).fill("My edited subject");
     await page.getByLabel("Email message", { exact: true }).fill("My edited fictional email.");

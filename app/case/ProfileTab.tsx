@@ -5,7 +5,6 @@ import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, sp
 import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
 import { TRACKS, type TrackId } from "../../lib/agent/track";
-import { emailOnlyGoals } from "../../lib/agent/complaintEmail";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
@@ -272,10 +271,10 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
           <Button size="sm" onClick={onContinue}>
             Continue
           </Button>
-          {!emailMode && emailOnlyGoals(profile.facts.desiredOutcome) && <Button variant="secondary" size="sm" onClick={() => {
+          {!emailMode && <Button variant="secondary" size="sm" onClick={() => {
             setTrack({ chosen: "complaint", complaintMode: "email" });
             onSwitched?.(1);
-          }}>Draft an email instead</Button>}
+          }}>Ask for an explanation or apology</Button>}
           <Button
             variant="secondary"
             size="sm"

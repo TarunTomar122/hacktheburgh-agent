@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
-import { echoFor, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
+import { echoFor, HELP_ROUTES, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, type HelpRoute, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, SAMPLE_FACTS, type DemoPersona } from "../lib/agent/sample";
-import { createProfile } from "../lib/profile";
+import { createProfile, setTrack } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
 import StageInput from "./StageInputs";
@@ -25,6 +25,7 @@ export default function Onboarding() {
   const [messages, setMessages] = useState<ChatMessage[]>([OPENER]);
   const [facts, setFacts] = useState<CaseFacts>(emptyFacts());
   const [done, setDone] = useState(false);
+  const [helpRoute, setHelpRoute] = useState<HelpRoute>();
   const [editing, setEditing] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +76,13 @@ export default function Onboarding() {
 
   /** A form, button or checklist answered the open question. No model call; the user's choice is shown in the chat. */
   function onAnswer(answer: WidgetAnswer) {
+    const route = spec.target === "outcome" && HELP_ROUTES.find((option) => option.value === answer.value);
+    if (route) {
+      return run([...messages, { role: "user", content: route.label }], answer).then((ok) => {
+        if (ok) setHelpRoute(route.value);
+        return ok;
+      });
+    }
     const echo = echoFor(spec.target, patchFromAnswer(spec.target, facts, answer));
     return run([...messages, { role: "user", content: echo }], answer);
   }
@@ -98,6 +106,11 @@ export default function Onboarding() {
 
   function start() {
     createProfile(facts, messages);
+    if (helpRoute === "email" || helpRoute === "formal") {
+      setTrack({ chosen: "complaint", complaintMode: helpRoute });
+    } else if (helpRoute === "compensation") {
+      setTrack({ chosen: "compensation" });
+    }
     router.push("/case");
   }
 
@@ -173,6 +186,7 @@ export default function Onboarding() {
                   </div>
                 )}
                 <Row label="What you'd like" value={facts.desiredOutcome} />
+                <Row label="How we can help" value={HELP_ROUTES.find((option) => option.value === helpRoute)?.label ?? null} />
                 <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
                 <Row label="Prefer to be contacted by" value={facts.preferredContact} />
               </div>
