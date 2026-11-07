@@ -37,6 +37,10 @@ export type RouteStep = {
   how: "online_form" | "email" | "post" | "phone" | "login_required" | "court" | "unknown";
   url?: string; // the page or form the crew found
   wall?: string; // "needs a login", "CAPTCHA", "phone or post only"
+  requires?: string[]; // what must happen first, in the source's terms ("the hospital's final response")
+  appliesIf?: string; // when this route applies at all ("public hospital care", "harm worth more than ...")
+  alternatives?: string[]; // other routes for the same need (a redress scheme instead of court)
+  missing?: string[]; // facts we would still need from the patient to use it
   sources: Source[];
   confidence: "confirmed" | "likely" | "unconfirmed";
   by: CrewId;

@@ -117,6 +117,7 @@ Improve the UI at every step, in loops. Each loop: research the best UI patterns
 
 | Phase | Codex | Cursor | Main objections | What changed |
 |---|---|---|---|---|
+| Design v1 (23:30) | complexity 7, feasibility 4 (full) / 7 (focused), fake-risk 7 | Gemini not in plan; rerun on Grok 4.7 | Risk of "new URLs, Scotland's workflow"; routes must have dependencies; explore_site is the main investment; lawyer suitability across sites; Nell→Kit handoff of funding evidence; Kit must prove its stopping point; existing Scotland code (planner SYSTEM/STAGE, supportsLothian, findForm English words, decisionAgent submit guard and values in prompts) fights the design | Route steps gain requires/appliesIf/alternatives/missing; discovery proves who runs the hospital and replans on contradictions; points forwarded to the three worker builders; order: workers → discovery → generic complaint → lawyers chain with funding handoff → UK nations → countries → local models |
 
 ## Not doing (discussed and dropped, 2026-11-07)
 Whole-case single run, a complexity view, reliability bench, medical records request, reply loop, deadline tracker, Care Opinion, PASS, consultation booking, benefits calculator. Reason: not browser-heavy enough, or not what makes the workflow more complex. A checker agent (re-read every filled form) is possible later but does not add workflow complexity.

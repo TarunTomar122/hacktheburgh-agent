@@ -68,6 +68,11 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
             <span className="text-[15px] font-medium text-ink">{step.body}</span>
           </div>
           {!compact && <p className="mt-1 text-[14px] leading-6 text-ink-2 md:pl-39">{step.what}</p>}
+          {!compact && (step.requires?.length || step.appliesIf || step.alternatives?.length) ? (
+            <p className="mt-1 text-[13px] leading-5 text-muted md:pl-39">
+              {[step.requires?.length ? `First: ${step.requires.join("; ")}` : "", step.appliesIf ? `Only if: ${step.appliesIf}` : "", step.alternatives?.length ? `Or: ${step.alternatives.join("; ")}` : ""].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] md:pl-39">
             {HOW[step.how] && <Chip tone={step.how === "online_form" ? "ok" : step.how === "login_required" ? "warn" : "plain"}>{HOW[step.how]}</Chip>}
             {step.deadline && <Chip tone="plain">{step.deadline}</Chip>}
