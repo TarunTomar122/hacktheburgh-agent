@@ -176,7 +176,16 @@ export function readVerdict(text: string): { verdict: Verdict; quote: string } {
   if (start < 0) return { verdict: "unknown", quote: "" };
   const after = text.slice(start).replace(/^Step 5:?\s*Estimate\s*/i, "");
   const end = after.search(/Some final points|Remember that this estimator/i);
-  const block = (end >= 0 ? after.slice(0, end) : after.slice(0, 300)).replace(/\s+/g, " ").trim();
+  // Lines become sentences; a line starting in lower case continues the one before ("…legal aid. based on your income.").
+  const lines = (end >= 0 ? after.slice(0, end) : after.slice(0, 300)).split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const block = lines
+    .reduce<string[]>((acc, l) => {
+      if (acc.length && /^[a-z]/.test(l)) acc[acc.length - 1] = `${acc[acc.length - 1].replace(/[.!?]$/, "")} ${l}`;
+      else acc.push(l);
+      return acc;
+    }, [])
+    .map((l) => (/[.!?]$/.test(l) ? l : `${l}.`))
+    .join(" ");
   if (!block || /once you complete these fields/i.test(block)) return { verdict: "unknown", quote: block };
   const verdict: Verdict = /do not qualify|not qualify|not eligible|unlikely/i.test(block) ? "unlikely" : /likely to qualify|automatically qualify|you qualify/i.test(block) ? "likely" : "unknown";
   return { verdict, quote: block.slice(0, 300) };

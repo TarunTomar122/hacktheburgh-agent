@@ -32,12 +32,13 @@ export type PlannerRunState = {
   enquiries: EnquiryOutcome[];
   result?: PlannerResult;
   startedAt?: number;
+  spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D54)
 };
 
 const idleCrew = (): Record<CrewId, CrewState> =>
   Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "idle", note: "", since: Date.now() }])) as Record<CrewId, CrewState>;
 
-const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [] });
+const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null });
 
 export function usePlannerRun() {
   const [s, setS] = useState<PlannerRunState>(initial);
@@ -54,6 +55,8 @@ export function usePlannerRun() {
           return { ...cur, runId: e.runId };
         case "plan":
           return { ...cur, plan: e.steps };
+        case "spotlight":
+          return { ...cur, spotlight: { crew: e.crew, tab: e.tab } };
         case "say":
           return { ...cur, says: [...cur.says, e.say] };
         case "crew":
@@ -124,12 +127,12 @@ export function usePlannerRun() {
     [apply],
   );
 
-  /** Send the user's answer (or null to skip). Removed from the open list once the server confirms. */
-  const answer = useCallback(async (id: string, value: string | null) => {
+  /** Send the user's answer (or null to skip). Returns false if it did not arrive, so the question can be retried. */
+  const answer = useCallback(async (id: string, value: string | null): Promise<boolean> => {
     const runId = runIdRef.current;
-    if (!runId) throw new Error("The run is not connected. Please try again.");
-    const res = await fetch("/api/agent/plan/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, id, answer: value }) });
-    if (!res.ok) throw new Error(res.status === 404 ? "This question has expired. Wait for the next update or restart the run." : "Your answer could not be sent. Please try again.");
+    if (!runId) return false;
+    const res = await fetch("/api/agent/plan/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, id, answer: value }) }).catch(() => null);
+    return !!res?.ok;
   }, []);
 
   const reset = useCallback(() => {

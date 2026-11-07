@@ -270,18 +270,22 @@ const TOOLS: FunctionTool[] = [
 ];
 
 const SYSTEM = `You are the research planner for a patient in Scotland who may want compensation after poor medical care.
-You plan your own route and drive browser agents through tools. Each browser tool opens its own tab; tools you call in the same turn run at the same time, so batch independent work.
-You lead a crew: Nell (funding: the legal aid calculator), Robin (finds solicitors and sources), Vera (checks firms), Iona (clinical evidence) and Kit (enquiry forms). Each tool belongs to one of them.
-Goal:
-1. Find out how a claim could be paid for: civil legal aid (SLAB's calculator) or, if that looks unlikely or the user skips the money questions, no win no fee.
-2. Find solicitors near the patient who act for PATIENTS in medical negligence. SLAB's list gives legal aid firms; web_search can find others (needed especially for no win no fee).
-3. Check the most promising firms on their own websites and on the Law Society register.
-4. Gather evidence in parallel with the firm work: read the clinical guideline for the patient's condition, compare it with their timeline (possible gaps only), and look for relevant Scottish judgments (read at most 2).
-5. Shortlist up to 3 firms with the right route, then have Kit fill the shortlisted firms' enquiry forms (never sent), then finish.
+You plan your own route and drive browser agents through tools. The patient watches the work as a story, so work ONE STEP AT A TIME: call one tool per turn, and let each result decide the next step. The only exceptions: check_firm calls for different firms may go in the same turn (they run side by side), and so may fill_enquiry calls for different firms.
+You lead a crew: Nell (funding: the legal aid calculator), Robin (finds and checks solicitors), Iona (clinical evidence) and Kit (enquiry forms). Each tool belongs to one of them.
+The story, in this order (adapt it when results call for it, and say why with update_plan):
+1. Nell: slab_calculator, to find out how a claim could be paid for.
+2. Decide the route from her result: legal aid if likely; no win no fee if unlikely or the patient skipped the money questions. Say so with update_plan.
+3. Robin: slab_lawyer_list (firms that take legal aid for medical negligence). If the route is no win no fee, also web_search for no win no fee medical negligence solicitors near the patient.
+4. Robin: check_firm the 3 most promising firms for that route (same turn), then law_society_check them.
+5. Iona: read_guideline for the patient's condition, then compare_care, then search_case_law and read_judgment for at most 1 relevant result.
+6. shortlist up to 3 firms with the route.
+7. Kit: fill_enquiry for each shortlisted firm with a website (same turn). Kit's message carries Iona's guideline point.
+8. finish.
 Rules:
 - Start with update_plan. Update the plan whenever you learn something that changes it (mark steps done or dropped, add new ones) and say why.
 - Every tool call needs a short "why" in plain words. No jargon.
-- Budget: at most 4 check_firm, 2 web_search, 2 visit, 1 read_guideline, 1 search_case_law, 2 read_judgment, 3 fill_enquiry calls. Stop early when you have enough.
+- Budget: at most 4 check_firm, 2 web_search, 2 visit, 1 read_guideline, 1 search_case_law, 1 read_judgment, 3 fill_enquiry calls. Stop early when you have enough.
+- If a firm check fails or a firm is ruled out, replace it with the next most promising firm before shortlisting.
 - The "why" is shown as your message to the crew member, so write it like a short instruction to them in plain words, e.g. "Find legal aid firms near EH8 that do medical negligence".
 - Exclude firms that defend the NHS, health boards or insurers, and firms whose site redirects to a claims company.
 - Only ask_user when you truly need something (e.g. whether they would travel further); never ask for money details or consent.
@@ -324,15 +328,18 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const fillGuard = new EnquiryFillGuard();
   const t0 = Date.now();
   let asks = 0;
+  let replanned = false;
   const say = (s: Omit<Say, "i" | "t">) => {
     const full: Say = { i: says.length, t: Date.now() - t0, ...s };
     says.push(full);
     emit({ type: "say", say: full });
   };
   const crewState = (id: CrewId, state: "idle" | "working" | "waiting" | "done", note: string) => emit({ type: "crew", id, state, note });
+  const open = new Map<CrewId, number>(); // jobs each crew member still has running (D54: never "idle" while busy)
   /** Same, remembering the tab's label on the planner's thought so the report can point at exactly its browser steps. */
   const crewFor = <T,>(th: Thought, id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number, firms?: string[]) => {
     th.tab = `${CREW[id].name} · ${task}`;
+    emit({ type: "spotlight", crew: id, tab: th.tab });
     return crewAgent(id, task, work, timeoutMs, firms);
   };
   /** A worker in its own tab, wearing its crew colour and name. */
@@ -419,7 +426,11 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     const s = (k: string) => (typeof a[k] === "string" ? (a[k] as string) : "");
     switch (call.name) {
       case "update_plan": {
+        const before = plan;
         plan = ((a.steps as PlanStep[]) ?? []).map((st, i) => ({ id: st.id || `s${i + 1}`, text: st.text, status: st.status ?? "todo", why: st.why }));
+        // A replan = steps added, dropped or reworded (not just ticked off).
+        const key = (xs: PlanStep[]) => xs.filter((x) => x.status !== "dropped").map((x) => x.text).join("|");
+        replanned = before.length > 0 && (key(before) !== key(plan) || plan.some((x) => x.status === "dropped" && before.find((b) => b.id === x.id)?.status !== "dropped"));
         emit({ type: "plan", steps: plan });
         return "Plan updated.";
       }
@@ -469,7 +480,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         if (!f) return `Unknown firm. Use an id from slab_lawyer_list, or give name and website.`;
         const firm = f;
         const label = firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 28);
-        const r = await tabs(() => crewFor(thought, "vera", label, (p, note) => vetFirm(p, firm, note, track), 90_000, [firm.id]));
+        const r = await tabs(() => crewFor(thought, "robin", label, (p, note) => vetFirm(p, firm, note, track), 90_000, [firm.id]));
         if (!r.ok) {
           evidence.set(firm.id, { ...evidence.get(firm.id), checked: `Tried ${firm.website}: ${r.error}` });
           return `Could not check ${firm.name}: ${r.error}`;
@@ -485,7 +496,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "law_society_check": {
         const list = ((a.firm_ids as string[]) ?? []).map((id) => firms.get(id)).filter((x): x is FirmFinding => !!x).slice(0, 5);
         if (!list.length) return "No known firm ids given.";
-        const r = await tabs(() => crewFor(thought, "vera", "Law Society register", (p, note) => lawSocietyCheck(p, list, note, track), 120_000));
+        const r = await tabs(() => crewFor(thought, "robin", "Law Society register", (p, note) => lawSocietyCheck(p, list, note, track), 120_000));
         if (!r.ok) return `Law Society check failed: ${r.error}`;
         for (const f of list) {
           const on = r.value.has(f.id);
@@ -533,7 +544,9 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         if (blocked || !firm) return `Blocked: ${blocked ?? "Unknown firm id."}`;
         let ready = false;
         try {
-          message ??= await draftEnquiry(facts, { verdict: funding.skipped ? "skipped" : verdict, route });
+          if (!firm.website && !firm.enquiryUrl) return `${firm.name} has no website to fill a form on.`;
+          const g = proof.guideline?.points[0];
+          message ??= await draftEnquiry(facts, { verdict: funding.skipped ? "skipped" : verdict, route }, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name.split(":")[0], point: g.text, question: proof.gaps[0].question } : undefined);
           const msg = message;
           const r = await tabs(() =>
             crewFor(thought, "kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
@@ -546,6 +559,11 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
           enquiries.set(firm.id, o);
           ready = o.status === "ready_to_send";
           emit({ type: "enquiry", enquiry: o });
+          // Kit looks harder than Vera: if Kit found the form, the firm record says so too (one truth for the case file and step 4).
+          if (o.status === "ready_to_send" && o.formUrl) {
+            firms.set(firm.id, { ...firms.get(firm.id)!, enquiryUrl: o.formUrl });
+            evidence.set(firm.id, { ...evidence.get(firm.id), form: `Kit found and filled their form at ${o.formUrl}` });
+          }
           finding(`${firm.name}: ${o.status === "ready_to_send" ? "enquiry form filled, waiting for your OK" : o.note}`, o.formUrl ?? undefined, "kit");
           return `${firm.name}: ${o.status}. ${o.note}`;
         } finally {
@@ -560,6 +578,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         route = s("route") === "no_win_no_fee" ? "no_win_no_fee" : "legal_aid";
         for (const [id, f] of firms) firms.set(id, score(f, route, evidence.get(id)));
         shortlistIds = ((a.firm_ids as string[]) ?? []).filter((id) => firms.has(id) && !firms.get(id)!.excluded).sort((x, y) => firms.get(y)!.score - firms.get(x)!.score).slice(0, 3);
+        // Keep the shortlist in fit order after the final rescore too.
         finding(`Shortlisted ${shortlistIds.length}: ${shortlistIds.map((id) => firms.get(id)!.name).join(", ")}`, "Planner");
         return shortlistIds.map((id) => `${firms.get(id)!.name}: fit ${firms.get(id)!.fit}%`).join("\n") || "Nothing shortlisted.";
       }
@@ -598,17 +617,24 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         input = [{ role: "user", content: "Call a tool. Use shortlist and then finish when you are done." }];
         continue;
       }
-      const outputs: ResponseInputItem[] = await Promise.all(
-        calls.map(async (call): Promise<ResponseInputItem> => {
+      // One step at a time (D54): calls run in order. Consecutive check_firm or fill_enquiry calls form one side-by-side batch.
+      const PARALLEL = new Set(["check_firm", "fill_enquiry"]);
+      const batches: ResponseFunctionToolCall[][] = [];
+      for (const c of calls) {
+        const last = batches.at(-1);
+        if (last && PARALLEL.has(c.name) && last[0].name === c.name) last.push(c);
+        else batches.push([c]);
+      }
+      const exec = async (call: ResponseFunctionToolCall): Promise<ResponseInputItem> => {
           const args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
           const thought: Thought = { i: thoughts.length, t: Date.now() - t0, text: String(args.why ?? call.name), tool: call.name, detail: JSON.stringify(Object.fromEntries(Object.entries(args).filter(([k]) => k !== "why")), null, 1) };
           thoughts.push(thought);
           if (call.name !== "update_plan") emit({ type: "thought", thought });
           const who = TOOL_CREW[call.name] ?? "elliot";
           const why = String(args.why ?? "").trim();
-          if (call.name === "update_plan") say({ from: "elliot", kind: "plan", text: why || "Updated the plan", tool: call.name });
-          else if (who !== "elliot") {
+          if (who !== "elliot" && call.name !== "update_plan") {
             say({ from: "elliot", to: who, kind: "assign", text: why || call.name, tool: call.name });
+            open.set(who, (open.get(who) ?? 0) + 1);
             crewState(who, "working", why);
           }
           let out: string;
@@ -617,27 +643,41 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
           } catch (e) {
             out = `Error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
           }
-          if (call.name !== "update_plan") {
+          if (call.name === "update_plan") {
+            say({ from: "elliot", kind: "plan", text: why || "Updated the plan", tool: call.name, replan: replanned });
+          } else {
             thought.result = short(out, 600);
             emit({ type: "thought", thought: { ...thought } });
           }
           if (who !== "elliot") {
-            const failed = /^(Error|Could not|Blocked:|.*failed)/.test(out);
+            const failed = /^(Error|Could not|Blocked:|Unknown firm|.*failed\b|.*: failed\.)/.test(out);
+            // A Kit report is a success only if the form really is filled and waiting (Luigi, f17ed55).
             const ok = !failed && (call.name !== "fill_enquiry" || enquiries.get(String(args.firm_id))?.status === "ready_to_send");
             const text = failed ? `I hit a problem: ${short(out, 160)}` : describe(call.name, args, out);
-            say({ from: who, to: "elliot", kind: "report", ok, text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab });
-            crewState(who, "idle", short(text, 90));
+            const f = call.name === "check_firm" ? firms.get(String(args.firm_id ?? "")) ?? [...firms.values()].find((x) => x.name === args.name) : undefined;
+            const facts = f && f.sources.includes("website") && !failed
+              ? [
+                  { label: "Acts for patients", value: f.actsForPatients },
+                  { label: "No win no fee", value: f.noWinNoFee },
+                  { label: "Enquiry form", value: f.enquiryUrl ? ("yes" as const) : ("no" as const) },
+                ]
+              : undefined;
+            say({ from: who, to: "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab, ok, facts, firm: f?.name });
+            const left = Math.max(0, (open.get(who) ?? 1) - 1);
+            open.set(who, left);
+            crewState(who, left > 0 ? "working" : "idle", left > 0 ? `${left} more to go` : short(text, 90));
           } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: short(out.replace(/\n/g, "; "), 200), tool: call.name });
           else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
           if (call.name === "finish") finished = true;
           return { type: "function_call_output" as const, call_id: call.call_id, output: out };
-        }),
-      );
+      };
+      const outputs: ResponseInputItem[] = [];
+      for (const batch of batches) outputs.push(...(await Promise.all(batch.map(exec))));
       input = outputs;
     }
 
-    // If the planner never shortlisted, score what we have so the user still gets a result.
-    if (!shortlistIds.length) for (const [id, f] of firms) firms.set(id, score(f, route, evidence.get(id)));
+    // Score everything once more at the end, so what Kit found counts (one truth for the case file and step 4).
+    for (const [id, f] of firms) firms.set(id, score(f, route, evidence.get(id)));
     const all = [...firms.values()].sort((a, b) => b.score - a.score);
     if (!shortlistIds.length) shortlistIds = all.filter((f) => !f.excluded && f.sources.includes("website")).slice(0, 3).map((f) => f.id);
     const result: PlannerResult = {
@@ -656,6 +696,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       says,
       evidence: proof,
       enquiries: [...enquiries.values()],
+      message: message ?? undefined,
       asks,
       recoveries: tracer.steps.filter((x) => x.kind === "recover").length,
     };

@@ -9,7 +9,6 @@ import { cx } from "../../ui";
  *  Elliot  three joined bars      (leads)
  *  Nell    stacked rectangles     (funding)
  *  Robin   an open corner         (finds solicitors)
- *  Vera    nested squares         (checks firms)
  *  Iona    three offset pages     (clinical evidence)
  *  Kit     a folded sheet         (enquiries)
  */
@@ -31,12 +30,6 @@ const MARKS: Record<CrewId, React.ReactNode> = {
     </>
   ),
   robin: <path d="M5 15V5h10" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square" />,
-  vera: (
-    <>
-      <rect x="4" y="4" width="12" height="12" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="7.5" y="7.5" width="5" height="5" rx="0.6" />
-    </>
-  ),
   iona: (
     <>
       <rect x="7" y="3.5" width="8.5" height="10.5" rx="0.8" opacity="0.4" />
@@ -101,4 +94,4 @@ export function StateMark({ state }: { state: "idle" | "working" | "waiting" | "
   return <span className="inline-block size-1.5 rounded-[1px] bg-fade" aria-label="idle" />;
 }
 
-export const CREW_ORDER: CrewId[] = ["elliot", "nell", "robin", "vera", "iona", "kit"];
+export const CREW_ORDER: CrewId[] = ["elliot", "nell", "robin", "iona", "kit"];

@@ -14,7 +14,7 @@ import { CrewMark, StateMark } from "./Crew";
 type Step = { crew: CrewId[]; title: string; line: string };
 export const STEPS: Step[] = [
   { crew: ["nell"], title: "Check legal aid", line: "Nell runs SLAB's calculator" },
-  { crew: ["robin", "vera"], title: "Find solicitors", line: "Robin & Vera search and check firms" },
+  { crew: ["robin"], title: "Find solicitors", line: "Robin finds and checks firms" },
   { crew: ["iona"], title: "Gather evidence", line: "Iona reads guidelines & past cases" },
   { crew: ["kit"], title: "Fill enquiries", line: "Kit fills each firm's form" },
 ];
@@ -26,7 +26,6 @@ export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finis
   return STEPS.map((st) => {
     if (st.crew.some((id) => crew[id]?.state === "waiting")) return "waiting";
     if (st.crew.some((id) => crew[id]?.state === "working")) return "working";
-    // Step 2 is done when Vera (the checker) has reported; the others when their one crew member has.
     const finisher = st.crew[st.crew.length - 1];
     const latest = new Map<string, Say>();
     for (const report of says) if (report.kind === "report" && st.crew.includes(report.from)) latest.set(`${report.from}:${report.tool ?? "report"}:${report.tab ?? ""}`, report);

@@ -1,4 +1,4 @@
-import type { EnquiryOutcome } from "./enquiryTypes";
+import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 import type { Step3Event, Step3Result } from "./legalAidTypes";
 
 /**
@@ -15,13 +15,12 @@ import type { Step3Event, Step3Result } from "./legalAidTypes";
  * The crew (D48): the planner and its workers, each with a name, a role and a colour. Every tool belongs to one of
  * them, so the user sees a team at work rather than a script. Visual identity lives in the UI; ids are stable.
  */
-export type CrewId = "elliot" | "nell" | "robin" | "vera" | "iona" | "kit";
+export type CrewId = "elliot" | "nell" | "robin" | "iona" | "kit";
 /** Order matters: it is the order of the crew strip. Colours are palette tokens (docs/DESIGN.md); see app/case/crew for the marks. */
 export const CREW: Record<CrewId, { name: string; role: string; color: string }> = {
   elliot: { name: "Elliot", role: "Leads your case", color: "#0060df" },
   nell: { name: "Nell", role: "Funding", color: "#e64d00" },
-  robin: { name: "Robin", role: "Finds solicitors", color: "#525252" },
-  vera: { name: "Vera", role: "Checks firms", color: "#009587" },
+  robin: { name: "Robin", role: "Finds and checks solicitors", color: "#525252" },
   iona: { name: "Iona", role: "Clinical evidence", color: "#8600fa" },
   kit: { name: "Kit", role: "Enquiries", color: "#181818" },
 };
@@ -35,8 +34,8 @@ export const TOOL_CREW: Record<string, CrewId> = {
   slab_lawyer_list: "robin",
   web_search: "robin",
   visit: "robin",
-  check_firm: "vera",
-  law_society_check: "vera",
+  check_firm: "robin", // one agent for solicitors (Tarun, D54): Robin finds and checks them
+  law_society_check: "robin",
   read_guideline: "iona",
   search_case_law: "iona",
   read_judgment: "iona",
@@ -45,7 +44,21 @@ export const TOOL_CREW: Record<string, CrewId> = {
 };
 
 /** One line in the crew's conversation: Elliot assigns, a worker reports, someone asks you. */
-export type Say = { i: number; t: number; from: CrewId; to?: CrewId | "you"; kind: "assign" | "report" | "plan" | "ask" | "note" | "done"; ok?: boolean; text: string; detail?: string; tool?: string; tab?: string /* the worker tab label, to match its trace steps exactly */ };
+export type Say = {
+  i: number;
+  t: number;
+  from: CrewId;
+  to?: CrewId | "you";
+  kind: "assign" | "report" | "plan" | "ask" | "note" | "done";
+  text: string;
+  detail?: string;
+  tool?: string;
+  tab?: string; // the worker tab label, to match its trace steps exactly
+  ok?: boolean; // reports: false when the worker failed (never shown as a success)
+  replan?: boolean; // plan: the plan changed because of something learned (not the first plan)
+  facts?: { label: string; value: "yes" | "no" | "unknown" }[]; // reports: structured findings (e.g. a firm check)
+  firm?: string; // reports: the firm this is about
+};
 
 /** Evidence gathered by Iona, kept with the result (D48). */
 export type EvidenceResult = {
@@ -76,7 +89,17 @@ export type AskSpec = {
 /** One move of the planner: the tool it chose and why. `detail` is the arguments / result, shown collapsed. */
 export type Thought = { i: number; t: number; text: string; tool?: string; detail?: string; result?: string; tab?: string };
 
-export type PlannerResult = Step3Result & { plan: PlanStep[]; thoughts: Thought[]; turns: number; says: Say[]; evidence: EvidenceResult; enquiries: EnquiryOutcome[]; asks: number; recoveries: number };
+export type PlannerResult = Step3Result & {
+  message?: EnquiryMessage; // the message Kit actually put in the forms
+  plan: PlanStep[];
+  thoughts: Thought[];
+  turns: number;
+  says: Say[];
+  evidence: EvidenceResult;
+  enquiries: EnquiryOutcome[];
+  asks: number;
+  recoveries: number;
+};
 
 export type PlannerEvent =
   | Step3Event
@@ -88,6 +111,7 @@ export type PlannerEvent =
   | { type: "finding"; text: string; source?: string; crew?: CrewId }
   | { type: "say"; say: Say }
   | { type: "crew"; id: CrewId; state: "idle" | "working" | "waiting" | "done"; note: string }
+  | { type: "spotlight"; crew: CrewId; tab: string } // the worker to show big right now (D54)
   | { type: "evidence"; evidence: EvidenceResult }
   | { type: "enquiry"; enquiry: EnquiryOutcome }
   | { type: "planner_result"; result: PlannerResult };

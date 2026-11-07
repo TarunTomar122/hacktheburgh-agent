@@ -117,15 +117,6 @@ export default function LiveView() {
   const [singleId, setSingleId] = useState<string | null>(null); // the tab shown when there is only one
   const singleRef = useRef<string | null>(null);
   // Which tab the big view shows: the focused one, or the only one. null = the grid.
-  const grid = pages.length > 1 && focused === null;
-  const bigId = focused ?? (pages.length === 1 ? pages[0].pageId : singleId);
-  const focusedPage = !grid && pages.length > 1 ? pages.find((p) => p.pageId === bigId) : undefined;
-  // Event handlers read the shown tab from a ref (they are created once); keep it in sync after each render.
-  const bigRef = useRef<string | null>(null);
-  useEffect(() => {
-    bigRef.current = grid ? null : bigId;
-  }, [grid, bigId]);
-
   // Inline mode (D52): a page that wants the browsers inside it renders <div id="live-slot">. While it exists, the
   // panel lives there (no floating button, no dock), so the crew's browsers sit right next to their work.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
@@ -139,6 +130,24 @@ export default function LiveView() {
     mo.observe(document.body, { childList: true, subtree: true });
     return () => mo.disconnect();
   }, []);
+  const [pinned, setPinned] = useState(false); // the user picked a tab: stop following the spotlight
+  const [allView, setAllView] = useState(false); // inline: the grid of every browser instead of the stage
+  const stageMode = !!slot && !allView;
+  // Inline stage: whoever is focused, else the newest working tab, else the newest tab. Never the grid.
+  const staged = stageMode && pages.length > 0 ? (focused ?? ([...pages].reverse().find((p) => p.state === "working") ?? pages[pages.length - 1]).pageId) : null;
+  const grid = !stageMode && pages.length > 1 && focused === null;
+  const bigId = staged ?? focused ?? (pages.length === 1 ? pages[0].pageId : singleId);
+  const focusedPage = !grid && pages.length > 1 ? pages.find((p) => p.pageId === bigId) : undefined;
+  // Event handlers read the shown tab from a ref (they are created once); keep it in sync after each render.
+  const bigRef = useRef<string | null>(null);
+  useEffect(() => {
+    bigRef.current = grid ? null : bigId;
+  }, [grid, bigId]);
+
+  const pinnedRef = useRef(false);
+  useEffect(() => {
+    pinnedRef.current = pinned;
+  }, [pinned]);
   const pagesRef = useRef<LivePage[]>([]);
   useEffect(() => {
     pagesRef.current = pages;
@@ -268,16 +277,29 @@ export default function LiveView() {
 
   // The run screen can ask to show one crew member's browser: window.dispatchEvent(new CustomEvent("live-focus", { detail: "Robin" })).
   useEffect(() => {
+    // detail: a crew name ("Robin"), an exact tab label ("Robin · Drummond Miller"), or { tab, auto: true } from the
+    // run screen following the spotlight (ignored once the user has pinned a tab).
     const onFocus = (e: Event) => {
-      const who = (e as CustomEvent<string | null>).detail;
-      if (!who) return focus(null);
-      const mine = pagesRef.current.filter((p) => p.label.startsWith(`${who} ·`));
-      const pick = mine.find((p) => p.state === "working") ?? mine.at(-1);
+      const d = (e as CustomEvent<string | null | { tab: string; auto?: boolean }>).detail;
+      if (!d) return;
+      const auto = typeof d === "object" && d.auto;
+      if (auto && pinnedRef.current) return;
+      if (!auto) setPinned(true);
+      setAllView(false);
+      const key = typeof d === "object" ? d.tab : d;
+      const exact = pagesRef.current.find((p) => p.label === key);
+      const mine = pagesRef.current.filter((p) => p.label.startsWith(`${key.split(" · ")[0]} ·`));
+      const pick = exact ?? mine.find((p) => p.state === "working") ?? mine.at(-1);
       if (pick) focus(pick.pageId);
     };
     window.addEventListener("live-focus", onFocus);
     return () => window.removeEventListener("live-focus", onFocus);
   }, [focus]);
+
+  // Inline stage: tell the server which tab is shown big, so it streams that one at full quality.
+  useEffect(() => {
+    if (staged && !focused) void send({ type: "focus", pageId: staged });
+  }, [staged, focused]);
 
   // Make room on the right so the panel does not cover the page.
   const docked = !slot && mode !== "hidden" && open && width > 0;
@@ -363,10 +385,13 @@ export default function LiveView() {
         slot,
       );
     }
-    return createPortal(panel(true), slot);
+    return createPortal(allView ? panel(true) : stageView(), slot);
   }
 
   if (mode === "hidden" || width === 0) return null;
+
+  // The floating button only while an agent is actually working (not for tabs left over from an earlier run).
+  if (!open && !pages.some((p) => p.state === "working") && pages.length > 0) return null;
 
   if (!open) {
     return (
@@ -375,103 +400,17 @@ export default function LiveView() {
         className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[13px] font-medium text-white hover:bg-brand/90"
       >
         <Dot live={mode === "live"} light />
-        {mode === "live" ? (pages.length > 1 ? `Watch ${pages.length} agents live` : "Watch the agent live") : "Agent's browser (closed)"}
+        {mode === "live" ? (pages.filter((p) => p.state === "working").length > 1 ? `Watch ${pages.filter((p) => p.state === "working").length} agents live` : "Watch the agent live") : "Agent's browser (closed)"}
       </button>
     );
   }
 
   return panel(false);
 
-  function panel(inline: boolean) {
-  return (
-    <aside
-      className={cx("flex flex-col gap-3", inline ? "@container h-full min-h-0" : "fixed inset-y-0 right-0 z-40 bg-subtle p-4")}
-      style={inline ? undefined : { width }}
-      aria-label="The agent's browser, live"
-    >
-      {!inline && (
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Drag to resize the browser panel"
-        title="Drag to resize"
-        onPointerDown={startDrag}
-        onDoubleClick={() => {
-          const w = clampWidth(defaultWidth());
-          setWidth(w);
-          localStorage.setItem("liveview.width", String(w));
-        }}
-        className="group absolute inset-y-0 -left-1.5 z-10 flex w-3 cursor-col-resize justify-center"
-      >
-        <span className={cx("h-full w-0.5 transition-colors", dragging ? "bg-brand" : "bg-transparent group-hover:bg-brand/60")} />
-        <span
-          className={cx(
-            "absolute top-1/2 h-10 w-1.5 -translate-y-1/2 rounded-full transition-colors",
-            dragging ? "bg-brand" : "bg-line group-hover:bg-brand/60",
-          )}
-        />
-      </div>
-      )}
-      {/* Two quiet lines: who you are watching (and Hide), then where it is. Nothing squeezed into a pill. */}
-      <div>
-        <div className="flex items-center gap-3">
-          {focused && pages.length > 1 ? (
-            <button onClick={() => focus(null)} title="Back to all agents" aria-label="Back to all agents" className="flex size-8 shrink-0 items-center justify-center rounded-ctl border border-line bg-white text-ink-2 hover:border-faint hover:text-ink">
-              ←
-            </button>
-          ) : (
-            <Dot live={mode === "live"} />
-          )}
-          <div className="min-w-0 flex-1 text-[15px] font-medium text-ink">
-            {grid ? (
-              `${pages.length} agents working at once`
-            ) : focusedPage ? (
-              <span className="inline-flex items-center gap-2">
-                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: focusedPage.color }} />
-                {focusedPage.label}
-              </span>
-            ) : mode === "live" ? (
-              "The agent's browser"
-            ) : (
-              "Browser closed"
-            )}
-          </div>
-          {!inline && (
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the agents keep working)">
-              Hide
-            </Button>
-          )}
-        </div>
-        <div className="mt-1 pl-11 text-[12px] leading-5 text-muted">
-          {grid
-            ? stats
-              ? `${stats.sites} sites · ${stats.pages} pages · ${stats.actions} actions · click one to watch it up close`
-              : "Click one to watch it up close"
-            : crumbs(url)}
-        </div>
-      </div>
-
-      {grid ? (
-        <div className={cx("grid min-h-0 flex-1 content-start gap-2 overflow-y-auto", inline ? "grid-cols-1 @lg:grid-cols-2 @5xl:grid-cols-3" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
-          {pages.map((p) => (
-            <Tile
-              key={p.pageId}
-              page={p}
-              ended={mode === "ended"}
-              onImg={(el) => {
-                if (el) {
-                  tileImgs.current.set(p.pageId, el);
-                  const src = srcs.current.get(p.pageId);
-                  if (src) el.src = src;
-                } else tileImgs.current.delete(p.pageId);
-              }}
-              onOpen={() => focus(p.pageId)}
-              caption={inline}
-            />
-          ))}
-        </div>
-      ) : (
-      <div ref={stage} className="relative min-h-0 flex-1 overflow-hidden rounded-card bg-white">
+  /** The one large browser (the focused tab, or the only one). Used by the dock and by the inline stage. */
+  function bigView() {
+    return (
+      <div ref={stage} className="relative min-h-0 flex-1 overflow-hidden rounded-card border border-line bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
         <img
           ref={img}
@@ -510,6 +449,200 @@ export default function LiveView() {
           </div>
         )}
       </div>
+    );
+  }
+
+  /**
+   * Inline stage (D54): the crew member in the spotlight gets one large browser; every other tab is a small, clearly
+   * separated thumbnail on the right. The run screen moves the spotlight as work moves, unless the user pinned a tab.
+   */
+  function stageView() {
+    const big = pages.find((p) => p.pageId === bigId);
+    const working = pages.filter((p) => p.state === "working").length;
+    const who = big ? crewId(big.label) : null;
+    return (
+      <div className="flex h-full min-h-0 flex-col gap-3">
+        <div className="flex items-start gap-3">
+          {who ? (
+            // eslint-disable-next-line @next/next/no-img-element -- tiny static avatar
+            <img src={`/crew/${who}-256.png`} alt="" aria-hidden className="size-9 shrink-0 object-contain" />
+          ) : (
+            <span className="mt-2">
+              <Dot live={mode === "live"} />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-medium leading-6 text-ink">
+              {big ? big.label.replace(" · ", ": ") : "The crew's browser"}
+              {big?.state === "done" && <span className="ml-2 text-[12px] font-normal text-teal">done</span>}
+              {big?.state === "failed" && <span className="ml-2 text-[12px] font-normal text-danger">stopped</span>}
+            </div>
+            <div className="text-[12px] leading-5 text-muted">{crumbs(url)}</div>
+          </div>
+          <div className="shrink-0 pt-0.5 text-right text-[12px] leading-5 text-muted tabular-nums">
+            <div>
+              {working} working · {pages.length} browser{pages.length === 1 ? "" : "s"} open
+            </div>
+            <div className="flex justify-end gap-3">
+              {pinned && (
+                <button className="text-brand hover:underline" onClick={() => setPinned(false)}>
+                  Follow the crew
+                </button>
+              )}
+              {pages.length > 1 && (
+                <button
+                  className="text-brand hover:underline"
+                  onClick={() => {
+                    setAllView(true);
+                    focus(null);
+                  }}
+                >
+                  All browsers
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 gap-3">
+          {bigView()}
+          {pages.length > 1 && (
+            <div className="flex w-32 shrink-0 flex-col gap-2 overflow-y-auto pb-1" aria-label="Other browsers">
+              {pages.map((p) => (
+                <Tile
+                  key={p.pageId}
+                  page={p}
+                  ended={mode === "ended"}
+                  small
+                  active={p.pageId === bigId}
+                  onImg={(el) => {
+                    if (el) {
+                      tileImgs.current.set(p.pageId, el);
+                      const src = srcs.current.get(p.pageId);
+                      if (src) el.src = src;
+                    } else tileImgs.current.delete(p.pageId);
+                  }}
+                  onOpen={() => {
+                    setPinned(true);
+                    focus(p.pageId);
+                  }}
+                  caption
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {mode === "live" && (
+          <div className="flex items-center gap-2">
+            <Button variant={control ? "primary" : "secondary"} size="sm" onClick={takeControl}>
+              {control ? "Stop controlling" : "Take control"}
+            </Button>
+            <span className="flex-1 text-[12px] text-muted">{control ? "Your clicks and typing go to the real page." : "The crew stops before every Send button."}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function panel(inline: boolean) {
+  return (
+    <aside
+      className={cx("flex flex-col gap-3", inline ? "@container h-full min-h-0" : "fixed inset-y-0 right-0 z-40 bg-subtle p-4")}
+      style={inline ? undefined : { width }}
+      aria-label="The agent's browser, live"
+    >
+      {!inline && (
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Drag to resize the browser panel"
+        title="Drag to resize"
+        onPointerDown={startDrag}
+        onDoubleClick={() => {
+          const w = clampWidth(defaultWidth());
+          setWidth(w);
+          localStorage.setItem("liveview.width", String(w));
+        }}
+        className="group absolute inset-y-0 -left-1.5 z-10 flex w-3 cursor-col-resize justify-center"
+      >
+        <span className={cx("h-full w-0.5 transition-colors", dragging ? "bg-brand" : "bg-transparent group-hover:bg-brand/60")} />
+        <span
+          className={cx(
+            "absolute top-1/2 h-10 w-1.5 -translate-y-1/2 rounded-full transition-colors",
+            dragging ? "bg-brand" : "bg-line group-hover:bg-brand/60",
+          )}
+        />
+      </div>
+      )}
+      {/* Two quiet lines: who you are watching (and Hide), then where it is. Nothing squeezed into a pill. */}
+      <div>
+        <div className="flex items-center gap-3">
+          {inline && allView ? (
+            <button onClick={() => setAllView(false)} title="Back to the spotlight" aria-label="Back to the spotlight" className="flex size-8 shrink-0 items-center justify-center rounded-ctl border border-line bg-white text-ink-2 hover:border-faint hover:text-ink">
+              ←
+            </button>
+          ) : focused && pages.length > 1 ? (
+            <button onClick={() => focus(null)} title="Back to all agents" aria-label="Back to all agents" className="flex size-8 shrink-0 items-center justify-center rounded-ctl border border-line bg-white text-ink-2 hover:border-faint hover:text-ink">
+              ←
+            </button>
+          ) : (
+            <Dot live={mode === "live"} />
+          )}
+          <div className="min-w-0 flex-1 text-[15px] font-medium text-ink">
+            {grid ? (
+              `${pages.filter((p) => p.state === "working").length} working · ${pages.length} browsers open`
+            ) : focusedPage ? (
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: focusedPage.color }} />
+                {focusedPage.label}
+              </span>
+            ) : mode === "live" ? (
+              "The agent's browser"
+            ) : (
+              "Browser closed"
+            )}
+          </div>
+          {!inline && (
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the agents keep working)">
+              Hide
+            </Button>
+          )}
+        </div>
+        <div className="mt-1 pl-11 text-[12px] leading-5 text-muted">
+          {grid
+            ? stats
+              ? `${stats.sites} sites · ${stats.pages} pages · ${stats.actions} actions · click one to watch it up close`
+              : "Click one to watch it up close"
+            : crumbs(url)}
+        </div>
+      </div>
+
+      {grid ? (
+        <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", inline ? "grid-cols-1 @lg:grid-cols-2 @5xl:grid-cols-3" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
+          {pages.map((p) => (
+            <Tile
+              key={p.pageId}
+              page={p}
+              ended={mode === "ended"}
+              onImg={(el) => {
+                if (el) {
+                  tileImgs.current.set(p.pageId, el);
+                  const src = srcs.current.get(p.pageId);
+                  if (src) el.src = src;
+                } else tileImgs.current.delete(p.pageId);
+              }}
+              onOpen={() => {
+                if (inline) {
+                  setPinned(true);
+                  setAllView(false);
+                }
+                focus(p.pageId);
+              }}
+              caption={inline}
+            />
+          ))}
+        </div>
+      ) : (
+      bigView()
       )}
 
       {mode === "live" && grid && (
@@ -548,14 +681,19 @@ export default function LiveView() {
  * One agent's tab in the grid: only the live picture (Tarun, 2026-11-07). The agent's name and colour are already
  * drawn inside the page by its cursor pill, so there is no header, border or label here. A failed agent gets a thin red wash with its note.
  */
-function Tile({ page, ended, onImg, onOpen, caption }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void; caption?: boolean }) {
+function Tile({ page, ended, onImg, onOpen, caption, small, active }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void; caption?: boolean; small?: boolean; active?: boolean }) {
   const failed = page.state === "failed";
   return (
     <button
       onClick={onOpen}
       aria-label={`${page.label}: ${page.note || page.state}. Watch up close`}
       title={`Watch ${page.label} up close`}
-      className="relative block aspect-[16/10] w-full overflow-hidden rounded-card bg-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand"
+      className={cx(
+        "relative block w-full shrink-0 overflow-hidden rounded-card border bg-white outline-none transition-[opacity,border-color] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand",
+        small ? "aspect-[4/3]" : "aspect-[16/10]",
+        active ? "border-brand ring-2 ring-brand-soft" : "border-line",
+        page.state === "done" && !active && "opacity-60",
+      )}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
       <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", ended && "opacity-50")} />

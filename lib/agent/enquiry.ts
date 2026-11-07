@@ -42,6 +42,7 @@ Rules:
 - Say what happened (with the dates and the place from the facts), how it has affected them if the facts say so, and what they want.
 - Do NOT say anyone was negligent, at fault or liable, and do not say they have a claim. Ask whether the firm could advise.
 - If a funding sentence is given, include it word for word.
+- If a guideline point is given, add ONE neutral sentence: name the guideline, quote its point briefly, and ask whether the firm could advise on whether it applies to what happened. Never say the guideline was breached.
 - End with how to reach them: the email and phone given. No postal address.`;
 
 function fundingSentence(la: LegalAidSummary): string {
@@ -51,14 +52,14 @@ function fundingSentence(la: LegalAidSummary): string {
   return "I would also like to know how a case like this could be funded.";
 }
 
-export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary): Promise<EnquiryMessage> {
+export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, evidence?: { guideline: string; point: string; question: string }): Promise<EnquiryMessage> {
   const name = [facts.firstName, facts.lastName].filter(Boolean).join(" ");
   const funding = fundingSentence(la);
   return structured({
     model: MODELS.draft,
     effort: EFFORT.draft,
     instructions: DRAFT_RULES,
-    input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}`,
+    input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D54): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
     schema: DraftSchema,
     name: "enquiry_draft",
   });
