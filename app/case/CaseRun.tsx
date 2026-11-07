@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 import { setCaseRun, setEnquiry, setLegalAid, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
@@ -8,9 +8,9 @@ import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip from "./crew/StepStrip";
 import FirmResults from "./FirmResults";
-import { ScoreRow } from "./scoreParts";
+import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
-import { usePlannerRun, type CrewState } from "./usePlannerRun";
+import { usePlannerRun } from "./usePlannerRun";
 
 /**
  * "Prepare your case" (D52, D54). Elliot's crew works through the case as a story, one step at a time.
@@ -31,10 +31,27 @@ const host = (u?: string) => {
   }
 };
 const shotUrl = (runId: string | undefined, file: string) => `/api/agent/step3/shot?run=${encodeURIComponent(runId ?? "")}&file=${encodeURIComponent(file)}`;
+const lowerFirst = (t: string) => t.replace(/^./, (c) => c.toLowerCase());
+
+/** `value` for `ms` after it last changed to a non-null value, then null. Driven by a timer (an external clock). */
+function useFresh(value: number | null, ms: number): number | null {
+  const [shown, setShown] = useState<number | null>(null);
+  useEffect(() => {
+    if (value === null) return;
+    const on = setTimeout(() => setShown(value), 0);
+    const off = setTimeout(() => setShown(null), ms);
+    return () => {
+      clearTimeout(on);
+      clearTimeout(off);
+    };
+  }, [value, ms]);
+  return shown;
+}
+
 const SLAB_CALC = "https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/";
 
 export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profile; onReviewEnquiries: () => void }) {
-  const { state, start, answer } = usePlannerRun();
+  const { state, start, answer, replay, skip } = usePlannerRun();
   const [view, setView] = useState<"case" | "firms" | "replay">("case");
   const saved = profile.caseRun;
   const result = profile.legalAid?.result;
@@ -55,7 +72,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   }, [state.status, state.result, state.startedAt]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  if (live) return <Workspace state={state} onAnswer={answer} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} />;
   if (view === "firms" && result)
     return (
       <div className="mx-auto max-w-6xl space-y-6">
@@ -67,12 +84,12 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={() => start(profile.facts, profile.legalAid?.funding)} />;
-  return <Intro error={state.status === "error" ? state.error : undefined} onStart={() => start(profile.facts, profile.legalAid?.funding)} />;
+  return <Intro error={state.status === "error" ? state.error : undefined} onStart={() => start(profile.facts, profile.legalAid?.funding)} onDemo={(toEnd) => replay({ toEnd })} />;
 }
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
+function Intro({ onStart, onDemo, error }: { onStart: () => void; onDemo: (toEnd: boolean) => void; error?: string }) {
   return (
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">Prepare your case</h1>
@@ -89,7 +106,28 @@ function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
         </p>
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>
+      <DemoBar>
+        <DemoButton onClick={() => onDemo(false)}>Play a recorded run, fast</DemoButton>
+        <DemoButton onClick={() => onDemo(true)}>Jump to the finished case</DemoButton>
+      </DemoBar>
     </div>
+  );
+}
+
+/** Quiet controls for presenting (D55). Kept apart from the product UI so they never read as part of it. */
+function DemoBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-16 flex flex-wrap items-center justify-center gap-2 text-[12px] text-muted">
+      <span className="mr-1">Demo</span>
+      {children}
+    </div>
+  );
+}
+function DemoButton({ onClick, children, disabled }: { onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
+  return (
+    <button disabled={disabled} onClick={onClick} className="rounded-full border border-dashed border-line px-3 py-1 text-ink-2 hover:border-brand hover:text-brand disabled:opacity-40">
+      {children}
+    </button>
   );
 }
 
@@ -97,10 +135,9 @@ function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
 
 type RunState = ReturnType<typeof usePlannerRun>["state"];
 
-function Workspace({ state, onAnswer }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean> }) {
-  const [selected, setSelected] = useState<CrewId | null>(null);
+function Workspace({ state, onAnswer, onSkip }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
-  const [everything, setEverything] = useState(false);
+  const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -114,41 +151,101 @@ function Workspace({ state, onAnswer }: { state: RunState; onAnswer: (id: string
     if (tab) window.dispatchEvent(new CustomEvent("live-focus", { detail: { tab, auto: true } }));
   }, [tab]);
 
-  // The workspace fills the rest of the window, whatever is above it.
-  const fit = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState(600);
   const question = state.asks[0];
-  const hasQuestion = !!question;
-  useLayoutEffect(() => {
-    const measure = () => {
-      const top = fit.current?.getBoundingClientRect().top ?? 0;
-      setHeight(Math.max(460, window.innerHeight - top - window.scrollY - 24));
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [state.plan.length, hasQuestion]);
 
-  const select = (id: CrewId | null) => {
-    setSelected(id);
-    if (id) window.dispatchEvent(new CustomEvent("live-focus", { detail: CREW[id].name }));
-  };
+  // Who is in focus: the crew member in the spotlight; between steps, Elliot deciding what's next.
+  const spot = state.spotlight;
+  const lastPlan = state.says.findLast((x) => x.kind === "plan");
+  const replanned = useFresh(lastPlan?.replan ? lastPlan.i : null, 6000);
+  const focusCrew: CrewId = question ? (question.crew ?? "elliot") : replanned !== null ? "elliot" : spot && state.crew[spot.crew]?.state !== "idle" ? spot.crew : "elliot";
+  const task = question
+    ? "needs one detail from you"
+    : focusCrew === "elliot"
+      ? replanned !== null
+        ? lastPlan!.text
+        : lastPlan
+          ? `is deciding the next step: ${lowerFirst(lastPlan.text)}`
+          : "is reading your case and making a plan"
+      : lowerFirst(state.crew[focusCrew]?.note || spot?.tab.split(" · ")[1] || "is working");
+  const site = spot && focusCrew !== "elliot" ? host(state.trace.findLast((t) => t.agent === spot.tab && t.url)?.url) : "";
+  const order: CrewId[] = ["nell", "robin", "iona", "kit"];
+  const stepNo = order.indexOf(focusCrew) + 1;
 
   return (
-    <div className="space-y-4">
-      <Decision state={state} elapsed={elapsed} />
-      {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} />}
+    <div className="mx-auto max-w-6xl space-y-5">
+      {/* The one thing to look at: who is working, on what, and their browser. A question appears right here. */}
+      <section className="overflow-hidden rounded-card border border-line bg-white">
+        <div className="flex items-start gap-5 border-b border-line-soft px-6 py-5">
+          <CrewMark id={focusCrew} size={64} />
+          <div className="min-w-0 flex-1">
+            <p className={cx("text-[12px]", replanned !== null && !question ? "font-medium text-amber" : "text-muted")}>
+              {replanned !== null && !question ? "Elliot · changed the plan" : `${CREW[focusCrew].name} · ${CREW[focusCrew].role.toLowerCase()}${site ? ` · on ${site}` : ""}${stepNo > 0 ? ` · step ${stepNo} of 4` : ""}${state.demo ? " · recorded run" : ""}`}
+            </p>
+            <h1 key={`${focusCrew}-${task}`} className="rise display mt-1 text-[28px] leading-[1.2] text-ink">
+              {question || (focusCrew === "elliot" && replanned === null) ? `${CREW[focusCrew].name} ${task}` : task.replace(/^./, (c) => c.toUpperCase())}
+            </h1>
+          </div>
+          <div className="shrink-0 pt-0.5 text-right text-[13px] text-ink-2">
+            <span className="tabular-nums">{mmss(elapsed)}</span>
+            <span className="mx-2 text-fade">·</span>
+            <button className="text-brand hover:underline" onClick={() => setDrawer("all")}>
+              Plan and history
+            </button>
+          </div>
+        </div>
+        {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} />}
+      </section>
 
-      <div ref={fit} style={{ height }} className="grid min-h-[460px] grid-cols-1 overflow-hidden rounded-card border border-line bg-white lg:grid-cols-[300px_minmax(0,1fr)]">
-        <CrewRail state={state} selected={selected} onSelect={select} onTrace={setScope} onEverything={() => setEverything(true)} />
-        <section aria-label="The crew's browsers" className="min-h-0 border-line bg-subtle p-4 lg:border-l">
-          <div id="live-slot" className="h-full" />
-        </section>
-      </div>
+      <CrewRow state={state} onOpen={(id) => setDrawer(id)} />
+
+      <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} />
+
+      {/* The browsers working right now, small. Click one to watch it in a window. */}
+      <section aria-label="Browsers working now">
+        <div id="live-slot" />
+      </section>
       {state.status === "error" && <p className="text-[13px] text-danger">{state.error}</p>}
-      {everything && (
-        <Drawer title="Everything that happened" onClose={() => setEverything(false)}>
-          <Timeline says={state.says} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} />
+
+      {state.status === "running" && (
+        <DemoBar>
+          {order.map((id) => {
+            // Steps already behind us in the story are not offered.
+            const reached = Math.max(0, ...order.map((o, i) => (state.says.some((x) => x.from === o && x.kind === "report") ? i : 0)));
+            if (order.indexOf(id) < reached) return null;
+            const asked = state.skipped.includes(id) || state.skipped.includes("all");
+            return (
+              <DemoButton key={id} disabled={asked} onClick={() => onSkip(id)}>
+                {asked ? `Skipping ${CREW[id].name}` : `Skip ${CREW[id].name}`}
+              </DemoButton>
+            );
+          })}
+          <DemoButton disabled={state.skipped.includes("all")} onClick={() => onSkip("all")}>
+            {state.skipped.includes("all") ? "Wrapping up" : "Finish now"}
+          </DemoButton>
+        </DemoBar>
+      )}
+
+      {drawer && (
+        <Drawer
+          title={drawer === "all" ? "The plan and everything that happened" : `${CREW[drawer].name}: ${CREW[drawer].role.toLowerCase()}`}
+          onClose={() => {
+            setDrawer(null);
+            window.dispatchEvent(new CustomEvent("live-focus", { detail: "follow" }));
+          }}
+        >
+          {drawer === "all" ? (
+            <div className="space-y-6">
+              <PlanChips plan={state.plan} />
+              <Timeline says={state.says} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button className="text-[13px] text-brand hover:underline" onClick={() => window.dispatchEvent(new CustomEvent("live-focus", { detail: CREW[drawer].name }))}>
+                Show {CREW[drawer].name}&apos;s browser
+              </button>
+              <Timeline says={state.says.filter((x) => x.from === drawer || (x.to === drawer && x.kind === "assign"))} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} compact />
+            </div>
+          )}
         </Drawer>
       )}
       {scope && <TraceSheet scope={scope} runId={state.runId} onClose={() => setScope(null)} />}
@@ -156,65 +253,88 @@ function Workspace({ state, onAnswer }: { state: RunState; onAnswer: (id: string
   );
 }
 
-/**
- * Elliot's current decision, big; what is happening right now, small; the plan as quiet chips. When Elliot changes
- * the plan because of something the crew found, that moment is marked for a few seconds (D54).
- */
-function Decision({ state, elapsed }: { state: RunState; elapsed: number }) {
-  const lastPlan = state.says.findLast((s) => s.kind === "plan");
-  const waiting = state.asks[0];
-  const sentence = waiting
-    ? `${CREW[waiting.crew ?? "elliot"].name} needs one detail from you`
-    : state.status === "error"
-      ? "The run stopped"
-      : (lastPlan?.text ?? "Elliot is reading your case and making a plan");
-  const spot = state.spotlight;
-  const now = spot && state.crew[spot.crew]?.state === "working" ? spot.tab.replace(" · ", " is on ") : null;
-
-  // The replan moment: shown while it is fresh. Only reacts to a new plan event (external stream), never loops.
-  const [flash, setFlash] = useState<number | null>(null);
-  const planI = lastPlan?.i ?? -1;
-  const isReplan = !!lastPlan?.replan;
-  useEffect(() => {
-    if (!isReplan || planI < 0) return;
-    const show = setTimeout(() => setFlash(planI), 0);
-    const hide = setTimeout(() => setFlash(null), 6000);
-    return () => {
-      clearTimeout(show);
-      clearTimeout(hide);
-    };
-  }, [planI, isReplan]);
-  const flashing = flash !== null && flash === planI && !waiting;
-
+/** What the crew has found so far: one line per finished job, newest first, with its proof one click away. */
+function Found({ says, trace, runId, onTrace }: { says: Say[]; trace: TraceStep[]; runId?: string; onTrace: (s: TraceScope) => void }) {
+  const done = says.filter((s) => s.kind === "report").slice().reverse();
+  if (!done.length) return null;
   return (
-    <header className="space-y-3">
-      <div className="flex items-start gap-4">
-        <CrewMark id="elliot" size={52} className="-mt-1" />
-        <div className="min-w-0 flex-1">
-          {flashing ? (
-            <div className="rise text-[12px] font-medium uppercase tracking-[0.1em] text-amber">Elliot changed the plan</div>
-          ) : (
-            <div className="text-[12px] text-muted">Elliot&apos;s current decision</div>
-          )}
-          <h1 key={sentence} className={cx("rise display mt-1 text-[30px] leading-[1.15] text-ink", flashing && "-mx-2 rounded-[5px] bg-amber-soft/70 px-2")}>
-            {sentence}
-          </h1>
-          {now && <p className="mt-2 text-[14px] text-ink-2">Now: {now}</p>}
-        </div>
-        <RunMeta elapsed={elapsed} state={state} />
-      </div>
-      <PlanChips plan={state.plan} indent />
-    </header>
+    <section aria-label="What the crew found so far">
+      <h2 className="mb-2 text-[12px] text-muted">What the crew found so far</h2>
+      <ol className="max-h-[21rem] divide-y divide-line-soft overflow-y-auto rounded-card border border-line bg-white">
+        {done.map((s) => {
+          const steps = s.tab ? trace.filter((t) => t.agent === s.tab) : [];
+          const shot = steps.findLast((t) => t.shot)?.shot;
+          return (
+            <li key={s.i} className="rise flex items-center gap-3 px-4 py-3">
+              <CrewMark id={s.from} size={30} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] leading-5 text-ink">
+                  {s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
+                  {s.text}
+                </p>
+                {s.facts && (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {s.facts.map((f) => (
+                      <span key={f.label} title={whyFor(f.label)} className={cx("inline-flex cursor-help items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]", FACT[f.value].cls)}>
+                        <span aria-hidden>{FACT[f.value].mark}</span>
+                        {f.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {shot && (
+                <button onClick={() => onTrace({ title: `${CREW[s.from].name}: ${s.text}`, steps })} title="How they found it" className="shrink-0 overflow-hidden rounded-[4px] border border-line hover:border-brand">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- screenshots served by our own route */}
+                  <img src={shotUrl(runId, shot)} alt="" className="h-[40px] w-[64px] object-cover object-top" />
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
-function PlanChips({ plan, indent }: { plan: PlanStep[]; indent?: boolean }) {
+/** The crew as one quiet row: who has finished, who is working, who is waiting. Click someone to see what they did. */
+function CrewRow({ state, onOpen }: { state: RunState; onOpen: (id: CrewId) => void }) {
+  return (
+    <nav aria-label="The crew" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
+      {CREW_ORDER.map((id, i) => {
+        const c = state.crew[id];
+        const started = c.state !== "idle" || state.says.some((s) => s.from === id);
+        const done = c.state === "done" || (c.state === "idle" && state.says.some((s) => s.from === id && s.kind === "report" && s.ok !== false));
+        return (
+          <span key={id} className="flex items-center gap-2">
+            {i > 0 && <span aria-hidden className="h-px w-6 bg-line" />}
+            <button onClick={() => onOpen(id)} title={`${CREW[id].name}: see what they did`} className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-[13px] hover:bg-subtle">
+              <span className="relative">
+                <CrewMark id={id} size={30} className={cx("transition-[filter,opacity] duration-300", !started && "opacity-40 grayscale-[40%]")} />
+                {started && (
+                  <span className="absolute -right-1 -bottom-1 flex size-3.5 items-center justify-center rounded-[3px] bg-white">
+                    <StateMark state={c.state === "idle" && done ? "done" : c.state} />
+                  </span>
+                )}
+              </span>
+              <span className={cx(started ? "text-ink" : "text-muted")}>{CREW[id].name}</span>
+            </button>
+          </span>
+        );
+      })}
+    </nav>
+  );
+}
+
+function PlanChips({ plan }: { plan: PlanStep[] }) {
   if (!plan.length) return null;
   return (
-    <ol className={cx("flex flex-wrap gap-x-5 gap-y-1.5", indent && "pl-[68px]")} aria-label="The plan">
+    <ol className="space-y-1.5" aria-label="The plan">
       {plan.map((p) => (
-        <li key={`${p.id}-${p.status}-${p.text}`} className="flash flex items-center gap-2 rounded-[4px] px-1 text-[13px] leading-5" title={p.why}>
-          <PlanMark status={p.status} />
+        <li key={`${p.id}-${p.status}-${p.text}`} className="flex items-start gap-2 text-[13px] leading-5" title={p.why}>
+          <span className="mt-1">
+            <PlanMark status={p.status} />
+          </span>
           <span className={cx(p.status === "done" ? "text-ink-2" : p.status === "dropped" ? "text-faint line-through decoration-faint/60" : p.status === "doing" ? "font-medium text-ink" : "text-muted")}>{p.text}</span>
           {p.status === "dropped" && <span className="text-[12px] text-faint">no longer needed</span>}
         </li>
@@ -229,96 +349,13 @@ function PlanMark({ status }: { status: PlanStep["status"] }) {
   return <span aria-hidden className={cx("inline-block size-2.5 rounded-[2px] border", status === "dropped" ? "border-faint" : "border-ink-2/40")} />;
 }
 
-function RunMeta({ elapsed, state }: { elapsed: number; state: RunState }) {
-  const [open, setOpen] = useState(false);
-  const s = state.stats;
-  return (
-    <div className="relative shrink-0 text-right">
-      <button onClick={() => setOpen((o) => !o)} className="text-[13px] tabular-nums text-ink-2 hover:text-ink" aria-expanded={open}>
-        {mmss(elapsed)} · Run details
-      </button>
-      {open && (
-        <dl className="rise absolute right-0 top-7 z-20 grid w-64 grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 rounded-card border border-line bg-white p-4 text-left text-[13px]">
-          {[
-            ["Browser agents", s?.agents ?? 0],
-            ["Websites", s?.sites ?? 0],
-            ["Pages opened", s?.pages ?? 0],
-            ["Clicks and typing", s?.actions ?? 0],
-            ["Questions to you", Object.keys(state.answered).length + state.asks.length],
-            ["Recoveries", state.trace.filter((t) => t.kind === "recover").length],
-          ].map(([k, v]) => (
-            <div key={String(k)} className="contents">
-              <dt className="text-muted">{k}</dt>
-              <dd className="tabular-nums text-ink">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ the crew rail */
-
-const statusLine = (id: CrewId, c: CrewState, says: Say[]) => {
-  if (c.state === "waiting") return "Waiting for your answer";
-  if (c.state === "working") return c.note || "Working";
-  const last = says.findLast((s) => s.from === id && (s.kind === "report" || s.kind === "done" || s.kind === "plan"));
-  if (last) return last.text;
-  return id === "elliot" ? CREW[id].role : `${CREW[id].role} · not started`;
-};
-
-function CrewRail({ state, selected, onSelect, onTrace, onEverything }: { state: RunState; selected: CrewId | null; onSelect: (id: CrewId | null) => void; onTrace: (s: TraceScope) => void; onEverything: () => void }) {
-  return (
-    <aside aria-label="The crew" className="flex min-h-0 flex-col">
-      <ul className="min-h-0 flex-1 divide-y divide-line-soft overflow-y-auto">
-        {CREW_ORDER.map((id) => {
-          const c = state.crew[id];
-          const on = selected === id;
-          const started = c.state !== "idle" || state.says.some((s) => s.from === id);
-          return (
-            <li key={id}>
-              <button onClick={() => onSelect(on ? null : id)} aria-expanded={on} className={cx("flex w-full items-start gap-3 px-4 py-3 text-left transition-colors", on ? "bg-brand-soft/60" : "hover:bg-subtle")}>
-                <span className="relative">
-                  <CrewMark id={id} size={36} className={cx("transition-[filter,opacity] duration-300", !started && "opacity-45 grayscale-[35%]")} />
-                  {started && (
-                    <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-[4px] bg-white">
-                      <StateMark state={c.state} />
-                    </span>
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="text-[14px] font-medium text-ink">{CREW[id].name}</span>
-                    <span aria-hidden className={cx("text-[11px] text-faint transition-transform", on && "rotate-90")}>
-                      ›
-                    </span>
-                  </span>
-                  <span className={cx("mt-0.5 block text-[12px] leading-[18px]", c.state === "waiting" ? "text-amber" : c.state === "working" ? "text-ink-2" : "text-muted")}>{statusLine(id, c, state.says)}</span>
-                </span>
-              </button>
-              {on && (
-                <div className="rise border-t border-line-soft bg-subtle/50 px-4 py-3">
-                  <Timeline says={state.says.filter((s) => s.from === id || (s.to === id && s.kind === "assign"))} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={onTrace} compact />
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <button onClick={onEverything} className="border-t border-line px-4 py-3 text-left text-[13px] text-brand hover:bg-subtle">
-        Everything that happened ({state.says.length})
-      </button>
-    </aside>
-  );
-}
-
 /* ------------------------------------------------------------------ the timeline (behind a click) */
 
 function Timeline({ says, trace, runId, openAsks, onTrace, compact }: { says: Say[]; trace: TraceStep[]; runId?: string; openAsks: string[]; onTrace: (s: TraceScope) => void; compact?: boolean }) {
   // An open question is on screen in its own card: don't repeat it here.
   const lastAsk = says.findLast((x) => x.kind === "ask");
-  const shown = useMemo(() => says.filter((s) => !(s.kind === "ask" && openAsks.length > 0 && s === lastAsk)), [says, openAsks.length, lastAsk]);
+  // Newest first (Tarun): what just happened is at the top.
+  const shown = useMemo(() => says.filter((s) => !(s.kind === "ask" && openAsks.length > 0 && s === lastAsk)).reverse(), [says, openAsks.length, lastAsk]);
   const steps = (s: Say) => (s.kind === "report" && s.tab ? trace.filter((t) => t.agent === s.tab) : []);
   if (!shown.length) return <p className="text-[13px] text-muted">Nothing yet.</p>;
   return (
@@ -400,7 +437,7 @@ function Event({ s, steps, runId, onTrace, compact }: { s: Say; steps: TraceStep
         {s.facts && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {s.facts.map((f) => (
-              <span key={f.label} className={cx("inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]", FACT[f.value].cls)}>
+              <span key={f.label} title={whyFor(f.label)} className={cx("inline-flex cursor-help items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]", FACT[f.value].cls)}>
                 <span aria-hidden>{FACT[f.value].mark}</span>
                 {f.label}
               </span>
@@ -435,9 +472,9 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
-      <button aria-label="Close" className="absolute inset-0 bg-ink/20" onClick={onClose} />
-      <div className="rise relative flex h-full w-full max-w-xl flex-col border-l border-line bg-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-label={title}>
+      <button aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={onClose} />
+      <div className="rise relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-card bg-white">
         <div className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="display text-[22px] text-ink">{title}</h2>
           <Button variant="secondary" size="sm" onClick={onClose}>
@@ -472,8 +509,7 @@ function QuestionCard({ q, more, onAnswer }: { q: AskSpec; more: number; onAnswe
   };
   const site = crew === "nell" ? "slab.org.uk" : "";
   return (
-    <section className="rise flex flex-wrap items-center gap-x-6 gap-y-3 rounded-card border border-amber/40 border-l-4 border-l-amber bg-white px-5 py-4" role="region" aria-live="polite" aria-label="A question for you">
-      <CrewMark id={crew} size={44} />
+    <section className="rise flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-amber/30 border-l-4 border-l-amber bg-amber-soft/40 px-5 py-4" role="region" aria-live="polite" aria-label="A question for you">
       <div className="min-w-[16rem] flex-1">
         <p className="text-[16px] font-medium leading-6 text-ink">{q.question}</p>
         <p className="mt-0.5 text-[12px] leading-5 text-muted">
@@ -541,94 +577,135 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   const top = result.shortlist.map((id) => result.firms.find((f) => f.id === id)).filter((f) => !!f);
   const ev = run.evidence;
   const ready = (profile.enquiry?.outcomes ?? []).filter((o) => o.status === "ready_to_send");
-  const funding = result.verdict === "likely" ? "Legal aid looks likely" : result.verdict === "unlikely" ? "Legal aid looks unlikely" : result.verdict === "skipped" ? "Money questions skipped" : "Legal aid is unclear";
   const s = result.stats;
+  const gap = ev.gaps?.[0];
+  const point = ev.guideline?.points[0];
+  const askedInMessage = !!profile.enquiry?.message && /NICE|guideline|MRI/i.test(profile.enquiry.message.body);
+  const similar = (ev.cases ?? []).filter((c) => c.kind === "medical_negligence");
+  const other = (ev.cases ?? []).filter((c) => c.kind !== "medical_negligence");
+
+  const funding =
+    result.verdict === "likely"
+      ? { title: "Legal aid looks likely", text: "SLAB's own calculator says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you." }
+      : result.verdict === "unlikely"
+        ? { title: "Legal aid looks unlikely", text: "SLAB's calculator says you probably do not qualify. Many firms take claims like yours on a no win, no fee basis instead; Robin checked which ones say so." }
+        : result.verdict === "skipped"
+          ? { title: "Funding not checked", text: "You skipped the money questions. A solicitor can check legal aid with you." }
+          : { title: "Funding is unclear", text: "We could not read an estimate from SLAB's calculator. A solicitor can check legal aid with you." };
+
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
-      {/* The outcome and the next action, side by side, above everything else */}
-      <div className="grid gap-6 lg:grid-cols-12 lg:items-end">
-        <header className="lg:col-span-7">
-          <h1 className="display text-[40px] text-ink">Your case is ready</h1>
-          <p className="mt-3 font-serif text-[18px] leading-7 text-ink-2">{first}</p>
-          {rest && (
-            <>
-              {full && <p className="rise mt-2 font-serif text-[16px] leading-7 text-ink-2">{rest}</p>}
-              <button className="mt-2 text-[13px] text-brand hover:underline" onClick={() => setFull((f) => !f)}>
-                {full ? "Less" : "Elliot's full summary"}
-              </button>
-            </>
+    <div className="mx-auto max-w-4xl space-y-8">
+      <header>
+        <h1 className="display text-[40px] text-ink">Your case is ready</h1>
+        {first && <p className="mt-3 max-w-3xl font-serif text-[18px] leading-7 text-ink-2">{first}</p>}
+        {rest && (
+          <>
+            {full && <p className="rise mt-2 max-w-3xl font-serif text-[16px] leading-7 text-ink-2">{rest}</p>}
+            <button className="mt-2 text-[13px] text-brand hover:underline" onClick={() => setFull((f) => !f)}>
+              {full ? "Less" : "Elliot's full summary"}
+            </button>
+          </>
+        )}
+      </header>
+
+      {/* The one next action */}
+      <section className="flex flex-wrap items-center gap-5 rounded-card border border-brand/40 bg-white px-6 py-5">
+        <CrewMark id="kit" size={56} />
+        <div className="min-w-[16rem] flex-1">
+          <p className="text-[12px] text-muted">Your next step</p>
+          <h2 className="text-[18px] font-medium leading-7 text-ink">{ready.length ? `Check and send ${ready.length} enquir${ready.length === 1 ? "y" : "ies"}` : "Prepare your enquiries"}</h2>
+          <p className="text-[13px] leading-5 text-muted">{ready.length ? `Kit filled ${ready.length === 1 ? "the form" : "the forms"} for ${ready.map((r) => r.firmName).join(", ")} and stopped before Send.` : "Kit fills each firm's form and stops before Send."}</p>
+        </div>
+        <Button onClick={onReview}>{ready.length ? "Review and send" : "Prepare enquiries"}</Button>
+      </section>
+
+      <div className="divide-y divide-line rounded-card border border-line bg-white">
+        <Row crew="nell" topic="Paying for a solicitor" title={funding.title}>
+          <p className="text-[15px] leading-6 text-ink">{funding.text}</p>
+          {result.calculatorText && (
+            <Quote source="SLAB's calculator" href={SLAB_CALC}>
+              {result.calculatorText}
+            </Quote>
           )}
-        </header>
-        <section className="flex items-center gap-4 rounded-card border border-brand/40 bg-white p-5 lg:col-span-5">
-          <CrewMark id="kit" size={52} />
-          <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-medium text-ink">{ready.length ? `${ready.length} enquir${ready.length === 1 ? "y" : "ies"} ready for your OK` : "Enquiries not prepared yet"}</div>
-            <div className="text-[12px] leading-5 text-muted">{ready.length ? ready.map((r) => r.firmName).join(" · ") : "Kit fills each firm's form and stops before Send."}</div>
-            <Button className="mt-3" size="sm" onClick={onReview}>
-              {ready.length ? "Review and send" : "Prepare enquiries"}
-            </Button>
-          </div>
-        </section>
-      </div>
+        </Row>
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
-        <Panel crew="nell" title={funding}>
-          {result.calculatorText && <p className="font-serif text-[15px] leading-6 text-ink">&ldquo;{result.calculatorText}&rdquo;</p>}
-          <p className="mt-3 text-[12px] leading-5 text-muted">
-            From{" "}
-            <a className="text-brand hover:underline" href={SLAB_CALC} target="_blank" rel="noreferrer">
-              SLAB&apos;s calculator
-            </a>
-            . A solicitor applies for you, and SLAB also checks the case has merit.
-          </p>
-        </Panel>
-
-        <Panel crew="robin" title={`${top.length} solicitor${top.length === 1 ? "" : "s"} for you`}>
-          <ul className="space-y-4">
+        <Row crew="robin" topic="Solicitors" title={`${top.length} solicitor${top.length === 1 ? "" : "s"} who could take your case`}>
+          <p className="text-[15px] leading-6 text-ink">Robin checked each firm&apos;s own website and the Law Society register. These fit you best.</p>
+          <ul className="mt-2 divide-y divide-line-soft">
             {top.map((f) => (
               <FirmLine key={f.id} f={f} />
             ))}
           </ul>
-          <button className="mt-4 text-[13px] text-brand hover:underline" onClick={onFirms}>
-            All {result.firms.length} firms Robin looked at
+          <button className="mt-3 text-[13px] text-brand hover:underline" onClick={onFirms}>
+            See all {result.firms.length} firms Robin looked at
           </button>
-        </Panel>
+        </Row>
 
-        <Panel crew="iona" title="Medical evidence">
-          {ev.guideline?.points[0] ? (
-            <>
-              <a className="text-[12px] text-brand hover:underline" href={ev.guideline.url} target="_blank" rel="noreferrer">
-                {ev.guideline.name.split(":")[0]}, recommendation {ev.guideline.points[0].id}
-              </a>
-              <p className="mt-1 font-serif text-[15px] leading-6 text-ink">&ldquo;{ev.guideline.points[0].text}&rdquo;</p>
-            </>
-          ) : (
-            <p className="text-[13px] text-muted">No guideline found.</p>
-          )}
-          {ev.gaps?.[0] && (
-            <div className="mt-3 rounded-[5px] bg-purple-soft px-3 py-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-purple">For a solicitor to check</div>
-              <p className="mt-1 text-[13px] leading-5 text-ink">{ev.gaps[0].question}</p>
+        <Row crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : "What the guidance says"}>
+          {gap && point ? (
+            <div className="space-y-4">
+              <Said label="What doctors are advised to do">
+                <Quote source={`NICE guideline ${ev.guideline!.name.match(/NG\d+/)?.[0] ?? ""}, ${point.id}`.replace(" ,", ",")} href={ev.guideline!.url} inline>
+                  {point.text}
+                </Quote>
+              </Said>
+              <Said label="What you told us">{gap.timeline}</Said>
+              <Said label="Why it matters">This may be a gap in your care, or there may be a good reason for it. Only your medical records can show which, and a solicitor will check them.</Said>
+              <div className="rounded-[6px] bg-purple-soft px-4 py-3">
+                <p className="text-[13px] font-medium text-purple">The question to ask</p>
+                <p className="mt-1 text-[14px] leading-6 text-ink">{gap.question}</p>
+                <p className="mt-2 text-[12px] text-ink-2">{askedInMessage ? "Kit already put this in your enquiry. Nothing to do now." : "Mention this when a solicitor gets back to you."}</p>
+              </div>
             </div>
+          ) : point ? (
+            <Quote source={ev.guideline!.name.split(":")[0]} href={ev.guideline!.url}>
+              {point.text}
+            </Quote>
+          ) : (
+            <p className="text-[15px] leading-6 text-ink">Iona did not find a guideline point about your injury.</p>
           )}
-          {ev.cases?.map((c) => (
-            <p key={c.url} className="mt-3 text-[12px] leading-5 text-muted">
-              <a className="text-ink-2 hover:text-brand hover:underline" href={c.url} target="_blank" rel="noreferrer">
-                {c.title} ({c.year})
-              </a>
-              : {c.kind === "medical_negligence" ? "a medical negligence case" : c.kind === "similar_injury_other_cause" ? "similar injury, not medical negligence" : "not relevant"}
+          {ev.cases && (
+            <p className="mt-4 text-[13px] leading-5 text-muted">
+              {similar.length ? (
+                <>
+                  Similar Scottish court cases:{" "}
+                  {similar.map((c, i) => (
+                    <span key={c.url}>
+                      {i > 0 && ", "}
+                      <a className="text-brand hover:underline" href={c.url} target="_blank" rel="noreferrer">
+                        {c.title} ({c.year})
+                      </a>
+                    </span>
+                  ))}
+                  .
+                </>
+              ) : (
+                <>
+                  Iona found no Scottish court case about a missed injury like yours. That is common: most claims settle without going to court.
+                  {other[0] && (
+                    <>
+                      {" "}
+                      The closest,{" "}
+                      <a className="text-ink-2 underline decoration-line underline-offset-2 hover:text-brand" href={other[0].url} target="_blank" rel="noreferrer">
+                        {other[0].title} ({other[0].year})
+                      </a>
+                      , is about a similar injury from another cause.
+                    </>
+                  )}
+                </>
+              )}
             </p>
-          ))}
-        </Panel>
+          )}
+        </Row>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-5 text-[12px] text-muted">
+      <footer className="flex flex-wrap items-center justify-between gap-4 text-[12px] text-muted">
         <span className="tabular-nums">
-          {CREW_ORDER.length} crew · {s.agents} browser agents · {s.sites} websites · {s.pages} pages · {s.actions} clicks and typing · {run.asks} questions to you · {run.recoveries} recover{run.recoveries === 1 ? "y" : "ies"} · {mmss(run.durationMs)}
+          {s.agents} browser agents · {s.sites} websites · {s.pages} pages · {s.actions} clicks and typing · {run.asks} questions to you · {mmss(run.durationMs)}
         </span>
         <span className="flex gap-4">
           <button className="text-brand hover:underline" onClick={onReplay}>
-            Review the run
+            How the crew worked
           </button>
           <button className="hover:text-ink" onClick={onRestart}>
             Run again
@@ -639,57 +716,97 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   );
 }
 
+/** One part of the case file: who found it on the left, what it means on the right. */
+function Row({ crew, topic, title, children }: { crew: CrewId; topic: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="grid gap-4 px-6 py-6 md:grid-cols-[180px_1fr] md:gap-8">
+      <div className="flex items-center gap-3 md:flex-col md:items-start md:gap-2">
+        <CrewMark id={crew} size={40} />
+        <div>
+          <div className="text-[13px] font-medium text-ink">{topic}</div>
+          <div className="text-[12px] text-muted">Found by {CREW[crew].name}</div>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <h2 className="display text-[24px] leading-tight text-ink">{title}</h2>
+        <div className="mt-3">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+function Said({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[13px] font-medium text-ink-2">{label}</p>
+      <div className="mt-0.5 text-[15px] leading-6 text-ink">{children}</div>
+    </div>
+  );
+}
+
+/** A quote in the source's own words, with a link to where it came from. */
+function Quote({ source, href, inline, children }: { source: string; href: string; inline?: boolean; children: React.ReactNode }) {
+  return (
+    <figure className={cx(!inline && "mt-3 border-l-2 border-line pl-4")}>
+      <blockquote className="font-serif text-[16px] leading-7 text-ink">&ldquo;{children}&rdquo;</blockquote>
+      <figcaption className="mt-1 text-[12px] text-muted">
+        <a className="text-brand hover:underline" href={href} target="_blank" rel="noreferrer">
+          {source} ↗
+        </a>
+      </figcaption>
+    </figure>
+  );
+}
+
 /** A firm as plain facts; the score behind it opens on click (Codex: facts, not bare percentages). */
 function FirmLine({ f }: { f: Step3Result["firms"][number] }) {
   const [open, setOpen] = useState(false);
   const facts: { label: string; on: boolean | null }[] = [
     { label: "Takes legal aid", on: f.legalAid },
-    { label: "Acts for patients", on: f.actsForPatients === "yes" ? true : f.actsForPatients === "no" ? false : null },
+    { label: "Represents patients", on: f.actsForPatients === "yes" ? true : f.actsForPatients === "no" ? false : null },
     { label: "No win no fee", on: f.noWinNoFee === "yes" ? true : f.noWinNoFee === "no" ? false : null },
     { label: "Online form", on: f.enquiryUrl ? true : null },
   ];
+  const where = [f.town, f.distanceMiles != null ? `${f.distanceMiles < 1 ? f.distanceMiles.toFixed(1) : Math.round(f.distanceMiles)} miles away` : null].filter(Boolean).join(" · ");
   return (
-    <li>
-      <div className="text-[14px] font-medium text-ink">{f.name}</div>
-      <div className="text-[12px] text-muted">{[f.town, f.distanceMiles != null ? `${f.distanceMiles < 1 ? f.distanceMiles.toFixed(1) : Math.round(f.distanceMiles)} miles` : null].filter(Boolean).join(" · ")}</div>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
+    <li className="py-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div>
+          <span className="text-[15px] font-medium text-ink">{f.name}</span>
+          {where && <span className="ml-2 text-[13px] text-muted">{where}</span>}
+        </div>
+        <span className="flex gap-4 text-[13px]">
+          {f.breakdown && (
+            <button className="text-muted hover:text-brand" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+              {open ? "Hide why" : "Why this firm"}
+            </button>
+          )}
+          {f.website && (
+            <a className="text-brand hover:underline" href={f.website} target="_blank" rel="noreferrer">
+              Website ↗
+            </a>
+          )}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {facts
           .filter((x) => x.on !== false)
           .map((x) => (
-            <span key={x.label} className={cx("inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]", x.on ? "bg-teal-soft text-teal" : "bg-subtle text-muted")}>
+            <span key={x.label} title={whyFor(x.label)} className={cx("inline-flex cursor-help items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[12px]", x.on ? "bg-teal-soft text-teal" : "bg-subtle text-muted")}>
               <span aria-hidden>{x.on ? "✓" : "?"}</span>
               {x.label}
+              {x.on === null && <span className="sr-only">(not stated on their site)</span>}
             </span>
           ))}
       </div>
-      {f.breakdown && (
-        <>
-          <button className="mt-1.5 text-[12px] text-muted hover:text-brand" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-            {open ? "Hide why" : "Why this firm"}
-          </button>
-          {open && (
-            <ul className="rise mt-1">
-              {f.breakdown.map((r) => (
-                <ScoreRow key={r.key} row={r} />
-              ))}
-            </ul>
-          )}
-        </>
+      {open && f.breakdown && (
+        <ul className="rise mt-2">
+          {f.breakdown.map((r) => (
+            <ScoreRow key={r.key} row={r} />
+          ))}
+        </ul>
       )}
     </li>
-  );
-}
-
-function Panel({ crew, title, children }: { crew: CrewId; title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-card border border-line bg-white p-5">
-      <div className="flex items-center gap-2">
-        <CrewMark id={crew} size={30} />
-        <span className="text-[12px] text-muted">{CREW[crew].name}</span>
-      </div>
-      <h2 className="display mt-3 text-[22px] text-ink">{title}</h2>
-      <div className="mt-3">{children}</div>
-    </section>
   );
 }
 

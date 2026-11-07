@@ -452,8 +452,8 @@ export function score(f: FirmFinding, route: Route, ev: Evidence = {}): FirmFind
     { key: "legal_aid", label: "Takes legal aid for medical negligence", max: la ? 30 : 5, points: f.legalAid ? (la ? 30 : 5) : 0, status: tri(f.legalAid), evidence: ev.legal_aid ?? "Listed on SLAB's Find a Solicitor under Civil > Medical negligence" },
     { key: "active", label: "Did civil legal aid work in the last 12 months", max: 10, points: f.activeRecently ? 10 : 0, status: tri(f.activeRecently), evidence: "Still listed with SLAB's 'active solicitors only' filter on" },
     { key: "distance", label: "Close to you", max: miles === null ? 0 : 20, points: miles === null ? 0 : miles <= 3 ? 20 : miles <= 15 ? 10 : 0, status: miles === null ? "unknown" : miles <= 15 ? "yes" : "no", evidence: miles === null ? "Distance excluded: no confirmed patient search location" : `SLAB's finder: ${miles} miles from the approved patient postcode ${f.distanceOrigin}` },
-    { key: "lawsoc", label: "On the Law Society register", max: 5, points: f.sources.includes("lawsoc") ? 5 : 0, status: f.sources.includes("lawsoc") ? "yes" : ev.lawsoc ? "no" : "unknown", evidence: ev.lawsoc ?? "Not looked up" },
-    { key: "patients", label: "Acts for patients", max: 20, points: f.actsForPatients === "yes" ? 20 : 0, status: f.actsForPatients, evidence: ev.patients ?? "Website not checked" },
+    { key: "lawsoc", label: "On the Law Society register", max: 5, points: f.sources.includes("lawsoc") ? 5 : 0, status: f.sources.includes("lawsoc") ? "yes" : "unknown", evidence: f.sources.includes("lawsoc") ? (ev.lawsoc ?? "Found on the register") : ev.lawsoc ? "We searched the register by name but could not confirm a match. The register sometimes lists a firm under a different name, so this is not a sign of a problem." : "Not looked up" },
+    { key: "patients", label: "Represents patients", max: 20, points: f.actsForPatients === "yes" ? 20 : 0, status: f.actsForPatients, evidence: ev.patients ?? "Website not checked" },
     { key: "nwnf", label: "Offers no win, no fee", max: la ? 10 : 30, points: f.noWinNoFee === "yes" ? (la ? 10 : 30) : 0, status: f.noWinNoFee, evidence: ev.nwnf ?? "Website not checked" },
     { key: "form", label: "Has an online enquiry form", max: 10, points: f.enquiryUrl ? 10 : 0, status: f.enquiryUrl ? "yes" : checked ? "no" : "unknown", evidence: ev.form ?? (f.enquiryUrl ? `Form at ${f.enquiryUrl}` : "Website not checked") },
     { key: "checked", label: "We could read their website", max: 15, points: checked ? 15 : 0, status: checked ? "yes" : f.website ? "unknown" : "no", evidence: ev.checked ?? (f.website ? "Not one of the firms we visited" : "No website on SLAB's list") },
@@ -468,6 +468,9 @@ export function score(f: FirmFinding, route: Route, ev: Evidence = {}): FirmFind
 /* ------------------------------------------------------------------ 3. Law Society check */
 
 export async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: Note, track: Tracker) {
+  // In a short window the register's Search button does not submit (found 2026-11-07 at 1118x502). Give this tab room.
+  const vp = page.viewportSize();
+  if (vp && vp.height < 800) await page.setViewportSize({ width: Math.max(vp.width, 1200), height: 860 }).catch(() => {});
   await page.goto(LAWSOC, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForSelector("input[name=FirmName]", { timeout: 20000 });
   await dismissCookies(page, 3000);
@@ -480,6 +483,7 @@ export async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: No
     if (found.size + firms.indexOf(f) > 0) {
       await page.goto(LAWSOC, { waitUntil: "domcontentloaded", timeout: 30000 });
       await page.waitForSelector("input[name=FirmName]", { timeout: 20000 });
+      await dismissCookies(page, 1500);
     }
     const box = page.locator("input[name=FirmName]:visible").first();
     await pointAt(page, box);
@@ -492,13 +496,29 @@ export async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: No
     await pointAt(page, btn);
     // The search is a page load with the query in the URL: wait for *this* search, not the previous results.
     await Promise.all([
-      page.waitForURL((u) => (u.searchParams.get("FirmName") ?? "").toLowerCase() === query, { timeout: 12000 }).catch(() => {}),
-      btn.click(),
+      page.waitForURL((u) => (u.searchParams.get("FirmName") ?? "").toLowerCase() === query, { timeout: 8000 }).catch(() => {}),
+      btn.click({ timeout: 8000 }).catch(() => {}),
     ]);
     track.bump("action");
-    await page.waitForSelector(".find-a-solicitor-list-item", { timeout: 8000 }).catch(() => {});
+    if ((new URL(page.url()).searchParams.get("FirmName") ?? "").toLowerCase() === query) await page.waitForSelector(".find-a-solicitor-list-item", { timeout: 8000 }).catch(() => {});
     await page.waitForTimeout(500);
-    const names = await page.$$eval(".find-a-solicitor-list-item h2", (hs) => hs.map((h) => (h.textContent ?? "").trim()));
+    let names = await page.$$eval(".find-a-solicitor-list-item h2", (hs) => hs.map((h) => (h.textContent ?? "").trim()));
+    // Sometimes the form does not take the click ("Please choose search criteria"). An empty page is not a "not found":
+    // start again from a fresh form (the cookie banner can come back and swallow the click) and search once more.
+    if (!names.length) {
+      await note.log("recover", `The search did not go through for "${query}"; trying it again on a fresh form`, { firms: [f.id] });
+      await page.goto(LAWSOC, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.waitForSelector("input[name=FirmName]", { timeout: 20000 });
+      await dismissCookies(page, 3000);
+      const box2 = page.locator("input[name=FirmName]:visible").first();
+      await box2.fill(query);
+      await pointAt(page, box2);
+      // Submit with Enter this time: in a short window the Search button can sit under the site's own overlays.
+      await Promise.all([page.waitForURL((u) => (u.searchParams.get("FirmName") ?? "").toLowerCase() === query, { timeout: 15000 }).catch(() => {}), box2.press("Enter").catch(() => {})]);
+      track.bump("action");
+      await page.waitForSelector(".find-a-solicitor-list-item", { timeout: 10000 }).catch(() => {});
+      names = await page.$$eval(".find-a-solicitor-list-item h2", (hs) => hs.map((h) => (h.textContent ?? "").trim()));
+    }
     const match = names.find((n) => sameFirm(n, f.name));
     if (match) found.add(f.id);
     if (match) await pointAt(page, page.locator(".find-a-solicitor-list-item h2", { hasText: match }).first());
@@ -604,7 +624,7 @@ export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: 
   if (enquiryUrl) await pointAt(page, page.locator(formSel).first());
   await note.log("found", enquiryUrl ? "Found an enquiry form step 4 can fill in" : "No enquiry form found on the pages we opened", { shot: true });
   note(
-    [actsForPatients === "yes" ? "Acts for patients" : actsForPatients === "no" ? "Defends claims" : "Unclear who they act for", noWinNoFee === "yes" ? "no win no fee" : null, enquiryUrl ? "form found" : "no form found"]
+    [actsForPatients === "yes" ? "Represents patients" : actsForPatients === "no" ? "Defends claims" : "Unclear who they act for", noWinNoFee === "yes" ? "no win no fee" : null, enquiryUrl ? "form found" : "no form found"]
       .filter(Boolean)
       .join(" · "),
   );

@@ -1,6 +1,7 @@
-import { EnquiryFillGuard, solicitorSummary } from "./plannerGuards";
-import { parseFundingNumber } from "./inputs";
-import { askSearchLocation, type SearchLocation } from "./searchLocation";
+import { EnquiryFillGuard } from "./plannerGuards";
+import { formatPostcode, isPostcode, parseFundingNumber } from "./inputs";
+import type { SearchLocation } from "./searchLocation";
+import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "playwright";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
@@ -63,6 +64,19 @@ export function answerQuestion(runId: string, id: string, answer: string | null)
   return true;
 }
 
+/* ------------------------------------------------------------------ skips from the user (demo), by run */
+
+const gs = globalThis as typeof globalThis & { __plannerSkips?: Map<string, Set<CrewId | "all">> };
+const skips = (gs.__plannerSkips ??= new Map());
+
+/** Called by POST /api/agent/plan/skip. From the next step on, that crew member's jobs (or all jobs: "all") are skipped. */
+export function skipCrew(runId: string, crew: CrewId | "all"): boolean {
+  const set = skips.get(runId);
+  if (!set) return false;
+  set.add(crew);
+  return true;
+}
+
 /* ------------------------------------------------------------------ small helpers */
 
 /** At most `n` browser tools at once; the rest wait their turn. */
@@ -81,6 +95,13 @@ function limiter(n: number) {
   };
 }
 
+const host = (u: string) => {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
 const num = parseFundingNumber;
 const yes = (s: string | null) => (s === null ? null : /^(y|yes|true)/i.test(s.trim()));
 const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
@@ -288,7 +309,7 @@ Rules:
 - If a firm check fails or a firm is ruled out, replace it with the next most promising firm before shortlisting.
 - The "why" is shown as your message to the crew member, so write it like a short instruction to them in plain words, e.g. "Find legal aid firms near EH8 that do medical negligence".
 - Exclude firms that defend the NHS, health boards or insurers, and firms whose site redirects to a claims company.
-- Only ask_user when you truly need something (e.g. whether they would travel further); never ask for money details or consent.
+- Only ask_user when you truly need something (e.g. whether they would travel further); never ask for money details, consent or the postcode (Robin handles location).
 - Never say anyone was negligent. Never submit forms.`;
 
 /* ------------------------------------------------------------------ the run */
@@ -297,8 +318,16 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const runId = opts.runId ?? `step3-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   const runDir = path.join(process.cwd(), ".runs", runId);
   const log = makeLogger(runDir);
+  const startedAt = Date.now();
+  mkdirSync(runDir, { recursive: true });
   const emit: Emit = (e) => {
     if (e.type !== "stats" && e.type !== "trace") log({ type: "status", message: JSON.stringify(e).slice(0, 2000) });
+    // The whole event stream, timed, so a run can be replayed for a demo (D55, /api/agent/plan/demo).
+    try {
+      appendFileSync(path.join(runDir, "events.ndjson"), JSON.stringify({ t: Date.now() - startedAt, e }) + "\n");
+    } catch {
+      /* recording must never stop the run */
+    }
     opts.onEvent?.(e);
   };
   emit({ type: "run", runId });
@@ -308,6 +337,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const ctx = { context, emit, track, tracer, first: page };
   const tabs = limiter(MAX_TABS);
   waiting.set(runId, new Map());
+  skips.set(runId, new Set());
 
   // What the run knows. Tools read and write it; the planner sees summaries.
   const funding: Funding = { onBenefits: null, partner: null, dependants: null, netIncomeYearly: null, outgoingsYearly: null, savings: null, skipped: false, ...fundingIn };
@@ -372,15 +402,47 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const firmLine = (f: FirmFinding) =>
     `${f.id}: ${f.name}, ${f.town}${f.distanceMiles !== null ? ` (${f.distanceMiles} miles)` : ""}${f.website ? `, ${f.website}` : ", no website"}${f.legalAid ? ", takes legal aid" : ""}${f.sources.includes("website") ? `. Checked: acts for patients ${said(f.actsForPatients)}; no win no fee ${said(f.noWinNoFee)}; enquiry form ${f.enquiryUrl ? "found" : "not found"}${f.excluded ? `; RULED OUT: ${f.excluded}` : ""}` : ""}`;
 
+  /** What a crew member is doing, in a few plain words, while the tool runs (shown as the hero line, D54). */
+  const doing = (tool: string, a: Record<string, unknown>): string => {
+    const firm = firms.get(String(a.firm_id ?? ""))?.name ?? (typeof a.name === "string" ? a.name : "");
+    const short = (n: string) => n.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "");
+    switch (tool) {
+      case "slab_calculator":
+        return "Checking legal aid on SLAB's calculator";
+      case "slab_lawyer_list":
+        return "Searching SLAB's list of legal aid solicitors";
+      case "web_search":
+        return "Searching the web for more solicitors";
+      case "visit":
+        return `Reading ${host(String(a.url ?? "")) || "a web page"}`;
+      case "check_firm":
+        return firm ? `Checking ${short(firm)}'s website` : "Checking a firm's website";
+      case "law_society_check":
+        return "Checking firms on the Law Society register";
+      case "read_guideline":
+        return "Reading the NICE clinical guideline";
+      case "compare_care":
+        return "Comparing the guideline with your story";
+      case "search_case_law":
+        return "Searching Scottish court cases";
+      case "read_judgment":
+        return "Reading a court judgment";
+      case "fill_enquiry":
+        return firm ? `Filling ${short(firm)}'s enquiry form` : "Filling an enquiry form";
+      default:
+        return "Working";
+    }
+  };
+
   /** What a crew member says back after a tool: one plain sentence for the user, not the planner's raw notes. */
   const describe = (tool: string, a: Record<string, unknown>, out: string): string => {
-    const tri = (t: string) => (t === "yes" ? "yes" : t === "no" ? "no" : "unclear");
     switch (tool) {
       case "slab_calculator":
         return funding.skipped ? "You skipped the money questions, so legal aid stays unknown." : verdict === "likely" ? `SLAB's estimate: likely to qualify for legal aid. "${quote}"` : verdict === "unlikely" ? `SLAB's estimate: unlikely to qualify. "${quote}"` : "I could not read SLAB's estimate.";
       case "slab_lawyer_list": {
         const list = [...firms.values()].filter((f) => f.legalAid);
-        return list.length ? solicitorSummary(list, location) : out;
+        const near = list[0];
+        return list.length ? `Found ${list.length} firms that take legal aid for medical negligence. Nearest: ${near.name}${near.distanceMiles != null ? `, ${near.distanceMiles} miles away` : ""}.` : out;
       }
       case "web_search": {
         const n = (out.match(/^\d+\./gm) ?? []).length;
@@ -390,12 +452,12 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         const f = firms.get(String(a.firm_id ?? "")) ?? [...firms.values()].find((x) => x.name === a.name);
         if (!f) return out;
         if (f.excluded) return `Ruled out ${f.name}: ${f.excluded}.`;
-        return `${f.name}: acts for patients ${tri(f.actsForPatients)}, no win no fee ${tri(f.noWinNoFee)}, enquiry form ${f.enquiryUrl ? "found" : "not found"}.`;
+        return `Read ${f.name}'s website.`;
       }
       case "law_society_check": {
         const on = (out.match(/on the register/g) ?? []).length;
         const all = (out.match(/: /g) ?? []).length;
-        return `${on} of ${all} firms are on the Law Society of Scotland register.`;
+        return on === all ? `All ${all} firms are on the Law Society of Scotland register.` : on > 0 ? `Confirmed ${on} of ${all} firms on the Law Society of Scotland register; the others did not match by name.` : `Could not confirm these firms on the Law Society register by name.`;
       }
       case "read_guideline":
         return proof.guideline?.points.length ? `${proof.guideline.name}, ${proof.guideline.points[0].id}: "${short(proof.guideline.points[0].text, 160)}"` : "The guideline says nothing about this.";
@@ -449,12 +511,20 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return `SLAB estimate: ${verdict}. Its words: "${quote}"`;
       }
       case "slab_lawyer_list": {
-        const r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track, location), 120_000));
+        let r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track, location), 120_000));
+        let noLocation = "";
+        if (!r.ok && /could not confirm/i.test(r.error) && location.allowed) {
+          // Recovery (D54): SLAB would not take the postcode. Search again without a location rather than asking again.
+          tracer.add({ agent: thought.tab ?? "Robin", color: CREW.robin.color, kind: "recover", text: `SLAB could not confirm ${location.postcode}; searching again without a location` });
+          noLocation = ` SLAB could not use ${location.postcode}, so this list is not sorted by distance; do not ask the user about the postcode again.`;
+          location = { allowed: false };
+          r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track, location), 120_000));
+        }
         if (!r.ok) return `SLAB's lawyer list failed: ${r.error}`;
         for (const f of mergeCards(r.value)) if (!firms.has(f.id)) firms.set(f.id, f);
         const list = [...firms.values()].filter((f) => f.legalAid);
         finding(`SLAB lists ${list.length} firms that take medical negligence legal aid`, "SLAB lawyer list");
-        return `Found ${list.length} firms (${location.allowed ? `nearest to ${location.postcode} first` : "without distance ranking"}):\n${list.slice(0, 15).map(firmLine).join("\n")}`;
+        return `Found ${list.length} firms (${location.allowed ? `nearest to ${location.postcode} first` : "without distance ranking"}).${noLocation}\n${list.slice(0, 15).map(firmLine).join("\n")}`;
       }
       case "web_search": {
         const r = await tabs(() => crewFor(thought, "robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
@@ -593,7 +663,9 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   let reviewing = false;
   let turns = 0;
   try {
-    location = await askSearchLocation((question) => ask({ ...question, agent: "Robin", crew: "robin" }));
+    // The profile's postcode is used for the solicitor search without a separate question (Tarun, 2026-11-07).
+    const savedPostcode = facts.postcode && isPostcode(facts.postcode) ? formatPostcode(facts.postcode) : null;
+    location = savedPostcode ? { allowed: true, postcode: savedPostcode } : { allowed: false };
     const story = [facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n");
     const known = Object.entries(funding).filter(([, v]) => v !== null && v !== false).map(([k, v]) => `${k}=${v}`).join(", ") || "none yet";
     let input: ResponseInputItem[] | string = `Patient: ${facts.firstName ?? "the patient"}, approved search postcode ${location.allowed ? location.postcode : "not shared"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${story}\nWhat they want: ${facts.desiredOutcome ?? "not said"}\nMoney answers already known: ${known}\n\nUse only the approved search postcode for nearby-firm searches. Never infer the patient location from the hospital or treatment location. If location is not shared, do not use proximity ranking.\nPlan and run the research.`;
@@ -619,6 +691,9 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       }
       // One step at a time (D54): calls run in order. Consecutive check_firm or fill_enquiry calls form one side-by-side batch.
       const PARALLEL = new Set(["check_firm", "fill_enquiry"]);
+      // The story order wins over the order the model listed its calls in: Nell, Robin, Iona, shortlist, Kit.
+      const STAGE: Record<string, number> = { update_plan: 0, ask_user: 0, slab_calculator: 1, slab_lawyer_list: 2, web_search: 2, visit: 2, check_firm: 3, law_society_check: 3, read_guideline: 4, compare_care: 4, search_case_law: 4, read_judgment: 4, shortlist: 5, fill_enquiry: 6, finish: 7 };
+      calls.sort((x, y) => (STAGE[x.name] ?? 4) - (STAGE[y.name] ?? 4));
       const batches: ResponseFunctionToolCall[][] = [];
       for (const c of calls) {
         const last = batches.at(-1);
@@ -632,10 +707,16 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
           if (call.name !== "update_plan") emit({ type: "thought", thought });
           const who = TOOL_CREW[call.name] ?? "elliot";
           const why = String(args.why ?? "").trim();
+          const skipSet = skips.get(runId);
+          if (who !== "elliot" && (skipSet?.has(who) || skipSet?.has("all"))) {
+            say({ from: who, to: "elliot", kind: "report", text: "Skipped, as you asked.", tool: call.name });
+            crewState(who, "idle", "Skipped");
+            return { type: "function_call_output" as const, call_id: call.call_id, output: `Skipped: the user asked to skip ${skipSet?.has("all") ? "the remaining research" : `${CREW[who].name}'s work`}. Do not call this tool again; carry on${skipSet?.has("all") ? ": call shortlist, then finish now" : ""}.` };
+          }
           if (who !== "elliot" && call.name !== "update_plan") {
             say({ from: "elliot", to: who, kind: "assign", text: why || call.name, tool: call.name });
             open.set(who, (open.get(who) ?? 0) + 1);
-            crewState(who, "working", why);
+            crewState(who, "working", doing(call.name, args));
           }
           let out: string;
           try {
@@ -657,7 +738,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
             const f = call.name === "check_firm" ? firms.get(String(args.firm_id ?? "")) ?? [...firms.values()].find((x) => x.name === args.name) : undefined;
             const facts = f && f.sources.includes("website") && !failed
               ? [
-                  { label: "Acts for patients", value: f.actsForPatients },
+                  { label: "Represents patients", value: f.actsForPatients },
                   { label: "No win no fee", value: f.noWinNoFee },
                   { label: "Enquiry form", value: f.enquiryUrl ? ("yes" as const) : ("no" as const) },
                 ]
@@ -665,7 +746,9 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
             say({ from: who, to: "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab, ok, facts, firm: f?.name });
             const left = Math.max(0, (open.get(who) ?? 1) - 1);
             open.set(who, left);
-            crewState(who, left > 0 ? "working" : "idle", left > 0 ? `${left} more to go` : short(text, 90));
+            const plural = (n: number, w: string) => `${n} more ${w}${n === 1 ? "" : "s"}`;
+            const still = call.name === "check_firm" ? `Checking ${plural(left, "firm website")}` : call.name === "fill_enquiry" ? `Filling ${plural(left, "enquiry form")}` : doing(call.name, args);
+            crewState(who, left > 0 ? "working" : "idle", left > 0 ? still : short(text, 90));
           } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: short(out.replace(/\n/g, "; "), 200), tool: call.name });
           else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
           if (call.name === "finish") finished = true;
@@ -673,7 +756,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       };
       const outputs: ResponseInputItem[] = [];
       for (const batch of batches) outputs.push(...(await Promise.all(batch.map(exec))));
-      input = outputs;
+      input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call shortlist with what you have, then finish." }] : outputs;
     }
 
     // Score everything once more at the end, so what Kit found counts (one truth for the case file and step 4).
@@ -711,6 +794,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     return result;
   } finally {
     waiting.delete(runId);
+    skips.delete(runId);
     if (!reviewing) await browser.close().catch(() => {});
   }
 }

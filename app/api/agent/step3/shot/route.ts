@@ -10,10 +10,14 @@ export async function GET(req: Request) {
   const run = u.searchParams.get("run") ?? "";
   const file = u.searchParams.get("file") ?? "";
   if (!/^step[34]-[0-9T-]+Z?$/.test(run) || !/^[a-zA-Z0-9-]+\.jpg$/.test(file)) return new Response("Not found", { status: 404 });
-  try {
-    const data = await readFile(path.join(process.cwd(), ".runs", run, file));
-    return new Response(new Uint8Array(data), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=86400" } });
-  } catch {
-    return new Response("Not found", { status: 404 });
+  // A run on this machine first, then the recorded demo run that ships with the repo (D55).
+  for (const dir of [path.join(process.cwd(), ".runs", run), path.join(process.cwd(), "demo", run)]) {
+    try {
+      const data = await readFile(path.join(dir, file));
+      return new Response(new Uint8Array(data), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=86400" } });
+    } catch {
+      /* try the next place */
+    }
   }
+  return new Response("Not found", { status: 404 });
 }

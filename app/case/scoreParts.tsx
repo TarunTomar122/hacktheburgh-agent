@@ -51,6 +51,22 @@ export function FitRing({ fit, size = 60, title = "How well this firm fits what 
   );
 }
 
+/** Why each check matters, in plain words (Tarun: "what does this mean?", "why is this important?"). */
+export const WHY: Record<ScoreItem["key"], string> = {
+  legal_aid: "Only firms registered with the Scottish Legal Aid Board can use legal aid to pay for your case.",
+  active: "A firm that did legal aid work this year is still taking these cases.",
+  distance: "A nearby office makes it easier to meet in person.",
+  lawsoc: "Every practising solicitor in Scotland must be on this register. It shows the firm is real and regulated.",
+  patients: "Some firms only defend the NHS or insurers. You need one that takes cases for patients.",
+  nwnf: "If the claim is lost, you pay nothing for their work.",
+  form: "With an online form, Kit can fill in your enquiry for you. Otherwise you phone or email them.",
+  checked: "We read the firm's own website, so these details come from the firm itself.",
+};
+
+/** The same explanations, looked up by the short labels used on chips. */
+export const whyFor = (label: string): string | undefined =>
+  ({ "Takes legal aid": WHY.legal_aid, "Represents patients": WHY.patients, "No win no fee": WHY.nwnf, "Online form": WHY.form, "Enquiry form": WHY.form, "On the Law Society register": WHY.lawsoc })[label];
+
 const BAR: Record<ScoreItem["status"], string> = { yes: "bg-teal", no: "bg-danger/60", unknown: "bg-fade" };
 const MARK: Record<ScoreItem["status"], { t: string; cls: string }> = {
   yes: { t: "✓", cls: "text-teal" },
@@ -59,7 +75,8 @@ const MARK: Record<ScoreItem["status"], { t: string; cls: string }> = {
 };
 
 /** One criterion: label, a small bar (points out of max, coloured by what we found), and the evidence when opened. */
-export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "max" | "status" | "evidence"> }) {
+export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "max" | "status" | "evidence"> & { key?: ScoreItem["key"] } }) {
+  const why = row.key ? WHY[row.key] : undefined;
   const [open, setOpen] = useState(false);
   return (
     <li>
@@ -74,7 +91,12 @@ export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "m
           <span className={cx("block h-full rounded-full", BAR[row.status])} style={{ width: `${row.max ? (row.points / row.max) * 100 : 0}%` }} />
         </span>
       </button>
-      {open && <p className="mb-1.5 ml-[22px] rounded bg-subtle px-3 py-2 text-[12px] leading-5 text-ink-2">{row.evidence}</p>}
+      {open && (
+        <div className="mb-1.5 ml-[22px] space-y-1 rounded bg-subtle px-3 py-2 text-[12px] leading-5">
+          {why && <p className="text-ink">{why}</p>}
+          <p className="text-ink-2">What we found: {row.evidence}</p>
+        </div>
+      )}
     </li>
   );
 }

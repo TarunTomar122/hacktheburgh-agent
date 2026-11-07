@@ -27,10 +27,10 @@ const near = solicitorSummary([firm("far"), { ...firm("near"), name: "Near firm"
 assert.match(near, /Nearest to G1 1XW: Near firm, 0.1 miles/);
 assert.match(solicitorSummary([firm("a")], { allowed: true, postcode: "EH1 1AA" }), /No confirmed distances/);
 const crew = Object.fromEntries(Object.keys(CREW).map((id) => [id, { state: "idle", note: "", since: 0 }])) as Record<CrewId, CrewState>;
-const failed: Say = { i: 0, t: 0, from: "vera", kind: "report", tool: "check_firm", tab: "Vera - A", ok: false, text: "Could not load the firm" };
+const failed: Say = { i: 0, t: 0, from: "robin", kind: "report", tool: "check_firm", tab: "Robin - A", ok: false, text: "Could not load the firm" };
 assert.equal(stepStatuses(crew, [failed], true)[1], "failed");
 assert.equal(stepStatuses(crew, [failed, { ...failed, i: 1, ok: true, text: "Checked" }], true)[1], "done");
-assert.equal(stepStatuses(crew, [failed, { ...failed, i: 1, tab: "Vera - B", ok: true, text: "Checked B" }], true)[1], "failed");
+assert.equal(stepStatuses(crew, [failed, { ...failed, i: 1, tab: "Robin - B", ok: true, text: "Checked B" }], true)[1], "failed");
 assert.equal(stepStatuses(crew, [{ ...failed, ok: undefined, text: "I hit a problem: unavailable" }], true)[1], "failed");
 assert.equal(stepStatuses(crew, [], true)[1], "skipped");
 console.log("PASS: excluded/unshortlisted guard, concurrent budget, duplicate/retry handling, consent-aware distance summary, failed/recovered progress");

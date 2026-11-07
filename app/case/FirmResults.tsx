@@ -28,7 +28,7 @@ const statusOf = (f: FirmFinding, key: string) => f.breakdown?.find((r) => r.key
 const FLAGS: { id: Flag; label: string; test: (f: FirmFinding) => boolean }[] = [
   { id: "legalAid", label: "Takes legal aid", test: (f) => f.legalAid },
   { id: "nwnf", label: "No win no fee", test: (f) => f.noWinNoFee === "yes" },
-  { id: "patients", label: "Acts for patients", test: (f) => f.actsForPatients === "yes" },
+  { id: "patients", label: "Represents patients", test: (f) => f.actsForPatients === "yes" },
   { id: "form", label: "Has an enquiry form", test: (f) => !!f.enquiryUrl },
   { id: "lawsoc", label: "On the Law Society register", test: (f) => (statusOf(f, "lawsoc") ? statusOf(f, "lawsoc") === "yes" : f.sources.includes("lawsoc")) },
   { id: "website", label: "Website checked", test: (f) => (statusOf(f, "checked") ? statusOf(f, "checked") === "yes" : f.sources.includes("website")) },
@@ -247,7 +247,7 @@ function badges(f: FirmFinding, max: number) {
   if (f.excluded) all.push({ t: "Ruled out", cls: "bg-danger-soft text-danger" });
   if (f.legalAid) all.push({ t: "Takes legal aid", cls: "bg-brand-soft text-brand" });
   if (f.noWinNoFee === "yes") all.push({ t: "No win no fee", cls: "bg-teal-soft text-teal" });
-  if (f.actsForPatients === "yes") all.push({ t: "Acts for patients", cls: "bg-subtle text-ink-2" });
+  if (f.actsForPatients === "yes") all.push({ t: "Represents patients", cls: "bg-subtle text-ink-2" });
   if (f.enquiryUrl) all.push({ t: "Enquiry form", cls: "bg-subtle text-ink-2" });
   return all.slice(0, max);
 }

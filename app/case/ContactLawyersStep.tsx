@@ -4,11 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord, EnquiryStatus } from "../../lib/agent/enquiryTypes";
 import type { AgentTile, FirmFinding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
 import { setEnquiry, setOutcome, skipStep, upsertEnquiries, type Profile } from "../../lib/profile";
-import { Button, Callout, control, cx, Eyebrow, PageTitle, Paper } from "../ui";
+import { Button, Callout, control, cx, Eyebrow, Paper } from "../ui";
 import { draftMessage, runStep4, sendEnquiry } from "./enquiryRun";
 import { closeAgentBrowser } from "./streamAgent";
 import { AgentsPanel } from "./LegalAidStep";
 import { fixtureMode } from "./legalAidRun";
+import { WHY } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 
 /**
@@ -67,6 +68,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const [runId, setRunId] = useState<string | undefined>(profile.enquiry?.runId);
   const [review, setReview] = useState<EnquiryOutcome | null>(null);
   const [scope, setScope] = useState<TraceScope | null>(null);
+  const [info, setInfo] = useState<EnquiryOutcome | null>(null);
 
   // The message is written once from the profile; the user can edit it.
   const asked = useRef(false);
@@ -85,7 +87,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   if (firms.length === 0) {
     return (
       <div className="space-y-8">
-        <PageTitle eyebrow="Compensation · step 2" title="Contact lawyers" />
+        <h1 className="display text-[40px] text-ink">Contact lawyers</h1>
         <Callout tone="info" title="Pick up to 3 solicitors first.">
           In the previous step, tick the firms you would like to contact.
           <div className="mt-3">
@@ -157,17 +159,18 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const canSkip = !running && !writing && skippable.some((id) => !isSent(id));
   // A firm with no online form that was replaced drops to a one-line note; one we could not replace keeps its card.
   const swapped = (o: EnquiryOutcome) => o.status === "no_form" && /swapped in/i.test(o.note);
-  const active = outcomes.filter((o) => !swapped(o));
+  const rank: Partial<Record<EnquiryOutcome["status"], number>> = { ready_to_send: 0, sent: 1, send_blocked: 2, needs_input: 3, filling: 4, finding_form: 4, queued: 5, failed: 6, no_form: 7 };
+  const active = outcomes.filter((o) => !swapped(o)).sort((a, b) => (rank[a.status] ?? 5) - (rank[b.status] ?? 5));
   const swappedOut = outcomes.filter(swapped);
 
   return (
     <div className="@container space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageTitle eyebrow="Compensation · step 2" title="Contact lawyers" />
+        <h1 className="display text-[40px] text-ink">Contact lawyers</h1>
         {trace.length > 0 && !running && (
-          <button className="text-[13px] text-muted hover:text-brand" onClick={() => setScope({ title: "Everything the agents did", steps: trace, whole: true })}>
-            Agent log
-          </button>
+          <Button variant="secondary" size="sm" onClick={() => setScope({ title: "Everything the agents did", steps: trace, whole: true })}>
+            See how the forms were filled
+          </Button>
         )}
       </div>
 
@@ -227,10 +230,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
                   firm={firm}
                   rec={rec}
                   running={running}
-                  onOpen={() => {
-                    const steps = trace.filter((s) => s.firms?.includes(o.firmId));
-                    if (steps.length) setScope({ title: o.firmName, steps });
-                  }}
+                  onOpen={() => setInfo(o)}
                   onReview={() => setReview(o)}
                   onRetry={() => firm && run(firm)}
                   onReply={(status) => upsertEnquiries([{ firmId: o.firmId, firmName: o.firmName, status }])}
@@ -273,8 +273,126 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
           }}
         />
       )}
+      {info && (
+        <FirmModal
+          o={info}
+          firm={result?.firms.find((f) => f.id === info.firmId)}
+          steps={trace.filter((s) => s.firms?.includes(info.firmId))}
+          onClose={() => setInfo(null)}
+          onSteps={(steps) => {
+            setInfo(null);
+            setScope({ title: info.firmName, steps });
+          }}
+          onReview={
+            info.status === "ready_to_send"
+              ? () => {
+                  setInfo(null);
+                  setReview(info);
+                }
+              : undefined
+          }
+        />
+      )}
       {scope && <TraceSheet scope={scope} runId={runId} onClose={() => setScope(null)} />}
     </div>
+  );
+}
+
+const TRI = { yes: { mark: "✓", cls: "bg-teal-soft text-teal", word: "Yes" }, no: { mark: "✕", cls: "bg-danger-soft text-danger", word: "No" }, unknown: { mark: "?", cls: "bg-subtle text-muted", word: "Not confirmed" } } as const;
+
+/** Everything we know about one firm, with links to check it yourself. Opens from its card. */
+function FirmModal({ o, firm, steps, onClose, onSteps, onReview }: { o: EnquiryOutcome; firm?: FirmFinding; steps: TraceStep[]; onClose: () => void; onSteps: (s: TraceStep[]) => void; onReview?: () => void }) {
+  const where = [firm?.town, firm?.distanceMiles != null ? `${firm.distanceMiles < 1 ? firm.distanceMiles.toFixed(1) : Math.round(firm.distanceMiles)} miles away` : null].filter(Boolean).join(" · ");
+  const rows: { label: string; v: keyof typeof TRI; why: string }[] = firm
+    ? [
+        { label: "Takes legal aid for medical negligence", v: firm.legalAid ? "yes" : "unknown", why: WHY.legal_aid },
+        { label: "Represents patients", v: firm.actsForPatients, why: WHY.patients },
+        { label: "Offers no win, no fee", v: firm.noWinNoFee, why: WHY.nwnf },
+        { label: "On the Law Society register", v: firm.sources.includes("lawsoc") ? "yes" : "unknown", why: WHY.lawsoc },
+        { label: "Online enquiry form", v: o.formUrl || firm.enquiryUrl ? "yes" : "no", why: WHY.form },
+      ]
+    : [];
+  const form = o.formUrl || firm?.enquiryUrl || null;
+  const host = (u: string) => u.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+  return (
+    <Modal
+      title={o.firmName}
+      sub={[where, firm?.fit !== undefined ? `${firm.fit}% fit for what you need` : null].filter(Boolean).join(" · ")}
+      onClose={onClose}
+      footer={
+        <div className="flex flex-wrap items-center gap-3">
+          {onReview && <Button onClick={onReview}>Review and send</Button>}
+          {firm?.website && (
+            <a href={firm.website} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-ctl border border-line px-3 py-2 text-[14px] font-medium text-ink hover:border-faint">
+              Visit their website ↗
+            </a>
+          )}
+          {steps.length > 0 && (
+            <button className="ml-auto text-[13px] text-brand hover:underline" onClick={() => onSteps(steps)}>
+              How the form was filled
+            </button>
+          )}
+        </div>
+      }
+    >
+      <ul className="divide-y divide-line-soft">
+        {rows.map((r) => (
+          <li key={r.label} className="flex items-start justify-between gap-4 py-3 text-[14px]">
+            <span>
+              <span className="text-ink">{r.label}</span>
+              {r.why && <span className="mt-0.5 block text-[12px] leading-5 text-muted">{r.why}</span>}
+            </span>
+            <span className={cx("inline-flex shrink-0 items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[12px]", TRI[r.v].cls)}>
+              <span aria-hidden>{TRI[r.v].mark}</span>
+              {TRI[r.v].word}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <dl className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-2 text-[14px]">
+        {firm?.website && (
+          <>
+            <dt className="text-muted">Website</dt>
+            <dd>
+              <a className="text-brand hover:underline" href={firm.website} target="_blank" rel="noreferrer">
+                {host(firm.website)}
+              </a>
+            </dd>
+          </>
+        )}
+        {form && (
+          <>
+            <dt className="text-muted">Enquiry form</dt>
+            <dd className="min-w-0 truncate">
+              <a className="text-brand hover:underline" href={form} target="_blank" rel="noreferrer">
+                {host(form)}
+              </a>
+            </dd>
+          </>
+        )}
+        {firm?.phone && (
+          <>
+            <dt className="text-muted">Phone</dt>
+            <dd>
+              <a className="text-ink hover:text-brand" href={`tel:${firm.phone.replace(/\s+/g, "")}`}>
+                {firm.phone}
+              </a>
+            </dd>
+          </>
+        )}
+        {firm?.email && (
+          <>
+            <dt className="text-muted">Email</dt>
+            <dd>
+              <a className="text-ink hover:text-brand" href={`mailto:${firm.email}`}>
+                {firm.email}
+              </a>
+            </dd>
+          </>
+        )}
+      </dl>
+      {firm?.reasons && firm.reasons.length > 0 && <p className="text-[13px] leading-5 text-muted">Why we picked them: {firm.reasons.join(" · ")}.</p>}
+    </Modal>
   );
 }
 
@@ -330,8 +448,8 @@ function FirmCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-[16px] font-medium leading-6 text-ink">{o.firmName}</h3>
-          <p className="text-xs text-muted">
+          <h3 className="min-h-12 text-[16px] font-medium leading-6 text-ink">{o.firmName}</h3>
+          <p className="min-h-4 text-xs text-muted">
             {[firm?.town, firm?.distanceMiles != null ? `${firm.distanceMiles < 1 ? firm.distanceMiles.toFixed(1) : Math.round(firm.distanceMiles)} miles` : null].filter(Boolean).join(" · ")}
             {o.swappedFor ? ` · in place of ${o.swappedFor}` : ""}
           </p>
@@ -426,7 +544,7 @@ function Modal({ title, sub, onClose, children, footer }: { title: string; sub?:
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-6 sm:p-12" role="dialog" aria-modal="true" aria-label={title}>
       <button aria-label="Close" className="fixed inset-0 bg-ink/30" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-card bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+      <div className="relative w-full max-w-2xl rounded-card bg-white">
         <header className="flex items-start justify-between gap-4 border-b border-line-soft p-6">
           <div>
             <h2 className="display text-[24px] text-ink">{title}</h2>

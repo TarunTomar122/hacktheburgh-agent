@@ -11,6 +11,8 @@ import { CREW, type AskSpec, type CrewId, type EvidenceResult, type PlannerEvent
  * open questions, findings, evidence and enquiries, and posts the user's answers back. UI-agnostic.
  */
 
+type Rec = { t: number; e: PlannerEvent };
+
 export type CrewState = { state: "idle" | "working" | "waiting" | "done"; note: string; since: number };
 export type Finding = { i: number; text: string; source?: string; crew?: CrewId; t: number };
 
@@ -33,17 +35,25 @@ export type PlannerRunState = {
   result?: PlannerResult;
   startedAt?: number;
   spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D54)
+  demo: boolean; // playing back a recorded run (D55)
+  skipped: (CrewId | "all")[]; // demo skips asked for
 };
 
 const idleCrew = (): Record<CrewId, CrewState> =>
   Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "idle", note: "", since: Date.now() }])) as Record<CrewId, CrewState>;
 
-const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null });
+const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [] });
 
 export function usePlannerRun() {
   const [s, setS] = useState<PlannerRunState>(initial);
   const runIdRef = useRef<string | undefined>(undefined);
   const abort = useRef<AbortController | null>(null);
+  // Demo playback (D55): a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
+  const rec = useRef<{ events: Rec[]; i: number; timer?: ReturnType<typeof setTimeout> } | null>(null);
+  const stopReplay = () => {
+    clearTimeout(rec.current?.timer);
+    rec.current = null;
+  };
 
   const apply = useCallback((e: PlannerEvent | { type: "ping" }) => {
     setS((cur) => {
@@ -92,6 +102,7 @@ export function usePlannerRun() {
   const start = useCallback(
     async (facts: CaseFacts, funding?: Partial<Funding>) => {
       abort.current?.abort();
+      stopReplay();
       const ctrl = new AbortController();
       abort.current = ctrl;
       runIdRef.current = undefined;
@@ -129,17 +140,88 @@ export function usePlannerRun() {
 
   /** Send the user's answer (or null to skip). Returns false if it did not arrive, so the question can be retried. */
   const answer = useCallback(async (id: string, value: string | null): Promise<boolean> => {
+    if (rec.current) {
+      apply({ type: "answered", id, answer: value } as PlannerEvent);
+      return true;
+    }
     const runId = runIdRef.current;
     if (!runId) return false;
     const res = await fetch("/api/agent/plan/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, id, answer: value }) }).catch(() => null);
     return !!res?.ok;
-  }, []);
+  }, [apply]);
+
+  const tick = useCallback(() => {
+    const r = rec.current;
+    if (!r) return;
+    // Everything recorded within 80ms arrives together.
+    const t = r.events[r.i]?.t ?? 0;
+    while (r.i < r.events.length && r.events[r.i].t - t < 80) apply(r.events[r.i++].e);
+    if (r.i >= r.events.length) {
+      rec.current = null;
+      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result ? "done" : "error", error: cur.result ? undefined : "The recording ended without a result" } : cur));
+      return;
+    }
+    const gap = r.events[r.i].t - r.events[r.i - 1].t;
+    r.timer = setTimeout(tick, Math.min(1600, Math.max(30, gap / 6)));
+  }, [apply]);
+
+  const replay = useCallback(
+    async (opts: { toEnd?: boolean } = {}) => {
+      abort.current?.abort();
+      stopReplay();
+      setS({ ...initial(), status: "running", startedAt: Date.now(), demo: true });
+      const res = await fetch("/api/agent/plan/demo").catch(() => null);
+      const data = res?.ok ? ((await res.json()) as { events: Rec[] }) : null;
+      if (!data?.events.length) {
+        setS((cur) => ({ ...cur, status: "error", error: "No recorded demo run is available yet." }));
+        return;
+      }
+      rec.current = { events: data.events, i: 0 };
+      if (opts.toEnd) {
+        for (const x of data.events) apply(x.e);
+        rec.current = null;
+        return;
+      }
+      tick();
+    },
+    [apply, tick],
+  );
+
+  /** Demo control: skip one crew member's work (or "all": wrap up now). Live runs tell the server; playback jumps ahead. */
+  const skip = useCallback(
+    async (crew: CrewId | "all") => {
+      setS((cur) => ({ ...cur, skipped: [...cur.skipped, crew] }));
+      const r = rec.current;
+      if (r) {
+        clearTimeout(r.timer);
+        // Jump past everything that crew member did (or to the end), then play on.
+        let to = r.events.length;
+        if (crew !== "all") {
+          const mine = new Set(r.events.filter((x) => x.e.type === "ask" && x.e.ask.crew === crew).map((x) => (x.e as Extract<PlannerEvent, { type: "ask" }>).ask.id));
+          const touches = (e: PlannerEvent) =>
+            (e.type === "say" && (e.say.from === crew || e.say.to === crew)) || (e.type === "crew" && e.id === crew) || (e.type === "spotlight" && e.crew === crew) || (e.type === "answered" && mine.has(e.id));
+          let last = r.i - 1;
+          r.events.forEach((x, i) => {
+            if (i >= r.i && touches(x.e)) last = i;
+          });
+          to = last + 1;
+        }
+        while (r.i < to) apply(r.events[r.i++].e);
+        tick();
+        return;
+      }
+      const runId = runIdRef.current;
+      if (runId) await fetch("/api/agent/plan/skip", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, crew }) }).catch(() => null);
+    },
+    [apply, tick],
+  );
 
   const reset = useCallback(() => {
     abort.current?.abort();
     runIdRef.current = undefined;
+    stopReplay();
     setS(initial());
   }, []);
 
-  return { state: s, start, answer, reset };
+  return { state: s, start, answer, reset, replay, skip };
 }
