@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EFFORT, MODELS, structured } from "./llm";
-import { CaseFacts, emptyFacts, mergeFacts, missingRequired } from "./facts";
+import { CaseFacts, emptyFacts, mergeFacts, missingForOnboarding, missingRequired } from "./facts";
 import { inputFor, joinReply, nextTarget, normaliseFacts, parseName, patchFromAnswer, questionFor, validatePatch, type InputSpec, type Target } from "./inputs";
 
 import type { ChatMessage } from "./chat";
@@ -57,8 +57,8 @@ export type WidgetAnswer = Record<string, string | string[] | boolean>;
  * - `answer` is what a form, button or checklist gave us for the question currently open. No model call.
  * - Without it, the last message is free text and the model reads it.
  */
-export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = emptyFacts(), answer?: WidgetAnswer): Promise<InterviewResult> {
-  const asked = nextTarget(known);
+export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = emptyFacts(), answer?: WidgetAnswer, scope: "onboarding" | "nhs" = "onboarding"): Promise<InterviewResult> {
+  const asked = nextTarget(known, scope);
   let merged: CaseFacts;
   let acknowledgement = "";
 
@@ -97,14 +97,14 @@ export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = 
 
   const emailDeclined = asked === "emailRisk" && merged.emailRiskAccepted === false;
   const facts = normaliseFacts(merged);
-  const target = nextTarget(facts);
+  const target = nextTarget(facts, scope);
   const reply = joinReply(acknowledgement, questionFor(target, facts, { emailDeclined }));
 
   return {
     facts,
     reply,
-    done: target === "done" && missingRequired(facts).length === 0,
-    missing: missingRequired(facts),
+    done: target === "done" && (scope === "nhs" ? missingRequired(facts) : missingForOnboarding(facts)).length === 0,
+    missing: scope === "nhs" ? missingRequired(facts) : missingForOnboarding(facts),
     target,
     input: inputFor(target, facts, { emailDeclined }),
   };

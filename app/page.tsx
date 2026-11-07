@@ -15,7 +15,7 @@ import { Logo } from "./ui";
 
 // Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
 // The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
-const STEPS: Target[] = ["name", "story", "details", "who", "contact", "contactMethod", "emailRisk", "outcome", "done"];
+const STEPS: Target[] = ["name", "story", "details", "who", "contact", "outcome", "done"];
 
 const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
 

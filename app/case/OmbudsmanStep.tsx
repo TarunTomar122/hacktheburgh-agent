@@ -134,7 +134,7 @@ function Unlocked({ profile }: { profile: Profile }) {
   return (
     <div className="space-y-8">
       <PageTitle
-        eyebrow="Step 2"
+        eyebrow="Complaint · step 2"
         title="Complain to the ombudsman"
         lede="We fill in the ombudsman's form with what you have already told us. You check it on their form and press Send."
       />

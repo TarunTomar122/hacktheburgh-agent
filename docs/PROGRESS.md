@@ -8,6 +8,14 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Tarun + Claude · DONE · Recommend one track after onboarding (D42)
+Built `lib/agent/track.ts`, `lib/agent/trackSignals.ts`, `/api/agent/track`, `app/case/TrackChoice.tsx` and `app/case/TrackBar.tsx`, and deleted `PathMap.tsx`. NHS-only questions moved from onboarding to step 1. The outcome question is now neutral and has a compensation option. **Verified** in the app with the demo patient, using headless screenshots:
+- **Recommendation:** "We suggest you make a complaint", 50% fit (explanation and apology ticked, not asking for money; the AI read the harm as lasting, so "short-lived" scored 0). Compensation came out at 30%.
+- **Continue:** shows the complaint track only.
+- **Switch:** shows the compensation track (legal aid, then lawyers, coming soon).
+
+`tsc` and `eslint` are clean. **Not verified:** a full onboarding run through the new outcome question and step 1 asking the reply method (only code paths checked); a profile that ticks compensation (should recommend compensation).
+
 ### 2026-11-07 · Om + Claude · DONE · Whole interview as one-question screens (D41)
 Om asked for the rest of the form to behave like the name screen. `app/page.tsx` now shows the latest agent question as a heading with `StageInput` below (new `app/StageInputs.tsx`, `app/StageControls.tsx`), with a progress bar from the question order. Details and contact are asked one field at a time and sent as one answer, so the API is unchanged; choices are lettered rows with A/B/C keys; the outcome checklist is tick rows. `DateField` has an opt-in `big` prop; the case page keeps `InputPanel`. Checked: `tsc` and `eslint` clean; Playwright (Chrome, interview API mocked) through all nine steps at 1280 px and a 390 px phone width: validation messages, Back, keys, answers sent as before, no console errors. NOT checked: the live model path with the real key; `next build`.
 

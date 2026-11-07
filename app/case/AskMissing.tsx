@@ -11,9 +11,9 @@ import { Eyebrow } from "../ui";
  * Asks only what onboarding did not capture, one thing at a time, with the same inputs as onboarding (Om's InputPanel).
  * Renders nothing when everything is known. Used by every step instead of a form (D33).
  */
-export default function AskMissing({ profile, why }: { profile: Profile; why: string }) {
+export default function AskMissing({ profile, why, scope = "onboarding" }: { profile: Profile; why: string; scope?: "onboarding" | "nhs" }) {
   const f = profile.facts;
-  const target = nextTarget(f);
+  const target = nextTarget(f, scope);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (target === "done") return null;
@@ -27,7 +27,7 @@ export default function AskMissing({ profile, why }: { profile: Profile; why: st
       const res = await fetch("/api/agent/interview", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages, facts: f, answer }),
+        body: JSON.stringify({ messages, facts: f, answer, scope }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");

@@ -6,6 +6,7 @@ import type { Draft } from "./agent/draft";
 import { emptyFacts, type CaseFacts } from "./agent/facts";
 import type { SpsoAnswers } from "./agent/spsoAnswers";
 import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
+import type { TrackId, TrackRecommendation } from "./agent/track";
 
 /** Everything we keep about the user's case. Stored in this browser only (localStorage). */
 export type Profile = {
@@ -18,6 +19,8 @@ export type Profile = {
   progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean };
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean };
+  /** D42: the recommendation shown after onboarding, and the track the user chose (null until they choose). */
+  track?: { chosen: TrackId | null; rec?: TrackRecommendation };
   createdAt: string;
   updatedAt: string;
 };
@@ -97,6 +100,13 @@ export function setLegalAid(patch: { funding?: Partial<Funding>; result?: Step3R
   const result = patch.result === null ? undefined : (patch.result ?? cur.result);
   const sample = patch.result === null ? undefined : (patch.sample ?? cur.sample);
   write({ ...p, legalAid: { funding, result, sample } });
+}
+
+export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation }) {
+  const p = read();
+  if (!p) return;
+  const cur = p.track ?? { chosen: null };
+  write({ ...p, track: { chosen: patch.chosen === undefined ? cur.chosen : patch.chosen, rec: patch.rec ?? cur.rec } });
 }
 
 export function clearProfile() {

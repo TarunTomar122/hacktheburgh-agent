@@ -29,19 +29,26 @@ export const OUTCOME_CHOICES = [
   "An apology",
   "Changes so it does not happen to someone else",
   "Treatment or support to put things right",
+  "Compensation for what happened",
 ] as const;
+/** Ticking this points towards the compensation track (D42). */
+export const COMPENSATION_CHOICE = "Compensation for what happened";
 
 const blank = (v: string | null | undefined) => v === null || v === undefined || v.trim() === "";
 
-/** The first thing still unanswered. Pure function of the facts, so the same facts always give the same question. */
-export function nextTarget(f: CaseFacts): Target {
+/**
+ * The first thing still unanswered. Pure function of the facts, so the same facts always give the same question.
+ * Scope "onboarding" leaves out what only the NHS complaint needs (how NHS Lothian should reply, the email-risk consent):
+ * those are asked on the complaint step, and only if the user takes that track (D42). Scope "nhs" includes them.
+ */
+export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboarding"): Target {
   if (blank(f.firstName)) return "name";
   if (blank(f.incidentSummary)) return "story";
   if (f.events.length === 0 || f.events.some((e) => blank(e.date)) || blank(f.incidentLocation)) return "details";
   if (f.complainingFor === null) return "who";
   if (blank(f.lastName) || blank(f.address) || blank(f.postcode) || blank(f.phone) || blank(f.email)) return "contact";
-  if (f.preferredContact === null) return "contactMethod";
-  if (f.preferredContact === "Email" && f.emailRiskAccepted === null) return "emailRisk";
+  if (scope === "nhs" && f.preferredContact === null) return "contactMethod";
+  if (scope === "nhs" && f.preferredContact === "Email" && f.emailRiskAccepted === null) return "emailRisk";
   if (f.desiredOutcome === null) return "outcome";
   return "done";
 }
@@ -206,13 +213,13 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
     case "who":
       return "Is this about your own care, or someone else's?";
     case "contact":
-      return "Now a few practical details, so that NHS Lothian knows where to reply.";
+      return "Now a few practical details, so that we can fill in forms for you.";
     case "contactMethod":
-      return opts.emailDeclined ? "That is fine. Would you prefer a letter or a phone call?" : "How would you prefer them to get in touch with you?";
+      return opts.emailDeclined ? "That is fine. Would you prefer a letter or a phone call?" : "How should NHS Lothian reply to your complaint?";
     case "emailRisk":
       return "Email is quick, but it is not completely private. A message could, rarely, reach the wrong person or go missing, and NHS Lothian cannot take responsibility if that happens. Are you happy to be contacted by email on that basis?";
     case "outcome":
-      return "Last question. When this is looked into, what would you most like to happen?";
+      return "Last question. What would you most like to come out of this? Tick all that apply.";
     case "done":
       return `Thank you${name ? `, ${name}` : ""}. I have what I need. Please check everything below. You can change any of it later in your profile. Nothing has been sent to the NHS yet.`;
   }

@@ -53,7 +53,7 @@ export default function LegalAidStep({ profile }: { profile: Profile }) {
 
   return (
     <div className="space-y-8">
-      <PageTitle eyebrow="Step 3" title="Can I get legal aid?" lede={lede} />
+      <PageTitle eyebrow="Compensation · step 1" title="Can I get legal aid?" lede={lede} />
 
       <AskMissing profile={profile} why="The lawyer search needs this, and it was not covered when we first talked." />
 
@@ -276,17 +276,17 @@ function Badge({ children, cls }: { children: ReactNode; cls: string }) {
 }
 
 /** "How well this firm fits what you need" (D39). A fit, never a chance of winning. */
-function FitRing({ fit }: { fit: number }) {
+export function FitRing({ fit, size = 60, title = "How well this firm fits what you need, from the checks below. Not a chance of winning." }: { fit: number; size?: number; title?: string }) {
   const r = 22;
   const c = 2 * Math.PI * r;
   return (
-    <div className="relative size-[60px] shrink-0" title="How well this firm fits what you need, from the checks below. Not a chance of winning.">
+    <div className="relative shrink-0" style={{ width: size, height: size }} title={title}>
       <svg viewBox="0 0 56 56" className="size-full -rotate-90" aria-hidden>
         <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-line-soft)" strokeWidth="5" />
         <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-brand)" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(fit / 100) * c} ${c}`} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="text-[15px] font-medium tabular-nums text-ink">{fit}%</span>
+        <span className="font-medium tabular-nums text-ink" style={{ fontSize: Math.round(size / 4) }}>{fit}%</span>
         <span className="mt-0.5 text-[9px] uppercase tracking-[0.1em] text-muted">fit</span>
       </div>
     </div>
@@ -301,7 +301,7 @@ const MARK: Record<ScoreItem["status"], { t: string; cls: string }> = {
 };
 
 /** One criterion: label, a small bar (points out of max, coloured by what we found), and the evidence when opened. */
-function ScoreRow({ row }: { row: ScoreItem }) {
+export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "max" | "status" | "evidence"> }) {
   const [open, setOpen] = useState(false);
   return (
     <li>

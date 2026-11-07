@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { missingRequired } from "../../lib/agent/facts";
+import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
+import { TRACKS } from "../../lib/agent/track";
 import { setDraft, setProgress, useProfile, type Profile } from "../../lib/profile";
 import { Button, Callout, Console, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
@@ -13,12 +14,13 @@ import LegalAidStep from "./LegalAidStep";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
 import { streamAgent, type DoneEvent } from "./streamAgent";
-import PathMap from "./PathMap";
+import TrackBar from "./TrackBar";
+import TrackChoice from "./TrackChoice";
 
 export default function CasePage() {
   const router = useRouter();
   const profile = useProfile();
-  const [active, setActive] = useState(1);
+  const [picked, setActive] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,10 @@ export default function CasePage() {
   if (!profile) return null;
   const f = profile.facts;
   const name = [f.firstName, f.lastName].filter(Boolean).join(" ") || "you";
-  const incomplete = missingRequired(f).length > 0;
+  const incomplete = missingForOnboarding(f).length > 0;
+  // D42: one track at a time. Before a track is chosen, the page shows the recommendation instead of steps.
+  const chosen = profile.track?.chosen ?? null;
+  const active = chosen && picked !== null && TRACKS[chosen].steps.includes(picked) ? picked : chosen ? TRACKS[chosen].steps[0] : 1;
 
   return (
     <div className="flex h-screen flex-col">
@@ -39,10 +44,12 @@ export default function CasePage() {
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <PathMap profile={profile} active={active} onSelect={setActive} onOpenProfile={() => setProfileOpen(true)} />
+          {chosen && <TrackBar profile={profile} active={active} onSelect={setActive} />}
           <main className="min-w-0">
             <div className="mx-auto max-w-3xl px-12 py-12">
-              {active === 2 ? (
+              {!chosen ? (
+                <TrackChoice profile={profile} onChosen={setActive} />
+              ) : active === 2 ? (
                 <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
               ) : active === 3 ? (
                 <LegalAidStep profile={profile} />
@@ -118,12 +125,12 @@ function StepOne({ profile }: { profile: Profile }) {
   return (
     <div className="space-y-8">
       <PageTitle
-        eyebrow="Step 1"
+        eyebrow="Complaint · step 1"
         title="Complain to NHS Lothian"
         lede="We have written your complaint from what you told us. We fill in NHS Lothian's form with it; you check it there, change anything you like, and press Submit yourself."
       />
 
-      <AskMissing profile={profile} why="The NHS form needs this, and it was not covered when we first talked." />
+      <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. We only ask it now that you are making a complaint." />
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
