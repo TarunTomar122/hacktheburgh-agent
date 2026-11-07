@@ -107,11 +107,13 @@ Improve the UI at every step, in loops. Each loop: research the best UI patterns
 | Place | Discovery | Complaint form | Ombudsman / regulator | Funding | Lawyers | Enquiries | Notes |
 |---|---|---|---|---|---|---|---|
 | Scotland | (fixed today) | yes | yes | yes | yes | yes | baseline |
+| Wales (discovery 1) | 5.2/10 | form not reached (email route found) | body right, form behind CAPTCHA | wrong (legal aid) | Law Society found | — | depth fix next: key points per part, medium effort, 45 calls |
 
 ## Night runs (for the morning)
 
 | Run | Place | Persona | Result | Video | Replay | Rerun command |
 |---|---|---|---|---|---|---|
+| wales-discovery-1 (23:04) | Wales | Elin Rhydderch (fictional) | All 8 parts found, 26/26 quotes checked, 8.4 min, 34 tabs, 11 sites, 106 pages. **Grade 5.2/10**: right bodies; spotted the 2026 "Listening to People" rename; missed the £50k redress scheme and stage timings; funding wrong (adult legal aid out of scope); ombudsman form behind CAPTCHA | `docs/night-runs/wales-discovery-1/video/` (local, 34 tab videos) | `docs/night-runs/wales-discovery-1/events.ndjson` | `IN_APP_BROWSER=1 LIVEVIEW=0 npx tsx --env-file=.env.local scripts/agent-discovery.ts wales` |
 
 ## Review log
 

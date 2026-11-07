@@ -69,6 +69,13 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
             <span className="text-[15px] font-medium text-ink">{step.body}</span>
           </div>
           {!compact && <p className="mt-1 text-[14px] leading-6 text-ink-2 md:pl-39">{step.what}</p>}
+          {!compact && step.points?.length ? (
+            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[13px] leading-5 text-ink-2 md:ml-39">
+              {step.points.map((pt) => (
+                <li key={pt}>{pt}</li>
+              ))}
+            </ul>
+          ) : null}
           {!compact && (step.requires?.length || step.appliesIf || step.alternatives?.length) ? (
             <p className="mt-1 text-[13px] leading-5 text-muted md:pl-39">
               {[step.requires?.length ? `First: ${step.requires.join("; ")}` : "", step.appliesIf ? `Only if: ${step.appliesIf}` : "", step.alternatives?.length ? `Or: ${step.alternatives.join("; ")}` : ""].filter(Boolean).join(" · ")}

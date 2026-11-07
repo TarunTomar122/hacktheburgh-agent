@@ -17,10 +17,10 @@ export type Place = {
 export type RouteKind = "complaint" | "escalation" | "compensation" | "funding" | "lawyers" | "guideline" | "advice" | "records";
 
 export const ROUTE_KINDS: { kind: RouteKind; label: string; crew: CrewId; question: string }[] = [
-  { kind: "complaint", label: "Complain", crew: "robin", question: "Who runs the hospital, and how does a patient complain to them?" },
-  { kind: "escalation", label: "If that fails", crew: "robin", question: "Who looks at it independently if the complaint answer is not good enough?" },
-  { kind: "compensation", label: "Compensation", crew: "robin", question: "How does a patient get compensation for harm from care here?" },
-  { kind: "funding", label: "Paying for help", crew: "nell", question: "How can a claim be paid for (legal aid, no win no fee, a free scheme)?" },
+  { kind: "complaint", label: "Complain", crew: "robin", question: "Who runs the hospital, how does a patient complain to them, by when, what are the stages and response times?" },
+  { kind: "escalation", label: "If that fails", crew: "robin", question: "Who looks at it independently if the complaint answer is not good enough, when can you go, by when, and how do you apply?" },
+  { kind: "compensation", label: "Compensation", crew: "robin", question: "How does a patient get compensation for harm from care here: court, a redress or no-fault scheme, conciliation? Limits, caps, conditions, how it starts, and the time limit for claiming." },
+  { kind: "funding", label: "Paying for help", crew: "nell", question: "Does legal aid cover this kind of claim for an adult here? Is no win no fee allowed, with any cap? Is there free legal advice inside a scheme?" },
   { kind: "lawyers", label: "Finding a lawyer", crew: "robin", question: "Where do patients find a lawyer who does this work here?" },
   { kind: "guideline", label: "Clinical guidance", crew: "iona", question: "Which body publishes the clinical guidance doctors follow here?" },
   { kind: "advice", label: "Free help", crew: "robin", question: "Who gives patients free, independent help with this?" },
@@ -37,6 +37,7 @@ export type RouteStep = {
   how: "online_form" | "email" | "post" | "phone" | "login_required" | "court" | "unknown";
   url?: string; // the page or form the crew found
   wall?: string; // "needs a login", "CAPTCHA", "phone or post only"
+  points?: string[]; // up to 6 key facts for the patient: time limits, stages and response times, caps, conditions, costs (each backed by a source)
   requires?: string[]; // what must happen first, in the source's terms ("the hospital's final response")
   appliesIf?: string; // when this route applies at all ("public hospital care", "harm worth more than ...")
   alternatives?: string[]; // other routes for the same need (a redress scheme instead of court)

@@ -31,7 +31,8 @@ const TOOLS = [
   tool("record_step", "Record one part of the route once you have read it on real pages. Quotes must be copied word for word from pages you opened in this run; code checks them.", {
     kind: { type: "string", enum: ROUTE_KINDS.map((k) => k.kind) },
     body: { type: "string", description: "Who: the organisation's name as it calls itself" },
-    what: { type: "string", description: "One plain sentence for the patient" },
+    what: { type: "string", description: "One or two plain sentences for the patient" },
+    points: { type: "array", items: { type: "string" }, description: "Up to 6 key facts, each short and backed by one of the quotes: time limits, stages and response times, caps or thresholds, conditions, costs, what is free" },
     deadline: { type: "string", description: "The time limit, in the source's words, if there is one" },
     how: { type: "string", enum: ["online_form", "email", "post", "phone", "login_required", "court", "unknown"] },
     url: { type: "string", description: "The page or online form found" },
@@ -40,7 +41,7 @@ const TOOLS = [
     applies_if: { type: "string", description: "When this route applies at all (e.g. public care only; a value limit)" },
     alternatives: { type: "array", items: { type: "string" }, description: "Other routes for the same need" },
     missing: { type: "array", items: { type: "string" }, description: "Facts we would still need from the patient to use it" },
-    sources: { type: "array", items: { type: "object", properties: { url: { type: "string" }, quote: { type: "string" }, official: { type: "boolean" }, publisher: { type: "string" } }, required: ["url", "quote", "official", "publisher"] } },
+    sources: { type: "array", description: "1-6 verbatim quotes that back the body, the points and the deadline", items: { type: "object", properties: { url: { type: "string" }, quote: { type: "string" }, official: { type: "boolean" }, publisher: { type: "string" } }, required: ["url", "quote", "official", "publisher"] } },
   }, ["kind", "body", "what", "how", "sources"]),
   ASK_TOOL,
   FINISH_TOOL,
@@ -58,9 +59,10 @@ How to work:
 - When what you read contradicts your plan or your memory, say so with update_plan (drop or replace the step) and follow what the official page says.
 - For complaint and escalation, go all the way to the actual online form with explore_site (want: form) and report its fields or the wall that stops it. The patient will use it.
 - For lawyers, find the official register or directory the profession runs, and how to search it (by area of law and place). For funding, find any official online eligibility checker.
+- Go deep, not wide: a part is only done when you have its key facts from the body's own pages (time limits, stages and response times, caps or thresholds, conditions, costs, what is free), not just a home page. Read the second-level pages (eligibility, "how we handle", guidance documents). Do not stop at a finder page: for funding, find out whether the help actually covers this kind of claim for an adult.
 - record_step as soon as a part is clear, with 1-3 verbatim quotes from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only if it is the body itself or a government, health service, ombudsman, regulator, court or professional body site.
 - Recover when a page fails: try the site's search, another page, or another official source. Say "not found" honestly rather than guess.
-- Budget: about 30 tool calls in total. Then finish with two or three sentences for the patient on how it works where they live.
+- Budget: about 45 tool calls in total; spend most on reading the right second-level pages. Then finish with two or three sentences for the patient on how it works where they live.
 Never submit, sign up or log in. Never type the patient's personal details anywhere.`;
 
 export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string } = {}): Promise<DiscoveryResult> {
@@ -100,7 +102,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
       system: SYSTEM(place),
       tools: TOOLS,
       firstInput: `Patient's story: ${facts.incidentSummary ?? ""}\nTimeline: ${facts.events.map((e) => `${e.date}: ${e.what}`).join("; ")}\nWhere: ${place.hospital}, ${place.city}, ${place.region}, ${place.country}. (${place.why})`,
-      maxTurns: 22,
+      maxTurns: 30,
+      effort: "medium",
       who: (name, a) => (name === "record_step" ? "elliot" : whoOf(a)),
       after: ["record_step"],
       doing: (name, a) => {
@@ -187,7 +190,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const kind = String(a.kind) as RouteKind;
             if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
             // "official" needs both: the model's judgement of the publisher, and a page on that host really opened in this run.
-            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 4).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),
@@ -196,6 +199,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               how: (String(a.how ?? "unknown") as RouteStep["how"]) || "unknown",
               url: a.url ? String(a.url) : undefined,
               wall: a.wall ? String(a.wall) : undefined,
+              points: Array.isArray(a.points) ? (a.points as string[]).map(String).slice(0, 6) : undefined,
               requires: Array.isArray(a.requires) ? (a.requires as string[]).map(String) : undefined,
               appliesIf: a.applies_if ? String(a.applies_if) : undefined,
               alternatives: Array.isArray(a.alternatives) ? (a.alternatives as string[]).map(String) : undefined,

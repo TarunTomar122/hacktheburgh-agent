@@ -44,3 +44,6 @@ next-env.d.ts
 
 # agent run logs
 /.runs/
+
+# Night-run videos are large; kept locally (docs/night-runs/<run>/video)
+docs/night-runs/*/video/

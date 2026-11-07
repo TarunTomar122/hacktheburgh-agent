@@ -62,6 +62,7 @@ export type CrewFlow<R> = {
   tools: FunctionTool[];
   firstInput: string;
   maxTurns: number;
+  effort?: "low" | "medium" | "high"; // the planner's reasoning effort (default low)
   /** Which crew member owns a call (tools may take a `who` argument). */
   who: (name: string, args: Record<string, unknown>) => CrewId;
   doing: (name: string, args: Record<string, unknown>) => string;
@@ -164,7 +165,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
     let finished = false;
     for (turns = 1; turns <= flow.maxTurns && !finished; turns++) {
       const res: Response = await respond(
-        { model: MODELS.draft, reasoning: { effort: "low" }, instructions: flow.system, input, tools: flow.tools, tool_choice: "required", parallel_tool_calls: true, ...(prev ? { previous_response_id: prev } : {}) },
+        { model: MODELS.draft, reasoning: { effort: flow.effort ?? "low" }, instructions: flow.system, input, tools: flow.tools, tool_choice: "required", parallel_tool_calls: true, ...(prev ? { previous_response_id: prev } : {}) },
         `${flow.prefix} planner`,
       );
       prev = res.id;

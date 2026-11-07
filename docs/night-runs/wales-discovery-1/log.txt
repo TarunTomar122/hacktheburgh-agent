@@ -1,0 +1,97 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+PLACE: {"country":"United Kingdom","region":"Wales","city":"Cardiff","hospital":"Emergency Unit, University Hospital of Wales","careSetting":"public","why":"The patient names the Emergency Unit at University Hospital of Wales in Cardiff, and the address is in Cardiff, Wales."}
+[7s] [elliot] Set the work plan and split parallel jobs across the crew.
+[13s] [elliot → robin] Find the provider that runs University Hospital of Wales and prove public NHS status from official pages.
+[13s] [elliot → kit] Find official NHS Wales complaints route pages for the provider.
+[13s] [elliot → nell] Find official Wales compensation/redress route for harm from NHS care.
+[13s] [elliot → iona] Find which clinical guidance body publishes guidance used in Wales for emergency care.
+[19s] [nell → elliot] 1. Nhs publichealthwales.nhs.wales › about-us › policies-and-procedures › policies-and-procedures-docum — https://publichealthwales.nhs.wales/about-us/policies-and-procedures/policies-and-procedures-…
+[19s] [elliot → nell] Find official funding and legal aid checker for clinical negligence in Wales.
+[20s] [iona → elliot] 1. NICE nice.org.uk › home › nice guidance › health and social care delivery Emergency care | Topic | N — https://www.nice.org.uk/guidance/health-and-social-care-delivery/emergency-care
+[20s] [robin → elliot] 1. Cardiff and Vale University Health Board cavuhb.nhs.wales Home - Cardiff and Vale University Health  — https://cavuhb.nhs.wales/
+[20s] [elliot → robin] Find the independent body for NHS complaints in Wales and official complaint pages.
+[20s] [kit → elliot] 1. Cardiff and Vale University Health Board cavuhb.nhs.wales › home › our services › cardiff and vale a — https://cavuhb.nhs.wales/our-services/cardiff-and-vale-apb/complaints/
+[20s] [elliot → kit] Find official medical records access route for Cardiff and Vale UHB.
+[26s] [robin → elliot] 1. Ombudsman ombudsman.wales › how-to-complain How to complain | Public Services Ombudsman Wales — https://www.ombudsman.wales/how-to-complain/
+[26s] [elliot → robin] Find official lawyer directory for clinical negligence solicitors in Wales.
+[26s] [nell → elliot] 1. Justice find-legal-advice.justice.gov.uk › check › clinical-negligence Find a legal aid adviser for  — https://find-legal-advice.justice.gov.uk/check/clinical-negligence
+[26s] [kit → elliot] 1. Cardiff and Vale University Health Board cavuhb.nhs.wales › home › our services › health records Hea — https://cavuhb.nhs.wales/our-services/health-records/
+[30s] [robin → elliot] No results.
+[30s] [elliot → robin] Find official free independent advocacy/help for NHS complaints in Cardiff Wales.
+[34s] [robin → elliot] No results.
+[39s] [elliot] Search results found the likely official bodies; now verify each route from official pages and reach the actual forms.
+[48s] [elliot → robin] Verify on official pages who runs University Hospital of Wales and that it is NHS care.
+[48s] [elliot → kit] Read the provider's official complaints page for deadlines, contact routes and escalation clues.
+[48s] [elliot → nell] Read the Welsh Government page on NHS complaints/redress in Wales for the official route and deadlines.
+[48s] [elliot → iona] Read official Wales guidance adoption page for the clinical guidance body used in Wales.
+[53s] [nell → elliot] NHS Wales complaints and concerns: Putting Things Right | GOV.WALES (https://www.gov.wales/nhs-wales-complaints-and-concerns-putting-things-right)
+[53s] [elliot → nell] Read the Ministry of Justice checker page for legal aid in clinical negligence.
+[53s] [iona → elliot] National Institute for Health and Care Excellence (NICE) guidelines | GOV.WALES (https://www.gov.wales/national-institute-health-and-care-excellence-nice-guidelines)
+[54s] [kit → elliot] Complaints - Cardiff and Vale University Health Board (https://cavuhb.nhs.wales/our-services/cardiff-and-vale-apb/complaints/)
+[54s] [elliot → kit] Go from the provider site to the actual complaint form or confirm the wall if there is no online form.
+[56s] [robin → elliot] Home - Cardiff and Vale University Health Board (https://cavuhb.nhs.wales/)
+[56s] [elliot → robin] Read the Ombudsman Wales page for when it can review NHS complaints and any deadline.
+[60s] [nell → elliot] Find a legal aid adviser for clinical negligence (https://find-legal-advice.justice.gov.uk/check/clinical-negligence)
+[65s] [robin → elliot] How to complain | Public Services Ombudsman Wales (https://www.ombudsman.wales/how-to-complain/)
+[162s] [kit → elliot] I hit a problem: Not found. Did not reach the form after 10 moves (108s): The page is a CAPTCHA a person must solve
+Wall: captcha (The page is a CAPTCHA a person must solve) at…
+[162s] [elliot → kit] Reach the Ombudsman's actual online complaint form for NHS complaints and report the fields.
+[287s] [kit → elliot] I hit a problem: Not found. Did not reach the form after 10 moves (125s): No page met the goal within 10 moves
+Wall: dead_end (No page met the goal within 10 moves) at https://…
+[287s] [elliot → kit] Read the provider's health records page for how to get records.
+[294s] [kit → elliot] Health Records - Cardiff and Vale University Health Board (https://cavuhb.nhs.wales/our-services/health-records/)
+[302s] [elliot → robin] Read the Health Board's main complaints page linked as Putting Things Right for direct contact details and process.
+[302s] [elliot → kit] Try the Ombudsman's known complaint form host directly to get the actual online form fields.
+[302s] [elliot → nell] Read the new official NHS Wales complaints/incidents/redress process page for compensation information.
+[310s] [nell → elliot] Listening to People: NHS Wales complaints, incidents and redress process | GOV.WALES (https://www.gov.wales/listening-people-nhs-wales-complaints-incidents-and-redress-process)
+[310s] [elliot → nell] Read the official Welsh risk pool claims and redress page for how compensation claims are handled in NHS Wales.
+[311s] [robin → elliot] Listening to People - Cardiff and Vale University Health Board (https://cavuhb.nhs.wales/patient-advice/complaints/listening-to-people/)
+[311s] [elliot → robin] Find the official Law Society or SRA lawyer-finding page if not already found.
+[317s] [robin → elliot] 1. The Law Society solicitors.lawsociety.org.uk Find a Solicitor - The Law Society — https://solicitors.lawsociety.org.uk/
+[317s] [elliot → robin] Find the official Llais advocacy page for help with NHS complaints in Cardiff and Vale.
+[319s] [robin → elliot] I hit a problem: Could not search: page.waitForLoadState: Target page, context or browser has been closed
+[321s] [nell → elliot] Claims and Redress Governance - NHS Wales Shared Services Partnership (https://nwssp.nhs.wales/ourservices/welsh-risk-pool/about-the-welsh-risk-pool-service/claims-and-redress-governance/)
+[402s] [kit → elliot] I hit a problem: Not found. Did not reach the form after 10 moves (99s): No page met the goal within 10 moves
+Wall: dead_end (No page met the goal within 10 moves) at https://w…
+[402s] [elliot → kit] Read the Health Board's access-to-health-records page for the actual route and any forms/contact details.
+[409s] [kit → elliot] Access to your Health Records - Cardiff and Vale University Health Board (https://cavuhb.nhs.wales/use-of-site/privacy-policy/access-to-your-health-records/)
+[416s] [elliot] Official pages show the provider uses a complaints form/download plus phone/email/post, and NHS Wales now uses 'Listening to People' for concerns after 31 March 2026. I need to capture those routes and fill the remaining
+[422s] [elliot → robin] Read the Law Society official page for how patients can search for solicitors in England and Wales.
+[422s] [elliot → kit] Read the Ombudsman's contact page to find the correct complaint form link for Wales.
+[429s] [robin → elliot] Find a solicitor | The Law Society (https://www.lawsociety.org.uk/public/for-public-visitors/find-a-solicitor)
+[429s] [elliot → robin] Try the official Llais site directly for advocacy and help with NHS complaints in Cardiff and Vale.
+[429s] [kit → elliot] Contact Us | Public Services Ombudsman Wales (https://www.ombudsman.wales/contactus/)
+[429s] [elliot → kit] Open the Health Board complaint form document to capture what fields the patient must complete.
+[430s] [kit → elliot] I hit a problem: Blocked: not_found at http://cavuhb.nhs.wales/files/concerns-complaints-and-compliments/concerns-form-manylion-am-y-pryder-doc/ (not a PDF)
+[436s] [robin → elliot] Llais Wales | LLAIS (https://www.llaiswales.org/)
+[445s] [elliot → robin] Find the Ombudsman's complaint deadline on an official page or fact sheet.
+[445s] [elliot → kit] Search the Ombudsman's official domain for the actual online complaint form used in Wales.
+[445s] [elliot → nell] Look for an official page about legal aid eligibility checking, since the adviser finder is not the eligibility checker itself.
+[449s] [kit → elliot] No results.
+[449s] [nell → elliot] No results.
+[453s] [robin → elliot] What we do when we get your complaint about a public service provider in Wales - Public Services Ombudsman for Wales (https://www.ombudsman.wales/fact-sheets/complaints-against-public-bodies-our-proc…
+[453s] [elliot → robin] Get the local Cardiff and Vale Llais contact details from the official local page.
+[459s] [robin → elliot] Cardiff & The Vale | LLAIS (https://www.llaiswales.org/in-your-area/cardiff-vale)
+[465s] [elliot] Most routes are verified. I will now save the confirmed parts and make one last pass for the best official funding checker detail.
+[494s] [elliot → nell] Make one last official-source search for a legal aid eligibility checker, not just an adviser finder.
+[494s] [elliot → you] Complain: Cardiff and Vale University Health Board. University Hospital of Wales is part of Cardiff and Vale University Health Board in NHS Wales, so this is a public NHS Wales complaint. The Health Board says to raise c
+[494s] [elliot → you] If that fails: Public Services Ombudsman for Wales. If the Health Board's complaint answer is not good enough, the independent body is the Public Services Ombudsman for Wales. Its official pages say it is very unlikely t
+[494s] [elliot → you] Compensation: NHS Wales. For harm from NHS care in Wales, compensation can arise through the NHS Wales complaints/redress process rather than only by a separate court claim. Official NHS Wales Shared Services pages say c
+[494s] [elliot → you] Finding a lawyer: The Law Society. To find a solicitor for a clinical negligence case in Wales, use the Law Society's official 'Find a Solicitor' service for England and Wales. Its page says you can filter by legal issue
+[494s] [elliot → you] Paying for help: Ministry of Justice. An official Ministry of Justice page lets a patient search for legal aid advisers for clinical negligence in England and Wales. The page found is an adviser finder rather than a full
+[494s] [elliot → you] Free help: Llais. Llais is the free independent body in Wales that helps people have a voice in health and social care and has pages for making a complaint or raising a concern. For this patient's area, the local service
+[494s] [elliot → you] Your records: Cardiff and Vale University Health Board. To get a copy of your own medical records from Cardiff and Vale University Health Board, the official pages say to contact or write to the Health Records Department
+[494s] [elliot → you] Clinical guidance: Welsh Government / NICE. The official Welsh Government page says all NICE guidelines and quality standards are available to use in Wales, though most are not mandatory. That makes NICE the main publish
+[498s] [nell → elliot] No results.
+[506s] [elliot → you] University Hospital of Wales is run by Cardiff and Vale University Health Board, so your first step is the NHS Wales 'Listening to People' complaint route with the Health Board. If their answer is not enough, you can usu
+
+RUN discovery-2026-11-07T23-04-07-761Z in 8.4 min, 11 turns, stats {"agents":34,"sites":11,"pages":106,"actions":64}
+- complaint: Cardiff and Vale University Health Board | email https://cavuhb.nhs.wales/patient-advice/complaints/listening-to-people/ | confirmed (4/4 checked)
+- escalation: Public Services Ombudsman for Wales | phone https://www.ombudsman.wales/how-to-complain/ | likely (4/4 checked)
+- compensation: NHS Wales | unknown https://nwssp.nhs.wales/ourservices/welsh-risk-pool/about-the-welsh-risk-pool-service/claims-and-redress-governance/ | likely (2/2 checked)
+- funding: Ministry of Justice | online_form https://find-legal-advice.justice.gov.uk/check/clinical-negligence | likely (3/3 checked)
+- lawyers: The Law Society | online_form https://solicitors.lawsociety.org.uk/ | likely (4/4 checked)
+- guideline: Welsh Government / NICE | unknown https://www.gov.wales/national-institute-health-and-care-excellence-nice-guidelines | likely (3/3 checked)
+- advice: Llais | phone https://www.llaiswales.org/in-your-area/cardiff-vale | likely (3/3 checked)
+- records: Cardiff and Vale University Health Board | email https://cavuhb.nhs.wales/use-of-site/privacy-policy/access-to-your-health-records/ | likely (3/3 checked)
