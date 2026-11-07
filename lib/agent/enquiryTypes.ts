@@ -30,6 +30,12 @@ export type EnquiryStatus =
   | "send_blocked" // approval given but the send gate refused (demo persona, or sending not enabled)
   | "failed";
 
+/** One editable field on the firm's form, as the review shows it (D64). `name` + `label` find it again on the live page. */
+export type FormField = { name: string; label: string; value: string; kind: "text" | "textarea" | "select"; required: boolean; options?: string[] };
+
+/** What the user typed in the review for one field. Applied to the real form by the agent. */
+export type FieldEdit = { name: string; label: string; value: string };
+
 export type EnquiryOutcome = {
   firmId: string;
   firmName: string;
@@ -38,6 +44,7 @@ export type EnquiryOutcome = {
   filled: { label: string; value: string }[]; // what the agent typed or picked, for the review
   unfilled: string[]; // required fields left empty
   consents: string[]; // checkbox texts the user must agree to before we can send (never ticked without approval)
+  fields?: FormField[]; // every editable field on the form now, so the review can change them (D64)
   question?: string; // for needs_input
   email?: { to: string | null; subject: string; body: string; mailto: string }; // for email_draft
   note: string; // one plain line: "Form filled on their contact page", "Blocked: demo persona"
@@ -64,7 +71,10 @@ export type Step4Event =
 
 /**
  * POST /api/agent/step4/draft { facts, legalAid?: { verdict, route } } -> EnquiryMessage
- * POST /api/agent/step4/send  { firmId, consents: string[] } -> { enquiry: EnquiryOutcome }
+ * POST /api/agent/step4/edit  { firmId, edits: FieldEdit[] } -> { enquiry: EnquiryOutcome }  (D64)
+ *   The agent types the user's edits into the open form (never sends) and returns what the form looks like now:
+ *   ready_to_send if every required field is filled, needs_input if something is still missing.
+ * POST /api/agent/step4/send  { firmId, consents: string[], edits?: FieldEdit[] } -> { enquiry: EnquiryOutcome }
  *   `consents` = the checkbox texts the user explicitly agreed to in our app; only those are ticked.
  *   Status comes back as sent | send_blocked | needs_input | failed.
  */

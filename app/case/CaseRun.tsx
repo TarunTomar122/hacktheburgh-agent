@@ -62,14 +62,15 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     const r = state.result;
     if (state.status !== "done" || !r || persisted.current === r.runId) return;
     persisted.current = r.runId ?? "x";
-    const ready = r.enquiries.filter((e) => e.status === "ready_to_send").map((e) => e.firmId);
+    // A firm whose form needs a detail only the user has still goes to the review (D64), so it is kept like a ready one.
+    const ready = r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => e.firmId);
     const selected = [...new Set([...ready, ...r.shortlist])].slice(0, 3);
     setLegalAid({ result: r as Step3Result, sample: false, selected });
-    setEnquiry({ outcomes: r.enquiries, runId: r.runId, message: r.message });
-    upsertEnquiries(r.enquiries.filter((e) => e.status === "ready_to_send").map((e) => ({ firmId: e.firmId, firmName: e.firmName, status: "ready_to_send" as const })));
+    setEnquiry({ outcomes: r.enquiries, runId: r.runId, message: r.message, sample: state.demo });
+    upsertEnquiries(r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => ({ firmId: e.firmId, firmName: e.firmName, status: e.status === "ready_to_send" ? ("ready_to_send" as const) : ("draft" as const) })));
     const run: CaseRunRecord = { runId: r.runId ?? "", says: r.says, plan: r.plan, evidence: r.evidence, asks: r.asks, recoveries: r.recoveries, turns: r.turns, durationMs: Date.now() - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() };
     setCaseRun(run);
-  }, [state.status, state.result, state.startedAt]);
+  }, [state.status, state.result, state.startedAt, state.demo]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
   if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} />;
@@ -576,7 +577,9 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   const rest = summary.slice(first.length).trim();
   const top = result.shortlist.map((id) => result.firms.find((f) => f.id === id)).filter((f) => !!f);
   const ev = run.evidence;
-  const ready = (profile.enquiry?.outcomes ?? []).filter((o) => o.status === "ready_to_send");
+  const outcomes = profile.enquiry?.outcomes ?? [];
+  const ready = outcomes.filter((o) => o.status === "ready_to_send" || o.status === "needs_input");
+  const needs = outcomes.filter((o) => o.status === "needs_input");
   const s = result.stats;
   const gap = ev.gaps?.[0];
   const point = ev.guideline?.points[0];
@@ -617,7 +620,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
         <div className="min-w-[16rem] flex-1">
           <p className="text-[12px] text-muted">Your next step</p>
           <h2 className="text-[18px] font-medium leading-7 text-ink">{ready.length ? `Check and send ${ready.length} enquir${ready.length === 1 ? "y" : "ies"}` : "Finish preparing your case"}</h2>
-          <p className="text-[13px] leading-5 text-muted">{ready.length ? `Kit filled ${ready.length === 1 ? "the form" : "the forms"} for ${ready.map((r) => r.firmName).join(", ")} and stopped before Send.` : top.length ? "Kit did not fill any enquiry forms this time. Run the crew again and Kit will prepare them." : "The crew stopped before it found solicitors. Run it again to finish the work."}</p>
+          <p className="text-[13px] leading-5 text-muted">{ready.length ? `Kit filled ${ready.length === 1 ? "the form" : "the forms"} for ${ready.map((r) => r.firmName).join(", ")} and stopped before Send.${needs.length ? ` ${needs.length === 1 ? "One form needs" : `${needs.length} forms need`} a detail from you, and you can change anything before it goes.` : " You can change anything before it goes."}` : top.length ? "Kit did not fill any enquiry forms this time. Run the crew again and Kit will prepare them." : "The crew stopped before it found solicitors. Run it again to finish the work."}</p>
         </div>
         <Button onClick={ready.length ? onReview : onRestart}>{ready.length ? "Review and send" : "Run again"}</Button>
       </section>

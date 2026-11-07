@@ -1,5 +1,5 @@
 import type { CaseFacts } from "../../lib/agent/facts";
-import type { EnquiryMessage, EnquiryOutcome, Step4Event, Step4Result } from "../../lib/agent/enquiryTypes";
+import type { EnquiryMessage, EnquiryOutcome, FieldEdit, FormField, Step4Event, Step4Result } from "../../lib/agent/enquiryTypes";
 import type { FirmFinding, Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
 import { AGENT_COLORS } from "../../lib/agent/legalAidTypes";
 import { fixtureMode } from "./legalAidRun";
@@ -59,10 +59,53 @@ export async function runStep4(body: { facts: CaseFacts; message: EnquiryMessage
   return result;
 }
 
-/** Ask the agent to press Send on one firm's filled form. Only the consents listed are ticked. */
-export async function sendEnquiry(firmId: string, consents: string[], current: EnquiryOutcome): Promise<EnquiryOutcome> {
-  if (fixtureMode()) return { ...current, status: "send_blocked", note: "Not sent: this is sample data and a demo persona. We never send fictional enquiries to real firms." };
-  const r = await fetch("/api/agent/step4/send", { method: "POST", headers: json, body: JSON.stringify({ firmId, consents }) });
+/**
+ * The fields to show in the review. Runs from before the form fields were recorded only have what was filled and what
+ * was left empty, so build the list from those (the server then finds each field again by its label).
+ */
+export function fieldsOf(o: EnquiryOutcome): FormField[] {
+  if (o.fields?.length) return o.fields;
+  const long = (v: string) => v.length > 90 || v.includes("\n");
+  return [
+    ...o.unfilled.map((label): FormField => ({ name: "", label, value: "", kind: "text", required: true })),
+    ...o.filled.map((f): FormField => ({ name: "", label: f.label.replace(/ \(the form's default.*$/, ""), value: f.value, kind: long(f.value) ? "textarea" : "text", required: false })),
+  ];
+}
+
+/** Sample and recorded runs have no live form: apply the edits to the saved copy so the review still works. */
+function editLocally(o: EnquiryOutcome, edits: FieldEdit[]): EnquiryOutcome {
+  const fields = fieldsOf(o).map((f) => {
+    const e = edits.find((x) => x.label === f.label && x.name === f.name);
+    return e ? { ...f, value: e.value } : f;
+  });
+  const missing = fields.filter((f) => f.required && !f.value.trim()).map((f) => f.label);
+  return {
+    ...o,
+    fields,
+    filled: fields.filter((f) => f.value.trim()).map((f) => ({ label: f.label, value: f.value })),
+    unfilled: missing,
+    status: missing.length ? "needs_input" : "ready_to_send",
+    question: missing.length ? `Their form still needs: ${missing.join(", ")}.` : undefined,
+    note: missing.length ? `The form still needs ${missing.join(", ")}` : "Form filled and stopped before Send. Waiting for your approval",
+  };
+}
+
+/** The agent types the user's edits into the firm's open form (never sends) and reports how it looks now. */
+export async function editEnquiry(firmId: string, edits: FieldEdit[], current: EnquiryOutcome, local = false): Promise<EnquiryOutcome> {
+  if (local || fixtureMode()) return editLocally(current, edits);
+  const r = await fetch("/api/agent/step4/edit", { method: "POST", headers: json, body: JSON.stringify({ firmId, edits }) });
+  if (r.status === 404) throw new Error(notReady);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error ?? "Could not change the form");
+  return data.enquiry as EnquiryOutcome;
+}
+
+const SAMPLE_NOTE = "Not sent: this is sample or recorded data from a demo persona. We never send fictional enquiries to real firms.";
+
+/** Ask the agent to press Send on one firm's filled form, after putting in the user's edits. Only the consents listed are ticked. */
+export async function sendEnquiry(firmId: string, consents: string[], current: EnquiryOutcome, edits: FieldEdit[] = [], local = false): Promise<EnquiryOutcome> {
+  if (local || fixtureMode()) return { ...(edits.length ? editLocally(current, edits) : current), status: "send_blocked", note: SAMPLE_NOTE };
+  const r = await fetch("/api/agent/step4/send", { method: "POST", headers: json, body: JSON.stringify({ firmId, consents, edits }) });
   if (r.status === 404) throw new Error(notReady);
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error ?? "Could not send");

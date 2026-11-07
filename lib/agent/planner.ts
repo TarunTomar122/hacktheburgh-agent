@@ -475,7 +475,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       }
       case "fill_enquiry": {
         const e = enquiries.get(String(a.firm_id ?? ""));
-        return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry form filled. Waiting for your OK before anything is sent.` : `${e.firmName}: ${e.note}`) : out;
+        return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry form filled. Waiting for your OK before anything is sent.` : e.status === "needs_input" ? `${e.firmName}: form filled as far as I could. It needs ${e.unfilled.join(", ")} from you, which you can add when you review.` : `${e.firmName}: ${e.note}`) : out;
       }
       default:
         return short(out.split("\n")[0], 180);
@@ -621,7 +621,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
           const r = await tabs(() =>
             crewFor(thought, "kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
               const o = await fillOne(p, firm, { facts, message: msg }, note, track, (x) => emit({ type: "enquiry", enquiry: x }));
-              if (o.status === "ready_to_send") keepForApproval(firm.id, { page: p, firm, email: facts.email, runId, tracer, note });
+              if (o.status === "ready_to_send" || o.status === "needs_input") keepForApproval(firm.id, { page: p, firm, email: facts.email, runId, tracer, note });
               return o;
             }, 150_000, [firm.id]),
           );

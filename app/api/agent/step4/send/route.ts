@@ -6,10 +6,11 @@ import { sendEnquiry } from "../../../../../lib/agent/enquiry";
  * unless ALLOW_REAL_SEND=1 and the patient is not a demo persona. Only the consent texts listed are ticked.
  */
 export async function POST(req: Request) {
-  const parsed = z.object({ firmId: z.string().min(1), consents: z.array(z.string()).max(20) }).safeParse(await req.json().catch(() => null));
+  const Edit = z.object({ name: z.string().max(200), label: z.string().min(1).max(300), value: z.string().max(6000) });
+  const parsed = z.object({ firmId: z.string().min(1), consents: z.array(z.string()).max(20), edits: z.array(Edit).max(40).optional() }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request", detail: parsed.error.message }, { status: 400 });
   try {
-    return Response.json({ enquiry: await sendEnquiry(parsed.data.firmId, parsed.data.consents) });
+    return Response.json({ enquiry: await sendEnquiry(parsed.data.firmId, parsed.data.consents, parsed.data.edits ?? []) });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message.split("\n")[0] : String(e) }, { status: 500 });
   }

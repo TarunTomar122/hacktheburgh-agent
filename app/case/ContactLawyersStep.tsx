@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord, EnquiryStatus } from "../../lib/agent/enquiryTypes";
+import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord, EnquiryStatus, FieldEdit, FormField } from "../../lib/agent/enquiryTypes";
 import type { AgentTile, FirmFinding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
 import { setEnquiry, setOutcome, skipStep, upsertEnquiries, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, Paper } from "../ui";
-import { draftMessage, runStep4, sendEnquiry } from "./enquiryRun";
+import { draftMessage, editEnquiry, fieldsOf, runStep4, sendEnquiry } from "./enquiryRun";
 import { closeAgentBrowser } from "./streamAgent";
 import { AgentsPanel } from "./LegalAidStep";
 import { fixtureMode } from "./legalAidRun";
@@ -265,6 +265,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
       {review && (
         <ApproveModal
           o={review}
+          local={!!profile.enquiry?.sample}
           onClose={() => setReview(null)}
           onResult={(o2) => {
             setOutcome(o2);
@@ -284,7 +285,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
             setScope({ title: info.firmName, steps });
           }}
           onReview={
-            info.status === "ready_to_send"
+            info.status === "ready_to_send" || info.status === "needs_input"
               ? () => {
                   setInfo(null);
                   setReview(info);
@@ -321,7 +322,7 @@ function FirmModal({ o, firm, steps, onClose, onSteps, onReview }: { o: EnquiryO
       onClose={onClose}
       footer={
         <div className="flex flex-wrap items-center gap-3">
-          {onReview && <Button onClick={onReview}>Review and send</Button>}
+          {onReview && <Button onClick={onReview}>{o.status === "needs_input" ? "Add the missing details" : "Review and send"}</Button>}
           {firm?.website && (
             <a href={firm.website} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-ctl border border-line px-3 py-2 text-[14px] font-medium text-ink hover:border-faint">
               Visit their website ↗
@@ -434,7 +435,7 @@ function FirmCard({
             : o.status === "ready_to_send"
               ? "Form filled. Check it, then we send it."
               : o.status === "needs_input"
-                ? (o.question ?? "Their form asks for something we do not know.")
+                ? `Their form needs ${o.unfilled.length ? o.unfilled.join(", ") : "a detail we do not have"}. Add it and the agent fills it in.`
                 : o.status === "no_form"
                   ? "No online enquiry form on their website, and no other checked firm to swap in. A phone call works just as well."
                   : o.note;
@@ -443,7 +444,7 @@ function FirmCard({
       onClick={onOpen}
       className={cx(
         "flex cursor-pointer flex-col rounded-card border bg-white p-5 transition-colors hover:border-brand/40",
-        o.status === "ready_to_send" ? "border-brand/50" : due ? "border-amber/50" : "border-line",
+        o.status === "ready_to_send" || o.status === "needs_input" ? "border-brand/50" : due ? "border-amber/50" : "border-line",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -480,6 +481,11 @@ function FirmCard({
         {o.status === "ready_to_send" && !sent && (
           <Button className="w-full" size="sm" onClick={onReview}>
             Review and send
+          </Button>
+        )}
+        {o.status === "needs_input" && !sent && (
+          <Button className="w-full" size="sm" onClick={onReview}>
+            Add the missing details
           </Button>
         )}
         {o.status === "failed" && (
@@ -561,24 +567,90 @@ function Modal({ title, sub, onClose, children, footer }: { title: string; sub?:
   );
 }
 
-/** What the agent filled in, the consent boxes to agree to, then Send. Send stays off until every consent is agreed. */
-function ApproveModal({ o, onClose, onResult }: { o: EnquiryOutcome; onClose: () => void; onResult: (o: EnquiryOutcome) => void }) {
+/**
+ * The review (D64). Everything we are about to send is a field you can change, including the message. Required fields we
+ * have no answer for are at the top, waiting for you. "Save changes" has the agent type your edits into the firm's real
+ * form and read it back; "Approve and send" does that too, then presses Send. Send stays off until nothing required is
+ * empty and every consent is ticked by you.
+ */
+function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; local: boolean; onClose: () => void; onResult: (o: EnquiryOutcome) => void }) {
+  const fields = fieldsOf(o);
+  const key = (f: Pick<FormField, "name" | "label">) => `${f.name}\u0000${f.label}`;
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [base, setBase] = useState<Record<string, string>>({}); // what the form holds now, to tell what changed
   const [agreed, setAgreed] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"save" | "send" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const allAgreed = o.consents.every((c) => agreed.includes(c));
+  const [saved, setSaved] = useState(false);
+  const [more, setMore] = useState(false);
+  const current = (f: FormField) => values[key(f)] ?? f.value;
+  const was = (f: FormField) => base[key(f)] ?? f.value;
+  const edits: FieldEdit[] = fields.filter((f) => current(f) !== was(f)).map((f) => ({ name: f.name, label: f.label, value: current(f) }));
+  const needed = fields.filter((f) => f.required && !current(f).trim());
   const done = o.status === "sent" || o.status === "send_blocked";
-  async function send() {
-    setBusy(true);
+  const allAgreed = o.consents.every((c) => agreed.includes(c));
+
+  const waiting = fields.filter((f) => f.required && !was(f).trim());
+  const filled = fields.filter((f) => was(f).trim() && !waiting.includes(f));
+  const optional = fields.filter((f) => !was(f).trim() && !f.required);
+
+  const afterServer = (next: EnquiryOutcome) => {
+    const now: Record<string, string> = {};
+    for (const f of fieldsOf(next)) now[key(f)] = f.value;
+    setBase(now);
+    setValues(now);
+    onResult(next);
+  };
+  async function save() {
+    setBusy("save");
     setError(null);
+    setSaved(false);
     try {
-      onResult(await sendEnquiry(o.firmId, agreed, o));
+      afterServer(await editEnquiry(o.firmId, edits, o, local));
+      setSaved(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
+  async function send() {
+    setBusy("send");
+    setError(null);
+    try {
+      afterServer(await sendEnquiry(o.firmId, agreed, o, edits, local));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const input = (f: FormField, missing: boolean) => {
+    const id = `f-${key(f)}`;
+    const common = { id, value: current(f), disabled: done || !!busy, "aria-label": f.label, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => { setSaved(false); setValues((v) => ({ ...v, [key(f)]: e.target.value })); } };
+    return (
+      <div key={key(f)} className="space-y-1">
+        <label htmlFor={id} className="flex items-baseline justify-between gap-3 text-[13px]">
+          <span className={missing ? "font-medium text-ink" : "text-muted"}>{f.label.replace(/\s*\*$/, "")}</span>
+          {missing ? <span className="text-[12px] text-amber">Needed to send</span> : current(f) !== was(f) ? <span className="text-[12px] text-brand">Changed</span> : null}
+        </label>
+        {f.kind === "textarea" ? (
+          <textarea {...common} rows={Math.min(14, Math.max(4, Math.ceil(current(f).length / 70)))} className={cx(control, "font-serif text-[15px] leading-6", missing && "border-amber")} />
+        ) : f.kind === "select" && f.options?.length ? (
+          <select {...common} className={cx(control, missing && "border-amber")}>
+            {!f.options.includes(current(f)) && <option value={current(f)}>{current(f) || "Choose…"}</option>}
+            {f.options.map((x) => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+        ) : (
+          <input {...common} className={cx(control, missing && "border-amber")} />
+        )}
+      </div>
+    );
+  };
+
   return (
     <Modal
       title={o.firmName}
@@ -590,31 +662,54 @@ function ApproveModal({ o, onClose, onResult }: { o: EnquiryOutcome; onClose: ()
             {o.status === "sent" ? o.confirmation ?? o.note : o.note || "This is a demo persona; we never send fictional enquiries to real firms."}
           </Callout>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-muted">The agent presses Send on their page only after you approve.</span>
-            <Button onClick={send} disabled={busy || !allAgreed || o.unfilled.length > 0}>
-              {busy ? "Sending…" : "Approve and send"}
-            </Button>
+          <div className="space-y-3">
+            {needed.length > 0 && <p className="text-[13px] text-amber">Still needed before we can send: {needed.map((f) => f.label.replace(/\s*\*$/, "")).join(", ")}.</p>}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-muted">The agent presses Send on their page only after you approve.</span>
+              <span className="flex items-center gap-2">
+                {edits.length > 0 && (
+                  <Button variant="secondary" onClick={save} disabled={!!busy}>
+                    {busy === "save" ? "Saving…" : `Save changes (${edits.length})`}
+                  </Button>
+                )}
+                <Button onClick={send} disabled={!!busy || !allAgreed || needed.length > 0}>
+                  {busy === "send" ? "Sending…" : "Approve and send"}
+                </Button>
+              </span>
+            </div>
           </div>
         )
       }
     >
-      <div>
-        <Eyebrow>What we filled in</Eyebrow>
-        <dl className="mt-2 grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-[13px]">
-          {o.filled.map((x) => (
-            <div key={x.label} className="contents">
-              <dt className="text-muted">{x.label}</dt>
-              <dd className="whitespace-pre-wrap text-ink">{x.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      {o.unfilled.length > 0 && (
-        <Callout tone="warn" title="Some required fields are still empty">
-          {o.unfilled.join(", ")}. We cannot send until these are filled.
-        </Callout>
+      {waiting.length > 0 && (
+        <section className="space-y-3 rounded-card border border-amber/40 bg-amber-soft/40 p-4">
+          <div>
+            <p className="text-[14px] font-medium text-ink">Their form needs {waiting.length === 1 ? "one more detail" : `${waiting.length} more details`}</p>
+            <p className="text-[12px] leading-5 text-muted">We did not have {waiting.length === 1 ? "this" : "these"} in your case file. Type {waiting.length === 1 ? "it" : "them"} here and the agent puts {waiting.length === 1 ? "it" : "them"} into their form.</p>
+          </div>
+          {waiting.map((f) => input(f, !current(f).trim()))}
+        </section>
       )}
+
+      {filled.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <Eyebrow>What we will send</Eyebrow>
+            <p className="mt-1 text-xs text-muted">This is what the agent put into their form. Change anything that is wrong.</p>
+          </div>
+          {filled.map((f) => input(f, false))}
+        </section>
+      )}
+
+      {optional.length > 0 && (
+        <div>
+          <button className="text-[13px] text-brand hover:underline" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+            {more ? "Hide the other fields" : `${optional.length} other optional field${optional.length === 1 ? "" : "s"} on their form`}
+          </button>
+          {more && <div className="mt-3 space-y-3">{optional.map((f) => input(f, false))}</div>}
+        </div>
+      )}
+
       {o.consents.length > 0 && (
         <div>
           <Eyebrow>Their form asks you to agree</Eyebrow>
@@ -631,6 +726,7 @@ function ApproveModal({ o, onClose, onResult }: { o: EnquiryOutcome; onClose: ()
           </ul>
         </div>
       )}
+      {saved && !error && <p className="text-[13px] text-teal">Saved. The agent has put your changes into their form.</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
     </Modal>
   );

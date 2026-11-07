@@ -7,14 +7,14 @@ import type { Value } from "./browserAgent";
 import { runBrowserAgent } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { decide } from "./decisions";
-import type { EnquiryMessage, EnquiryOutcome, Step4Event, Step4Result } from "./enquiryTypes";
+import type { EnquiryMessage, EnquiryOutcome, FieldEdit, FormField, Step4Event, Step4Result } from "./enquiryTypes";
 import { MAX_ENQUIRIES } from "./enquiryTypes";
 import { makeLogger } from "./events";
 import type { CaseFacts } from "./facts";
 import { agent, pageText, Tracer, Tracker, type Emit, type Note } from "./legalAid";
 import type { FirmFinding, Step3Event, Step3Result } from "./legalAidTypes";
 import { EFFORT, MODELS, structured } from "./llm";
-import { observe } from "./observe";
+import { observe, PLACEHOLDER } from "./observe";
 
 /**
  * Step 4 (D45): contact up to 3 firms. Server only.
@@ -199,8 +199,11 @@ async function readForm(page: Page, before?: Map<string, string>) {
   const filled: { label: string; value: string }[] = [];
   const unfilled: string[] = [];
   const consents: string[] = [];
+  const fields: FormField[] = [];
   for (const e of o.elements) {
     const label = (e.label || e.name || "").replace(/\s+/g, " ").trim();
+    if ((e.kind === "text" || e.kind === "textarea" || e.kind === "select") && label && !/search/i.test(label) && !e.disabled)
+      fields.push({ name: e.name, label: cleanLabel(e), value: e.value, kind: e.kind, required: e.required, options: e.kind === "select" ? e.options.filter((x) => x.trim() && !PLACEHOLDER.test(x.trim())) : undefined });
     // A value that was already there before the agent started is the form's own default, not something we chose: say so.
     const mark = (v: string) => (before && before.get(label) === v ? `${label} (the form's default; we did not choose it)` : label);
     if ((e.kind === "text" || e.kind === "textarea") && e.value.trim() && !/search/i.test(label)) filled.push({ label: mark(e.value), value: e.value });
@@ -209,7 +212,7 @@ async function readForm(page: Page, before?: Map<string, string>) {
     if (e.kind === "checkbox" && !e.checked && (e.required || CONSENT_RE.test(label)) && label) consents.push(label);
     if ((e.kind === "text" || e.kind === "textarea" || e.kind === "select") && e.required && !e.value.trim()) unfilled.push(label);
   }
-  return { filled, unfilled: [...new Set(unfilled)], consents: [...new Set(consents)] };
+  return { filled, unfilled: [...new Set(unfilled)], consents: [...new Set(consents)], fields };
 }
 
 /** The form's values before the agent touches it (label -> value), to tell its defaults apart from what we typed. */
@@ -271,12 +274,12 @@ export async function fillOne(
   const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
   if (missing.length > 0) {
     note("Needs an answer from you");
-    return { ...base, status: "needs_input", formUrl, filled: form.filled, unfilled: missing, consents: form.consents, question: `Their form asks for: ${missing.join(", ")}. We do not have this.`, note: `The form asks for something we do not know (${missing.join(", ")})` };
+    return { ...base, status: "needs_input", formUrl, filled: form.filled, unfilled: missing, consents: form.consents, fields: form.fields, question: `Their form asks for: ${missing.join(", ")}. We do not have this.`, note: `The form asks for something we do not know (${missing.join(", ")})` };
   }
   if (run.status === "needs_input" && run.question && !/confirm/i.test(run.question)) await note.log("check", run.question);
   if (form.consents.length) await note.log("check", `${form.consents.length} consent box${form.consents.length === 1 ? "" : "es"} left unticked for your approval`, { detail: form.consents.join("\n") });
   note("Filled. Waiting for your approval");
-  return { ...base, status: "ready_to_send", formUrl, filled: form.filled, unfilled: [], consents: form.consents, note: "Form filled and stopped before Send. Waiting for your approval" };
+  return { ...base, status: "ready_to_send", formUrl, filled: form.filled, unfilled: [], consents: form.consents, fields: form.fields, note: "Form filled and stopped before Send. Waiting for your approval" };
 }
 
 /* ------------------------------------------------------------------ the run */
@@ -334,7 +337,7 @@ export async function runEnquiries(
           attempts > 1 ? `${label(f)} (retry)` : label(f),
           async (p, note) => {
             const o = await fillOne(p, f, input, note, track, (x) => put({ ...x, swappedFor, attempts }));
-            if (o.status === "ready_to_send") REG.tabs.set(f.id, { page: p, firm: f, email: input.facts.email, runId, tracer, note });
+            if (o.status === "ready_to_send" || o.status === "needs_input") REG.tabs.set(f.id, { page: p, firm: f, email: input.facts.email, runId, tracer, note });
             return o;
           },
           150_000,
@@ -390,14 +393,84 @@ export function sendGate(email: string | null): string | null {
   return null;
 }
 
-export async function sendEnquiry(firmId: string, agreed: string[]): Promise<EnquiryOutcome> {
-  const open = REG.tabs.get(firmId);
-  if (!open || open.page.isClosed()) {
-    return { firmId, firmName: open?.firm.name ?? firmId, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: "The filled form is no longer open (a form closes once it is sent, or after 15 minutes). Fill the forms again, then approve." };
+/** A dropdown's label often swallows its option text ("AreaPlease selectMedical negligence"): show just the label. */
+function cleanLabel(e: { label: string; name: string; kind: string; options: string[] }) {
+  let l = (e.label || e.name || "").replace(/\s+/g, " ").trim();
+  if (e.kind === "select") {
+    const tail = e.options.join("");
+    const tail2 = e.options.join(" ");
+    for (const t of [tail, tail2]) if (t && l.endsWith(t) && l.length > t.length) l = l.slice(0, -t.length).trim();
   }
+  return l;
+}
+const squash = (x: string) => x.replace(/\s+/g, " ").trim().toLowerCase();
+const gone = (firmId: string, open?: Open): EnquiryOutcome => ({ firmId, firmName: open?.firm.name ?? firmId, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: "The filled form is no longer open (a form closes once it is sent, or after 15 minutes). Fill the forms again, then approve." });
+
+/**
+ * Type the user's edits into the open form (D64). Fields are found again by name and label, never by position.
+ * Nothing is sent. Returns how many were applied and the labels that could not be found on the page any more.
+ */
+async function applyEdits(open: Open, edits: FieldEdit[]): Promise<{ applied: number; missed: string[] }> {
+  const { page, note } = open;
+  let applied = 0;
+  const missed: string[] = [];
+  for (const ed of edits) {
+    const o = await observe(page);
+    const fields = o.elements.filter((e) => e.kind === "text" || e.kind === "textarea" || e.kind === "select");
+    const same = (e: (typeof fields)[number]) => squash(cleanLabel(e)) === squash(ed.label);
+    const el = fields.find((e) => same(e) && e.name === ed.name) ?? fields.find(same) ?? fields.find((e) => ed.name && e.name === ed.name);
+    if (!el) {
+      missed.push(ed.label);
+      continue;
+    }
+    const loc = page.locator(`[data-aid="${el.id}"]`);
+    await pointAt(page, loc).catch(() => {});
+    try {
+      if (el.kind === "select") {
+        const want = squash(ed.value);
+        const opt = el.options.find((x) => squash(x) === want) ?? el.options.find((x) => squash(x).includes(want) || want.includes(squash(x)));
+        if (!opt) {
+          missed.push(ed.label);
+          continue;
+        }
+        await loc.selectOption({ label: opt }, { timeout: 5000 });
+      } else {
+        await loc.fill(ed.value, { timeout: 5000 });
+      }
+      applied++;
+      await note.log("type", `Changed "${ed.label.slice(0, 60)}" to what you entered`, { shot: applied === edits.length });
+    } catch {
+      missed.push(ed.label);
+    }
+  }
+  return { applied, missed };
+}
+
+/** The open form as the review should show it now: ready, or still missing required fields only the user can supply. */
+async function describeForm(open: Open, why?: string): Promise<EnquiryOutcome> {
+  const form = await readForm(open.page);
+  const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
+  const base: EnquiryOutcome = { firmId: open.firm.id, firmName: open.firm.name, status: "ready_to_send", formUrl: open.page.url(), filled: form.filled, unfilled: [], consents: form.consents, fields: form.fields, note: "" };
+  if (missing.length) return { ...base, status: "needs_input", unfilled: missing, question: `Their form still needs: ${missing.join(", ")}.`, note: why ?? `The form needs ${missing.join(", ")} from you` };
+  return { ...base, note: why ?? "Form filled and stopped before Send. Waiting for your approval" };
+}
+
+/** POST /api/agent/step4/edit: apply the user's edits to the open form and report how it looks now. Never sends. */
+export async function editEnquiry(firmId: string, edits: FieldEdit[]): Promise<EnquiryOutcome> {
+  const open = REG.tabs.get(firmId);
+  if (!open || open.page.isClosed()) return gone(firmId, open);
+  const { missed } = await applyEdits(open, edits);
+  const out = await describeForm(open);
+  return missed.length ? { ...out, note: `${out.note}. Could not find on their page any more: ${missed.join(", ")}` } : out;
+}
+
+export async function sendEnquiry(firmId: string, agreed: string[], edits: FieldEdit[] = []): Promise<EnquiryOutcome> {
+  const open = REG.tabs.get(firmId);
+  if (!open || open.page.isClosed()) return gone(firmId, open);
   const { page, firm, note } = open;
-  const form = await readForm(page);
-  const base: EnquiryOutcome = { firmId, firmName: firm.name, status: "ready_to_send", formUrl: page.url(), filled: form.filled, unfilled: [], consents: form.consents, note: "" };
+  let form = await readForm(page);
+  const mk = (): EnquiryOutcome => ({ firmId, firmName: firm.name, status: "ready_to_send", formUrl: page.url(), filled: form.filled, unfilled: [], consents: form.consents, fields: form.fields, note: "" });
+  let base = mk();
 
   const blocked = sendGate(open.email);
   if (blocked) {
@@ -405,6 +478,15 @@ export async function sendEnquiry(firmId: string, agreed: string[]): Promise<Enq
     await releaseTab(firmId); // it will never be sent from here, so do not leave a stale form on screen
     return { ...base, status: "send_blocked", note: blocked };
   }
+
+  // The user's edits go into the form first, then we check nothing required is still empty.
+  if (edits.length) {
+    await applyEdits(open, edits);
+    form = await readForm(page);
+    base = mk();
+  }
+  const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
+  if (missing.length) return { ...base, status: "needs_input", unfilled: missing, question: `Their form still needs: ${missing.join(", ")}.`, note: `The form still needs ${missing.join(", ")}` };
 
   // Tick only the consent boxes whose text the user agreed to, word for word.
   const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
