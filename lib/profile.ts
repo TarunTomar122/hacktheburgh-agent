@@ -31,9 +31,9 @@ export type Profile = {
   messages: ChatMessage[]; // the intake conversation
   draft: Draft | null; // complaint text for step 1, once written
   /** Step 2 (ombudsman). Opens after the NHS replies; answers are asked there, not at onboarding (D29). Missing in older saved profiles. */
-  ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers> };
+  ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers>; /** ISO date (YYYY-MM-DD) the user said NHS Lothian's final reply arrived. */ receivedOn?: string };
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
-  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; skipped?: number[] };
+  progress?: { nhsFilled?: boolean; nhsSent?: boolean; /** ISO date-time the user marked step 1 as sent; the expected reply dates count from it. */ nhsSentAt?: string; spsoFilled?: boolean; spsoSent?: boolean; skipped?: number[] };
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
   /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
@@ -98,11 +98,18 @@ export function setDraft(draft: Draft | null) {
   if (p) write({ ...p, draft });
 }
 
-export function setOmbudsman(patch: { unlocked?: boolean; answers?: Partial<SpsoAnswers> }) {
+export function setOmbudsman(patch: { unlocked?: boolean; answers?: Partial<SpsoAnswers>; receivedOn?: string }) {
   const p = read();
   if (!p) return;
   const cur = p.ombudsman ?? { unlocked: false, answers: {} };
-  write({ ...p, ombudsman: { unlocked: patch.unlocked ?? cur.unlocked, answers: patch.answers ? { ...cur.answers, ...patch.answers } : cur.answers } });
+  write({
+    ...p,
+    ombudsman: {
+      unlocked: patch.unlocked ?? cur.unlocked,
+      answers: patch.answers ? { ...cur.answers, ...patch.answers } : cur.answers,
+      receivedOn: patch.receivedOn ?? cur.receivedOn,
+    },
+  });
 }
 
 /** Demo (D60): the user skipped this step, so every milestone of it counts as done. */
