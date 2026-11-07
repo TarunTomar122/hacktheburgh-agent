@@ -24,7 +24,7 @@ import { usePlannerRun } from "./usePlannerRun";
 const ROLES: Partial<Record<CrewId, string>> = { elliot: "Leads your complaint", robin: "Reads the rules", iona: "Clinical evidence", kit: "Fills in the form" };
 const KIT: CrewKit = { workers: ["robin", "iona", "kit"], role: (id) => ROLES[id] ?? CREW[id].role };
 const STEPS: Step[] = [
-  { crew: ["robin"], title: "Read the rules", line: "Robin reads NHS Lothian's process and the time limit" },
+  { crew: ["robin"], title: "Read the rules", line: "Robin reads the provider's process and the time limit" },
   { crew: ["iona"], title: "Gather evidence", line: "Iona reads the clinical guideline" },
   { crew: ["elliot"], title: "Write your complaint", line: "Elliot writes it from your story" },
   { crew: ["kit"], title: "Fill in the form", line: "Kit fills it in; you press Submit" },
@@ -49,7 +49,10 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   }, [state.status, state.complaint, state.startedAt, state.demo]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  const go = () => start(profile.facts, undefined, "complaint");
+  // Night plan ("Elliot anywhere"): with a route map, the generic crew complains to whichever body discovery found.
+  const route = profile.route && "map" in profile.route ? profile.route.map : undefined;
+  const body = route?.steps.find((x) => x.kind === "complaint")?.body ?? "NHS Lothian";
+  const go = () => (route ? start(profile.facts, undefined, "complaint_anywhere", route) : start(profile.facts, undefined, "complaint"));
   const demo = (toEnd: boolean) => replay({ toEnd, flow: "complaint" });
   const skipToStepTwo = () => {
     void closeAgentBrowser(); // a half-filled form is no use any more
@@ -58,20 +61,20 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
     onContinue();
   };
 
-  if (!supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
+  if (!route && !supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
   if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />;
-  if (saved && !again) return <ComplaintFile profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
-  return <Intro profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
+  if (saved && !again) return <ComplaintFile body={body} profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
+  return <Intro body={body} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
 }
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ profile, onStart, onDemo, onSkip, error }: { profile: Profile; onStart: () => void; onDemo: (toEnd: boolean) => void; onSkip: () => void; error?: string }) {
+function Intro({ body, profile, onStart, onDemo, onSkip, error }: { body: string; profile: Profile; onStart: () => void; onDemo: (toEnd: boolean) => void; onSkip: () => void; error?: string }) {
   const missing = missingRequired(profile.facts);
   return (
     <div className="mx-auto max-w-5xl py-4">
       <p className="text-[12px] text-muted">Complaint · step 1</p>
-      <h1 className="display mt-1 text-[44px] text-ink">Complain to NHS Lothian</h1>
+      <h1 className="display mt-1 text-[44px] text-ink">Complain to {body}</h1>
       <p className="mt-3 flex items-center gap-2 text-[15px] text-ink-2">
         <CrewMark id="elliot" size={28} /> Elliot plans the route, and changes it as he learns. You check the form and press Submit yourself.
       </p>
@@ -79,7 +82,7 @@ function Intro({ profile, onStart, onDemo, onSkip, error }: { profile: Profile; 
         <StepStrip steps={STEPS} />
       </div>
       <div className="mx-auto mt-10 max-w-xl">
-        <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. We only ask it now that you are making a complaint." />
+        <AskMissing profile={profile} scope="nhs" why={`${body}'s form needs this. We only ask it now that you are making a complaint.`} />
       </div>
       <div className="mt-10 flex flex-col items-center gap-4">
         <Button onClick={onStart} disabled={missing.length > 0}>
@@ -108,7 +111,7 @@ const LIMIT: Record<NonNullable<ComplaintResult["timeLimit"]>["status"], { label
   unclear: { label: "Dates too vague to tell", cls: "bg-subtle text-ink-2" },
 };
 
-function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { profile: Profile; run: ComplaintResult; sample: boolean; onAgain: () => void; onContinue: () => void; onSkip: () => void }) {
+function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip }: { body: string; profile: Profile; run: ComplaintResult; sample: boolean; onAgain: () => void; onContinue: () => void; onSkip: () => void }) {
   const [full, setFull] = useState(false);
   const sent = !!profile.progress?.nhsSent;
   const summary = run.says.findLast((s) => s.kind === "done")?.text ?? "";
@@ -147,11 +150,11 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
           <h2 className="text-[18px] font-medium leading-7 text-ink">{sent ? "Your complaint is sent" : ready ? "Check the form and press Submit" : filledForm ? "Finish the form, then press Submit" : "Run the crew again"}</h2>
           <p className="text-[13px] leading-5 text-muted">
             {sent
-              ? "Next, NHS Lothian replies. If their final answer does not put things right, the ombudsman is step 2."
+              ? `Next, ${body} replies. If their final answer does not put things right, the independent review is step 2.`
               : sample
                 ? "This is a recorded run: nothing was filled in or sent. In a real run the form waits in the browser for you."
                 : filledForm
-                  ? `Kit filled in NHS Lothian's form and stopped. Read it, change anything you like, and press Submit yourself.${run.form.unfilled.length ? ` It still needs: ${run.form.unfilled.join(", ")}.` : ""}`
+                  ? `Kit filled in ${body}'s form and stopped. Read it, change anything you like, and press Submit yourself.${run.form.unfilled.length ? ` It still needs: ${run.form.unfilled.join(", ")}.` : ""}`
                   : "The form could not be filled this time."}
           </p>
         </div>
@@ -181,7 +184,7 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
       </section>
 
       <div className="divide-y divide-line rounded-card border border-line bg-white">
-        <Row crew="robin" topic="How it works" title={run.process ? `NHS Lothian answers in ${run.process.steps.length} steps` : skipped("robin") || !reached("robin") ? "Not checked this time" : "Could not read their pages"}>
+        <Row crew="robin" topic="How it works" title={run.process ? `${body} answers in ${run.process.steps.length} steps` : skipped("robin") || !reached("robin") ? "Not checked this time" : "Could not read their pages"}>
           {run.process ? (
             <div className="space-y-3">
               <p className="text-[15px] leading-6 text-ink">{run.process.summary}</p>
@@ -196,11 +199,11 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
                 </Said>
               )}
               <a className="inline-block text-[13px] text-brand hover:underline" href={run.process.url || NHS_PAGE} target="_blank" rel="noreferrer">
-                NHS Lothian&apos;s page ↗
+                {body}&apos;s page ↗
               </a>
             </div>
           ) : (
-            <p className="text-[15px] leading-6 text-ink">Robin did not read NHS Lothian&apos;s process this time. Their website explains it under &ldquo;How do I make a complaint&rdquo;.</p>
+            <p className="text-[15px] leading-6 text-ink">Robin did not read {body}&apos;s process this time.</p>
           )}
         </Row>
 
@@ -247,14 +250,14 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
               </Said>
               <Said label="Where">{run.draft.location}</Said>
               {run.draft.outcome && <Said label="What you would like">{run.draft.outcome}</Said>}
-              <p className="text-[13px] leading-5 text-muted">Facts from your timeline only. You can still change every word in NHS Lothian&apos;s form before you submit.</p>
+              <p className="text-[13px] leading-5 text-muted">Facts from your timeline only. You can still change every word in {body}&apos;s form before you submit.</p>
             </div>
           ) : (
             <p className="text-[15px] leading-6 text-ink">Elliot did not get to write the complaint before the run ended.</p>
           )}
         </Row>
 
-        <Row crew="kit" topic="NHS Lothian's form" title={ready ? "Filled in, not sent" : filledForm ? "Filled in as far as possible" : "Not filled in"}>
+        <Row crew="kit" topic={`${body}'s form`} title={ready ? "Filled in, not sent" : filledForm ? "Filled in as far as possible" : "Not filled in"}>
           {filledForm ? (
             <div className="space-y-3">
               <ul className="divide-y divide-line-soft text-[14px]">
@@ -267,7 +270,7 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
               </ul>
               {run.form.unfilled.length > 0 && <p className="text-[14px] leading-6 text-amber">Still needs: {run.form.unfilled.join(", ")}.</p>}
               <a className="inline-block text-[13px] text-brand hover:underline" href={run.form.url} target="_blank" rel="noreferrer">
-                NHS Lothian&apos;s online form ↗
+                {body}&apos;s online form ↗
               </a>
             </div>
           ) : (
@@ -281,7 +284,7 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
           Run the crew again
         </button>
         {!sent && (
-          <button className="text-muted hover:text-brand hover:underline" onClick={onSkip} title="Demo: nothing is sent to NHS Lothian. Opens step 2 as if they had replied.">
+          <button className="text-muted hover:text-brand hover:underline" onClick={onSkip} title={`Demo: nothing is sent to ${body}. Opens step 2 as if they had replied.`}>
             Skip and continue to step 2 (demo)
           </button>
         )}

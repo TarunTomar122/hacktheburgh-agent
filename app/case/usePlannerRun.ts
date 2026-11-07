@@ -120,7 +120,7 @@ export function usePlannerRun() {
   }, []);
 
   const start = useCallback(
-    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" = "compensation") => {
+    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" = "compensation", route?: RouteMap) => {
       abort.current?.abort();
       stopReplay();
       const ctrl = new AbortController();
@@ -128,7 +128,7 @@ export function usePlannerRun() {
       runIdRef.current = undefined;
       setS({ ...initial(), status: "running", startedAt: Date.now() });
       try {
-        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow }), signal: ctrl.signal });
+        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route }), signal: ctrl.signal });
         if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the crew");
         const reader = res.body.getReader();
         const dec = new TextDecoder();
