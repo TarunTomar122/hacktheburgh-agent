@@ -8,12 +8,15 @@ import { Button, cx } from "./ui";
  * Hidden until a browser session starts; frames arrive as server-sent events from /api/live.
  * The panel reports its size, and the server sizes the remote page to match, so the page fills it edge to edge.
  * "Take control" forwards the user's clicks, scrolling and typing to the real page.
+ * When the browser closes, the panel shows a short notice and then closes itself (D38).
  */
 
 type Frame = { type: "frame"; data: string; url: string; width: number; height: number };
 type LiveMsg = Frame | { type: "end" } | { type: "idle" } | { type: "control"; enabled: boolean };
 type Mode = "hidden" | "live" | "ended";
 
+/** How long the "browser has closed" notice stays before the panel closes itself. */
+const CLOSE_AFTER_MS = 2000;
 const MIN_W = 360;
 const defaultWidth = () => Math.round(Math.min(window.innerWidth * 0.48, 820));
 const clampWidth = (w: number) => Math.round(Math.max(MIN_W, Math.min(w, window.innerWidth - MIN_W)));
@@ -87,12 +90,14 @@ export default function LiveView() {
   const size = useRef({ width: 1300, height: 900 });
   const lastSrc = useRef("");
   const modeRef = useRef<Mode>("hidden");
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     const es = new EventSource("/api/live");
     es.onmessage = (ev) => {
       const msg = JSON.parse(ev.data) as LiveMsg;
       if (msg.type === "frame") {
+        clearTimeout(closeTimer.current); // a new session started while the old notice was still showing
         // Set the image directly instead of through state: many frames a second should not re-render React.
         lastSrc.current = `data:image/jpeg;base64,${msg.data}`;
         if (img.current) img.current.src = lastSrc.current;
@@ -107,13 +112,23 @@ export default function LiveView() {
         if (modeRef.current === "live") {
           modeRef.current = "ended";
           setMode("ended");
+          // The browser is really gone, so the panel goes too: show the notice briefly, then close it and drop the old frame.
+          closeTimer.current = setTimeout(() => {
+            if (modeRef.current !== "ended") return;
+            modeRef.current = "hidden";
+            lastSrc.current = "";
+            setMode("hidden");
+          }, CLOSE_AFTER_MS);
         }
         setControl(false);
       } else if (msg.type === "control") {
         setControl(msg.enabled);
       }
     };
-    return () => es.close();
+    return () => {
+      es.close();
+      clearTimeout(closeTimer.current);
+    };
   }, []);
 
   // Keep the panel inside the window when the window is resized.
@@ -274,18 +289,6 @@ export default function LiveView() {
         <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the browser keeps running)">
           Hide
         </Button>
-        {mode === "ended" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              modeRef.current = "hidden";
-              setMode("hidden");
-            }}
-          >
-            Dismiss
-          </Button>
-        )}
       </div>
 
       <div ref={stage} className="relative min-h-0 flex-1 overflow-hidden rounded-card bg-white">

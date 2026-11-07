@@ -9,6 +9,7 @@ import type { WidgetAnswer } from "../lib/agent/interview";
 import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_MESSAGES } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
 import InputPanel from "./InputPanel";
+import { Logo } from "./ui";
 
 // Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
 const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
@@ -80,7 +81,7 @@ export default function Onboarding() {
     <main className="mx-auto flex h-screen max-w-2xl flex-col">
       <header className="flex items-start justify-between gap-4 px-6 pt-8 pb-4">
         <div>
-          <div className="eyebrow mb-3">Case helper</div>
+          <Logo className="mb-4" />
           <h1 className="display text-4xl">
             Let&apos;s start with <span className="hl-blue">you</span>
           </h1>

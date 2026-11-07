@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { EFFORT, MODELS, structured } from "./llm";
 import { CaseFacts, emptyFacts, mergeFacts, missingRequired } from "./facts";
-import { inputFor, nextTarget, normaliseFacts, parseName, patchFromAnswer, questionFor, validatePatch, type InputSpec, type Target } from "./inputs";
+import { inputFor, joinReply, nextTarget, normaliseFacts, parseName, patchFromAnswer, questionFor, validatePatch, type InputSpec, type Target } from "./inputs";
 
 import type { ChatMessage } from "./chat";
 export type { ChatMessage } from "./chat";
@@ -36,7 +36,8 @@ The acknowledgement
 - No jargon at all. Use no medical term the user has not used first, and no legal term ever (nothing like "negligence", "liability", "breach" or "duty of care"). Use their own words for their injury and the places they went.
 - Do not diagnose, do not say who was at fault, do not say what will happen, and do not give advice.
 - One short sentence at most, without a question. Vary how you start. Never say "I'm sorry to hear that".
-- Leave it empty when the answer was only a plain detail such as a phone number or a yes or no.
+- Leave it empty when the answer was only a plain detail such as a name, a phone number or a yes or no.
+- Never open with thanks: the program adds its own thanks to the next question.
 - Use British spelling.`;
 
 export type InterviewResult = {
@@ -97,7 +98,7 @@ export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = 
   const emailDeclined = asked === "emailRisk" && merged.emailRiskAccepted === false;
   const facts = normaliseFacts(merged);
   const target = nextTarget(facts);
-  const reply = [acknowledgement, questionFor(target, facts, { emailDeclined })].filter(Boolean).join(" ");
+  const reply = joinReply(acknowledgement, questionFor(target, facts, { emailDeclined }));
 
   return {
     facts,

@@ -218,6 +218,16 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
   }
 }
 
+/**
+ * The agent's reply: the model's short acknowledgement (may be empty) followed by the next question. Some questions open with "Thank you, <name>.";
+ * if the acknowledgement already thanks them, that second thanks is dropped so they are not thanked twice in a row.
+ */
+export function joinReply(acknowledgement: string, question: string): string {
+  const ack = acknowledgement.trim();
+  const q = /^(thanks|thank you)\b/i.test(ack) ? question.replace(/^Thank you(, [^.]*)?\.\s+/, "") : question;
+  return [ack, q].filter(Boolean).join(" ");
+}
+
 /** "An explanation, an apology and changes so it does not happen again." from ticked choices plus anything typed. */
 export function outcomeSentence(chosen: string[], other: string): string {
   const items = chosen.map((c, i) => (i > 0 && /^[A-Z][a-z]/.test(c) ? c[0].toLowerCase() + c.slice(1) : c));

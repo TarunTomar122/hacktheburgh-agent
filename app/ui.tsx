@@ -4,6 +4,7 @@
  * Shared UI pieces. Every screen should build from these and the tokens in globals.css, so the look stays one thing.
  * Rules and sources: docs/DESIGN.md.
  */
+import Image from "next/image";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
@@ -136,9 +137,13 @@ export function Console({ lines, label }: { lines: string[]; label: string }) {
 
 /* ---------- brand + icons ---------- */
 
-/** Placeholder wordmark. Swap this one component when we have a real logo. */
+/**
+ * The Elliot monogram (`public/logo.png`, 171x160, drawn at 40px tall so it stays sharp on 3x screens). A white disc with a navy ring and a blue
+ * shadow stroke (the blue is the `brand` blue), so it stands out on the blue header and still reads on white. `unoptimized` serves the file
+ * as it is (26 KB), with no image-optimiser request at the venue. Pass `className` to change the size, for example `h-12`.
+ */
 export function Logo({ className }: { className?: string }) {
-  return <span className={cx("text-[15px] font-semibold uppercase tracking-[0.12em]", className)}>Case helper</span>;
+  return <Image src="/logo.png" alt="Elliot" width={171} height={160} priority unoptimized className={cx("h-10 w-auto", className)} />;
 }
 
 const icon = { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" } as const;
