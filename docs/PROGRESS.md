@@ -33,10 +33,10 @@ Docs only, no code. Wrote `docs/plans/browser-complexity-plan.md` (proposed, not
 ### 2026-11-07 - Luigi + Codex - Bug review and targeted fixes
 Reviewed application flows, routes, persistence, planner/browser workers, funding, evidence, enquiries and live view. Fixed question-answer failure recovery, terminal-run retry, final stream line handling and obsolete-stream guards, stale fixture flag, impossible dates, repeated date-mode reset, decimal-thousands parsing and skipped-finances fallback. Corrected server-storage wording. Regression scripts for dates/money, location, mocked calculator and mocked crew UI pass. UI setup initially lacked __name; fixed and blocked real planner requests in the test. Build caught an edit-induced encoding error; affected files normalized to UTF-8. Outstanding validation/decisions: BUG_REVIEW.md. No browser engine or real-send behavior changed. Production build, TypeScript, lint and all four regression scripts passed. Final sync pulled 247eded (documentation only); preserved both progress entries and renumbered our discrepancy to 11.
 
-### 2026-11-07 · Om + Claude · DONE · Demo: skip step 4 and mark enquiries as sent (D57)
+### 2026-11-07 · Om + Claude · DONE · Demo: skip step 4 and mark enquiries as sent (D58)
 Om: the skip has to be on the Contact lawyers page too. Added "Skip and mark as sent (demo)" before and after the forms are filled; it closes the agent's browser and marks the enquiries as sent without sending anything. `tsc` and `eslint` clean; not clicked through in a browser yet.
 
-### 2026-11-07 · Om + Claude · DONE · Demo: skip step 3 and continue to step 4 (D56)
+### 2026-11-07 · Om + Claude · DONE · Demo: skip step 3 and continue to step 4 (D57)
 Om: no skip on the legal aid page. Added "Skip and continue to step 4 (demo)" to the step 3 intro in `app/case/CaseRun.tsx`; it loads the three sample firms and opens step 4. `tsc` and `eslint` clean; not clicked through in a browser yet.
 
 ### 2026-11-07 - Luigi + Codex - Upstream sync
@@ -47,7 +47,7 @@ Pulled 3d3072b. Code merged cleanly. Both branches assigned D53 to different dec
 Integrated explicit permission into the latest crew question stream before planner research. Ask for the patient's postcode only after Yes; decline, skip and timeout omit location. No hospital-derived proximity. SLAB manual selection is verified and reapplied during direct-click recovery. Distance evidence names the approved postcode; absent origins earn no points and are excluded from the denominator.
 Verified: permission-first, decline, skip, postcode validation/retry regression script; TypeScript and lint; live finder G1 1XW returned Glasgow offices (nearest 0.12 miles), declined path returned no distances. Both live runs exercised recovery. Whole planner/UI run not rerun. An initial broad edit also inserted a location call into the calculator; TypeScript caught it and it was removed. Prior stashes remain intact.
 
-### 2026-11-07 · Om + Claude · DONE · The agent's browser closes when its job is done (D55)
+### 2026-11-07 · Om + Claude · DONE · The agent's browser closes when its job is done (D56)
 Om: after the forms are filled or the legal aid crawl ends, the browser stayed open and the live panel looked odd. Step 3 now closes straight after its result; the planner and step 4 keep only the filled enquiry forms awaiting approval and close with the last one; the NHS and SPSO forms stay up for the user to submit and close after a detected submission, a closed tab, 10 minutes, or the skip / "sent" buttons. Checked with a local fixture form, `tsc` and `eslint`. Not checked against the real NHS Lothian and SPSO confirmation pages.
 
 ### 2026-11-07 · Om + Claude · DONE · Suggestion reasons as tick boxes (D51)

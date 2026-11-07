@@ -139,7 +139,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
     upsertEnquiries([{ firmId: o.firmId, firmName: o.firmName, status: "sent", sentAt: at, followUpOn: followUpFrom(at) }]);
   const started = outcomes.length > 0 || running;
 
-  // Demo (D57): no real enquiry is sent, so the demo can carry on as if every firm had been sent its enquiry.
+  // Demo (D58): no real enquiry is sent, so the demo can carry on as if every firm had been sent its enquiry.
   const isSent = (id: string) => ["sent", "replied", "not_interested"].includes(records.find((r) => r.firmId === id)?.status ?? "");
   const skipSending = () => {
     void closeAgentBrowser(); // the filled forms are no use any more
