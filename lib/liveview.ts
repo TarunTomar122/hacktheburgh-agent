@@ -20,16 +20,36 @@ export type LiveFrame = {
   width: number; // CSS pixels of the page viewport the frame shows
   height: number;
 };
+/** Keys the panel forwards, with what Chrome needs to treat them as real key presses. */
+const KEYMAP: Record<string, { key: string; code: string; vk: number; text?: string }> = {
+  Enter: { key: "Enter", code: "Enter", vk: 13, text: "\r" },
+  Backspace: { key: "Backspace", code: "Backspace", vk: 8 },
+  Tab: { key: "Tab", code: "Tab", vk: 9 },
+  Escape: { key: "Escape", code: "Escape", vk: 27 },
+  Delete: { key: "Delete", code: "Delete", vk: 46 },
+  Space: { key: " ", code: "Space", vk: 32, text: " " },
+  ArrowLeft: { key: "ArrowLeft", code: "ArrowLeft", vk: 37 },
+  ArrowUp: { key: "ArrowUp", code: "ArrowUp", vk: 38 },
+  ArrowRight: { key: "ArrowRight", code: "ArrowRight", vk: 39 },
+  ArrowDown: { key: "ArrowDown", code: "ArrowDown", vk: 40 },
+  Home: { key: "Home", code: "Home", vk: 36 },
+  End: { key: "End", code: "End", vk: 35 },
+  PageUp: { key: "PageUp", code: "PageUp", vk: 33 },
+  PageDown: { key: "PageDown", code: "PageDown", vk: 34 },
+};
+
 export type LiveEvent = LiveFrame | { type: "end" } | { type: "control"; enabled: boolean };
 type Listener = (e: LiveEvent) => void;
 
 export type LiveInput =
   | { type: "click"; x: number; y: number } // CSS pixels in the page viewport
+  | { type: "move"; x: number; y: number }
   | { type: "wheel"; x: number; y: number; dx: number; dy: number }
   | { type: "key"; key: string } // a Playwright key name, e.g. "Enter", "Backspace", "a"
   | { type: "text"; text: string }
   | { type: "back" }
-  | { type: "close" };
+  | { type: "close" }
+  | { type: "resize"; width: number; height: number }; // size of the panel's picture area, CSS pixels
 
 type Attached = { page: Page; cdp: CDPSession };
 type Bus = {
@@ -39,10 +59,29 @@ type Bus = {
   /** Pages of the current session, oldest first. The last one is shown. */
   pages: Attached[];
   context: BrowserContext | null;
+  /** Viewport that makes the page fill the panel exactly; null until the panel reports its size. */
+  viewport: { width: number; height: number } | null;
 };
 
 const g = globalThis as typeof globalThis & { __liveBus?: Bus };
-const bus: Bus = (g.__liveBus ??= { listeners: new Set(), last: null, live: false, pages: [], context: null });
+const bus: Bus = (g.__liveBus ??= { listeners: new Set(), last: null, live: false, pages: [], context: null, viewport: null });
+bus.viewport ??= null;
+
+const MIN_WIDTH = 1100; // below this many sites switch to their mobile layout
+
+/** Same shape as the panel, at least MIN_WIDTH wide, so the frame fills the panel top to bottom. */
+function viewportFor(width: number, height: number) {
+  const scale = Math.max(1, MIN_WIDTH / width);
+  return { width: Math.round(width * scale), height: Math.min(2400, Math.round(height * scale)) };
+}
+
+const screencastOpts = () => ({
+  format: "jpeg" as const,
+  quality: 70,
+  maxWidth: bus.viewport?.width ?? 1300,
+  maxHeight: bus.viewport?.height ?? 900,
+  everyNthFrame: 1,
+});
 
 function publish(e: LiveEvent) {
   if (e.type === "frame") bus.last = e;
@@ -93,14 +132,23 @@ async function attachPage(page: Page) {
     if (next && bus.context === context) restart(next).catch(() => {});
   });
 
-  await cdp
-    .send("Page.startScreencast", { format: "jpeg", quality: 70, maxWidth: 1300, maxHeight: 900, everyNthFrame: 1 })
-    .catch(() => {});
+  if (bus.viewport) await page.setViewportSize(bus.viewport).catch(() => {});
+  await cdp.send("Page.startScreencast", screencastOpts()).catch(() => {});
 }
 
 async function restart({ cdp }: Attached) {
   await cdp.send("Page.stopScreencast").catch(() => {});
-  await cdp.send("Page.startScreencast", { format: "jpeg", quality: 70, maxWidth: 1300, maxHeight: 900, everyNthFrame: 1 });
+  await cdp.send("Page.startScreencast", screencastOpts());
+}
+
+async function resize(width: number, height: number) {
+  const v = viewportFor(width, height);
+  if (bus.viewport && bus.viewport.width === v.width && bus.viewport.height === v.height) return;
+  bus.viewport = v;
+  for (const p of bus.pages) {
+    await p.page.setViewportSize(v).catch(() => {});
+    await restart(p).catch(() => {});
+  }
 }
 
 /** Called by `openSession()`. Streams every page of this context to the live view until the browser closes. */
@@ -129,21 +177,41 @@ export function attachLiveView(context: BrowserContext) {
  * the agent's never-submit rule does not apply to it; the panel warns before the user takes control.
  */
 export async function liveInput(input: LiveInput): Promise<string> {
-  const page = active();
-  if (!page || page.isClosed()) return "no live page";
+  if (input.type === "resize") {
+    await resize(input.width, input.height);
+    return "ok";
+  }
+  const top = bus.pages.at(-1);
+  const page = top?.page;
+  if (!top || !page || page.isClosed()) return "no live page";
+  // User input goes straight to Chrome over CDP. Playwright's page.mouse / page.keyboard would add the
+  // session's slowMo (250 ms per call, there so the *agent* is watchable) to every click and scroll.
+  const cdp = top.cdp;
+  type MouseExtra = { button?: "left"; buttons?: number; clickCount?: number; deltaX?: number; deltaY?: number };
+  const mouse = (type: "mouseMoved" | "mousePressed" | "mouseReleased" | "mouseWheel", x: number, y: number, extra: MouseExtra = {}) =>
+    cdp.send("Input.dispatchMouseEvent", { type, x, y, ...extra });
   switch (input.type) {
+    case "move":
+      await mouse("mouseMoved", input.x, input.y);
+      return "ok";
     case "click":
-      await page.mouse.click(input.x, input.y);
+      await mouse("mouseMoved", input.x, input.y);
+      await mouse("mousePressed", input.x, input.y, { button: "left", buttons: 1, clickCount: 1 });
+      await mouse("mouseReleased", input.x, input.y, { button: "left", buttons: 0, clickCount: 1 });
       return "ok";
     case "wheel":
-      await page.mouse.move(input.x, input.y);
-      await page.mouse.wheel(input.dx, input.dy);
+      await mouse("mouseWheel", input.x, input.y, { deltaX: input.dx, deltaY: input.dy });
       return "ok";
-    case "key":
-      await page.keyboard.press(input.key);
+    case "key": {
+      const k = KEYMAP[input.key];
+      if (!k) return "unknown key";
+      const base = { key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk };
+      await cdp.send("Input.dispatchKeyEvent", { type: k.text ? "keyDown" : "rawKeyDown", ...base, ...(k.text ? { text: k.text, unmodifiedText: k.text } : {}) });
+      await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
       return "ok";
+    }
     case "text":
-      await page.keyboard.insertText(input.text);
+      await cdp.send("Input.insertText", { text: input.text });
       return "ok";
     case "back":
       await page.goBack({ timeout: 10000 }).catch(() => {});

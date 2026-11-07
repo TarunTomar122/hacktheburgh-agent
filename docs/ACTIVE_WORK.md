@@ -19,7 +19,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 | Step 4: solicitor enquiries | unclaimed | Not started | | Three firm forms confirmed to exist. Asks the optional medical-records question (D29) |
 | Step 5: case file | unclaimed | Not started | | |
 | Complexity backlog upkeep | unclaimed (everyone updates; someone refreshes statuses and the date daily or at session end) | Ongoing | `docs/COMPLEXITY_BACKLOG.md` | See D23 and the three rules in `AGENTS.md`. Items 1-6 are each unclaimed; claim one by naming yourself in its Owner field and adding a row here |
-| In-app live browser view (D32) | Tarun + Claude | **Done, idle.** Verified with the Law Society search through the app | `lib/liveview.ts`, `app/api/live/route.ts`, `app/LiveView.tsx`, `lib/browser.ts` (`openSession` hook, `IN_APP_BROWSER`), `app/layout.tsx` (mount only) | Built in a separate worktree so the uncommitted step-2/case work in the main checkout was not touched |
+| In-app live browser view (D32, D34) | Tarun + Claude | **Done, idle.** No separate window in the app, light draggable panel, CDP input (fast) | `lib/liveview.ts`, `app/api/live/route.ts`, `app/LiveView.tsx`, `lib/browser.ts` (`openSession` hook, `IN_APP_BROWSER`), `app/layout.tsx` (mount only) | Built in a separate worktree so the uncommitted step-2/case work in the main checkout was not touched |
 | Email reading (connector) | unclaimed | Not started | | See D13 |
 | Demo prep: backup video, seeded inbox | unclaimed | Not started | | |
 

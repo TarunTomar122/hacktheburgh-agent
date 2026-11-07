@@ -75,7 +75,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | `docs/ACTIVE_WORK.md` | Who is working on what right now |
 | `lib/agent/` | Agent code: facts, interview, draft, observe, **decisions + decisionAgent (default engine)**, browserAgent (fallback), nhsLothian |
 | `lib/browser.ts`, `lib/directory.ts` | Playwright session, cookie handling, Law Society directory search |
-| `lib/liveview.ts`, `app/LiveView.tsx`, `app/api/live` | In-app live view of the agent's browser (D32). `IN_APP_BROWSER=1` hides the Chromium window |
+| `lib/liveview.ts`, `app/LiveView.tsx`, `app/api/live` | In-app live view of the agent's browser (D32, D34). In the app there is no separate window; `SHOW_BROWSER_WINDOW=1` brings it back |
 | `app/` | UI (`/` onboarding, `/case` profile and steps, `/dev` directory search) and `app/api/agent/*` |
 | `scripts/` | CLI runners; **`bench.ts` is the browser-agent regression suite (`npm run bench`)**. `scripts/probes/probe.mjs` inspects any URL; `scripts/probes/observe.ts` prints exactly what the agent sees. Neither submits anything |
 

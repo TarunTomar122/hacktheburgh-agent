@@ -8,14 +8,16 @@ const USER_AGENT =
 export type Session = { browser: Browser; context: BrowserContext; page: Page };
 
 /**
- * Launch a visible Chromium window. Set HEADLESS=1 for fast test runs.
- * Set IN_APP_BROWSER=1 to hide the window but keep everything else as in a visible run (slow, human-watchable
- * typing, browser kept open for review): the browser is then only seen through the in-app live view (D32).
+ * Launch Chromium. Set HEADLESS=1 for fast test runs.
+ * Inside the web app (Next.js server) there is no separate window by default: the browser is only seen in the
+ * in-app live view, with everything else as in a visible run (slow, watchable typing, kept open for review) (D32).
+ * SHOW_BROWSER_WINDOW=1 brings the window back. CLI scripts keep the window unless IN_APP_BROWSER=1.
  * Every session streams to the live view unless LIVEVIEW=0.
  */
 export async function openSession(): Promise<Session> {
   const fast = process.env.HEADLESS === "1";
-  const headless = fast || process.env.IN_APP_BROWSER === "1";
+  const inApp = process.env.SHOW_BROWSER_WINDOW !== "1" && (process.env.IN_APP_BROWSER === "1" || !!process.env.NEXT_RUNTIME);
+  const headless = fast || inApp;
   const browser = await chromium.launch({ headless, slowMo: fast ? 0 : 250 });
   const context = await browser.newContext({
     locale: "en-GB",

@@ -57,11 +57,13 @@ export async function GET(req: Request) {
 
 const Input = z.discriminatedUnion("type", [
   z.object({ type: z.literal("click"), x: z.number(), y: z.number() }),
+  z.object({ type: z.literal("move"), x: z.number(), y: z.number() }),
   z.object({ type: z.literal("wheel"), x: z.number(), y: z.number(), dx: z.number(), dy: z.number() }),
   z.object({ type: z.literal("key"), key: z.string().min(1).max(40) }),
   z.object({ type: z.literal("text"), text: z.string().min(1).max(200) }),
   z.object({ type: z.literal("back") }),
   z.object({ type: z.literal("close") }),
+  z.object({ type: z.literal("resize"), width: z.number().int().min(200).max(4000), height: z.number().int().min(200).max(4000) }),
 ]);
 
 export async function POST(req: Request) {
