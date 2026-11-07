@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { emailProblem, isPhone, isPostcode, outcomeSentence, splitPostcode, type FormField, type InputSpec } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import DateField from "./DateField";
@@ -56,6 +56,14 @@ function FreeText({
   const [text, setText] = useState("");
   const id = useId();
   const multi = spec.kind === "textarea";
+  const box = useRef<HTMLTextAreaElement>(null);
+  // The story box grows with what is typed: two lines to start, then as tall as the text needs, up to 60% of the window, then it scrolls.
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
   async function send() {
     if (!text.trim() || busy) return;
     if (await onFree(text.trim())) setText("");
@@ -73,8 +81,9 @@ function FreeText({
       {multi ? (
         <textarea
           id={id}
+          ref={box}
           autoFocus
-          rows={4}
+          rows={2}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -84,7 +93,7 @@ function FreeText({
             }
           }}
           placeholder={spec.placeholder}
-          className="big-input !text-[22px] !leading-9 sm:!text-[26px]"
+          className="big-input max-h-[60vh] overflow-y-auto !text-[22px] !leading-9 sm:!text-[26px]"
         />
       ) : (
         <input id={id} autoFocus autoComplete={spec.autoComplete} value={text} onChange={(e) => setText(e.target.value)} placeholder={spec.placeholder} className="big-input" />
