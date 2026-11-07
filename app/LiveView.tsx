@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, cx } from "./ui";
 
 /**
@@ -124,6 +125,24 @@ export default function LiveView() {
     bigRef.current = grid ? null : bigId;
   }, [grid, bigId]);
 
+  // Inline mode (D52): a page that wants the browsers inside it renders <div id="live-slot">. While it exists, the
+  // panel lives there (no floating button, no dock), so the crew's browsers sit right next to their work.
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const find = () => setSlot((cur) => {
+      const el = document.getElementById("live-slot");
+      return cur === el ? cur : el;
+    });
+    find();
+    const mo = new MutationObserver(find);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  const pagesRef = useRef<LivePage[]>([]);
+  useEffect(() => {
+    pagesRef.current = pages;
+  }, [pages]);
+
   useEffect(() => {
     const es = new EventSource("/api/live");
     es.onmessage = (ev) => {
@@ -240,14 +259,27 @@ export default function LiveView() {
     if (img.current && src) img.current.src = src;
   }, [mode, open, grid, bigId]);
 
-  const focus = (pageId: string | null) => {
+  const focus = useCallback((pageId: string | null) => {
     setFocused(pageId);
     setControl(false);
     void send({ type: "focus", pageId });
-  };
+  }, []);
+
+  // The run screen can ask to show one crew member's browser: window.dispatchEvent(new CustomEvent("live-focus", { detail: "Robin" })).
+  useEffect(() => {
+    const onFocus = (e: Event) => {
+      const who = (e as CustomEvent<string | null>).detail;
+      if (!who) return focus(null);
+      const mine = pagesRef.current.filter((p) => p.label.startsWith(`${who} ·`));
+      const pick = mine.find((p) => p.state === "working") ?? mine.at(-1);
+      if (pick) focus(pick.pageId);
+    };
+    window.addEventListener("live-focus", onFocus);
+    return () => window.removeEventListener("live-focus", onFocus);
+  }, [focus]);
 
   // Make room on the right so the panel does not cover the page.
-  const docked = mode !== "hidden" && open && width > 0;
+  const docked = !slot && mode !== "hidden" && open && width > 0;
   useEffect(() => {
     document.body.style.paddingRight = docked ? `${width}px` : "";
     document.body.style.userSelect = dragging ? "none" : "";
@@ -262,7 +294,7 @@ export default function LiveView() {
   // Tell the server the picture area's size so the remote page is the same shape and fills it.
   useEffect(() => {
     const el = stage.current;
-    if (!el || mode !== "live" || !open || grid) return;
+    if (!el || mode !== "live" || (!open && !slot) || grid) return;
     let t: ReturnType<typeof setTimeout> | undefined;
     const report = () => {
       clearTimeout(t);
@@ -278,7 +310,7 @@ export default function LiveView() {
       ro.disconnect();
       clearTimeout(t);
     };
-  }, [mode, open, grid]);
+  }, [mode, open, grid, slot]);
 
   /** Map a point on the image to CSS pixels in the remote page (the image may be letterboxed by object-contain). */
   const toPage = useCallback((clientX: number, clientY: number) => {
@@ -316,6 +348,23 @@ export default function LiveView() {
     }
   };
 
+  if (slot) {
+    if (mode === "hidden") {
+      return createPortal(
+        <div className="flex h-full flex-col items-center justify-center gap-3 rounded-card bg-subtle p-8 text-center">
+          <div className="grid w-full max-w-md grid-cols-2 gap-2 opacity-60">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="aspect-[16/10] rounded-card bg-white" />
+            ))}
+          </div>
+          <p className="text-[13px] text-muted">The crew&apos;s browsers appear here as soon as they start.</p>
+        </div>,
+        slot,
+      );
+    }
+    return createPortal(panel(true), slot);
+  }
+
   if (mode === "hidden" || width === 0) return null;
 
   if (!open) {
@@ -330,12 +379,16 @@ export default function LiveView() {
     );
   }
 
+  return panel(false);
+
+  function panel(inline: boolean) {
   return (
     <aside
-      className="fixed inset-y-0 right-0 z-40 flex flex-col gap-3 bg-subtle p-4"
-      style={{ width }}
+      className={cx("flex flex-col gap-3", inline ? "@container h-full min-h-0" : "fixed inset-y-0 right-0 z-40 bg-subtle p-4")}
+      style={inline ? undefined : { width }}
       aria-label="The agent's browser, live"
     >
+      {!inline && (
       <div
         role="separator"
         aria-orientation="vertical"
@@ -357,6 +410,7 @@ export default function LiveView() {
           )}
         />
       </div>
+      )}
       {/* Two quiet lines: who you are watching (and Hide), then where it is. Nothing squeezed into a pill. */}
       <div>
         <div className="flex items-center gap-3">
@@ -381,9 +435,11 @@ export default function LiveView() {
               "Browser closed"
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the agents keep working)">
-            Hide
-          </Button>
+          {!inline && (
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the agents keep working)">
+              Hide
+            </Button>
+          )}
         </div>
         <div className="mt-1 pl-11 text-[12px] leading-5 text-muted">
           {grid
@@ -395,7 +451,7 @@ export default function LiveView() {
       </div>
 
       {grid ? (
-        <div className={cx("grid min-h-0 flex-1 content-start gap-2 overflow-y-auto", width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
+        <div className={cx("grid min-h-0 flex-1 content-start gap-2 overflow-y-auto", inline ? "grid-cols-1 @lg:grid-cols-2 @5xl:grid-cols-3" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
           {pages.map((p) => (
             <Tile
               key={p.pageId}
@@ -409,6 +465,7 @@ export default function LiveView() {
                 } else tileImgs.current.delete(p.pageId);
               }}
               onOpen={() => focus(p.pageId)}
+              caption={inline}
             />
           ))}
         </div>
@@ -483,13 +540,14 @@ export default function LiveView() {
       )}
     </aside>
   );
+  }
 }
 
 /**
  * One agent's tab in the grid: only the live picture (Tarun, 2026-11-07). The agent's name and colour are already
  * drawn inside the page by its cursor pill, so there is no header, border or label here. A failed agent gets a thin red wash with its note.
  */
-function Tile({ page, ended, onImg, onOpen }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void }) {
+function Tile({ page, ended, onImg, onOpen, caption }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void; caption?: boolean }) {
   const failed = page.state === "failed";
   return (
     <button
@@ -500,6 +558,14 @@ function Tile({ page, ended, onImg, onOpen }: { page: LivePage; ended: boolean; 
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
       <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", ended && "opacity-50")} />
+      {/* Inline (D52): a small name tag inside the picture, so you know whose tab it is even when their cursor is off screen. */}
+      {caption && !failed && (
+        <span className="absolute bottom-2 left-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-[4px] bg-white/92 px-1.5 py-0.5 text-[11px] font-medium text-ink">
+          <span aria-hidden className="size-1.5 shrink-0 rounded-[1px]" style={{ background: page.color }} />
+          {page.label.split(" · ")[0]}
+          <span className="font-normal text-muted">{page.state === "done" ? "done" : page.note ? `· ${page.note}` : ""}</span>
+        </span>
+      )}
       {failed && (
         <span className="absolute inset-0 flex items-end bg-danger/10 ring-1 ring-inset ring-danger/40">
           <span className="w-full bg-danger/85 px-2 py-1 text-left text-[11px] leading-4 text-white">{page.note || "Failed"}</span>

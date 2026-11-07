@@ -229,4 +229,34 @@ Why: Om saw the profile page with a missing contact method, with no path chosen;
 Why: Om: the points looked exact and told the user nothing more than a tick; four of the six rows were already yes or no (a ticked outcome box gets full points, an unticked one gets zero), and the other two come from an AI estimate, so a "16/20" suggested more precision than there is.
 **Not changed:** the scoring in `lib/agent/track.ts` (the points still make the fit %, and the recommendation still goes to the higher fit), and the step 3 firm score rows (`ScoreRow`), which still show points and bars. The fit % can no longer be added up from what is on screen; if that is a problem, the next step is to drop the % as well.
 
-<!-- Add new entries above this line. Next number: D52 -->
+**D47 · 2026-11-07 · Tarun (asked), Claude (built) · decided**
+**The planner agent decides the route (D47 was the first version).** A reasoning model (`MODELS.draft`) with tool calls plans and replans its own route through the compensation work, in `lib/agent/planner.ts`.
+- **Tools:** funding calculator, SLAB's solicitor list, web search (Brave; Google blocks headless browsers and DuckDuckGo returned nothing), any page, firm website checks, Law Society register, clinical guideline, care comparison, BAILII judgments, enquiry forms, asking the user, shortlist, finish.
+- **Parallel work:** tools called in the same turn run at the same time in separate tabs (at most 4).
+- **Asking the user:** workers ask only when a site needs it. The calculator asks each money question when the page shows it.
+- **Budgets:** per-tool limits are set in the system prompt. Errors are returned to the planner so it can change course.
+- **Routes:** `POST /api/agent/plan` streams `PlannerEvent`s; `POST /api/agent/plan/answer` delivers answers.
+- **Safety:** nothing is ever submitted. Enquiry forms stop before Send and stay open for the approve-and-send in step 4 (`keepForApproval`).
+
+**D48 · 2026-11-07 · Tarun (asked), Claude (built) · decided**
+**The evidence agent (Iona)** is in `lib/agent/evidence.ts`.
+- **Guideline:** reads NICE NG38's recommendations. Verified 2026-11-07: 1.2.3 "Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination".
+- **Comparison:** compares them with the patient's own timeline and lists **possible** gaps as questions for a solicitor, plus a caveat. It never says negligence happened.
+- **Judgments:** searches BAILII for Scottish judgments and reads up to 2, labelling honestly whether a case is medical negligence or only a similar injury from another cause.
+- **Bot check:** BAILII is behind Anubis, a proof-of-work check that a real browser passes by itself. The agent waits for it to clear; it does not evade anything.
+- **Caveat:** NICE is an England guideline; the caveat says so.
+
+**D52 · 2026-11-07 · Tarun (asked); design critique by Codex; built by Claude · decided**
+**Step 3 is "Preparing your case": a named crew working live** (`app/case/CaseRun.tsx`).
+- **Crew:** Elliot (leads), Nell (funding), Robin (finds solicitors), Vera (checks firms), Iona (clinical evidence), Kit (enquiries). Every planner tool belongs to one of them (`TOOL_CREW`). Each worker's tab, cursor and tile carry its name and colour.
+- **Before the run:** one sentence, one button, the crew.
+- **During the run:**
+  - the plan as workstreams that change live;
+  - the crew strip (pick one to follow their work and browser);
+  - a decision timeline of real events only: assignments, plain-English reports with "N browser steps with screenshots", decisions and the final summary;
+  - one calm question card;
+  - on the right, the crew's real browsers, rendered inline through `LiveView`'s new `#live-slot` mode, with a small name tag per tile.
+- **After the run:** a case file covering funding (SLAB's words), the top 3 firms, the medical evidence and the enquiries waiting for approval, plus "Review the run" (the read-only timeline) and run totals.
+- Codex's critique (human names, no chatter, square status marks, no pulsing questions, show the transferred object, real events only) is adopted.
+
+<!-- Add new entries above this line. Next number: D53 -->

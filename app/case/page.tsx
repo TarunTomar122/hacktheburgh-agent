@@ -10,7 +10,7 @@ import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
 import Header from "./Header";
-import LegalAidStep from "./LegalAidStep";
+import CaseRun from "./CaseRun";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
 import { streamAgent, type DoneEvent } from "./streamAgent";
@@ -70,9 +70,9 @@ export default function CasePage() {
                 <TrackChoice profile={profile} onChosen={setActive} />
               </div>
             ) : active === 3 ? (
-              // Step 3 is a results page: it uses the full width (filters on the left, cards on the right).
-              <div className="mx-auto max-w-6xl px-8 py-10">
-                <LegalAidStep profile={profile} onContinue={() => setActive(4)} />
+              // Step 3 is Elliot's crew (D49): it uses the whole width while it runs, and a case file when done.
+              <div className="px-8 py-8">
+                <CaseRun profile={profile} onReviewEnquiries={() => setActive(4)} />
               </div>
             ) : active === 4 ? (
               // Step 4 is firm cards side by side: full width too, no side panel (D46).

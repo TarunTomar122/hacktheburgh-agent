@@ -8,6 +8,19 @@ import type { SpsoAnswers } from "./agent/spsoAnswers";
 import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord } from "./agent/enquiryTypes";
 import type { TrackId, TrackRecommendation } from "./agent/track";
+import type { EvidenceResult, PlanStep, Say } from "./agent/plannerTypes";
+
+export type CaseRunRecord = {
+  runId: string;
+  says: Say[];
+  plan: PlanStep[];
+  evidence: EvidenceResult;
+  asks: number;
+  recoveries: number;
+  turns: number;
+  durationMs: number;
+  finishedAt: string;
+};
 
 /** Everything we keep about the user's case. Stored in this browser only (localStorage). */
 export type Profile = {
@@ -21,6 +34,8 @@ export type Profile = {
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
   /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
+  /** D52: the crew's last run, for the case file and "Review the run" (conversation, plan, evidence, counts). */
+  caseRun?: CaseRunRecord;
   /** Step 4: the message (editable), the last run's outcome per firm (`sample` = fixture), and the tracker (updated by hand for now). */
   enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
   enquiries?: EnquiryRecord[];
@@ -107,6 +122,11 @@ export function setLegalAid(patch: { funding?: Partial<Funding>; result?: Step3R
   // A new run (result: null) clears the old selection: its firm ids may not exist any more.
   const selected = patch.result === null ? undefined : (patch.selected ?? cur.selected);
   write({ ...p, legalAid: { funding, result, sample, selected } });
+}
+
+export function setCaseRun(run: CaseRunRecord | null) {
+  const p = read();
+  if (p) write({ ...p, caseRun: run ?? undefined });
 }
 
 export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation }) {

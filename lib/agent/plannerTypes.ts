@@ -45,7 +45,7 @@ export const TOOL_CREW: Record<string, CrewId> = {
 };
 
 /** One line in the crew's conversation: Elliot assigns, a worker reports, someone asks you. */
-export type Say = { i: number; t: number; from: CrewId; to?: CrewId | "you"; kind: "assign" | "report" | "plan" | "ask" | "note" | "done"; text: string; detail?: string; tool?: string };
+export type Say = { i: number; t: number; from: CrewId; to?: CrewId | "you"; kind: "assign" | "report" | "plan" | "ask" | "note" | "done"; text: string; detail?: string; tool?: string; tab?: string /* the worker tab label, to match its trace steps exactly */ };
 
 /** Evidence gathered by Iona, kept with the result (D48). */
 export type EvidenceResult = {
@@ -74,7 +74,7 @@ export type AskSpec = {
 };
 
 /** One move of the planner: the tool it chose and why. `detail` is the arguments / result, shown collapsed. */
-export type Thought = { i: number; t: number; text: string; tool?: string; detail?: string; result?: string };
+export type Thought = { i: number; t: number; text: string; tool?: string; detail?: string; result?: string; tab?: string };
 
 export type PlannerResult = Step3Result & { plan: PlanStep[]; thoughts: Thought[]; turns: number; says: Say[]; evidence: EvidenceResult; enquiries: EnquiryOutcome[]; asks: number; recoveries: number };
 

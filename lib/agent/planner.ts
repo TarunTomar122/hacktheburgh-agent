@@ -264,7 +264,7 @@ const TOOLS: FunctionTool[] = [
     options: { type: "array", items: { type: "string" } },
   }, ["question", "kind"]),
   tool("shortlist", "Score every firm checked so far and pick up to 3 for the user. route = how the claim would be paid for.", { firm_ids: { type: "array", items: { type: "string" } }, route: { type: "string", enum: ["legal_aid", "no_win_no_fee"] } }, ["firm_ids", "route"]),
-  tool("finish", "End the research with a short summary for the user. Call after shortlist.", { summary: { type: "string" } }, ["summary"]),
+  tool("finish", "End the research with a summary for the patient. Call after shortlist (and fill_enquiry).", { summary: { type: "string", description: "Two or three short sentences in plain words, written to the patient (\"you\"). No ids, field names or tool names." } }, ["summary"]),
 ];
 
 const SYSTEM = `You are the research planner for a patient in Scotland who may want compensation after poor medical care.
@@ -326,6 +326,11 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     emit({ type: "say", say: full });
   };
   const crewState = (id: CrewId, state: "idle" | "working" | "waiting" | "done", note: string) => emit({ type: "crew", id, state, note });
+  /** Same, remembering the tab's label on the planner's thought so the report can point at exactly its browser steps. */
+  const crewFor = <T,>(th: Thought, id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number, firms?: string[]) => {
+    th.tab = `${CREW[id].name} · ${task}`;
+    return crewAgent(id, task, work, timeoutMs, firms);
+  };
   /** A worker in its own tab, wearing its crew colour and name. */
   const crewAgent = <T,>(id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number, firms?: string[]) =>
     agent(ctx, `${CREW[id].name} · ${task}`, work, timeoutMs, firms, { color: CREW[id].color, cursor: `${CREW[id].name} · ${task}` });
@@ -352,8 +357,9 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     });
   };
   const finding = (text: string, source?: string, crew?: CrewId) => emit({ type: "finding", text, source, crew });
+  const said = (t: string) => (t === "yes" ? "yes" : t === "no" ? "no" : "not clear");
   const firmLine = (f: FirmFinding) =>
-    `${f.id}: ${f.name}, ${f.town}${f.distanceMiles !== null ? ` (${f.distanceMiles} mi)` : ""}${f.website ? `, ${f.website}` : ", no website"}${f.legalAid ? ", SLAB legal aid" : ""}${f.sources.includes("website") ? `, checked: patients=${f.actsForPatients}, no-win-no-fee=${f.noWinNoFee}, form=${f.enquiryUrl ? "yes" : "no"}${f.excluded ? `, EXCLUDED: ${f.excluded}` : ""}` : ""}`;
+    `${f.id}: ${f.name}, ${f.town}${f.distanceMiles !== null ? ` (${f.distanceMiles} miles)` : ""}${f.website ? `, ${f.website}` : ", no website"}${f.legalAid ? ", takes legal aid" : ""}${f.sources.includes("website") ? `. Checked: acts for patients ${said(f.actsForPatients)}; no win no fee ${said(f.noWinNoFee)}; enquiry form ${f.enquiryUrl ? "found" : "not found"}${f.excluded ? `; RULED OUT: ${f.excluded}` : ""}` : ""}`;
 
   /** What a crew member says back after a tool: one plain sentence for the user, not the planner's raw notes. */
   const describe = (tool: string, a: Record<string, unknown>, out: string): string => {
@@ -416,7 +422,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       }
       case "slab_calculator": {
         if (funding.skipped) return "The user chose not to give money details. Treat legal aid as unknown and look at no win no fee.";
-        const r = await tabs(() => crewAgent("nell", "SLAB calculator", (p, note) => calculatorAsking(p, funding, ask, note, track), 8 * 60 * 1000));
+        const r = await tabs(() => crewFor(thought, "nell", "SLAB calculator", (p, note) => calculatorAsking(p, funding, ask, note, track), 8 * 60 * 1000));
         if (!r.ok) return `The calculator failed: ${r.error}`;
         if (r.value.skipped) {
           funding.skipped = true;
@@ -429,7 +435,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return `SLAB estimate: ${verdict}. Its words: "${quote}"`;
       }
       case "slab_lawyer_list": {
-        const r = await tabs(() => crewAgent("robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track), 120_000));
+        const r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track), 120_000));
         if (!r.ok) return `SLAB's lawyer list failed: ${r.error}`;
         for (const f of mergeCards(r.value)) if (!firms.has(f.id)) firms.set(f.id, f);
         const list = [...firms.values()].filter((f) => f.legalAid);
@@ -437,7 +443,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return `Found ${list.length} firms (nearest first):\n${list.slice(0, 15).map(firmLine).join("\n")}`;
       }
       case "web_search": {
-        const r = await tabs(() => crewAgent("robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
+        const r = await tabs(() => crewFor(thought, "robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
         if (!r.ok) return `Search failed: ${r.error}`;
         if (r.value.length) finding(`Web search found ${r.value.length} results for "${short(s("query"), 50)}"`, "Brave Search");
         return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
@@ -445,7 +451,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "visit": {
         let url = s("url");
         if (!/^https?:\/\//.test(url)) url = `https://${url}`;
-        const r = await tabs(() => crewAgent("robin", short(new URL(url).hostname.replace(/^www\./, ""), 26), (p, note) => visit(p, url, s("question"), note), 60_000));
+        const r = await tabs(() => crewFor(thought, "robin", short(new URL(url).hostname.replace(/^www\./, ""), 26), (p, note) => visit(p, url, s("question"), note), 60_000));
         if (!r.ok) return `Could not read ${url}: ${r.error}`;
         return `${r.value.answer}\nLinks: ${r.value.links.map((l) => `${l.text} -> ${l.url}`).join("; ")}`;
       }
@@ -460,7 +466,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         if (!f) return `Unknown firm. Use an id from slab_lawyer_list, or give name and website.`;
         const firm = f;
         const label = firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 28);
-        const r = await tabs(() => crewAgent("vera", label, (p, note) => vetFirm(p, firm, note, track), 90_000, [firm.id]));
+        const r = await tabs(() => crewFor(thought, "vera", label, (p, note) => vetFirm(p, firm, note, track), 90_000, [firm.id]));
         if (!r.ok) {
           evidence.set(firm.id, { ...evidence.get(firm.id), checked: `Tried ${firm.website}: ${r.error}` });
           return `Could not check ${firm.name}: ${r.error}`;
@@ -476,7 +482,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "law_society_check": {
         const list = ((a.firm_ids as string[]) ?? []).map((id) => firms.get(id)).filter((x): x is FirmFinding => !!x).slice(0, 5);
         if (!list.length) return "No known firm ids given.";
-        const r = await tabs(() => crewAgent("vera", "Law Society register", (p, note) => lawSocietyCheck(p, list, note, track), 120_000));
+        const r = await tabs(() => crewFor(thought, "vera", "Law Society register", (p, note) => lawSocietyCheck(p, list, note, track), 120_000));
         if (!r.ok) return `Law Society check failed: ${r.error}`;
         for (const f of list) {
           const on = r.value.has(f.id);
@@ -487,7 +493,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return list.map((f) => `${f.id}: ${r.value.has(f.id) ? "on the register" : "not found"}`).join("\n");
       }
       case "read_guideline": {
-        const r = await tabs(() => crewAgent("iona", "Clinical guideline", (p, note) => readGuideline(p, s("topic") || "suspected scaphoid fracture", note, track), 90_000));
+        const r = await tabs(() => crewFor(thought, "iona", "Clinical guideline", (p, note) => readGuideline(p, s("topic") || "suspected scaphoid fracture", note, track), 90_000));
         if (!r.ok) return `Could not read the guideline: ${r.error}`;
         guideline = r.value;
         proof.guideline = { name: r.value.guideline, url: r.value.url, points: r.value.points };
@@ -505,12 +511,12 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return c.gaps.length ? `${c.gaps.length} possible gap(s):\n${c.gaps.map((x) => `- ${x.question}`).join("\n")}\nCaveat: ${c.caveat}` : `No gap between the guideline and the account. ${c.caveat}`;
       }
       case "search_case_law": {
-        const r = await tabs(() => crewAgent("iona", "Court judgments", (p, note) => searchCaseLaw(p, s("query"), note, track), 90_000));
+        const r = await tabs(() => crewFor(thought, "iona", "Court judgments", (p, note) => searchCaseLaw(p, s("query"), note, track), 90_000));
         if (!r.ok) return `BAILII search failed: ${r.error}`;
         return r.value.length ? r.value.map((h, i) => `${i + 1}. ${h.title} — ${h.url}`).join("\n") : "No judgments found.";
       }
       case "read_judgment": {
-        const r = await tabs(() => crewAgent("iona", "Reading a judgment", (p, note) => readJudgment(p, s("url"), "a missed scaphoid (wrist) fracture", note, track), 120_000));
+        const r = await tabs(() => crewFor(thought, "iona", "Reading a judgment", (p, note) => readJudgment(p, s("url"), "a missed scaphoid (wrist) fracture", note, track), 120_000));
         if (!r.ok) return `Could not read the judgment: ${r.error}`;
         const j = r.value;
         proof.cases = [...(proof.cases ?? []), { title: j.title, url: j.url, year: j.year, court: j.court, kind: j.kind, summary: j.summary, award: j.award }];
@@ -525,7 +531,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         message ??= await draftEnquiry(facts, { verdict: funding.skipped ? "skipped" : verdict, route });
         const msg = message;
         const r = await tabs(() =>
-          crewAgent("kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
+          crewFor(thought, "kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
             const o = await fillOne(p, firm, { facts, message: msg }, note, track, (x) => emit({ type: "enquiry", enquiry: x }));
             if (o.status === "ready_to_send") keepForApproval(firm.id, { page: p, firm, email: facts.email, runId, tracer, note });
             return o;
@@ -607,7 +613,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
           }
           if (who !== "elliot") {
             const text = /^(Error|Could not|.*failed)/.test(out) ? `I hit a problem: ${short(out, 160)}` : describe(call.name, args, out);
-            say({ from: who, to: "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name });
+            say({ from: who, to: "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab });
             crewState(who, "idle", short(text, 90));
           } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: short(out.replace(/\n/g, "; "), 200), tool: call.name });
           else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });

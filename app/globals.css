@@ -55,6 +55,8 @@
   --color-night: #1a1d21;        /* home-card-dark: dark panels (activity log) */
   --color-night-text: #ededef;   /* home-card-text */
   --color-night-meta: #969698;   /* home-card-meta */
+  --color-purple: #8600fa;      /* brand-purple-500: Iona, the evidence agent (D52) */
+  --color-purple-soft: #f6eeff; /* brand-purple-100 */
   --color-amber: #e64d00;        /* brand-amber-500: warnings */
   --color-amber-soft: #fff0e8;   /* brand-amber-100 */
   --color-teal: #009587;         /* brand-teal-500: success */
@@ -338,5 +340,51 @@ body {
     border-radius: var(--radius-card);
     border: 1px solid var(--color-line);
     background: #fff;
+  }
+
+  /* The crew screen (D52). New events rise 4px while fading in (160 ms); a working agent shows two bars taking turns. */
+  .rise {
+    animation: rise 160ms ease-out both;
+  }
+  .bars > span {
+    animation: bar 900ms ease-in-out infinite;
+  }
+  .bars > span + span {
+    animation-delay: 450ms;
+  }
+  .flash {
+    animation: flash 600ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rise,
+    .bars > span,
+    .flash {
+      animation: none;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@keyframes flash {
+  from {
+    background-color: var(--color-brand-soft);
   }
 }
