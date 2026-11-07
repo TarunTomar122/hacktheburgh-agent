@@ -2,6 +2,9 @@ import { z } from "zod";
 import { CaseFacts, missingRequired } from "../../../../lib/agent/facts";
 import { runComplaint } from "../../../../lib/agent/complaintPlanner";
 import { runDiscovery } from "../../../../lib/agent/discovery";
+import { runComplaintAnywhere } from "../../../../lib/agent/complaintAnywhere";
+import { runCompensationAnywhere } from "../../../../lib/agent/compensationAnywhere";
+import type { RouteMap } from "../../../../lib/agent/routeTypes";
 import { Funding } from "../../../../lib/agent/legalAidTypes";
 import { runPlanner } from "../../../../lib/agent/planner";
 
@@ -12,9 +15,9 @@ import { runPlanner } from "../../../../lib/agent/planner";
  * The first event is {type:"run", runId}; answers to the crew's questions go to POST /api/agent/plan/answer.
  */
 export async function POST(req: Request) {
-  const parsed = z.object({ facts: CaseFacts, funding: Funding.partial().optional(), flow: z.enum(["compensation", "complaint", "discovery"]).optional() }).safeParse(await req.json().catch(() => null));
+  const parsed = z.object({ facts: CaseFacts, funding: Funding.partial().optional(), flow: z.enum(["compensation", "complaint", "discovery", "complaint_anywhere", "compensation_anywhere"]).optional(), route: z.any().optional() }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request", detail: parsed.error.message }, { status: 400 });
-  if (parsed.data.flow === "complaint" && missingRequired(parsed.data.facts).length) {
+  if ((parsed.data.flow === "complaint" || parsed.data.flow === "complaint_anywhere") && missingRequired(parsed.data.facts).length) {
     return Response.json({ error: "Complete your profile before making a complaint" }, { status: 400 });
   }
   const enc = new TextEncoder();
@@ -33,6 +36,8 @@ export async function POST(req: Request) {
       ping = setInterval(() => send({ type: "ping" }), 15000);
       try {
         if (parsed.data.flow === "discovery") await runDiscovery(parsed.data.facts, { onEvent: send });
+        else if (parsed.data.flow === "compensation_anywhere" && parsed.data.route) await runCompensationAnywhere(parsed.data.facts, parsed.data.route as RouteMap, { onEvent: send, keepOpen: true });
+        else if (parsed.data.flow === "complaint_anywhere" && parsed.data.route) await runComplaintAnywhere(parsed.data.facts, parsed.data.route as RouteMap, { onEvent: send, keepOpen: true });
         else if (parsed.data.flow === "complaint") await runComplaint(parsed.data.facts, { onEvent: send, keepOpen: true });
         else await runPlanner(parsed.data.facts, parsed.data.funding ?? {}, { onEvent: send, keepOpen: true });
       } catch (e) {

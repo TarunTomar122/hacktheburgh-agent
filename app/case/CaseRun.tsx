@@ -99,11 +99,14 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
       </div>
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
-  if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={() => start(profile.facts, profile.legalAid?.funding)} />;
+  // Night plan ("Elliot anywhere"): with a route map, the generic crew works with the place's own checker and register.
+  const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
+  const go = () => (routeMap ? start(profile.facts, undefined, "compensation_anywhere", routeMap) : start(profile.facts, profile.legalAid?.funding));
+  if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={go} />;
   return (
     <Intro
       error={state.status === "error" ? state.error : undefined}
-      onStart={() => start(profile.facts, profile.legalAid?.funding)}
+      onStart={go}
       onDemo={(toEnd) => {
         skipStep(3);
         return replay({ toEnd });
@@ -620,14 +623,18 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   const skipped = (id: CrewId) => run.says.some((x) => x.from === id && x.text === "Skipped, as you asked.");
   const reached = (id: CrewId) => run.says.some((x) => x.from === id && x.kind === "report" && x.text !== "Skipped, as you asked.");
 
+  const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
+  const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
+  const checker = fundingStep ? `${fundingStep.body}'s checker` : "SLAB's calculator";
+  const checkerUrl = fundingStep?.url ?? SLAB_CALC;
   const funding =
     result.verdict === "likely"
-      ? { title: "Legal aid looks likely", text: "SLAB's own calculator says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you." }
+      ? { title: "Legal aid looks likely", text: `${checker} says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you.` }
       : result.verdict === "unlikely"
-        ? { title: "Legal aid looks unlikely", text: "SLAB's calculator says you probably do not qualify. Many firms take claims like yours on a no win, no fee basis instead; Robin checked which ones say so." }
+        ? { title: "Legal aid looks unlikely", text: `${checker} says you probably do not qualify. Many firms take claims like yours on a no win, no fee basis instead; Robin checked which ones say so.` }
         : result.verdict === "skipped" || skipped("nell") || !reached("nell")
           ? { title: "Funding not checked", text: skipped("nell") || !reached("nell") ? "Nell did not check legal aid this time. A solicitor can check it with you, or run the crew again." : "You skipped the money questions. A solicitor can check legal aid with you." }
-          : { title: "Funding is unclear", text: "We could not read an estimate from SLAB's calculator. A solicitor can check legal aid with you." };
+          : { title: "Funding is unclear", text: `We could not read an estimate from ${checker}. A solicitor can check legal aid with you.` };
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -659,7 +666,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
         <Row crew="nell" topic="Paying for a solicitor" title={funding.title}>
           <p className="text-[15px] leading-6 text-ink">{funding.text}</p>
           {result.calculatorText && (
-            <Quote source="SLAB's calculator" href={SLAB_CALC}>
+            <Quote source={checker.replace(/^./, (c) => c.toUpperCase())} href={checkerUrl}>
               {result.calculatorText}
             </Quote>
           )}

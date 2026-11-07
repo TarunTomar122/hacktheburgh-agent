@@ -33,6 +33,12 @@ export async function runDecisionAgent(opts: {
   stopAtUrl?: RegExp;
   /** Elements the agent must leave alone, e.g. a 'resume saved complaint' login box. Called with each element and the page URL. */
   ignore?: (el: { label: string; name: string; kind: string }, url: string) => boolean;
+  /**
+   * Privacy (night plan, Phase 4b): the model sees each saved value's key and description, never the value itself.
+   * Dropdowns and radios are answered with a key too, and code matches that key's value to an option. Values already
+   * typed into the page are masked in what the model sees. Off by default (the Scotland flows rely on the old behaviour).
+   */
+  hideValues?: boolean;
 }): Promise<DecisionRun> {
   const { page, goal, values } = opts;
   const emit: OnEvent = opts.onEvent ?? (() => {});
@@ -42,7 +48,10 @@ export async function runDecisionAgent(opts: {
   const attempted = new Set<string>(); // "kind:name:label" already tried, so a stubborn field cannot loop forever
   let unsure: string[] = [];
 
-  const valuesText = [...byKey.values()].map((v) => `- ${v.key} (${v.description}): ${JSON.stringify(v.value.length > 120 ? v.value.slice(0, 120) + "…" : v.value)}`).join("\n");
+  const hide = !!opts.hideValues;
+  const valuesText = hide
+    ? [...byKey.values()].map((v) => `- ${v.key}: ${v.description}`).join("\n")
+    : [...byKey.values()].map((v) => `- ${v.key} (${v.description}): ${JSON.stringify(v.value.length > 120 ? v.value.slice(0, 120) + "…" : v.value)}`).join("\n");
   const result = (status: BrowserRun["status"], summary: string, step: number, extra: Partial<BrowserRun> = {}): DecisionRun => ({
     status, summary, unfilled: [], steps: step, stats, ...extra,
   });
@@ -53,13 +62,15 @@ export async function runDecisionAgent(opts: {
     emit({ type: "observe", step, url: obs.url, fields: obs.elements.length });
     if (opts.stopAtUrl?.test(obs.url)) return result("ready_to_submit", "Reached the final review page. Nothing was sent.", step);
 
-    const plan = buildQuestions(obs, byKey, goal, !!opts.allowSubmit, attempted, opts.advance);
+    if (hide) await labelDuplicates(page, obs);
+    const plan = buildQuestions(obs, byKey, goal, !!opts.allowSubmit, attempted, opts.advance, hide);
     if (plan.questions.length === 0) {
       // Nothing to decide on this page.
       return finish(page, opts, stats, step, unsure);
     }
 
-    const input = [`GOAL: ${goal}`, `SAVED VALUES (the only data the user has provided):\n${valuesText}`, `CURRENT PAGE:\n${formatObservation(obs)}`].join("\n\n");
+    const shown = hide ? redactObservation(obs, [...byKey.values()]) : obs;
+    const input = [`GOAL: ${goal}`, hide ? `SAVED VALUES (names only; the user's data itself is typed by code and never shown to you):\n${valuesText}` : `SAVED VALUES (the only data the user has provided):\n${valuesText}`, `CURRENT PAGE:\n${formatObservation(shown)}`].join("\n\n");
     const { answers, usage, ms } = await decide(input, plan.questions);
     stats.calls++; stats.ms += ms; stats.inputTokens += usage.input_tokens;
     const byName = new Map<string, DAnswer>(answers.map((a) => [a.name, a]));
@@ -72,7 +83,7 @@ export async function runDecisionAgent(opts: {
       if (!a || a.type !== "choice") { if (f.required) unsure.push(`${f.el.label} (no answer)`); continue; }
       if (a.choice === NONE) { if (f.required) unsure.push(`${f.el.label} (no saved value fits)`); continue; }
       if (a.confidence < MIN_CONFIDENCE) { if (f.required) unsure.push(`${f.el.label} (unsure, confidence ${a.confidence.toFixed(2)})`); continue; }
-      const res = await applyChoice(page, f.el, a.choice, byKey);
+      const res = await applyChoice(page, f.el, a.choice, byKey, hide);
       emit({ type: "action", step, tool: f.el.kind === "text" || f.el.kind === "textarea" ? "fill" : f.el.kind === "select" ? "select" : "check", args: { id: f.el.id, label: f.el.label.slice(0, 40), choice: a.choice, confidence: +a.confidence.toFixed(2) }, result: res });
       if (res === "ok") acted++;
       else unsure.push(`${f.el.label} (${res})`);
@@ -84,7 +95,8 @@ export async function runDecisionAgent(opts: {
         if (g.required) unsure.push(`${g.label} (${a && a.type === "choice" ? (a.choice === NONE ? "no saved value fits" : "unsure") : "no answer"})`);
         continue;
       }
-      const el = g.radios.find((r) => r.label === a.choice);
+      const optionLabel = hide ? matchOption(byKey.get(a.choice)?.value ?? "", g.radios.map((r) => r.label)) : a.choice;
+      const el = g.radios.find((r) => r.label === optionLabel);
       if (!el) { unsure.push(`${g.label} (chosen option not found)`); continue; }
       const res = await tickRadio(page, el);
       emit({ type: "action", step, tool: "check", args: { id: el.id, label: el.label.slice(0, 40), group: g.label.slice(0, 40), confidence: +a.confidence.toFixed(2) }, result: res });
@@ -168,12 +180,12 @@ type Plan = {
 /** The Decisions API rejects duplicate choice values (e.g. two options both called "Prefer not to say"). */
 const uniq = (xs: string[]) => [...new Set(xs)];
 
-function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: string, allowSubmit: boolean, attempted: Set<string>, advance?: RegExp): Plan {
+function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: string, allowSubmit: boolean, attempted: Set<string>, advance?: RegExp, hide = false): Plan {
   const questions: DQuestion[] = [];
   const plan: Plan = { questions, fields: [], groups: [], checks: [] };
   const valueChoices = [...byKey.values()].map((v) => ({ value: v.key, description: v.description }));
   const sig = (kind: string, e: El) => `${kind}:${e.name}:${e.label}`;
-  const isEmpty = (e: El) => e.value.trim() === "" || PLACEHOLDER.test(e.value.trim()) || /^open this select/i.test(e.value.trim());
+  const isEmpty = (e: El) => e.value.trim() === "" || PLACEHOLDER.test(e.value.trim()) || /^open this select/i.test(e.value.trim()) || (hide && ANY_PLACEHOLDER.test(e.value.trim()));
 
   for (const e of obs.elements) {
     if (e.disabled) continue;
@@ -187,13 +199,19 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
       plan.fields.push({ q, el: e, sig: sig("f", e), required: e.required });
     } else if (e.kind === "select" && isEmpty(e) && !attempted.has(sig("s", e))) {
       const q = `s${e.id}`;
-      const options = e.options.filter((o) => o.trim() && !PLACEHOLDER.test(o.trim()) && !/^open this select/i.test(o.trim()));
+      const options = e.options.filter((o) => o.trim() && !PLACEHOLDER.test(o.trim()) && !/^open this select/i.test(o.trim()) && !(hide && ANY_PLACEHOLDER.test(o.trim())));
       if (options.length === 0) continue;
-      questions.push({
-        type: "choice", name: q,
-        instructions: `Which option of the dropdown [${e.id}] "${e.label}" should be selected, based on the saved values? Answer "${NONE}" if the saved values do not say.`,
-        choices: [...uniq(options).map((o) => ({ value: o })), { value: NONE, description: "The saved values do not say" }],
-      });
+      questions.push(hide
+        ? {
+            type: "choice", name: q,
+            instructions: `Which saved value answers the dropdown [${e.id}] "${e.label}" (options: ${JSON.stringify(uniq(options).slice(0, 30))})? Answer "${NONE}" if no saved value answers it.`,
+            choices: [...valueChoices, { value: NONE, description: "No saved value answers this" }],
+          }
+        : {
+            type: "choice", name: q,
+            instructions: `Which option of the dropdown [${e.id}] "${e.label}" should be selected, based on the saved values? Answer "${NONE}" if the saved values do not say.`,
+            choices: [...uniq(options).map((o) => ({ value: o })), { value: NONE, description: "The saved values do not say" }],
+          });
       plan.fields.push({ q, el: e, sig: sig("s", e), required: e.required });
     } else if (e.kind === "checkbox" && !e.checked && !attempted.has(sig("c", e))) {
       const q = `c${e.id}`;
@@ -215,11 +233,17 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
     const gsig = `g:${name}:${label}`;
     if (attempted.has(gsig)) continue;
     const q = `g${gi++}`;
-    questions.push({
-      type: "choice", name: q,
-      instructions: `Which option should be selected for the question "${label}"? Use the saved values and the question text on the page. Answer "${NONE}" if the saved values do not answer it.`,
-      choices: [...uniq(radios.map((r) => r.label)).map((l) => ({ value: l })), { value: NONE, description: "The saved values do not answer this" }],
-    });
+    questions.push(hide
+      ? {
+          type: "choice", name: q,
+          instructions: `Which saved value answers the question "${label}" (options: ${JSON.stringify(uniq(radios.map((r) => r.label)))})? Use the question text on the page. Answer "${NONE}" if no saved value answers it.`,
+          choices: [...valueChoices, { value: NONE, description: "No saved value answers this" }],
+        }
+      : {
+          type: "choice", name: q,
+          instructions: `Which option should be selected for the question "${label}"? Use the saved values and the question text on the page. Answer "${NONE}" if the saved values do not answer it.`,
+          choices: [...uniq(radios.map((r) => r.label)).map((l) => ({ value: l })), { value: NONE, description: "The saved values do not answer this" }],
+        });
     plan.groups.push({ q, label, radios, sig: gsig, required: radios.some((r) => r.required) });
   }
 
@@ -241,12 +265,14 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
   return plan;
 }
 
-async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string, { value: string }>): Promise<string> {
+async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string, { value: string }>, hide = false): Promise<string> {
   const loc = page.locator(`[data-aid="${el.id}"]`);
   await pointAt(page, loc); // show the agent's cursor on the field it is about to fill (D36)
   try {
     if (el.kind === "select") {
-      await loc.selectOption({ label: choice }, { timeout: 5000 });
+      const label = hide ? matchOption(byKey.get(choice)?.value ?? "", el.options) : choice;
+      if (!label) return `error: the saved value "${choice}" matches none of the options`;
+      await loc.selectOption({ label }, { timeout: 5000 });
       return "ok";
     }
     const v = byKey.get(choice);
@@ -270,3 +296,89 @@ async function tickCheckbox(page: Page, el: El): Promise<string> {
   }
 }
 export { probOf };
+
+/**
+ * Two boxes both called "First name" (your details, the patient's details) cannot be told apart from labels alone.
+ * Give each duplicate the nearest section heading before it: `First name (section "Patient details")`.
+ */
+export async function labelDuplicates(page: Page, obs: Observation) {
+  const count = new Map<string, number>();
+  const keyOf = (e: El) => (e.kind === "radio" ? `r:${e.group}|${e.label}` : `${e.kind}:${e.label}`);
+  for (const e of obs.elements) if (e.kind !== "link" && e.kind !== "button" && e.kind !== "submit") count.set(keyOf(e), (count.get(keyOf(e)) ?? 0) + 1);
+  const dup = obs.elements.filter((e) => (count.get(keyOf(e)) ?? 0) > 1);
+  if (!dup.length) return;
+  const sections = await page.evaluate((ids) => ids.map((id) => {
+    const el = document.querySelector(`[data-aid="${id}"]`);
+    if (!el) return "";
+    const r = document.evaluate("preceding::*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6 or self::legend or @role='heading' or ((self::strong or self::b) and string-length(normalize-space(.)) < 60)][1]", el, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+    return (r?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+  }), dup.map((e) => e.id)).catch(() => [] as string[]);
+  dup.forEach((e, i) => { if (sections[i]) e.label = `${e.label} (section "${sections[i]}")`; });
+}
+
+/** "Nothing chosen" in a dropdown, in many languages (used with hideValues, i.e. by the generic workers). */
+export const ANY_PLACEHOLDER = /^(?:[-–—]+|please\s+(?:choose|select)|select|choose|open this select|(?:bitte\s+)?(?:aus)?wählen|bitte\s+auswählen|veuillez\s+(?:choisir|sélectionner)|choisi(?:r|ssez)|sélectionne(?:r|z)|seleccion[ae]|selecciona(?:r)?|elija|elige|seleziona(?:re)?|scegli|selecteer|kies|maak een keuze|välj|velg|vælg|valitse|wybierz|vyberte|selecione|escolha|seçiniz|seçin|выберите|選択|请选择)\b/iu;
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * What the model may see of a page when values are hidden: typed text is masked as "(filled)", and any saved value
+ * that shows up in the page's own text (a "check your answers" page, a greeting, an error) is replaced by its key.
+ */
+export function redactObservation(obs: Observation, values: { key: string; value: string }[]): Observation {
+  const pats: [RegExp, string][] = [];
+  for (const v of values) {
+    const val = v.value.trim();
+    if (val.length < 3) continue; // "Yes", "No", "Ms": not personal, and replacing them would garble the page
+    const parts = new Set([val, ...(val.length > 60 ? [val.slice(0, 60), ...val.split(/\n+|(?<=[.!?])\s+/).filter((x) => x.trim().length >= 12)] : [])]);
+    for (const p of parts) pats.push([new RegExp(escapeRe(p.trim()).replace(/\s+/g, "\\s+"), "gi"), `[${v.key}]`]);
+  }
+  pats.sort((a, b) => b[0].source.length - a[0].source.length);
+  const clean = (s: string) => pats.reduce((t, [re, k]) => t.replace(re, k), s);
+  return {
+    ...obs,
+    url: clean(obs.url),
+    title: clean(obs.title),
+    headings: obs.headings.map(clean),
+    errors: obs.errors.map(clean),
+    text: clean(obs.text),
+    elements: obs.elements.map((e) => ({
+      ...e,
+      label: clean(e.label),
+      group: clean(e.group),
+      value: e.kind === "text" || e.kind === "textarea" ? (e.value.trim() ? "(filled)" : "") : clean(e.value),
+    })),
+  };
+}
+
+const norm = (s: string) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+const YES = /^(yes|y|true|ja|oui|si|sí|da|tak|kyllä|igen|evet|sim|はい|是)$/i;
+const NO = /^(no|n|false|nein|non|nej|nei|nee|nie|ei|nem|hayır|não|nao|いいえ|否)$/i;
+
+/** The option whose text best matches a saved value, in code (exact, yes/no in any common language, prefix, word overlap). Undefined when unsure. */
+export function matchOption(value: string, options: string[]): string | undefined {
+  const v = norm(value);
+  if (!v) return undefined;
+  const opts = options.filter((o) => o.trim() && !PLACEHOLDER.test(o.trim()));
+  const exact = opts.filter((o) => norm(o) === v);
+  if (exact.length) return exact[0];
+  // A number against a list of exactly 12 (months) or 31 (days) options: its position, whatever the language ("7" -> "July", "Juli").
+  if (/^\d{1,2}$/.test(v) && (opts.length === 12 || opts.length === 31) && +v >= 1 && +v <= opts.length) return opts[+v - 1];
+  const first = (o: string) => norm(o).split(" ")[0] ?? "";
+  if (YES.test(v) || NO.test(v)) {
+    const want = YES.test(v) ? YES : NO;
+    const hits = opts.filter((o) => want.test(norm(o)) || want.test(first(o)));
+    return hits.length === 1 ? hits[0] : undefined;
+  }
+  const pre = opts.filter((o) => { const n = norm(o); return n.length >= 2 && (n.startsWith(v) || v.startsWith(n)); });
+  if (pre.length === 1) return pre[0];
+  const words = new Set(v.split(" ").filter((w) => w.length > 1));
+  let best: string | undefined, bestScore = 0, second = 0;
+  for (const o of opts) {
+    const ow = new Set(norm(o).split(" ").filter((w) => w.length > 1));
+    const inter = [...ow].filter((w) => words.has(w)).length;
+    const score = inter / Math.max(1, Math.min(ow.size, words.size)) * (inter / Math.max(ow.size, words.size)) ** 0.25;
+    if (score > bestScore) { second = bestScore; bestScore = score; best = o; } else if (score > second) second = score;
+  }
+  return bestScore >= 0.6 && bestScore - second > 0.15 ? best : undefined;
+}
