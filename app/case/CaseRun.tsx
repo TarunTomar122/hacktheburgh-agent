@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
-import { setCaseRun, setEnquiry, setLegalAid, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
+import { setCaseRun, setEnquiry, setLegalAid, skipStep, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip from "./crew/StepStrip";
@@ -73,7 +73,18 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   }, [state.status, state.result, state.startedAt, state.demo]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} />;
+  // A demo skip counts the whole step as done in the progress meter (D60).
+  if (live)
+    return (
+      <Workspace
+        state={state}
+        onAnswer={answer}
+        onSkip={(crew) => {
+          skipStep(3);
+          return skip(crew);
+        }}
+      />
+    );
   if (view === "firms" && result)
     return (
       <div className="mx-auto max-w-6xl space-y-6">
@@ -85,7 +96,16 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={() => start(profile.facts, profile.legalAid?.funding)} />;
-  return <Intro error={state.status === "error" ? state.error : undefined} onStart={() => start(profile.facts, profile.legalAid?.funding)} onDemo={(toEnd) => replay({ toEnd })} />;
+  return (
+    <Intro
+      error={state.status === "error" ? state.error : undefined}
+      onStart={() => start(profile.facts, profile.legalAid?.funding)}
+      onDemo={(toEnd) => {
+        skipStep(3);
+        return replay({ toEnd });
+      }}
+    />
+  );
 }
 
 /* ------------------------------------------------------------------ before */
