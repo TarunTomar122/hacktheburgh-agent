@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { isEmail, isPhone, isPostcode, outcomeSentence, type FormField, type InputSpec } from "../lib/agent/inputs";
+import { emailProblem, isPhone, isPostcode, outcomeSentence, splitPostcode, type FormField, type InputSpec } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import DateField from "./DateField";
 import { ErrorLine, OkRow } from "./StageControls";
@@ -101,7 +101,7 @@ function problemWith(f: FormField, v: string): string | null {
   if (f.required && !v) return `Please fill in: ${f.label.replace(/\?$/, "")}.`;
   if (v && f.kind === "postcode" && !isPostcode(v)) return "That postcode does not look right. It should look like EH1 1AA.";
   if (v && f.kind === "tel" && !isPhone(v)) return "That telephone number does not look right. Use digits only, for example 07700 900123.";
-  if (v && f.kind === "email" && !isEmail(v)) return "That email address does not look right. It should look like name@example.com.";
+  if (v && f.kind === "email") return emailProblem(v);
   return null;
 }
 
@@ -119,10 +119,12 @@ function StageForm({
   const [values, setValues] = useState<Record<string, string>>({});
   const [i, setI] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
+  // A postcode found inside the address is taken out of it and its question skipped (D44).
+  const [note, setNote] = useState<string | null>(null);
+  const [autoPostcode, setAutoPostcode] = useState(false);
   const baseId = useId();
   const total = spec.fields.length;
   const f = spec.fields[i];
-  const last = i === total - 1;
   const value = values[f.key] ?? "";
   const id = `${baseId}-${f.key}`;
   const setValue = (v: string) => setValues((s) => ({ ...s, [f.key]: v }));
@@ -133,10 +135,26 @@ function StageForm({
     const msg = problemWith(f, v.trim());
     if (msg) return setProblem(msg);
     setProblem(null);
-    const next = { ...values, [f.key]: v };
+    let next = { ...values, [f.key]: v };
+    let step = i + 1;
+    let auto = false;
+    if (f.key === "address") {
+      const at = spec.fields.findIndex((x) => x.key === "postcode");
+      // Only a postcode we filled in ourselves (or none yet) may be replaced by one found in the address.
+      const open = at > i && (autoPostcode || !(next.postcode ?? "").trim());
+      const found = open ? splitPostcode(v.trim()) : null;
+      if (found) {
+        next = { ...next, address: found.address, postcode: found.postcode };
+        step = at + 1;
+        auto = true;
+        setNote(`Postcode ${found.postcode} taken from your address.`);
+      }
+    }
+    if (!auto) setNote(null);
+    setAutoPostcode(auto);
     setValues(next);
-    if (last) void onAnswer(next);
-    else setI(i + 1);
+    if (step >= total) void onAnswer(next);
+    else setI(step);
   }
 
   let control: React.ReactNode;
@@ -213,18 +231,24 @@ function StageForm({
           </label>
         )}
         {f.hint && <p className="mt-1.5 text-sm text-muted">{f.hint}</p>}
+        {note && <p className="mt-1.5 text-sm text-brand">{note}</p>}
         <div className="mt-6">{control}</div>
       </div>
       <ErrorLine message={problem ?? error} />
       <OkRow
         disabled={f.required && !value.trim()}
-        busy={busy && last}
+        busy={busy && i === total - 1}
         label={!f.required && !value.trim() ? "Skip" : "OK"}
         onBack={
           i > 0
             ? () => {
                 setProblem(null);
-                setI(i - 1);
+                setNote(null);
+                // Back over a postcode we filled in ourselves lands on the address, with the postcode put back in it so it can be edited there.
+                if (autoPostcode && spec.fields[i - 1]?.key === "postcode") {
+                  setValues((s) => ({ ...s, address: `${s.address ?? ""}, ${s.postcode ?? ""}` }));
+                  setI(i - 2);
+                } else setI(i - 1);
               }
             : undefined
         }

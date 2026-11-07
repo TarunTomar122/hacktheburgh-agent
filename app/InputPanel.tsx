@@ -2,9 +2,10 @@
 
 import { useId, useState } from "react";
 import {
-  isEmail,
+  emailProblem,
   isPhone,
   isPostcode,
+  splitPostcode,
   outcomeSentence,
   type FormField,
   type InputSpec,
@@ -124,15 +125,28 @@ function FormPanel({
   const set = (k: string, v: string) => setValues((s) => ({ ...s, [k]: v }));
 
   function submit() {
+    // A postcode typed inside the address fills the postcode field (D44).
+    const all = { ...values };
+    if (spec.fields.some((f) => f.key === "postcode") && !(all.postcode ?? "").trim()) {
+      const found = splitPostcode(all.address ?? "");
+      if (found) {
+        all.address = found.address;
+        all.postcode = found.postcode;
+        setValues(all);
+      }
+    }
     for (const f of spec.fields) {
-      const v = (values[f.key] ?? "").trim();
+      const v = (all[f.key] ?? "").trim();
       if (f.required && !v) return setProblem(`Please fill in: ${f.label.replace(/\?$/, "")}.`);
       if (v && f.kind === "postcode" && !isPostcode(v)) return setProblem("That postcode does not look right. It should look like EH1 1AA.");
       if (v && f.kind === "tel" && !isPhone(v)) return setProblem("That telephone number does not look right. Use digits only, for example 07700 900123.");
-      if (v && f.kind === "email" && !isEmail(v)) return setProblem("That email address does not look right. It should look like name@example.com.");
+      if (v && f.kind === "email") {
+        const bad = emailProblem(v);
+        if (bad) return setProblem(bad);
+      }
     }
     setProblem(null);
-    onAnswer(values);
+    onAnswer(all);
   }
 
   return (

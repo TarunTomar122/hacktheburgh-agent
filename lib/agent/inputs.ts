@@ -60,6 +60,13 @@ export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboardi
  */
 export function normaliseFacts(f: CaseFacts): CaseFacts {
   const out = { ...f };
+  if (out.address && blank(out.postcode)) {
+    const s = splitPostcode(out.address);
+    if (s) {
+      out.address = s.address;
+      out.postcode = s.postcode;
+    }
+  }
   if (out.postcode !== null) out.postcode = formatPostcode(out.postcode);
   if (out.preferredContact === "Email" && out.emailRiskAccepted === false) {
     out.preferredContact = null;
@@ -72,14 +79,55 @@ export function normaliseFacts(f: CaseFacts): CaseFacts {
 // ---------------------------------------------------------------- validation
 
 const POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Email: the shape RFC 5321 allows in practice, plus a catch for the typos people actually make (D44).
+const EMAIL_LOCAL = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
+const DOMAIN_LABEL = /^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
+const TLD = /^([A-Za-z]{2,24}|xn--[A-Za-z0-9-]{2,59})$/;
+const EMAIL_SHAPE_MESSAGE = "That email address does not look right. It should look like name@example.com.";
+/** Domains that are almost certainly a slip for a well-known one. A real address at one of these is very unlikely. */
+const DOMAIN_TYPOS: Record<string, string> = {
+  "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gmaill.com": "gmail.com", "gmail.con": "gmail.com", "gmail.cm": "gmail.com", "gmail.co": "gmail.com", "gnail.com": "gmail.com",
+  "hotmial.com": "hotmail.com", "hotmai.com": "hotmail.com", "hotmal.com": "hotmail.com", "hotmail.con": "hotmail.com",
+  "outlok.com": "outlook.com", "outlook.con": "outlook.com", "yaho.com": "yahoo.com", "yahooo.com": "yahoo.com", "yahoo.con": "yahoo.com",
+  "iclod.com": "icloud.com", "icoud.com": "icloud.com", "icloud.con": "icloud.com",
+};
+const TLD_TYPOS = new Set(["con", "cmo", "vom", "comm", "cim", "ocm", "xom"]);
+
+/** Why an email address is not acceptable, in plain words, or null if it is. Checks the shape only: we cannot know the mailbox exists. */
+export function emailProblem(v: string): string | null {
+  const t = v.trim();
+  const at = t.indexOf("@");
+  if (at < 1 || at !== t.lastIndexOf("@") || t.length > 254) return EMAIL_SHAPE_MESSAGE;
+  const local = t.slice(0, at);
+  const domain = t.slice(at + 1).toLowerCase();
+  if (local.length > 64 || !EMAIL_LOCAL.test(local)) return EMAIL_SHAPE_MESSAGE;
+  const labels = domain.split(".");
+  if (labels.length < 2 || !labels.every((l) => DOMAIN_LABEL.test(l)) || !TLD.test(labels[labels.length - 1])) return EMAIL_SHAPE_MESSAGE;
+  const fix = DOMAIN_TYPOS[domain];
+  if (fix) return `Did you mean ${local}@${fix}? "${domain}" looks like a typing slip.`;
+  if (TLD_TYPOS.has(labels[labels.length - 1])) return `The ending ".${labels[labels.length - 1]}" looks like a typing slip. Please check the part after the last dot.`;
+  return null;
+}
 
 export function formatPostcode(v: string): string {
   const t = v.replace(/\s+/g, "").toUpperCase();
   return POSTCODE.test(t) ? `${t.slice(0, -3)} ${t.slice(-3)}` : v.trim();
 }
 export const isPostcode = (v: string) => POSTCODE.test(v.trim());
-export const isEmail = (v: string) => EMAIL.test(v.trim());
+export const isEmail = (v: string) => emailProblem(v) === null;
+
+const POSTCODE_IN_TEXT = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/gi;
+/**
+ * A UK postcode typed inside an address ("14 Gorgie Road, Edinburgh EH11 2LA"): returns the address without it and the postcode, so we never ask for it again (D44).
+ * Takes the last one that is a valid postcode. Null if there is none, or if the address would be left empty.
+ */
+export function splitPostcode(address: string): { address: string; postcode: string } | null {
+  const hits = [...address.matchAll(POSTCODE_IN_TEXT)].filter((m) => isPostcode(m[0]));
+  const hit = hits[hits.length - 1];
+  if (!hit || hit.index === undefined) return null;
+  const rest = (address.slice(0, hit.index) + " " + address.slice(hit.index + hit[0].length)).replace(/\s+/g, " ").trim().replace(/[\s,;.-]+$/, "").replace(/^[\s,;.-]+/, "");
+  return rest ? { address: rest, postcode: formatPostcode(hit[0]) } : null;
+}
 /** Digits, spaces, brackets, hyphens and a leading +, with 10 to 13 digits. */
 export function isPhone(v: string): boolean {
   const t = v.trim();
@@ -99,7 +147,10 @@ export function dateMode(v: string): DateMode {
 export function validatePatch(p: Partial<CaseFacts>): string | null {
   if (p.postcode != null && !isPostcode(p.postcode)) return "That postcode does not look right. It should look like EH1 1AA.";
   if (p.phone != null && !isPhone(p.phone)) return "That telephone number does not look right. Use digits only, for example 07700 900123.";
-  if (p.email != null && !isEmail(p.email)) return "That email address does not look right. It should look like name@example.com.";
+  if (p.email != null) {
+    const problem = emailProblem(p.email);
+    if (problem) return problem;
+  }
   if (p.events) {
     const today = new Date().toISOString().slice(0, 10);
     for (const e of p.events) {

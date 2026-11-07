@@ -66,6 +66,8 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 - **Progress:** big serif percentage, thin bar, "N of M milestones", and "Next: ...". Milestones are defined in `app/case/progress.ts`. Honest rules: only things we can know (profile data, the agent reaching the review page) plus self-reported "I've pressed Send". Steps not built count as milestones that cannot be done yet, so the percentage cannot reach 100% early.
 
 ## Onboarding screens (D41)
+Contact form (D44): a postcode found in the address skips the postcode screen and the next screen carries a small brand-coloured note saying so.
+
 Each interview question is a full screen under the header: heading in `.display` (32-40 px, 26-30 px if the question is long), input below, `OK` + "or press Enter" (`OkRow`), errors as a red line under the input. Inputs: `.big-input` (serif light, 2px underline, brand on focus), `.choice-row` with `.keycap` (A, B, C) or `.check`. A 4 px brand progress bar sits under the stripes. Components: `app/StageInputs.tsx`, `app/StageControls.tsx`; `DateField` takes `big`.
 
 ## Landing screen (D40)

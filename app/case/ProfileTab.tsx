@@ -1,7 +1,7 @@
 "use client";
 
 import { missingRequired, type CaseFacts } from "../../lib/agent/facts";
-import { EMAIL_DISCLAIMER, formatPostcode, isEmail, isPhone, isPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
+import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
 import { clearProfile, updateFacts, type Profile } from "../../lib/profile";
 import { ArrowLeftIcon, Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
@@ -86,7 +86,20 @@ export default function ProfileTab({ profile, onClose, onDeleted }: { profile: P
               <input className={input} value={text("lastName")} onChange={(e) => set("lastName")(e.target.value)} />
             </Field>
             <Field label="Address" className="col-span-2">
-              <input className={input} value={text("address")} onChange={(e) => set("address")(e.target.value)} />
+              <input
+                className={input}
+                autoComplete="street-address"
+                value={text("address")}
+                onChange={(e) => set("address")(e.target.value)}
+                onBlur={(e) => {
+                  // A postcode typed inside the address goes to the postcode field, if that is empty (D44).
+                  const found = !f.postcode?.trim() ? splitPostcode(e.target.value) : null;
+                  if (found) {
+                    set("address")(found.address);
+                    set("postcode")(found.postcode);
+                  }
+                }}
+              />
             </Field>
             <Field label="Postcode" problem={f.postcode && !isPostcode(f.postcode) ? "This does not look like a UK postcode, for example EH1 1AA." : null}>
               <input
@@ -102,7 +115,7 @@ export default function ProfileTab({ profile, onClose, onDeleted }: { profile: P
             <Field label="Telephone" problem={f.phone && !isPhone(f.phone) ? "Use digits only, for example 07700 900123." : null}>
               <input type="tel" inputMode="tel" autoComplete="tel" className={input} value={text("phone")} onChange={(e) => set("phone")(e.target.value)} />
             </Field>
-            <Field label="Email" className="col-span-2" problem={f.email && !isEmail(f.email) ? "This does not look like an email address." : null}>
+            <Field label="Email" className="col-span-2" problem={f.email ? emailProblem(f.email) : null}>
               <input type="email" inputMode="email" autoComplete="email" className={input} value={text("email")} onChange={(e) => set("email")(e.target.value)} />
             </Field>
             <Field label="Complaint is about">
