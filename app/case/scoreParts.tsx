@@ -79,6 +79,31 @@ export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "m
   );
 }
 
+/**
+ * One reason for the suggested track as a plain tick box (D50): ticked if it fits what they told us, empty if not.
+ * No points and no bar: the numbers only fed the fit % and read as more exact than they are. A reason we could not
+ * judge ("unknown") is an empty box with a short note. The full sentence is in the tooltip.
+ */
+export function CheckRow({ row }: { row: Pick<ScoreItem, "label" | "status" | "evidence"> }) {
+  const on = row.status === "yes";
+  return (
+    <li title={row.evidence} className="flex items-start gap-3 py-2 text-[14px] leading-5">
+      <span aria-hidden className={cx("mt-px flex size-[18px] shrink-0 items-center justify-center rounded-[4px] border", on ? "border-teal bg-teal text-white" : "border-faint bg-white")}>
+        {on && (
+          <svg viewBox="0 0 12 12" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2.5 6.5l2.5 2.5 4.5-5.5" />
+          </svg>
+        )}
+      </span>
+      <span className={on ? "text-ink" : "text-ink-2"}>
+        {row.label}
+        <span className="sr-only">{on ? ": yes" : row.status === "unknown" ? ": not clear" : ": no"}</span>
+        {row.status === "unknown" && <span className="block text-xs text-muted">Not clear from your story.</span>}
+      </span>
+    </li>
+  );
+}
+
 export function StatsLine({ stats, inline }: { stats: Stats; inline?: boolean }) {
   const text = `${stats.agents} agents · ${stats.sites} sites · ${stats.pages} pages · ${stats.actions} actions`;
   return inline ? <span className="tabular-nums text-muted">{text}</span> : <div className="text-xs tabular-nums text-muted">{text}</div>;

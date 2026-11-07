@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/track";
 import { setTrack, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
-import { FitRing, ScoreRow } from "./scoreParts";
+import { CheckRow, FitRing } from "./scoreParts";
 import { STEPS } from "./steps";
 
 /**
@@ -76,7 +76,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
             <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Why we suggest it</div>
             <ul>
               {rec.tracks[best].reasons.map((r) => (
-                <ScoreRow key={r.label} row={r} />
+                <CheckRow key={r.label} row={r} />
               ))}
             </ul>
           </div>

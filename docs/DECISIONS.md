@@ -224,4 +224,9 @@ Why: the demo does not file a real complaint, so the demo needs a way past step 
 Why: Om saw the profile page with a missing contact method, with no path chosen; after the interview the user should see the suggestion, and only someone who takes the complaint path is asked how NHS Lothian should reply (that question was already moved to step 1 in D42).
 **Limits:** the profile page itself still has the contact-method field; it is reachable from the header's profile button at any time and is not asked for until step 1. `progress.ts` still counts "Your details are complete" with `missingRequired`, so that checklist line on the compensation path waits for a contact method it does not need (not changed here).
 
-<!-- Add new entries above this line. Next number: D50 -->
+**D50 · 2026-11-07 · Om (requested), built by Claude · decided**
+**"Why we suggest it" shows tick boxes, not points.** On the suggestion page (`app/case/TrackChoice.tsx`) each reason is a plain row, ticked (teal) when it fits what the user told us and an empty box when it does not (`CheckRow` in `app/case/scoreParts.tsx`). No "15/15", no bar. A reason the AI could not judge is an empty box with "Not clear from your story." The sentence that used to open on click is now the tooltip. The fit % ring stays.
+Why: Om: the points looked exact and told the user nothing more than a tick; four of the six rows were already yes or no (a ticked outcome box gets full points, an unticked one gets zero), and the other two come from an AI estimate, so a "16/20" suggested more precision than there is.
+**Not changed:** the scoring in `lib/agent/track.ts` (the points still make the fit %, and the recommendation still goes to the higher fit), and the step 3 firm score rows (`ScoreRow`), which still show points and bars. The fit % can no longer be added up from what is on screen; if that is a problem, the next step is to drop the % as well.
+
+<!-- Add new entries above this line. Next number: D51 -->
