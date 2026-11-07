@@ -28,7 +28,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 **Source of truth, in order:** `docs/DECISIONS.md` > `docs/ACTIVE_WORK.md` > `docs/PROGRESS.md` > `docs/PROJECT.md` > `docs/NOT_DOING.md` > code comments > your own memory. If your memory or a chat message disagrees with the docs, the docs win until a new decision entry says otherwise.
 
 ### Start of every session
-1. `git pull`. Then read `docs/DECISIONS.md`, `docs/ACTIVE_WORK.md`, the top of `docs/PROGRESS.md` and the Discrepancies table.
+1. `git pull`. Then read `docs/COMPLEXITY_BACKLOG.md` (including its "Last updated" date), `docs/DECISIONS.md`, `docs/ACTIVE_WORK.md`, the top of `docs/PROGRESS.md` and the Discrepancies table.
 2. **Claim your area** in `docs/ACTIVE_WORK.md`. If someone else holds it, talk to them first.
 3. Tell the human what you understood the current state to be, in a few lines, before you change anything.
 
@@ -37,9 +37,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 2. **Re-read what changed while you worked:** `git diff <your-last-pulled-commit>..HEAD -- AGENTS.md AGENT.md docs/` and skim new commits touching `lib/`, `app/`.
 3. **Compare your change against the docs.** Ask: does it contradict a settled decision? Duplicate or collide with something in `ACTIVE_WORK.md` or someone's new code? Rely on a claim `PROJECT.md` marks unverified? Change a file someone else has claimed?
 4. **Flag every discrepancy.** A discrepancy is any difference between: docs and reality; two docs; your change and a decision; two people's in-flight work. Add a row to the Discrepancies table in `docs/PROGRESS.md` (status `open`), **and** state it plainly in your message to the human. Do not quietly fix someone else's work, and do not quietly override a decision. If you must deviate, add a superseding entry to `docs/DECISIONS.md` first.
-5. **Update the docs in the same commit as the code:** `PROGRESS.md` (what you did, tried, learned, and why), `DECISIONS.md` (anything you chose), `PROJECT.md` (anything you built or verified), `ACTIVE_WORK.md` (release or hand off your area).
+5. **Update the docs in the same commit as the code:** `PROGRESS.md` (what you did, tried, learned, and why), `DECISIONS.md` (anything you chose), `PROJECT.md` (anything you built or verified), `ACTIVE_WORK.md` (release or hand off your area), and `COMPLEXITY_BACKLOG.md` if you tested a site, hit an obstacle or changed an item (see below).
 6. Run `npx tsc --noEmit` and `npx eslint .`.
 7. Push. If the push is rejected, go back to step 1. **Never force-push.**
+
+### The complexity backlog (D23)
+`docs/COMPLEXITY_BACKLOG.md` is the shared plan for making the workflow genuinely complex **in the browser**. Three rules:
+1. **Read it at the start of every session**, with `git pull` first, alongside `docs/DECISIONS.md` and `docs/ACTIVE_WORK.md`.
+2. **Whenever you test a site, hit an obstacle or change an item's status, update the backlog in the same commit.** Mark anything you have not verified as `untested`. Never upgrade a status you have not run.
+3. **At least once a day, or when a work session ends, refresh the statuses and the "Last updated" date** at the top of the file.
 
 ### Writing things down
 - **Log what you tried, including failures, and why.** A failed attempt that is not written down will be repeated by someone else.
@@ -61,6 +67,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | `AGENT.md` | How the agent works: interview, draft, browser loop, safety rules, entry points |
 | `docs/PROGRESS.md` | Living log of what was done, tried and learned; open discrepancies; open questions |
 | `docs/DECISIONS.md` | Append-only decision log |
+| `docs/COMPLEXITY_BACKLOG.md` | The six items that make the workflow genuinely complex in the browser, with honest status and owners |
 | `docs/NOT_DOING.md` | Ideas considered and rejected, with reasons |
 | `docs/PROJECT.md` | Status, verified site facts, gotchas, unverified claims |
 | `docs/ACTIVE_WORK.md` | Who is working on what right now |

@@ -15,6 +15,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 | Step 4: legal aid check | unclaimed | Not started | | Site verified |
 | Step 5: solicitor enquiries | unclaimed | Not started | | Three firm forms confirmed to exist |
 | Step 6: case file | unclaimed | Not started | | |
+| Complexity backlog upkeep | unclaimed (everyone updates; someone refreshes statuses and the date daily or at session end) | Ongoing | `docs/COMPLEXITY_BACKLOG.md` | See D23 and the three rules in `AGENTS.md`. Items 1-6 are each unclaimed; claim one by naming yourself in its Owner field and adding a row here |
 | Email reading (connector) | unclaimed | Not started | | See D13 |
 | Demo prep: backup video, seeded inbox | unclaimed | Not started | | |
 

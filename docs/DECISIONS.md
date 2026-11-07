@@ -93,4 +93,8 @@ Why: 10/10 on the benchmark on the second run (7/10 on the first, with one real 
 Keep `scripts/bench.ts` as the regression suite for the browser agent. Run `npm run bench` before changing `observe.ts`, `decisionAgent.ts`, `browser.ts` or the values/goal wording, and log any drop in `docs/PROGRESS.md`. Add a task for each new site you automate.
 Why: it caught a real navigation crash and two bad checks within minutes.
 
-<!-- Add new entries above this line. Next number: D23 -->
+**D23 · 2026-11-07 · Tarun (go-ahead via the parent thread), recorded by Claude · decided**
+Adopt `docs/COMPLEXITY_BACKLOG.md` as the shared plan for making the workflow complex **in the browser**, not padded. Six items, in suggested order: (1) vet law firms in depth, (5) show the obstacles we already handle, (2) work out where to complain or (3) search SPSO decisions (probe by hand for 15 minutes first), (4) a second persona. Item 6 (SLAB result feeds a firm form) slots in when steps 4 and 5 are wired together. **Avoid** the GMC register (results never loaded), more same-shape forms, and steps that are just code with a browser opened around them. Every agent follows three rules in `AGENTS.md`: read the backlog at session start, update it in the same commit whenever a site is tested or an item changes, and refresh statuses and the date daily or at session end. The items are proposed work, not commitments; owners start unclaimed.
+Why: the track scores browser-use complexity, and our honest assessment is that the NHS form and the ombudsman checker are easy. These items are where the real difficulty is, and a shared, honest status list stops people duplicating or overstating it.
+
+<!-- Add new entries above this line. Next number: D24 -->

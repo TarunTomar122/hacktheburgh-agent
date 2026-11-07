@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Claude (from the parent thread, with Tarun's go-ahead) · DONE · Complexity backlog recorded (D23)
+Added `docs/COMPLEXITY_BACKLOG.md` (six items with status, owner and why each is real browser complexity), three rules in `AGENTS.md` (read at session start; update with every site test or status change, marking unverified items `untested`; refresh statuses and the date daily or at session end), an `ACTIVE_WORK.md` row for backlog upkeep, and D23. Statuses were set from what we have actually run; anything that came only from the parent thread's text is labelled unverified in the backlog (for example, the GP-complaints page, the claim that Kennedys/TLT/Burges Salmon act for the NHS or insurers, and whether SPSO has a searchable decisions archive).
+
 ### 2026-11-07 · Tarun + Claude · DONE · Decisions API (Luna) adopted as the browser engine (D16, D21)
 **Why we tried it:** Tarun wanted to know if a fast decision model can drive the browser agent. The inspiration was TypeSafe's Jev; OpenAI's Decisions API is a comparable model with no waitlist. Tarun's bar: "as long as it's good enough, use it" - so we kept the test lean and did **not** run a full head-to-head against the tool loop.
 
@@ -73,6 +76,7 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 | 1 | 2026-11-07 | Claude | I logged "Irwin Mitchell Scotland page has no form". Wrong: the form loads lazily and is on that page. The original claim (form exists) was right. | **resolved** 2026-11-07: docs corrected, benchmark confirms the form is found and filled |
 | 2 | 2026-11-07 | Claude | `DECISIONS.md` D7 and `AGENT.md` say the agent can **never** click submit. The benchmark needs "Next"/search buttons on read-only pages, which are submit-type. | **resolved** 2026-11-07: D17 `allowSubmit` implemented and used by the SLAB, SPSO and Law Society benchmark tasks only |
 | 3 | 2026-11-07 | Claude | Guide says Decisions output tokens are free; model page lists output at $0.5/M. | open: unresolved, cost numbers in benchmark use measured token counts |
+| 4 | 2026-11-07 | Claude | The handoff text for backlog item 1 said Irwin Mitchell's enquiry form "sits on a separate contact page". The benchmark shows the form loads **lazily on the same page** and also exists at `/contact-us`. | **resolved** 2026-11-07: the backlog uses the corrected wording |
 
 ## Open questions
 
