@@ -18,6 +18,7 @@ import TrackBar from "./TrackBar";
 import TrackChoice from "./TrackChoice";
 import ComplaintEmail from "./ComplaintEmail";
 import ContactLawyersStep from "./ContactLawyersStep";
+import { milestones } from "./progress";
 import StepAside from "./StepAside";
 import UnsupportedComplaint from "./UnsupportedComplaint";
 import { supportsLothian } from "../../lib/agent/complaintScope";
@@ -48,7 +49,12 @@ export default function CasePage() {
   // D42: one track at a time. Before a track is chosen, the page shows the recommendation instead of steps.
   const chosen = profile.track?.chosen ?? null;
   const emailMode = chosen === "complaint" && profile.track?.complaintMode === "email";
-  const active = chosen && picked !== null && TRACKS[chosen].steps.includes(picked) ? picked : chosen ? TRACKS[chosen].steps[0] : 1;
+  // Which step opens (D75): the one the person picked this visit, otherwise the first step of the track that still has something to do (so a
+  // case saved to the account reopens where it was left, on any device), otherwise the last step once everything is done.
+  const trackSteps = chosen ? TRACKS[chosen].steps : [];
+  const ms = milestones(profile);
+  const resume = trackSteps.find((s) => ms.some((m) => m.step === s && !m.done)) ?? trackSteps[trackSteps.length - 1] ?? 1;
+  const active = chosen && picked !== null && trackSteps.includes(picked) ? picked : chosen ? resume : 1;
 
   return (
     <div className="flex h-screen flex-col">
