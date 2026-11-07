@@ -23,7 +23,7 @@ Not in scope for now: booking an expert (solicitor chooses and instructs experts
 ## What exists in the repo
 
 - `lib/agent/*`: see `AGENT.md`. Interview (structured output), draft (text from facts only), browser tool loop (`fill`, `select`, `check`, `click`, `ask_user`, `finish`), NHS Lothian runner.
-- UI: onboarding chat, `/case` with a Profile tab (view and edit every fact, saved in the browser's localStorage) and a steps sidebar. Step 1 shows the draft complaint; the "fill the form" button is disabled.
+- UI: onboarding chat, `/case` with a Profile tab (view and edit every fact, saved in the browser's localStorage) and a steps sidebar. Step 1 now has a draft approval and form-fill button, streamed browser activity, and results with missing fields/questions. Verified through the app on 2026-11-07 with fictional Ailsa data. The filled browser stays open up to 10 minutes for review. Submission remains manual and untested.
 - `/dev`: button that searches the Law Society directory in a headed browser.
 - Dev shortcut: the onboarding page has a **"Skip: use demo patient"** button (dev builds only) that loads the fictional Ailsa Reid from `lib/agent/sample.ts` with a ready-made draft and opens `/case` (D24).
 

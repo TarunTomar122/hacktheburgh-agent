@@ -101,4 +101,8 @@ Why: the track scores browser-use complexity, and our honest assessment is that 
 Add a dev-only "Skip: use demo patient" button on the onboarding page that loads the fictional patient in `lib/agent/sample.ts` (with a ready-made draft) and opens `/case`. Visible when `NODE_ENV !== "production"` or `NEXT_PUBLIC_DEMO_SKIP=1`. The demo patient must stay fictional (example.com email, Ofcom drama-range phone) and is the single source for scripts, the benchmark and this button.
 Why: saves a minute or more per reload while developing steps. It is a developer shortcut, not a product feature; do not present it as part of the user journey.
 
-<!-- Add new entries above this line. Next number: D25 -->
+**D25 · 2026-11-07 · Luigi + Codex · decided**
+Connect the existing NHS browser agent to the Step 1 approval/fill button. Keep the visible filled browser open for review until the user closes it or 10 minutes elapse, then clean up. The API returns completion immediately. The fictional demo still ends before submission, consistent with D14 and D21.
+Why: Luigi requested the NHS form browser workflow, and the backend existed while its UI entry point was disabled.
+
+<!-- Add new entries above this line. Next number: D26 -->

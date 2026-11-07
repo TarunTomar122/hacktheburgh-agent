@@ -6,6 +6,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
+| NHS app integration | Luigi + Codex | Done, idle | `app/case/page.tsx`, `app/api/agent/step1/route.ts`, `lib/agent/nhsLothian.ts` | App button verified with fictional patient. Browser remains open up to 10 minutes for review. |
 | Agent core: interview, draft, NHS form fill (step 1) | Tarun + Claude | **Done, idle** (submit not built) | `lib/agent/*`, `app/api/agent/*` | Step 1 runs on the Decisions engine. Next: steps 2+, or submit (needs D14) |
 | UI: onboarding, profile tab, case view | Tarun | Basic version done; Tarun will rework | `app/page.tsx`, `app/case/*` | Do not restyle without asking |
 | Law Society directory search | Tarun + Claude | Basic search works; sub-category filter and "View details" not done | `lib/directory.ts`, `app/dev/page.tsx` | Needed for step 5 |

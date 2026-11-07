@@ -2,6 +2,8 @@
 
 **Last updated: 2026-11-07** (refresh this date whenever you touch the file; see the rules in `AGENTS.md`).
 
+Session verification (2026-11-07, Codex): NHS form filling now runs from the app's Step 1 button. The fictional patient completed the live form with no missing required fields and stopped before submission. The email consent conditional field was handled. Evidence is recorded in `PROGRESS.md`; the six backlog statuses below are unchanged by this app integration.
+
 **Purpose.** The track scores the *most complicated end-to-end browser-use workflow*. These six items are how we make the workflow genuinely complex **in the browser** instead of padding it. Each one says what is already verified, what is not, and why it counts as real browser work. Added on Tarun's go-ahead (D23); the items are proposed work, not commitments.
 
 **Status words (use exactly these):** `tested` = we ran it against the live site and saw it work; `partly tested` = some parts verified, say which; `untested` = nobody has tried it. If you have not verified something, write `untested`. Never upgrade a status without having run it.

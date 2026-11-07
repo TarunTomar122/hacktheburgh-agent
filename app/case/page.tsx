@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { missingRequired } from "../../lib/agent/facts";
+import type { AgentEvent } from "../../lib/agent/events";
 import { setDraft, useProfile, type Profile } from "../../lib/profile";
 import ProfileTab, { FIELD_LABELS } from "./ProfileTab";
 
@@ -86,8 +87,69 @@ const box =
 function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filling, setFilling] = useState(false);
+  const [progress, setProgress] = useState<string[]>([]);
+  const [result, setResult] = useState<Extract<AgentEvent, { type: "done" }> | null>(null);
   const missing = missingRequired(profile.facts);
   const draft = profile.draft;
+
+  async function fill() {
+    if (!draft || filling) return;
+    setFilling(true);
+    setError(null);
+    setResult(null);
+    setProgress(["Starting the browser agent…"]);
+    try {
+      const res = await fetch("/api/agent/step1", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ facts: profile.facts, draft }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Could not start the browser agent");
+      }
+      if (!res.body) throw new Error("The browser agent returned no progress stream");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let pending = "";
+      let completed = false;
+      function receive(line: string) {
+        if (!line.trim()) return;
+        const event = JSON.parse(line) as AgentEvent | { type: "error"; message: string };
+        if (event.type === "error") throw new Error(event.message);
+        if (event.type === "done") {
+          completed = true;
+          setResult(event);
+        } else {
+          const message = event.type === "status" ? event.message
+            : event.type === "observe" ? `Step ${event.step}: inspecting ${event.fields} page elements`
+            : event.type === "blocked" ? event.reason
+            : `Step ${event.step}: ${event.tool} — ${event.result}`;
+          setProgress((previous) => [...previous.slice(-19), message]);
+        }
+      }
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          pending += decoder.decode(value, { stream: !done });
+          const lines = pending.split("\n");
+          pending = lines.pop() ?? "";
+          lines.forEach(receive);
+          if (done) break;
+        }
+        receive(pending);
+        if (!completed) throw new Error("The browser connection ended before a result. You can retry.");
+      } finally {
+        await reader.cancel().catch(() => {});
+        reader.releaseLock();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilling(false);
+    }
+  }
 
   async function write() {
     setBusy(true);
@@ -132,7 +194,7 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
           <h2 className="text-sm font-medium">Draft complaint</h2>
           <button
             onClick={write}
-            disabled={busy || missing.length > 0}
+            disabled={busy || filling || missing.length > 0}
             className="rounded-md border border-zinc-300 px-3 py-1 text-xs disabled:opacity-40 dark:border-zinc-700"
           >
             {busy ? "Writing…" : draft ? "Write it again" : "Write my draft"}
@@ -141,7 +203,7 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
         {error && <p className="text-sm text-red-600">{error}</p>}
         {!draft && !busy && <p className="text-sm text-zinc-500">We write this from your profile. You can edit every word.</p>}
         {draft && (
-          <div className="space-y-3">
+          <fieldset disabled={filling} className="space-y-3">
             <label className="block space-y-1">
               <span className="text-xs uppercase text-zinc-500">Details of your complaint</span>
               <textarea rows={12} className={box} value={draft.details} onChange={(e) => setDraft({ ...draft, details: e.target.value })} />
@@ -154,18 +216,34 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
               <span className="text-xs uppercase text-zinc-500">What you would like to happen</span>
               <textarea rows={2} className={box} value={draft.outcome} onChange={(e) => setDraft({ ...draft, outcome: e.target.value })} />
             </label>
-          </div>
+          </fieldset>
         )}
       </section>
 
       <section className="flex items-center gap-4 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
         <div className="flex-1 text-sm text-zinc-500">
-          Next, the agent will open the NHS Lothian form in a visible browser and fill it in. You approve before anything is submitted.
+          Review the draft above, then open the NHS form with your saved details. The browser stays open for review for up to 10 minutes. Demo data is for review only.
         </div>
-        <button disabled className="rounded-md bg-black px-4 py-2 text-sm text-white opacity-40 dark:bg-white dark:text-black">
-          Fill in the NHS form · coming next
+        <button onClick={fill} disabled={busy || filling || missing.length > 0 || !draft?.details.trim() || !draft?.location.trim()} className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-black">
+          {filling ? "Filling the form…" : "Approve draft and fill NHS form"}
         </button>
       </section>
+      {progress.length > 0 && (
+        <section aria-label="Browser agent progress" className="space-y-2 text-sm text-zinc-500">
+          <h2 className="font-medium">Browser activity</h2>
+          <ol>{progress.map((message, i) => <li key={i}>{message}</li>)}</ol>
+        </section>
+      )}
+      {result && (
+        <section role="status" className="space-y-2 rounded-lg border border-zinc-300 p-4 text-sm dark:border-zinc-700">
+          <h2 className="font-medium">{result.status === "ready_to_submit" ? "Form filled and ready for review" : "The form needs your attention"}</h2>
+          <p>{result.summary}</p>
+          {result.question && <p>{result.question}</p>}
+          {result.unfilled.length > 0 && <p>Still needed — {result.unfilled.join(", ")}</p>}
+          <p>Nothing has been submitted. Review the separate browser window.</p>
+          {result.status !== "ready_to_submit" && <button onClick={openProfile} className="underline">Review your profile before retrying</button>}
+        </section>
+      )}
     </div>
   );
 }

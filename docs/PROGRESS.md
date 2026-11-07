@@ -8,6 +8,11 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Luigi + Codex · DONE · Connect NHS fill to the app
+Connected the disabled Step 1 button to the existing NDJSON API and Decisions agent. The UI handles split stream chunks, errors, missing information and completion, and blocks draft edits/repeated clicks while filling. The API rejects incomplete profiles/empty required draft text and tolerates disconnected stream readers. Added an optional browser review period with cleanup after window close or 10 minutes; CLI behavior is preserved.
+
+Verified through localhost:3000: clicked the demo shortcut and approval/fill button, filled the actual NHS form in a separate visible browser, and received `ready_to_submit` with no unfilled required fields. Screenshot visually inspected. Evidence in ignored `.runs/2026-11-07T16-18-56-428Z/` and `.runs/nhs-ui-result.png`. Nothing submitted. TypeScript and ESLint passed. Node initially failed under the filesystem sandbox; checks succeeded with approved elevated execution. Starting another dev server failed because the user's server was already running; used that server for the test. Submission and reCAPTCHA remain untested.
+
 ### 2026-11-07 · Claude · DONE · Dev shortcut: "Skip: use demo patient" button (D24)
 Tarun asked for a way to skip onboarding while developing. The onboarding page (`/`) now has a dashed "Skip: use demo patient" button that saves a fictional patient (Ailsa Reid) with a ready-written draft and goes straight to `/case`, so step 1 shows a draft with no model call. Shown in dev; hidden in production builds unless `NEXT_PUBLIC_DEMO_SKIP=1`. The demo data now lives in one place, `lib/agent/sample.ts`, shared by the button, `scripts/agent-nhs.ts` and the benchmark (the NHS benchmark task still passes after the refactor). Tested in a real browser: the skip lands on `/case` with the draft filled, the Profile tab is complete with consent ticked, the data survives a reload, no console errors. The demo conversation is a single note saying no interview took place. The draft text is static and was not written by the model on this run.
 
@@ -76,6 +81,7 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 
 | # | Date | Found by | What disagrees | Status |
 |---|---|---|---|---|
+| 5 | 2026-11-07 | Codex | Backend NHS filling existed, but the app button was disabled and the browser closed after four seconds. | **resolved**: connected button and stream, added review period, verified through app |
 | 1 | 2026-11-07 | Claude | I logged "Irwin Mitchell Scotland page has no form". Wrong: the form loads lazily and is on that page. The original claim (form exists) was right. | **resolved** 2026-11-07: docs corrected, benchmark confirms the form is found and filled |
 | 2 | 2026-11-07 | Claude | `DECISIONS.md` D7 and `AGENT.md` say the agent can **never** click submit. The benchmark needs "Next"/search buttons on read-only pages, which are submit-type. | **resolved** 2026-11-07: D17 `allowSubmit` implemented and used by the SLAB, SPSO and Law Society benchmark tasks only |
 | 3 | 2026-11-07 | Claude | Guide says Decisions output tokens are free; model page lists output at $0.5/M. | open: unresolved, cost numbers in benchmark use measured token counts |

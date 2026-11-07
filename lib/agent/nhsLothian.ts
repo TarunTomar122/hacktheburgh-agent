@@ -33,10 +33,11 @@ export type Step1Result = BrowserRun & { screenshot?: string; runDir: string };
  * Fill the NHS Lothian form in a visible browser and STOP before submitting.
  * Submitting is deliberately not implemented yet: it needs a human approval path and a decision on test data.
  */
-export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent } = {}): Promise<Step1Result> {
+export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; keepOpen?: boolean } = {}): Promise<Step1Result> {
   const runDir = path.join(process.cwd(), ".runs", new Date().toISOString().replace(/[:.]/g, "-"));
   const emit = makeLogger(runDir, opts.onEvent);
   const { browser, page } = await openSession();
+  let reviewing = false;
   try {
     emit({ type: "status", message: "Opening the NHS Lothian form" });
     await page.goto(NHS_LOTHIAN_FORM, { waitUntil: "domcontentloaded" });
@@ -56,9 +57,15 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
     const screenshot = path.join(runDir, "final.png");
     await page.screenshot({ path: screenshot, fullPage: true });
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
-    if (!process.env.HEADLESS) await page.waitForTimeout(4000); // leave the filled form visible
+    if (opts.keepOpen && process.env.HEADLESS !== "1") {
+      reviewing = true;
+      // Return the result immediately while giving the user time to inspect the form.
+      void page.waitForEvent("close", { timeout: 10 * 60 * 1000 })
+        .catch(() => {})
+        .then(() => browser.close().catch(() => {}));
+    } else if (process.env.HEADLESS !== "1") await page.waitForTimeout(4000);
     return { ...run, screenshot, runDir };
   } finally {
-    await browser.close();
+    if (!reviewing) await browser.close();
   }
 }
