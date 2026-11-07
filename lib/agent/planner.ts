@@ -211,18 +211,32 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
   } else await page.goto(SEARCH + encodeURIComponent(query), { waitUntil: "domcontentloaded", timeout: 20000 });
   await page.waitForLoadState("domcontentloaded");
   await page.waitForTimeout(2500);
+  // A bot check on the search page: wait once for it to clear by itself, then say search was blocked (never pretend "no results").
+  const blocked = async () => /captcha|verify you are (a )?human|unusual traffic|are you a robot/i.test(await page.evaluate(() => document.body.innerText.slice(0, 3000)).catch(() => ""));
+  if (await blocked()) {
+    await note.log("recover", "The search engine showed a bot check; waiting for it to clear", { shot: true });
+    await page.waitForTimeout(6000);
+    if (await blocked()) {
+      await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+      await page.waitForTimeout(3000);
+      if (await blocked()) throw new Error("Blocked: the search engine asked for a human check");
+    }
+  }
   const results = await page.evaluate(() => {
-    const seen = new Set<string>();
+    const perHost = new Map<string, number>();
+    const urls = new Set<string>();
     const out: { title: string; url: string; snippet: string }[] = [];
     for (const a of [...document.querySelectorAll("a[href^='http']")] as HTMLAnchorElement[]) {
       const host = new URL(a.href).hostname;
-      if (/brave\.com|bing\.com|google\.|youtube\.com|facebook\.com/.test(host) || seen.has(host)) continue;
+      // Up to 3 results per site: one big site (a national health portal) must not hide its own deeper pages.
+      if (/brave\.com|bing\.com|google\.|youtube\.com|facebook\.com/.test(host) || (perHost.get(host) ?? 0) >= 3 || urls.has(a.href.replace(/#.*$/, ""))) continue;
       const title = (a.innerText || "").replace(/\s+/g, " ").trim();
       if (title.length < 12) continue;
-      seen.add(host);
+      perHost.set(host, (perHost.get(host) ?? 0) + 1);
+      urls.add(a.href.replace(/#.*$/, ""));
       const box = a.closest("div[class*=snippet], li, article, div") as HTMLElement | null;
       out.push({ title: title.slice(0, 100), url: a.href, snippet: (box?.innerText ?? "").replace(/\s+/g, " ").slice(0, 220) });
-      if (out.length >= 8) break;
+      if (out.length >= 10) break;
     }
     return out;
   });

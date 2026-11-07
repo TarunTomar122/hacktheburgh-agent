@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CREW, type CrewId } from "../../lib/agent/plannerTypes";
 import type { RouteMap } from "../../lib/agent/routeTypes";
 import type { Profile } from "../../lib/profile";
@@ -36,8 +36,25 @@ export default function DiscoveryRun({ profile, saved, onDone }: { profile: Prof
     onDone(r.route, state.demo);
   }, [state.status, state.discovery, state.demo, onDone]);
 
+  // Demo controls only when a recorded discovery run exists.
+  const [hasDemo, setHasDemo] = useState(false);
+  useEffect(() => {
+    void fetch("/api/agent/plan/demo?flow=discovery").then((r) => setHasDemo(r.ok)).catch(() => {});
+  }, []);
+
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />;
+  // The route map fills in beside the work, one row per part, as soon as a quote checks on an official page.
+  if (live)
+    return (
+      <div className="space-y-6">
+        <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />
+        {state.route && (
+          <div className="mx-auto max-w-6xl">
+            <RouteMapCard route={state.route} compact />
+          </div>
+        )}
+      </div>
+    );
   if (saved && state.status !== "error") return <RouteMapCard route={saved} />;
   const f = profile.facts;
   const where = [f.incidentLocation, (f as { region?: string | null }).region, (f as { country?: string | null }).country].filter(Boolean).join(", ");
@@ -53,14 +70,16 @@ export default function DiscoveryRun({ profile, saved, onDone }: { profile: Prof
       <div className="mt-12 flex flex-col items-center gap-4">
         <Button onClick={() => start(profile.facts, undefined, "discovery")}>Work it out</Button>
         <p className="text-[13px] text-muted">
-          <span className="text-teal">✓</span> Every fact quoted and checked <span className="mx-2 text-fade">·</span> <span className="text-teal">✓</span> Official sources first <span className="mx-2 text-fade">·</span> ≈ 3 min
+          <span className="text-teal">✓</span> Every fact quoted and checked <span className="mx-2 text-fade">·</span> <span className="text-teal">✓</span> Official sources first
         </p>
         {state.status === "error" && <p className="text-sm text-danger">{state.error}</p>}
       </div>
-      <DemoBar>
-        <DemoButton onClick={() => replay({ flow: "discovery" })}>Play a recorded run, fast</DemoButton>
-        <DemoButton onClick={() => replay({ flow: "discovery", toEnd: true })}>Jump to the result</DemoButton>
-      </DemoBar>
+      {hasDemo && (
+        <DemoBar>
+          <DemoButton onClick={() => replay({ flow: "discovery" })}>Play a recorded run, fast</DemoButton>
+          <DemoButton onClick={() => replay({ flow: "discovery", toEnd: true })}>Jump to the result</DemoButton>
+        </DemoBar>
+      )}
     </div>
   );
 }

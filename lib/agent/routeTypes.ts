@@ -48,11 +48,8 @@ export type RouteStep = {
 
 export type RouteMap = { runId: string; place: Place; system: string; summary: string; steps: RouteStep[]; foundAt: string };
 
-/** confirmed = two checked quotes from different sites, at least one official; likely = one checked official quote. */
+/** confirmed = checked quotes from official pages on two different sites; likely = one; unconfirmed = none. */
 export function confidenceOf(sources: Source[]): RouteStep["confidence"] {
-  const ok = sources.filter((s) => s.checked);
-  const hosts = new Set(ok.map((s) => { try { return new URL(s.url).hostname.replace(/^www\./, ""); } catch { return s.url; } }));
-  if (ok.some((s) => s.official) && hosts.size >= 2) return "confirmed";
-  if (ok.some((s) => s.official)) return "likely";
-  return "unconfirmed";
+  const hosts = new Set(sources.filter((s) => s.checked && s.official).map((s) => { try { return new URL(s.url).hostname.replace(/^www\./, ""); } catch { return s.url; } }));
+  return hosts.size >= 2 ? "confirmed" : hosts.size === 1 ? "likely" : "unconfirmed";
 }

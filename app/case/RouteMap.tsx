@@ -49,12 +49,13 @@ export default function RouteMapCard({ route, compact }: { route: Route; compact
 
 function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; crew: RouteStep["by"]; compact?: boolean }) {
   const [open, setOpen] = useState(false);
-  if (!step)
+  // Nothing checked on an official page: the claimed body stays out of the headline (Cursor review).
+  if (!step || step.confidence === "unconfirmed")
     return (
       <li className="flex items-center gap-4 px-6 py-3 text-[14px] text-muted">
         <CrewMark id={crew} size={28} className="opacity-40 grayscale" />
         <span className="w-36 shrink-0">{label}</span>
-        <span>Not found yet</span>
+        <span>{step ? `Not confirmed yet${step.body ? ` (maybe ${step.body})` : ""}` : "Not found yet"}</span>
       </li>
     );
   const checked = step.sources.filter((x) => x.checked).length;

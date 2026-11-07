@@ -68,6 +68,8 @@ export type CrewFlow<R> = {
   describe: (name: string, args: Record<string, unknown>, out: string) => string;
   /** Run one tool; return what the planner sees. Throwing is caught and shown as a problem. */
   exec: (call: ResponseFunctionToolCall, args: Record<string, unknown>, thought: Thought, kit: CrewKit) => Promise<string>;
+  /** Tools that only write down what others found: run after the browser work of the same turn (so their checks see the pages). */
+  after?: string[];
   /** Did this result count as a failure? (default: text starts with Error / Could not / Blocked) */
   failed?: (name: string, out: string) => boolean;
   /** Build and emit the result at the end. */
@@ -152,7 +154,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
     },
     keep: (p) => void kept.push(p),
   };
-  const isFailed = flow.failed ?? ((_: string, out: string) => /^(Error|Could not|Blocked:|.*failed\b)/.test(out));
+  const isFailed = flow.failed ?? ((_: string, out: string) => /^(Error|Could not|Blocked)\b/.test(out));
 
   let reviewing = false;
   let turns = 0;
@@ -239,7 +241,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         } catch {
           /* handled in exec1 */
         }
-        const key = c.name === "update_plan" ? "0plan" : c.name === "finish" ? "9finish" : c.name === "ask_user" ? "1ask" : flow.who(c.name, args);
+        const key = c.name === "update_plan" ? "0plan" : c.name === "finish" ? "9finish" : c.name === "ask_user" ? "1ask" : flow.after?.includes(c.name) ? "8after" : flow.who(c.name, args);
         groups.set(key, [...(groups.get(key) ?? []), c]);
       }
       const outputs: ResponseInputItem[] = [];
@@ -247,9 +249,10 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       for (const c of plans) outputs.push(await exec1(c));
       const asksNow = groups.get("1ask") ?? [];
       for (const c of asksNow) outputs.push(await exec1(c));
-      const workers = [...groups.entries()].filter(([k]) => !["0plan", "1ask", "9finish"].includes(k));
+      const workers = [...groups.entries()].filter(([k]) => !["0plan", "1ask", "8after", "9finish"].includes(k));
       const done = await Promise.all(workers.map(async ([, cs]) => { const o: ResponseInputItem[] = []; for (const c of cs) o.push(await exec1(c)); return o; }));
       outputs.push(...done.flat());
+      for (const c of groups.get("8after") ?? []) outputs.push(await exec1(c));
       for (const c of groups.get("9finish") ?? []) outputs.push(await exec1(c));
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
     }

@@ -46,7 +46,7 @@ const TOOLS = [
   FINISH_TOOL,
 ];
 
-const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real pages and online forms they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. Your memory may suggest where to look; it is never a source.
+const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real pages and online forms they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. You can only open pages this run found: a search result, or a link or path on a page already opened.
 The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply (countries with several systems, like the UK nations, Australian or US states, differ).
 Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for), Kit (forms: goes through a site to the actual online form and reads its fields; never fills anything here).
 Find, for this place: ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
@@ -64,18 +64,27 @@ How to work:
 Never submit, sign up or log in. Never type the patient's personal details anywhere.`;
 
 export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string } = {}): Promise<DiscoveryResult> {
-  const place = await detectPlace(facts);
+  const detected = await detectPlace(facts);
+  // The country and region the patient confirmed in onboarding win over the model's reading.
+  const f = facts as CaseFacts & { country?: string | null; region?: string | null };
+  const place: Place = { ...detected, country: f.country || detected.country, region: f.region ?? detected.region, why: f.country ? `Confirmed by you: ${[f.region, f.country].filter(Boolean).join(", ")}` : detected.why };
   opts.onEvent?.({ type: "place", place });
   const steps = new Map<RouteKind, RouteStep>();
   const texts = new Map<string, string>(); // url -> page text, for checking quotes
   const keyOf = (u: string) => normUrl(u);
   const remember = (url: string, text: string) => texts.set(keyOf(url), normText(text));
-  /** A quote counts only if code finds it in a page this run opened: whole, or every part of it split at "...". */
+  /** A quote counts only if code finds it in the exact page (by URL) this run opened. */
   const check = (url: string, quote: string) => {
-    const k = keyOf(url);
-    const page = texts.get(k) ?? [...texts.entries()].find(([u]) => u.startsWith(k) || k.startsWith(u))?.[1];
+    const page = texts.get(keyOf(url));
     return !!page && quote.trim().length >= 12 && quoteInText(quote, page);
   };
+  /** Provenance: the crew may only open pages this run found (search results, links on opened pages, explore paths), or other pages on those sites. */
+  const known = new Set<string>();
+  const hostOf = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  const learn = (u: string) => { const h = hostOf(u); if (h) known.add(h); };
+  const allowed = (u: string) => known.has(hostOf(u));
+  const opened = new Set<string>(); // hosts whose pages were really opened (for "official")
+  const fullText = (p: Page) => p.evaluate(() => document.body?.innerText ?? "").catch(() => "");
   let route: RouteMap = { runId: "", place, system: "", summary: "", steps: [], foundAt: "" };
   const publish = (kit: CrewKit) => {
     route = { ...route, runId: kit.runId, steps: ROUTE_KINDS.map((k) => steps.get(k.kind)).filter((x): x is RouteStep => !!x) };
@@ -93,6 +102,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
       firstInput: `Patient's story: ${facts.incidentSummary ?? ""}\nTimeline: ${facts.events.map((e) => `${e.date}: ${e.what}`).join("; ")}\nWhere: ${place.hospital}, ${place.city}, ${place.region}, ${place.country}. (${place.why})`,
       maxTurns: 22,
       who: (name, a) => (name === "record_step" ? "elliot" : whoOf(a)),
+      after: ["record_step"],
       doing: (name, a) => {
         switch (name) {
           case "web_search":
@@ -128,30 +138,46 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
           case "web_search": {
             const r = await kit.inTab(thought, who, "Search", (p, note) => webSearch(p, String(a.query ?? ""), note, kit.track), 60_000);
             if (!r.ok) return `Could not search: ${r.error}`;
+            r.value.forEach((x) => learn(x.url));
             return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
           }
           case "read_page": {
             const url = String(a.url ?? "");
+            if (!allowed(url)) return `Blocked: ${url} was not found in this run. Search for it, or follow a link from a page you opened.`;
             const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
               const v = await readPage(ctxFor(kit, p, note, who), url, String(a.question ?? ""));
-              remember(v.url, await pageText(p));
-              if (v.url !== url) remember(url, await pageText(p));
+              if (!p.isClosed()) {
+                const t = [await pageText(p), await fullText(p)].join("\n");
+                remember(v.url, t);
+                remember(p.url(), t);
+                if (!v.wall) opened.add(hostOf(v.url));
+              }
               return v;
             }, 90_000);
             if (!r.ok) return `Could not read ${url}: ${r.error}`;
             const v = r.value;
+            learn(v.url);
+            v.links.forEach((l) => learn(l.url));
             if (v.wall) return `Blocked: ${v.wall.kind} at ${v.wall.url} (${v.wall.detail})`;
             return `${v.title} (${v.url})\n${v.answer}\nQuotes: ${v.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ") || "none checked"}\nLinks: ${v.links.map((l) => `${l.text} -> ${l.url}`).join("; ")}`;
           }
           case "explore_site": {
             const url = String(a.url ?? "");
+            if (!allowed(url)) return `Blocked: ${url} was not found in this run. Search for it, or follow a link from a page you opened.`;
             const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
               const v = await exploreSite(ctxFor(kit, p, note, who), url, String(a.goal ?? ""), { want: a.want === "form" ? "form" : "page" });
-              if (!p.isClosed()) remember(p.url(), await pageText(p));
+              if (!p.isClosed()) {
+                const t = [await pageText(p), await fullText(p)].join("\n");
+                remember(p.url(), t);
+                remember(v.url, t);
+                if (!v.wall) opened.add(hostOf(p.url()));
+              }
               return v;
-            }, 180_000);
+            }, 150_000);
             if (!r.ok) return `Could not explore ${url}: ${r.error}`;
             const v = r.value;
+            learn(v.url);
+            v.path.forEach((x) => learn(x.url));
             const path = v.path.map((s, i) => `${i + 1}. ${s.via} -> ${s.url}`).join("\n");
             if (!v.ok) return `Not found. ${v.summary}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail}) at ${v.wall.url}` : ""}\nPath:\n${path}`;
             if (v.form) kit.finding(`${host(v.url)}: online form found (${v.form.fields.length} fields${v.form.multiPage ? ", several pages" : ""})`, v.url, who);
@@ -160,7 +186,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
           case "record_step": {
             const kind = String(a.kind) as RouteKind;
             if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
-            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 4).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official, publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            // "official" needs both: the model's judgement of the publisher, and a page on that host really opened in this run.
+            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 4).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),
