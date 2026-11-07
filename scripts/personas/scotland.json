@@ -1,0 +1,36 @@
+{
+ "complainingFor": "me",
+ "title": "Ms",
+ "firstName": "Ailsa",
+ "lastName": "Reid",
+ "address": "14 Example Street, Edinburgh",
+ "postcode": "EH1 1AA",
+ "phone": "07700 900123",
+ "email": "ailsa.reid@example.com",
+ "preferredContact": "Email",
+ "country": null,
+ "region": null,
+ "incidentLocation": "Royal Infirmary of Edinburgh, Accident & Emergency department",
+ "incidentSummary": "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. The pain did not go away. Weeks later a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.",
+ "events": [
+  {
+   "date": "early July 2026",
+   "what": "Fell on outstretched hand and attended A&E at the Royal Infirmary. X-rayed, told it was a sprain, sent home."
+  },
+  {
+   "date": "mid August 2026",
+   "what": "Pain continued. My GP sent me back and a second X-ray showed a scaphoid fracture."
+  },
+  {
+   "date": "November 2026",
+   "what": "The fracture has not healed and I now need surgery."
+  },
+  {
+   "date": "October 2026",
+   "what": "Missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist."
+  }
+ ],
+ "desiredOutcome": "An explanation of what went wrong, treatment or support to put things right and compensation for what happened.",
+ "emailRiskAccepted": true,
+ "medicalRecords": null
+}
