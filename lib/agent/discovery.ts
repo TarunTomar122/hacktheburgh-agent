@@ -1,0 +1,194 @@
+import type { Page } from "playwright";
+import type { CaseFacts } from "./facts";
+import { pageText } from "./legalAid";
+import { webSearch, type Emit } from "./planner";
+import { detectPlace } from "./place";
+import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit } from "./crewRun";
+import { confidenceOf, ROUTE_KINDS, type Place, type RouteKind, type RouteMap, type RouteStep, type Source } from "./routeTypes";
+import type { CrewId, DiscoveryResult } from "./plannerTypes";
+import { exploreSite, normText, normUrl, quoteInText, readPage } from "./workers/explore";
+import type { WorkerCtx } from "./workers/types";
+
+/**
+ * Discovery (night plan, "Elliot anywhere"): the crew works out, live, how the health and legal system works for this
+ * patient's place, and finds the real pages and forms. Nothing about any country or site is in this file: the place
+ * comes from the patient's words, the sites from live search and exploration, and every fact from a quote that code
+ * finds in the page it came from.
+ */
+
+const WHO = { who: { type: "string", enum: ["robin", "iona", "nell", "kit"], description: "Which crew member does this: Robin (rules, bodies, lawyers), Iona (clinical guidance), Nell (funding), Kit (forms)." } };
+
+const TOOLS = [
+  PLAN_TOOL,
+  tool("web_search", "Search the web in a browser tab. Use it to find the official pages; prefer government, health service, ombudsman, regulator, court and law society sites.", { query: { type: "string" }, ...WHO }, ["query", "who"]),
+  tool("read_page", "Open a page and answer a question from it, with short verbatim quotes and links worth following.", { url: { type: "string" }, question: { type: "string" }, ...WHO }, ["url", "question", "who"]),
+  tool("explore_site", "From a page, find your way through the site (menus, links, buttons, its search box) to the page or online form that meets a goal. Reports the path taken, the form's fields, and any wall (login, CAPTCHA, phone or post only).", {
+    url: { type: "string" },
+    goal: { type: "string", description: "e.g. 'the online form to complain about care at <hospital>'" },
+    want: { type: "string", enum: ["form", "page"] },
+    ...WHO,
+  }, ["url", "goal", "want", "who"]),
+  tool("record_step", "Record one part of the route once you have read it on real pages. Quotes must be copied word for word from pages you opened in this run; code checks them.", {
+    kind: { type: "string", enum: ROUTE_KINDS.map((k) => k.kind) },
+    body: { type: "string", description: "Who: the organisation's name as it calls itself" },
+    what: { type: "string", description: "One plain sentence for the patient" },
+    deadline: { type: "string", description: "The time limit, in the source's words, if there is one" },
+    how: { type: "string", enum: ["online_form", "email", "post", "phone", "login_required", "court", "unknown"] },
+    url: { type: "string", description: "The page or online form found" },
+    wall: { type: "string", description: "Anything that stops an agent: login, CAPTCHA, phone or post only" },
+    requires: { type: "array", items: { type: "string" }, description: "What must happen first, in the source's terms (e.g. the provider's final response)" },
+    applies_if: { type: "string", description: "When this route applies at all (e.g. public care only; a value limit)" },
+    alternatives: { type: "array", items: { type: "string" }, description: "Other routes for the same need" },
+    missing: { type: "array", items: { type: "string" }, description: "Facts we would still need from the patient to use it" },
+    sources: { type: "array", items: { type: "object", properties: { url: { type: "string" }, quote: { type: "string" }, official: { type: "boolean" }, publisher: { type: "string" } }, required: ["url", "quote", "official", "publisher"] } },
+  }, ["kind", "body", "what", "how", "sources"]),
+  ASK_TOOL,
+  FINISH_TOOL,
+];
+
+const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real pages and online forms they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. Your memory may suggest where to look; it is never a source.
+The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply (countries with several systems, like the UK nations, Australian or US states, differ).
+Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for), Kit (forms: goes through a site to the actual online form and reads its fields; never fills anything here).
+Find, for this place: ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
+How to work:
+- Start with update_plan. Give different crew members jobs in the SAME turn so they work at the same time (one tool call each); one member's calls run in order.
+- First find who runs the hospital (it may be a board, trust, district, state agency or company) and PROVE it with a source on the hospital's or provider's own site; check whether the care was public or private, because the routes differ. Then its complaint process, then the independent body above it.
+- Discover how the routes depend on each other, not just a list: what must happen first (requires), when a route applies at all (applies_if), what the alternatives are, and what facts we would still need from the patient (missing). Systems differ: some have no-fault schemes, redress schemes or conciliation bodies instead of court. Do not assume the shape of any other country.
+- Sources can be out of date (schemes get renamed, limits change). When two sources disagree, prefer the body's own current page over third parties and the newer over the older; record the conflict in "what" ("X's page still says ...").
+- When what you read contradicts your plan or your memory, say so with update_plan (drop or replace the step) and follow what the official page says.
+- For complaint and escalation, go all the way to the actual online form with explore_site (want: form) and report its fields or the wall that stops it. The patient will use it.
+- For lawyers, find the official register or directory the profession runs, and how to search it (by area of law and place). For funding, find any official online eligibility checker.
+- record_step as soon as a part is clear, with 1-3 verbatim quotes from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only if it is the body itself or a government, health service, ombudsman, regulator, court or professional body site.
+- Recover when a page fails: try the site's search, another page, or another official source. Say "not found" honestly rather than guess.
+- Budget: about 30 tool calls in total. Then finish with two or three sentences for the patient on how it works where they live.
+Never submit, sign up or log in. Never type the patient's personal details anywhere.`;
+
+export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string } = {}): Promise<DiscoveryResult> {
+  const place = await detectPlace(facts);
+  opts.onEvent?.({ type: "place", place });
+  const steps = new Map<RouteKind, RouteStep>();
+  const texts = new Map<string, string>(); // url -> page text, for checking quotes
+  const keyOf = (u: string) => normUrl(u);
+  const remember = (url: string, text: string) => texts.set(keyOf(url), normText(text));
+  /** A quote counts only if code finds it in a page this run opened: whole, or every part of it split at "...". */
+  const check = (url: string, quote: string) => {
+    const k = keyOf(url);
+    const page = texts.get(k) ?? [...texts.entries()].find(([u]) => u.startsWith(k) || k.startsWith(u))?.[1];
+    return !!page && quote.trim().length >= 12 && quoteInText(quote, page);
+  };
+  let route: RouteMap = { runId: "", place, system: "", summary: "", steps: [], foundAt: "" };
+  const publish = (kit: CrewKit) => {
+    route = { ...route, runId: kit.runId, steps: ROUTE_KINDS.map((k) => steps.get(k.kind)).filter((x): x is RouteStep => !!x) };
+    kit.emit({ type: "route", route });
+  };
+  const ctxFor = (kit: CrewKit, p: Page, note: WorkerCtx["note"], who: CrewId): WorkerCtx => ({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: who }) });
+  const whoOf = (a: Record<string, unknown>): CrewId => (["robin", "iona", "nell", "kit"].includes(String(a.who)) ? (a.who as CrewId) : "robin");
+  const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+
+  return runCrew<DiscoveryResult>(
+    {
+      prefix: "discovery",
+      system: SYSTEM(place),
+      tools: TOOLS,
+      firstInput: `Patient's story: ${facts.incidentSummary ?? ""}\nTimeline: ${facts.events.map((e) => `${e.date}: ${e.what}`).join("; ")}\nWhere: ${place.hospital}, ${place.city}, ${place.region}, ${place.country}. (${place.why})`,
+      maxTurns: 22,
+      who: (name, a) => (name === "record_step" ? "elliot" : whoOf(a)),
+      doing: (name, a) => {
+        switch (name) {
+          case "web_search":
+            return `Searching: ${short(String(a.query ?? ""), 60)}`;
+          case "read_page":
+            return `Reading ${host(String(a.url ?? "")) || "a page"}`;
+          case "explore_site":
+            return `Finding ${a.want === "form" ? "the form" : "the page"} on ${host(String(a.url ?? "")) || "a site"}`;
+          case "record_step":
+            return "Writing down what we found";
+          default:
+            return "Working";
+        }
+      },
+      describe: (name, a, out) => {
+        if (name === "record_step") {
+          const s = steps.get(String(a.kind) as RouteKind);
+          const label = ROUTE_KINDS.find((k) => k.kind === a.kind)?.label ?? String(a.kind);
+          return s ? `${label}: ${s.body}. ${s.what}${s.confidence === "confirmed" ? "" : s.confidence === "likely" ? " (one official source)" : " (not confirmed yet)"}` : out;
+        }
+        return short(out.split("\n")[0], 200);
+      },
+      failed: (name, out) => /^(Error|Could not|Blocked)/.test(out) || (name === "explore_site" && /^Not found/.test(out)),
+      exec: async (call, a, thought, kit) => {
+        const who = whoOf(a);
+        switch (call.name) {
+          case "web_search": {
+            const r = await kit.inTab(thought, who, "Search", (p, note) => webSearch(p, String(a.query ?? ""), note, kit.track), 60_000);
+            if (!r.ok) return `Could not search: ${r.error}`;
+            return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
+          }
+          case "read_page": {
+            const url = String(a.url ?? "");
+            const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
+              const v = await readPage(ctxFor(kit, p, note, who), url, String(a.question ?? ""));
+              remember(v.url, await pageText(p));
+              if (v.url !== url) remember(url, await pageText(p));
+              return v;
+            }, 90_000);
+            if (!r.ok) return `Could not read ${url}: ${r.error}`;
+            const v = r.value;
+            if (v.wall) return `Blocked: ${v.wall.kind} at ${v.wall.url} (${v.wall.detail})`;
+            return `${v.title} (${v.url})\n${v.answer}\nQuotes: ${v.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ") || "none checked"}\nLinks: ${v.links.map((l) => `${l.text} -> ${l.url}`).join("; ")}`;
+          }
+          case "explore_site": {
+            const url = String(a.url ?? "");
+            const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
+              const v = await exploreSite(ctxFor(kit, p, note, who), url, String(a.goal ?? ""), { want: a.want === "form" ? "form" : "page" });
+              if (!p.isClosed()) remember(p.url(), await pageText(p));
+              return v;
+            }, 180_000);
+            if (!r.ok) return `Could not explore ${url}: ${r.error}`;
+            const v = r.value;
+            const path = v.path.map((s, i) => `${i + 1}. ${s.via} -> ${s.url}`).join("\n");
+            if (!v.ok) return `Not found. ${v.summary}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail}) at ${v.wall.url}` : ""}\nPath:\n${path}`;
+            if (v.form) kit.finding(`${host(v.url)}: online form found (${v.form.fields.length} fields${v.form.multiPage ? ", several pages" : ""})`, v.url, who);
+            return `Found: ${v.url}\n${v.summary}${v.form ? `\nForm fields: ${v.form.fields.map((f) => `${f.label}${f.required ? "*" : ""}`).join(", ")}${v.form.multiPage ? " (several pages)" : ""}` : ""}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail})` : ""}\nPath:\n${path}`;
+          }
+          case "record_step": {
+            const kind = String(a.kind) as RouteKind;
+            if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
+            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 4).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official, publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            const step: RouteStep = {
+              kind,
+              body: String(a.body ?? ""),
+              what: String(a.what ?? ""),
+              deadline: a.deadline ? String(a.deadline) : undefined,
+              how: (String(a.how ?? "unknown") as RouteStep["how"]) || "unknown",
+              url: a.url ? String(a.url) : undefined,
+              wall: a.wall ? String(a.wall) : undefined,
+              requires: Array.isArray(a.requires) ? (a.requires as string[]).map(String) : undefined,
+              appliesIf: a.applies_if ? String(a.applies_if) : undefined,
+              alternatives: Array.isArray(a.alternatives) ? (a.alternatives as string[]).map(String) : undefined,
+              missing: Array.isArray(a.missing) ? (a.missing as string[]).map(String) : undefined,
+              sources,
+              confidence: confidenceOf(sources),
+              by: ROUTE_KINDS.find((k) => k.kind === kind)!.crew,
+            };
+            steps.set(kind, step);
+            publish(kit);
+            const bad = sources.filter((s) => !s.checked);
+            return `Recorded ${kind} (${step.confidence}).${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
+          }
+          default:
+            return `Unknown tool ${call.name}`;
+        }
+      },
+      finish: (kit, x) => {
+        const summary = x.says.findLast((s) => s.kind === "done")?.text ?? "";
+        route = { ...route, runId: kit.runId, summary, system: [place.region, place.country].filter(Boolean).join(", "), foundAt: new Date().toISOString(), steps: ROUTE_KINDS.map((k) => steps.get(k.kind)).filter((s): s is RouteStep => !!s) };
+        const result: DiscoveryResult = { runId: kit.runId, runDir: kit.runDir, route, plan: x.plan, thoughts: x.thoughts, says: x.says, turns: x.turns, asks: x.asks, trace: kit.tracer.steps, stats: kit.track.stats };
+        kit.emit({ type: "route", route });
+        kit.emit({ type: "discovery_result", result });
+        return result;
+      },
+    },
+    opts,
+  );
+}

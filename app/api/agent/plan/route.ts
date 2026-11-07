@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CaseFacts, missingRequired } from "../../../../lib/agent/facts";
 import { runComplaint } from "../../../../lib/agent/complaintPlanner";
+import { runDiscovery } from "../../../../lib/agent/discovery";
 import { Funding } from "../../../../lib/agent/legalAidTypes";
 import { runPlanner } from "../../../../lib/agent/planner";
 
@@ -31,9 +32,8 @@ export async function POST(req: Request) {
       // Keep the connection alive while the crew waits for the user's answer.
       ping = setInterval(() => send({ type: "ping" }), 15000);
       try {
-        // DISCOVERY-HOOK (re-add when lib/agent/discovery.ts is back from ~/night-parked):
-        // if (parsed.data.flow === "discovery") await runDiscovery(parsed.data.facts, { onEvent: send }); else
-        if (parsed.data.flow === "complaint") await runComplaint(parsed.data.facts, { onEvent: send, keepOpen: true });
+        if (parsed.data.flow === "discovery") await runDiscovery(parsed.data.facts, { onEvent: send });
+        else if (parsed.data.flow === "complaint") await runComplaint(parsed.data.facts, { onEvent: send, keepOpen: true });
         else await runPlanner(parsed.data.facts, parsed.data.funding ?? {}, { onEvent: send, keepOpen: true });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
