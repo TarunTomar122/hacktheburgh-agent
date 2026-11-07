@@ -294,4 +294,7 @@ User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's exist
 **D60 · 2026-11-07 · Om (asked), Claude (built) · decided**
 **A skipped step counts as done in the progress meter.** The demo skip buttons (D49 step 1, D58 step 3, D59 step 4) now call `skipStep(n)` (`lib/profile.ts`), which records the step in `progress.skipped`. `milestones()` (`app/case/progress.ts`) treats every milestone of a skipped step as done, so skipping steps 3 and 4 shows "6 of 6 done" on the compensation track. Real results are untouched: sample data still does not count as a real check anywhere else. Step 2 (ombudsman) has no skip button, so on the complaint track its milestones still need the real steps.
 
-<!-- Add new entries above this line. Next number: D61 -->
+**D61 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**Demo skip on step 2 (ombudsman).** "Skip and mark as sent (demo)" sits beside "Fill in the ombudsman's form" in `app/case/OmbudsmanStep.tsx`. It closes the agent's browser and calls `skipStep(2)` (D60), so the step's items count as done in the progress meter. Nothing is sent to the SPSO. It is replaced by "Skipped for the demo" once pressed. Completes the set with D49, D58 and D59: every step has a demo skip now.
+
+<!-- Add new entries above this line. Next number: D62 -->

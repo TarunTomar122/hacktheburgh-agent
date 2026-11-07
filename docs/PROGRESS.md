@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Demo: skip step 2 (ombudsman) (D61)
+Om: no skip on the ombudsman page. Added "Skip and mark as sent (demo)" beside the fill button in `app/case/OmbudsmanStep.tsx`; it closes the browser and marks step 2 skipped, so the complaint track's meter can reach full. `tsc` and `eslint` clean; not clicked through in a browser yet.
+
 ### 2026-11-07 · Om + Claude · DONE · Skipping a step completes it in the progress meter (D60)
 Om: after skipping, the top-right meter still said "1 of 6 done". Added `skipStep` and `progress.skipped`; the three demo skips call it and `milestones()` counts a skipped step's milestones as done. `tsc` and `eslint` clean; not clicked through in a browser yet.
 

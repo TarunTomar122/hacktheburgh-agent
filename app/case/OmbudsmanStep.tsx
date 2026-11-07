@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { defaultAssumptions, spsoProblems, wordCount, type SpsoAnswers } from "../../lib/agent/spsoAnswers";
-import { setDraft, setOmbudsman, setProgress as markProgress, type Profile } from "../../lib/profile";
+import { setDraft, setOmbudsman, setProgress as markProgress, skipStep, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Console, Eyebrow, LockIcon, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
@@ -160,9 +160,27 @@ function Unlocked({ profile }: { profile: Profile }) {
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="space-y-3">
-        <Button onClick={() => run()} disabled={preparing || impactMissing || problems.length > 0 || running}>
-          {running ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in the ombudsman's form"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => run()} disabled={preparing || impactMissing || problems.length > 0 || running}>
+            {running ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in the ombudsman's form"}
+          </Button>
+          {/* Demo (D61): nothing is sent to the ombudsman, so the demo can carry on as if the form had been sent. Always shown, on purpose. */}
+          {profile.progress?.skipped?.includes(2) ? (
+            <span className="text-sm font-medium text-teal">Skipped for the demo. Nothing was sent to the ombudsman.</span>
+          ) : (
+            <Button
+              variant="secondary"
+              disabled={running}
+              onClick={() => {
+                void closeAgentBrowser(); // the half-filled form is no use any more
+                skipStep(2);
+              }}
+              title="Demo: nothing is sent to the ombudsman. Marks this step as done."
+            >
+              Skip and mark as sent (demo)
+            </Button>
+          )}
+        </div>
         <p className="max-w-[60ch] text-xs leading-5 text-muted">
           By continuing you confirm you have read the ombudsman&apos;s{" "}
           <a className="text-brand underline underline-offset-2" href="https://www.spso.org.uk/making-complaint" target="_blank" rel="noreferrer">
