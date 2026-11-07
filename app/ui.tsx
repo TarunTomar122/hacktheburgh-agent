@@ -18,11 +18,13 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   return <div className={cx("text-[11px] font-medium uppercase tracking-[0.1em] text-muted", className)}>{children}</div>;
 }
 
-/** Page title block: eyebrow, light serif headline, optional lede. */
-export function PageTitle({ eyebrow, title, lede }: { eyebrow?: ReactNode; title: ReactNode; lede?: ReactNode }) {
+/**
+ * Page title block: light serif headline and optional lede. No small label above the headline (Tarun: "a headline over a
+ * headline"); `eyebrow` is accepted for older callers but not rendered.
+ */
+export function PageTitle({ title, lede }: { eyebrow?: ReactNode; title: ReactNode; lede?: ReactNode }) {
   return (
     <header className="space-y-3">
-      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
       <h1 className="display text-[40px] text-ink">{title}</h1>
       {lede && <p className="max-w-[56ch] text-[15px] leading-6 text-ink-2">{lede}</p>}
     </header>

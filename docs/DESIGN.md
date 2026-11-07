@@ -93,7 +93,7 @@ Each interview question is a full screen under the header: heading in `.display`
 |---|---|
 | `Button` | `primary` (brand, flat), `secondary` (hairline), `ghost` (brand text). Sizes `md`, `sm`. **Never put a primary button in the same row as the paragraph that explains it.** |
 | `ActionCard` | Title, explanation, then the button **underneath**. Currently unused (steps are one button, D33) |
-| `PageTitle` | Eyebrow, light serif title, lede |
+| `PageTitle` | Light serif title and lede (no eyebrow above it) |
 | `SectionTitle` | Serif heading with a hairline; optional right-hand action |
 | `Field` + `control` / `selectControl` | Label above (eyebrow style), 5px radius, `line` border, brand border plus a 4px `brand-soft` ring on focus. Selects have a custom chevron |
 | `Paper` | Cream document panel. (The draft panel was removed by D33: the user reviews on the real form) |
@@ -104,6 +104,7 @@ Each interview question is a full screen under the header: heading in `.display`
 
 ## Do / don't
 
+- **No small label above a headline** ("COMPENSATION · STEP 1" over the title was a headline over a headline). The track bar already says where you are (Tarun, 2026-11-07). Small uppercase labels are only for labelling a group of content, never sitting on top of a title.
 - **Headlines are never questions.** Page and section titles are statements or helpful instructions ("Check legal aid and find lawyers", not "Can I get legal aid?"). Questions are only for prompts the user answers (Tarun, 2026-11-07).
 - **No back links inside page headers.** The header's profile icon opens and closes the profile; a page does not add its own "Back to …" link at the top (Tarun, 2026-11-07).
 - **Never truncate text** (no `truncate`, ellipsis or line clamps). Let it wrap, or change the layout so it fits; long URLs use `break-all` (Tarun, 2026-11-07).

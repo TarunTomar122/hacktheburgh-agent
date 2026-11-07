@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { TraceStep } from "../../lib/agent/legalAidTypes";
-import { Button, cx, Eyebrow } from "../ui";
+import { Button, cx } from "../ui";
 
 /**
  * Full traceability for step 3 (D39): every step an agent took, in time order, for one firm, the calculator, or the whole run.
@@ -67,8 +67,7 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
         <header className="space-y-4 border-b border-line px-8 pt-7 pb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <Eyebrow>{scope.whole ? "Everything the agents did" : "How we found this"}</Eyebrow>
-              <h2 className="display mt-1 text-[28px] text-ink">{scope.title}</h2>
+              <h2 className="display text-[28px] text-ink">{scope.title}</h2>
               {scope.subtitle && <p className="mt-1 text-sm text-ink-2">{scope.subtitle}</p>}
             </div>
             <Button variant="secondary" size="sm" onClick={onClose}>

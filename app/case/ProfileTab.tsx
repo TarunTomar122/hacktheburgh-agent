@@ -44,8 +44,7 @@ export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile
       {/* The header's blue carries on into the page title, then stops with the stepped lines. */}
       <div className="bg-brand text-white">
         <div className="mx-auto max-w-3xl px-12 pb-14 pt-10">
-          <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/70">Profile</div>
-          <h1 className="display mt-3 text-[48px] text-white">Your profile</h1>
+          <h1 className="display text-[48px] text-white">Your profile</h1>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-6 text-white/85">
             This is what the agent uses to fill in forms for you. Changes save as you type, on this device only.
           </p>

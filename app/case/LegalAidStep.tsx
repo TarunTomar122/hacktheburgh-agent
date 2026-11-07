@@ -63,10 +63,7 @@ export default function LegalAidStep({ profile, onContinue }: { profile: Profile
     return (
       <div className="space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Eyebrow>Compensation · step 1</Eyebrow>
-            <h1 className="display mt-2 text-[32px] text-ink">Check legal aid and find lawyers</h1>
-          </div>
+          <h1 className="display text-[32px] text-ink">Check legal aid and find lawyers</h1>
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
             <button className="text-brand hover:underline" onClick={() => setLegalAid({ funding: EMPTY_FUNDING, result: null })}>
               {funding.skipped ? "Check legal aid instead" : "Change money answers"}

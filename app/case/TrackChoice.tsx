@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/track";
 import { setTrack, type Profile } from "../../lib/profile";
-import { Button, cx, Eyebrow } from "../ui";
+import { Button, cx } from "../ui";
 import { FitRing, ScoreRow } from "./scoreParts";
 import { STEPS } from "./steps";
 
@@ -56,8 +56,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
   return (
     <div className="space-y-10">
       <div>
-        <Eyebrow>Your next step</Eyebrow>
-        <h1 className="display mt-3 text-[40px] text-ink">
+        <h1 className="display text-[40px] text-ink">
           We suggest you <span className="text-brand">{TRACKS[best].title.toLowerCase()}</span>
         </h1>
         <p className="mt-4 max-w-2xl text-[15px] leading-6 text-ink-2">{TRACKS[best].what}</p>

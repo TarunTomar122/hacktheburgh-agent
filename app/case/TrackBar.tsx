@@ -62,26 +62,28 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
         <nav aria-label="Steps" className="flex flex-wrap items-center gap-1">
           {STEPS.filter((s) => t.steps.includes(s.n)).map((s, i) => {
             const state = s.n === 2 && ombudsmanOpen ? "ready" : s.state;
+            // Step 4 needs firms picked in step 3; until then it is disabled and says why (Tarun).
+            const needsPick = s.n === 4 && !(profile.legalAid?.selected?.length);
             const mine = ms.filter((m) => m.step === s.n);
             const complete = mine.length > 0 && mine.every((m) => m.done);
             const isActive = active === s.n;
             return (
               <button
                 key={s.n}
-                disabled={state === "soon"}
+                disabled={state === "soon" || needsPick}
                 onClick={() => onSelect(s.n)}
                 aria-current={isActive ? "step" : undefined}
-                title={state === "locked" ? s.blurb : undefined}
+                title={needsPick ? "Pick up to 3 solicitors in the previous step first" : state === "locked" ? s.blurb : undefined}
                 className={cx(
                   "flex items-center gap-2 rounded-ctl px-3 py-1.5 text-[13px] transition-colors",
-                  isActive ? "bg-brand-soft text-brand" : state === "soon" ? "cursor-not-allowed text-faint" : "text-ink-2 hover:bg-subtle hover:text-ink",
+                  isActive ? "bg-brand-soft text-brand" : state === "soon" || needsPick ? "cursor-not-allowed text-faint" : "text-ink-2 hover:bg-subtle hover:text-ink",
                 )}
               >
                 <span className={cx("flex size-5 items-center justify-center rounded-[4px] text-[11px] font-medium tabular-nums", isActive ? "bg-brand text-white" : complete ? "bg-teal-soft text-teal" : "bg-subtle text-muted")}>
                   {complete ? <Check /> : i + 1}
                 </span>
                 <span className="font-medium">{s.title}</span>
-                {state === "locked" && <LockIcon />}
+                {(state === "locked" || needsPick) && <LockIcon />}
                 {state === "soon" && <span className="text-[11px]">soon</span>}
               </button>
             );
