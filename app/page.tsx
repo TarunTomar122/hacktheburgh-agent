@@ -6,7 +6,7 @@ import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
 import { echoFor, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
-import { DEMO_PERSONAS, type DemoPersona } from "../lib/agent/sample";
+import { DEMO_PERSONAS, SAMPLE_FACTS, type DemoPersona } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
@@ -85,6 +85,17 @@ export default function Onboarding() {
     router.push("/case");
   }
 
+  function skipToOutcome() {
+    const demoFacts = { ...SAMPLE_FACTS, desiredOutcome: null };
+    setFacts(demoFacts);
+    setSpec(inputFor("outcome", demoFacts));
+    setError(null);
+    setMessages([
+      { role: "agent", content: "Fictional demo details loaded." },
+      { role: "agent", content: questionFor("outcome", demoFacts) },
+    ]);
+  }
+
   function start() {
     createProfile(facts, messages);
     router.push("/case");
@@ -130,7 +141,14 @@ export default function Onboarding() {
       <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
         <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col px-6">
           {naming ? (
-            <NameStep value={nameDraft} onChange={setNameDraft} busy={thinking} error={error} onSubmit={onFree} />
+            <>
+              <NameStep value={nameDraft} onChange={setNameDraft} busy={thinking} error={error} onSubmit={onFree} />
+              {SHOW_SKIP && (
+                <button type="button" disabled={thinking} onClick={skipToOutcome} className="btn-ghost mb-6 self-start">
+                  Demo: skip to final question
+                </button>
+              )}
+            </>
           ) : done ? (
             <div className="fade-up my-auto space-y-5 py-10">
               <p className="eyebrow">Review your details</p>

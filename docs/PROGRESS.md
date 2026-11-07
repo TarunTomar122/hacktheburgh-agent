@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 - Luigi + Codex - Email option for explanation/apology (D73)
+Added an explicit email-draft route for explanation-only, apology-only and both together, with formal complaint and compensation alternatives. Mixed/additional goals keep the existing route choice. Email drafts contain saved facts and a request, editable subject/body persisted locally, copy/download, no unverified recipient or automatic sending/escalation. Profile can switch existing eligible cases to email mode. A facts-change warning preserves edits until explicitly rebuilt.
+Verified scripts/test-complaint-email.ts: goal combinations and mixed-goal exclusion, isolated browser enters email mode without agent requests, edits survive reload, formal complaint switch works and no browser errors. TypeScript/lint passed; production build checked. Fictional data only; no external submissions. Changes remain local.
+
 ### 2026-11-07 - Luigi + Codex - UI refinements sync for push
 User authorized pushing the welcome spacing, removal of the NHS/SPSO debug consoles and automatic opening of the SPSO browser panel. Main was already up to date with no conflicts. Remote night updates were fetched but not merged into main. TypeScript, lint and diff checks passed; welcome desktop/mobile screenshots were inspected in the preceding turn.
 

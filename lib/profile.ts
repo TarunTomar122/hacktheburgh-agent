@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import type { ComplaintEmail } from "./agent/complaintEmail";
 import type { ChatMessage } from "./agent/chat";
 import type { Draft } from "./agent/draft";
 import { emptyFacts, type CaseFacts } from "./agent/facts";
@@ -44,7 +45,8 @@ export type Profile = {
   enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
   enquiries?: EnquiryRecord[];
   /** D42: the recommendation shown after onboarding, and the track the user chose (null until they choose). */
-  track?: { chosen: TrackId | null; rec?: TrackRecommendation };
+  track?: { chosen: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal" };
+  complaintEmail?: ComplaintEmail;
   createdAt: string;
   updatedAt: string;
 };
@@ -145,11 +147,16 @@ export function setComplaintRun(run: ComplaintRunRecord | null) {
   if (p) write({ ...p, complaintRun: run ?? undefined });
 }
 
-export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation }) {
+export function setComplaintEmail(draft: ComplaintEmail) {
+  const p = read();
+  if (p) write({ ...p, complaintEmail: draft });
+}
+
+export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal" }) {
   const p = read();
   if (!p) return;
   const cur = p.track ?? { chosen: null };
-  write({ ...p, track: { chosen: patch.chosen === undefined ? cur.chosen : patch.chosen, rec: patch.rec ?? cur.rec } });
+  write({ ...p, track: { chosen: patch.chosen === undefined ? cur.chosen : patch.chosen, rec: patch.rec ?? cur.rec, complaintMode: patch.complaintMode ?? (patch.chosen !== undefined ? "formal" : cur.complaintMode) } });
 }
 
 export function setEnquiry(patch: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean }) {

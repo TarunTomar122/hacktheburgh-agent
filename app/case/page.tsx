@@ -16,6 +16,7 @@ import ProfileTab from "./ProfileTab";
 import { closeAgentBrowser, streamAgent, type DoneEvent } from "./streamAgent";
 import TrackBar from "./TrackBar";
 import TrackChoice from "./TrackChoice";
+import ComplaintEmail from "./ComplaintEmail";
 import ContactLawyersStep from "./ContactLawyersStep";
 import StepAside from "./StepAside";
 import UnsupportedComplaint from "./UnsupportedComplaint";
@@ -46,6 +47,7 @@ export default function CasePage() {
   const incomplete = missingForOnboarding(f).length > 0;
   // D42: one track at a time. Before a track is chosen, the page shows the recommendation instead of steps.
   const chosen = profile.track?.chosen ?? null;
+  const emailMode = chosen === "complaint" && profile.track?.complaintMode === "email";
   const active = chosen && picked !== null && TRACKS[chosen].steps.includes(picked) ? picked : chosen ? TRACKS[chosen].steps[0] : 1;
 
   return (
@@ -65,9 +67,9 @@ export default function CasePage() {
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {chosen && <TrackBar profile={profile} active={active} onSelect={setActive} />}
+          {chosen && !emailMode && <TrackBar profile={profile} active={active} onSelect={setActive} />}
           <main className="@container min-w-0">
-            {!chosen ? (
+            {emailMode ? <ComplaintEmail profile={profile} /> : !chosen ? (
               <div className="mx-auto max-w-4xl px-8 py-12">
                 <TrackChoice profile={profile} onChosen={setActive} />
               </div>

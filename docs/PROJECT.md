@@ -14,6 +14,8 @@ Onboarding update (D72, 2026-11-07): one visible question, date-specific event p
 
 Complaint UI refinement (2026-11-07): NHS and ombudsman form screens omit technical console logs while retaining errors/results. Both request the live browser panel automatically. Welcome-screen spacing is tighter and was checked on desktop/mobile.
 
+Email route (D73, 2026-11-07): explanation/apology-only cases can prepare one editable email without entering the NHS/SPSO form flow. Copy/download and persistent edits tested in a mocked browser. Recipient verification, sending and inbox follow-up are not implemented.
+
 ## Flow and status
 
 | # | Step | Status |

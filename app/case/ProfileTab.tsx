@@ -5,6 +5,7 @@ import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, sp
 import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
 import { TRACKS, type TrackId } from "../../lib/agent/track";
+import { emailOnlyGoals } from "../../lib/agent/complaintEmail";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
@@ -30,7 +31,7 @@ const input = control;
 export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
   // How NHS Lothian should reply is only needed for the complaint path, and only asked once the user takes it (D42).
-  const forNhs = profile.track?.chosen === "complaint";
+  const forNhs = profile.track?.chosen === "complaint" && profile.track?.complaintMode !== "email";
   const missing = forNhs ? missingRequired(f) : missingForOnboarding(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
   const set = (k: keyof CaseFacts) => (v: string) => updateFacts({ [k]: v === "" ? null : v } as Partial<CaseFacts>);
@@ -254,7 +255,8 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
     );
   }
   const other: TrackId = chosen === "complaint" ? "compensation" : "complaint";
-  const fit = rec?.tracks[chosen].fit;
+  const emailMode = chosen === "complaint" && profile.track?.complaintMode === "email";
+  const fit = emailMode ? undefined : rec?.tracks[chosen].fit;
   const otherFit = rec?.tracks[other].fit;
   return (
     <section className="space-y-4">
@@ -262,14 +264,18 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
       <div className="flex flex-wrap items-center gap-5 rounded-card border border-line bg-white p-5">
         {fit !== undefined && <FitRing fit={fit} size={64} title="How well this path fits what you told us. Not a chance of success." />}
         <div className="min-w-[14rem] flex-1">
-          <div className="text-[17px] font-medium text-ink">{TRACKS[chosen].title}</div>
-          <p className="mt-0.5 text-sm text-ink-2">{TRACKS[chosen].gets}</p>
-          {rec?.recommended === chosen && <p className="mt-1 text-xs text-teal">This is the path we suggested.</p>}
+          <div className="text-[17px] font-medium text-ink">{emailMode ? "Request an explanation or apology by email" : TRACKS[chosen].title}</div>
+          <p className="mt-0.5 text-sm text-ink-2">{emailMode ? "An editable email draft; you verify the recipient and send it yourself." : TRACKS[chosen].gets}</p>
+          {!emailMode && rec?.recommended === chosen && <p className="mt-1 text-xs text-teal">This is the path we suggested.</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={onContinue}>
             Continue
           </Button>
+          {!emailMode && emailOnlyGoals(profile.facts.desiredOutcome) && <Button variant="secondary" size="sm" onClick={() => {
+            setTrack({ chosen: "complaint", complaintMode: "email" });
+            onSwitched?.(1);
+          }}>Draft an email instead</Button>}
           <Button
             variant="secondary"
             size="sm"

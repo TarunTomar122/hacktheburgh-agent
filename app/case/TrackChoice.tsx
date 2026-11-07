@@ -5,6 +5,7 @@ import { TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/
 import { setTrack, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import { CheckRow, FitRing } from "./scoreParts";
+import { emailOnlyGoals } from "../../lib/agent/complaintEmail";
 import { STEPS } from "./steps";
 
 /**
@@ -14,11 +15,12 @@ import { STEPS } from "./steps";
  */
 export default function TrackChoice({ profile, onChosen }: { profile: Profile; onChosen: (firstStep: number) => void }) {
   const rec = profile.track?.rec;
+  const simple = emailOnlyGoals(profile.facts.desiredOutcome);
   const [error, setError] = useState<string | null>(null);
   const asked = useRef(false);
 
   useEffect(() => {
-    if (rec || asked.current) return;
+    if (simple || rec || asked.current) return;
     asked.current = true;
     fetch("/api/agent/track", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts: profile.facts }) })
       .then(async (r) => {
@@ -27,12 +29,23 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
         setTrack({ rec: data as TrackRecommendation });
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [rec, profile.facts]);
+  }, [rec, profile.facts, simple]);
 
   const choose = (t: TrackId) => {
     setTrack({ chosen: t });
     onChosen(TRACKS[t].steps[0]);
   };
+
+  if (simple) return <section className="space-y-6">
+    <h1 className="display text-[40px]">Start by asking for a response</h1>
+    <p className="text-ink-2">You asked for an explanation, an apology, or both. We can prepare one editable email from your story for the hospital or clinic involved.</p>
+    <p className="text-sm text-muted">You check the recipient and send it yourself. It may take follow-up; no complaint form is filled and no ombudsman step starts automatically.</p>
+    <div className="flex flex-wrap gap-3">
+      <Button onClick={() => { setTrack({ chosen: "complaint", complaintMode: "email" }); onChosen(1); }}>Draft an email</Button>
+      <Button variant="secondary" onClick={() => choose("complaint")}>Make a formal complaint instead</Button>
+      <Button variant="ghost" onClick={() => choose("compensation")}>Explore compensation</Button>
+    </div>
+  </section>;
 
   if (!rec) {
     return (
