@@ -17,6 +17,9 @@ Why this is real browser work, not more of the same: the *shape* of the process 
 - **UK.** England: NHS complaint, then the Parliamentary and Health Service Ombudsman; claims under a pre-action protocol. Wales: "Putting Things Right", with NHS redress up to about £25k without court. Northern Ireland: HSC complaints, then NIPSO. Scotland: what we have.
 - **Elsewhere.** No-fault schemes (New Zealand ACC, Sweden patient insurance), conciliation commissions (France), doctors' chamber arbitration boards (Germany), state-by-state rules (US). All unverified until researched; see Phase 0.
 
+## Definition of done (Tarun, 2026-11-07)
+Nothing stops at a prototype or a script. Every item is **fully integrated end to end in the app UI**, works from onboarding to the last step, and is **reviewed and approved by Codex and Cursor (9/10)** on quality and on the benchmarks we keep. An item that is not done that way is reported as not done.
+
 ## Rules for the night (unchanged from the day)
 
 - **Never submit or send anything.** Every form stops before Submit/Send. The send gate stays.
@@ -53,6 +56,17 @@ Run the same agent on the contrasting set. Log per country: worked / partly / fa
 
 ### Phase 4: UI (onboarding and anywhere else is open to change)
 Tarun: onboarding and other parts of the app may change as needed (for example asking or detecting the country early). Same crew screen and avatars. One new, quiet element: "How it works where you live" (the route map, with sources). Minimal, as before.
+
+### Phase 4b: local and cloud models by what each agent may see
+Why we split into agents: each one sees only the data it needs, and its model follows from that.
+- Elliot (plans): summary with names and address replaced by placeholders: cloud, strong model.
+- Robin (discovery, lawyers): public pages plus country or region only: cloud.
+- Iona (evidence, health story): **local** (on device).
+- Nell (funding, money): **local**.
+- Kit (forms): the model sees form labels and the *names* of values, never the values; code types the real values. Cloud or local.
+- The complaint draft: local mid-size model by default; cloud only with the user's OK; quality compared.
+Machine: M1 Max, 32 GB, Ollama and llama-server installed, no models pulled yet. Candidates: Liquid LFM2 (1-3B), Qwen3 8B, gpt-oss-20b. Local tasks are narrow with forced JSON; the planner stays in the cloud. Local failure falls back to cloud only for non-sensitive data, and says so.
+Build: **one ledger for every model call** (agent, model, local or cloud, tokens in and out, time, kinds of data sent), shown per crew member in the UI ("on your device, 0 bytes left your machine") and per run; plus one local-vs-cloud comparison on the same tasks (accuracy, time, tokens). The ledger comes first (it gives numbers for everything else); routing after the UK nations work.
 
 ### Phase 5: recordings for the morning (and later the demo)
 Tarun wants to see real runs in the morning: **at least 3 or 4, successes and failures both**. For each run, keep:
