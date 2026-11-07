@@ -1,0 +1,82 @@
+# Night plan: an agent that works out the system wherever you are
+
+**Status:** agreed by Tarun + Claude, 2026-11-07 (night). Work happens on the `night` branch only; `main` is left to the team. Tarun reviews in the morning and decides what merges.
+**Branch base:** `main` at the time of branching (`774222b` plus later teammate commits pulled before branching).
+
+## Morning summary (kept current through the night)
+
+_Nothing done yet. This section is rewritten at every checkpoint: what works, what does not, scores from Codex and Cursor, what to look at first._
+
+---
+
+## The bet
+
+Today Elliot's crew knows one system: Scotland (NHS Lothian, SPSO, SLAB, the Law Society of Scotland). We extend it so the agent **works out the system for the user's own country and case**, finds those websites itself, and does the work there. Start with all four UK nations, then try any country and see if it holds. Working half the time, with honest exceptions, is enough for the hackathon. The point to show: the agent is very smart at browser use.
+
+Why this is real browser work, not more of the same: the *shape* of the process changes, not just the URLs.
+- **UK.** England: NHS complaint, then the Parliamentary and Health Service Ombudsman; claims under a pre-action protocol. Wales: "Putting Things Right", with NHS redress up to about £25k without court. Northern Ireland: HSC complaints, then NIPSO. Scotland: what we have.
+- **Elsewhere.** No-fault schemes (New Zealand ACC, Sweden patient insurance), conciliation commissions (France), doctors' chamber arbitration boards (Germany), state-by-state rules (US). All unverified until researched; see Phase 0.
+
+## Rules for the night (unchanged from the day)
+
+- **Never submit or send anything.** Every form stops before Submit/Send. The send gate stays.
+- **Fictional data only.** New personas for other nations and countries are invented, never real people.
+- **Headless only** (`IN_APP_BROWSER=1`, `LIVEVIEW=0` in scripts). Full real agent runs are allowed tonight (Tarun: cost is fine, only waiting time mattered).
+- **Scotland must keep working.** It stays the polished, deep path; the step 1-4 demo must not regress.
+- **Only official sources** for legal facts (government, NHS/health service, ombudsman, regulator, courts, law society). Every fact is quoted and linked. "Could not confirm" beats a guess.
+- **Logins and CAPTCHAs:** the agent stops and hands over to the user, like Submit.
+- **Notes as we go.** This file, `docs/PROGRESS.md`, `docs/DECISIONS.md` (D66 onwards) and `docs/ACTIVE_WORK.md`. Push to `night` after every checkpoint.
+
+## How we work
+
+- **Builders:** Opus 5.5 at high effort for the design and the hard parts. Research before building.
+- **Reviewers:** Codex and Cursor review **every** phase (design, code, results), independently. Target: both score it **9/10** for complexity of the end-to-end browser workflow and for quality, before moving on. Each round's scores and objections are logged below under "Review log".
+- **Sonnet 5.5 subagents** for the side backlog at the bottom, when the main line is not blocked.
+
+## Phases
+
+### Phase 0: research (official sources, written down)
+For each of England, Wales, Northern Ireland, Scotland: who you complain to, the ombudsman or regulator, the compensation route (court, redress scheme), funding (legal aid, no win no fee), how to find a lawyer (directory or register), clinical guidelines body, time limits, and the actual web pages and forms. Then the same, more briefly, for a contrasting set: Ireland, New Zealand, one US state, France, Germany, Sweden, India, Australia. Output: `docs/research/jurisdictions/<place>.md`, every line with a link.
+This is ground truth to **check** the agent against, not a script for it. The agent must find these itself.
+
+### Phase 1: design
+1. **Discovery (Robin).** New first step. From the story and the user's location, research the system and produce a **route map**: bodies, routes, deadlines, funding, directories, forms, each with an official source and a quote. Typed schema (zod), with confidence and "not found".
+2. **Planning (Elliot).** The planner builds its plan from the route map instead of today's fixed story.
+3. **Doing (generic workers).** `visit` reads any page. Kit fills unknown forms (already built for arbitrary law firm sites). Iona finds the local clinical guideline, not only NICE. The Scotland-specific code (SLAB calculator, SLAB solicitor finder, Law Society of Scotland register, NHS Lothian form) becomes **known-site skills** that the generic agent uses when discovery lands on those sites.
+4. **Where the place comes from.** Assumed (Tarun to confirm): the agent works it out from the story and postcode/address, and the user confirms it.
+
+### Phase 2: all four UK nations, end to end
+A fictional persona per nation (England, Wales, Northern Ireland, plus Ailsa in Scotland). Each runs the full flow: discovery, complaint form filled and stopped, ombudsman route, funding, lawyers found and checked, enquiries filled and stopped. Results table below.
+
+### Phase 3: any country
+Run the same agent on the contrasting set. Log per country: worked / partly / failed, and why (login wall, CAPTCHA, language, no online form). Fix the common failures, not one-offs.
+
+### Phase 4: UI
+Same crew screen and avatars. One new, quiet element: "How it works where you live" (the route map, with sources). Minimal, as before.
+
+### Phase 5: recordings (last)
+Record demo runs for the four nations and the best one or two countries, for playback.
+
+**Open for Tarun (morning):** which pair to show next to Scotland in the demo. Claude's suggestion: England (close but different) and New Zealand (no-fault, completely different).
+
+## Results
+
+| Place | Discovery | Complaint form | Ombudsman / regulator | Funding | Lawyers | Enquiries | Notes |
+|---|---|---|---|---|---|---|---|
+| Scotland | (fixed today) | yes | yes | yes | yes | yes | baseline |
+
+## Review log
+
+| Phase | Codex | Cursor | Main objections | What changed |
+|---|---|---|---|---|
+
+## Side backlog (Sonnet 5.5 subagents, when the main line allows)
+
+1. **SPSO form: attach documents.** Upload the complaint we wrote and NHS Lothian's reply to the ombudsman form (file upload is browser-only; today we skip it).
+2. **Pre-action investigation for Iona** (makes the Luna engine's work more interesting; does not solve the main goal):
+   - SPSO decision reports for similar complaints (e.g. missed scaphoid fractures; decision 201508011 exists)
+   - NHS Lothian's own guidance on Policy Online and RightDecisions (scaphoid leaflets found)
+   - NHS Lothian's FOI disclosure log (searchable, has scaphoid hits)
+   - Healthcare Improvement Scotland inspection reports
+   - Scottish awards for scaphoid nonunion (BAILII, Scottish Courts)
+3. See also Lea's `docs/plans/browser-complexity-plan.md` (X2: follow the specialist, not the firm).
