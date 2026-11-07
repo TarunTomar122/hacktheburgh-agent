@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         if (!cancelled) controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
       };
       try {
-        await runStep3(parsed.data.funding, { onEvent: send, keepOpen: true });
+        await runStep3(parsed.data.funding, { onEvent: send });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
       } finally {

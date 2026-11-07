@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { Browser, BrowserContext, Page } from "playwright";
 import { z } from "zod";
-import { dismissCookies, openSession } from "../browser";
+import { dismissCookies, keepOnlyTabs, openSession } from "../browser";
 import { pointAt } from "../agentCursor";
 import type { Value } from "./browserAgent";
 import { runBrowserAgent } from "./browserAgent";
@@ -75,6 +75,18 @@ const REG: Registry = (holder.__enquiryTabs ??= { tabs: new Map<string, Open>() 
 /** Keep a filled form's tab open so /api/agent/step4/send can press Send after the user approves (used by the planner, D47). */
 export function keepForApproval(firmId: string, open: Open) {
   REG.tabs.set(firmId, open);
+}
+
+/** The filled forms in this browser that are still waiting for the user's OK. */
+export function approvalTabs(context: BrowserContext): Page[] {
+  return [...REG.tabs.values()].map((o) => o.page).filter((p) => !p.isClosed() && p.context() === context);
+}
+
+/** A form that has been sent (or refused) is finished with: close its tab. The browser closes itself with its last tab (D54). */
+async function releaseTab(firmId: string) {
+  const open = REG.tabs.get(firmId);
+  REG.tabs.delete(firmId);
+  await open?.page.close().catch(() => {});
 }
 
 /* ------------------------------------------------------------------ finding the form */
@@ -354,14 +366,10 @@ export async function runEnquiries(
 
     const result: Step4Result = { enquiries: order.map((id) => outcomes.get(id)!).filter(Boolean), stats: track.stats, runId, trace: tracer.steps };
     send4({ type: "result", result });
-    if (opts.keepOpen && REG.tabs.size > 0) {
-      keep = true; // the filled forms stay open for the approvals (closed after 15 minutes)
-      setTimeout(() => {
-        if (REG.browser === browser) {
-          REG.tabs.clear();
-          void browser.close().catch(() => {});
-        }
-      }, 15 * 60 * 1000);
+    const waiting4Ok = approvalTabs(context);
+    if (opts.keepOpen && waiting4Ok.length > 0) {
+      keep = true; // only the filled forms stay open for the approvals; the rest close now (D54). All close after 15 minutes.
+      await keepOnlyTabs(context, waiting4Ok);
     }
     return result;
   } finally {
@@ -384,7 +392,7 @@ export function sendGate(email: string | null): string | null {
 export async function sendEnquiry(firmId: string, agreed: string[]): Promise<EnquiryOutcome> {
   const open = REG.tabs.get(firmId);
   if (!open || open.page.isClosed()) {
-    return { firmId, firmName: open?.firm.name ?? firmId, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: "The filled form is no longer open (it closes after 15 minutes). Fill the forms again, then approve." };
+    return { firmId, firmName: open?.firm.name ?? firmId, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: "The filled form is no longer open (a form closes once it is sent, or after 15 minutes). Fill the forms again, then approve." };
   }
   const { page, firm, note } = open;
   const form = await readForm(page);
@@ -393,6 +401,7 @@ export async function sendEnquiry(firmId: string, agreed: string[]): Promise<Enq
   const blocked = sendGate(open.email);
   if (blocked) {
     await note.log("check", blocked);
+    await releaseTab(firmId); // it will never be sent from here, so do not leave a stale form on screen
     return { ...base, status: "send_blocked", note: blocked };
   }
 
@@ -428,6 +437,7 @@ export async function sendEnquiry(firmId: string, agreed: string[]): Promise<Enq
   const thanks = text.match(/[^.]*\b(thank you|thanks|received|has been sent|we will be in touch|we'll be in touch|been submitted)\b[^.]*\./i);
   if (thanks) {
     await note.log("result", "The firm's page confirmed the enquiry", { shot: true, detail: thanks[0] });
+    await releaseTab(firmId);
     return { ...base, status: "sent", sentAt: new Date().toISOString(), confirmation: thanks[0].trim().slice(0, 240), note: "Sent. Their page confirmed it" };
   }
   const err = text.match(/[^.]*\b(required|invalid|please (enter|complete|fill)|error)\b[^.]*\./i);

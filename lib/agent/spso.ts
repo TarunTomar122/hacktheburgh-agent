@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { CaseFacts } from "./facts";
 import type { Draft } from "./draft";
-import { dismissCookies, openSession } from "../browser";
+import { closeWhenSubmitted, dismissCookies, openSession } from "../browser";
 import type { BrowserRun, Value } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { formatObservation, observe } from "./observe";
@@ -114,7 +114,7 @@ export async function fillSpsoComplaint(facts: CaseFacts, draft: Draft, answers:
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
     if (opts.keepOpen && process.env.HEADLESS !== "1") {
       reviewing = true;
-      void page.waitForEvent("close", { timeout: 10 * 60 * 1000 }).catch(() => {}).then(() => browser.close().catch(() => {}));
+      closeWhenSubmitted(page, browser); // the browser closes once the user has submitted (D54)
     }
     return { ...run, screenshot, runDir };
   } finally {

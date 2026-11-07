@@ -70,3 +70,53 @@ export async function dismissCookies(page: Page, waitMs = 6000): Promise<"reject
   }
   return "none";
 }
+
+/** Words a site shows once a form has gone in. Checked only after the page has made a POST (see closeWhenSubmitted). */
+const SUBMITTED_TEXT = /thank you for (your (complaint|feedback|enquiry|submission)|submitting|contacting)|(has|have) been (submitted|sent|received)|we have received|submission (is )?(complete|received)|(complaint|enquiry|feedback) (received|submitted)/i;
+
+/**
+ * A filled form is left open so the user can check it and press Submit themselves. Close the browser once that
+ * has happened: the page made a POST and now shows a confirmation that it did not show before. Also closes it when
+ * the user closes the tab, or after maxMs, so a forgotten window never lingers. The agent never presses Submit (D54).
+ */
+export function closeWhenSubmitted(page: Page, browser: Browser, opts: { maxMs?: number; lingerMs?: number } = {}) {
+  const lingerMs = opts.lingerMs ?? 5000;
+  let posted = false;
+  let finished = false;
+  let baseline: { url: string; match: string | null } | null = null;
+  const done = (wait: number) => {
+    if (finished) return;
+    finished = true;
+    clearInterval(poll);
+    clearTimeout(limit);
+    setTimeout(() => void browser.close().catch(() => {}), wait);
+  };
+  const read = async () => (await page.locator("body").innerText({ timeout: 2000 }).catch(() => "")) || "";
+  void read().then((t) => (baseline = { url: page.url(), match: t.match(SUBMITTED_TEXT)?.[0] ?? null }));
+  page.on("request", (r) => {
+    if (r.method() === "POST") posted = true;
+  });
+  page.on("close", () => done(0));
+  const poll = setInterval(async () => {
+    if (finished || !posted || !baseline || page.isClosed()) return;
+    const hit = (await read()).match(SUBMITTED_TEXT)?.[0] ?? null;
+    if (hit && (hit !== baseline.match || page.url() !== baseline.url)) done(lingerMs);
+  }, 1500);
+  const limit = setTimeout(() => done(0), opts.maxMs ?? 10 * 60 * 1000);
+}
+
+/**
+ * Close every tab of this browser except the ones in `keep`, and close the browser itself as soon as the last tab
+ * goes (or after maxMs). Used when only filled forms awaiting the user's approval should stay on screen.
+ */
+export async function keepOnlyTabs(context: BrowserContext, keep: Page[], maxMs = 15 * 60 * 1000) {
+  const browser = context.browser();
+  const closeIfEmpty = () => {
+    if (context.pages().length === 0) void browser?.close().catch(() => {});
+  };
+  for (const p of context.pages()) p.on("close", () => setTimeout(closeIfEmpty, 0));
+  for (const p of context.pages()) if (!keep.includes(p)) await p.close().catch(() => {});
+  const t = setTimeout(() => void browser?.close().catch(() => {}), maxMs);
+  t.unref?.();
+  context.on("close", () => clearTimeout(t));
+}

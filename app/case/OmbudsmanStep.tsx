@@ -7,7 +7,7 @@ import { Button, Callout, control, cx, Console, Eyebrow, LockIcon, PageTitle } f
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
-import { streamAgent, type DoneEvent } from "./streamAgent";
+import { closeAgentBrowser, streamAgent, type DoneEvent } from "./streamAgent";
 
 // Same rule as the onboarding skip button (D24): a developer shortcut, never part of the real journey.
 const DEMO = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
@@ -181,7 +181,10 @@ function Unlocked({ profile }: { profile: Profile }) {
               {profile.progress?.spsoSent ? (
                 <span className="font-medium text-teal">Marked as sent. Nice work.</span>
               ) : (
-                <Button variant="secondary" size="sm" onClick={() => markProgress({ spsoSent: true })}>
+                <Button variant="secondary" size="sm" onClick={() => {
+                    void closeAgentBrowser();
+                    markProgress({ spsoSent: true });
+                  }}>
                   I&apos;ve pressed Send
                 </Button>
               )}

@@ -13,7 +13,7 @@ import Header from "./Header";
 import CaseRun from "./CaseRun";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
-import { streamAgent, type DoneEvent } from "./streamAgent";
+import { closeAgentBrowser, streamAgent, type DoneEvent } from "./streamAgent";
 import TrackBar from "./TrackBar";
 import TrackChoice from "./TrackChoice";
 import ContactLawyersStep from "./ContactLawyersStep";
@@ -179,6 +179,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
           variant="secondary"
           disabled={filling}
           onClick={() => {
+            void closeAgentBrowser(); // the half-filled form is no use any more
             setOmbudsman({ unlocked: true });
             onContinue();
           }}
@@ -198,7 +199,10 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
               {profile.progress?.nhsSent ? (
                 <span className="font-medium text-teal">Marked as sent. Nice work.</span>
               ) : (
-                <Button variant="secondary" size="sm" onClick={() => setProgress({ nhsSent: true })}>
+                <Button variant="secondary" size="sm" onClick={() => {
+                    void closeAgentBrowser();
+                    setProgress({ nhsSent: true });
+                  }}>
                   I&apos;ve pressed Submit
                 </Button>
               )}

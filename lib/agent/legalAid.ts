@@ -615,7 +615,7 @@ export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: 
 
 /* ------------------------------------------------------------------ the run */
 
-export async function runStep3(funding: Funding, opts: { onEvent?: Emit; keepOpen?: boolean } = {}): Promise<Step3Result> {
+export async function runStep3(funding: Funding, opts: { onEvent?: Emit } = {}): Promise<Step3Result> {
   const runId = `step3-${new Date().toISOString().replace(/[:.]/g, "-")}`;
   const runDir = path.join(process.cwd(), ".runs", runId);
   const log = makeLogger(runDir); // events.jsonl for debugging and demo evidence
@@ -628,7 +628,6 @@ export async function runStep3(funding: Funding, opts: { onEvent?: Emit; keepOpe
   const { browser, context, page } = await openSession();
   const ctx = { context, emit, track, tracer, first: page };
   const evidence = new Map<string, Evidence>();
-  let reviewing = false;
   try {
     emit({ type: "status", message: "Starting the agents" });
 
@@ -674,13 +673,8 @@ export async function runStep3(funding: Funding, opts: { onEvent?: Emit; keepOpe
     tracer.add({ agent: "Shortlist", color: "#181818", kind: "result", text: `Scored ${firms.length} firms; shortlisted ${shortlist.length}`, firms: shortlist, detail: firms.slice(0, 8).map((f) => `${shortlist.includes(f.id) ? "★" : " "} ${f.fit}% ${f.name}`).join("\n") });
     const result: Step3Result = { verdict, route, calculatorText: quote, firms, shortlist, stats: track.stats, runDir, runId, trace: tracer.steps };
     emit({ type: "result", result });
-
-    if (opts.keepOpen) {
-      reviewing = true; // leave the tabs up so the user can look at them in the live grid
-      void context.waitForEvent("close", { timeout: 10 * 60 * 1000 }).catch(() => {}).then(() => browser.close().catch(() => {}));
-    }
-    return result;
+    return result; // the crawl is over, so the browser closes now (D54)
   } finally {
-    if (!reviewing) await browser.close().catch(() => {});
+    await browser.close().catch(() => {});
   }
 }

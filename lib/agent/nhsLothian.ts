@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { CaseFacts } from "./facts";
 import type { Draft } from "./draft";
-import { dismissCookies, openSession } from "../browser";
+import { closeWhenSubmitted, dismissCookies, openSession } from "../browser";
 import { runBrowserAgent, type BrowserRun, type Value } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { makeLogger, type OnEvent } from "./events";
@@ -60,10 +60,8 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
     if (opts.keepOpen && process.env.HEADLESS !== "1") {
       reviewing = true;
-      // Return the result immediately while giving the user time to inspect the form.
-      void page.waitForEvent("close", { timeout: 10 * 60 * 1000 })
-        .catch(() => {})
-        .then(() => browser.close().catch(() => {}));
+      // Return the result at once; the form stays up for the user to check and submit, and the browser closes after that (D54).
+      closeWhenSubmitted(page, browser);
     } else if (process.env.HEADLESS !== "1") await page.waitForTimeout(4000);
     return { ...run, screenshot, runDir };
   } finally {

@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Page } from "playwright";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
 import { z } from "zod";
-import { dismissCookies, openSession } from "../browser";
+import { dismissCookies, keepOnlyTabs, openSession } from "../browser";
 import { pointAt } from "../agentCursor";
 import type { CaseFacts } from "./facts";
 import { EFFORT, MODELS, openai, structured } from "./llm";
@@ -31,7 +31,7 @@ import type { FirmFinding, Funding, Route, Verdict } from "./legalAidTypes";
 import { fundingMissing } from "./legalAidTypes";
 import { CREW, TOOL_CREW, type AskSpec, type CrewId, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say, type Thought } from "./plannerTypes";
 import { compareCare, readGuideline, readJudgment, searchCaseLaw, type GuidelineReading } from "./evidence";
-import { draftEnquiry, fillOne, keepForApproval } from "./enquiry";
+import { approvalTabs, draftEnquiry, fillOne, keepForApproval } from "./enquiry";
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 
 /**
@@ -661,9 +661,11 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     };
     emit({ type: "result", result });
     emit({ type: "planner_result", result });
-    if (opts.keepOpen) {
+    // The research is over: close every tab. Only filled enquiry forms waiting for the user's OK stay up (D54).
+    const waiting4Ok = approvalTabs(context);
+    if (opts.keepOpen && waiting4Ok.length > 0) {
       reviewing = true;
-      void context.waitForEvent("close", { timeout: 10 * 60 * 1000 }).catch(() => {}).then(() => browser.close().catch(() => {}));
+      await keepOnlyTabs(context, waiting4Ok);
     }
     return result;
   } finally {
