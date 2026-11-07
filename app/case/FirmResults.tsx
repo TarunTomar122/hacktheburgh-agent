@@ -15,11 +15,12 @@ import TraceSheet, { type TraceScope } from "./TraceSheet";
 
 const CALCULATOR = "SLAB calculator";
 
-const VERDICT: Record<Step3Result["verdict"], { dot: string; title: string; body: string }> = {
-  likely: { dot: "bg-teal", title: "You may qualify financially for legal aid", body: "A solicitor applies for you, and SLAB also checks the case has merit." },
-  unlikely: { dot: "bg-amber", title: "You may not qualify financially for legal aid", body: "Some solicitors take cases like this on a no win no fee basis." },
-  unknown: { dot: "bg-fade", title: "We could not get an answer from the calculator", body: "A solicitor can check whether you qualify when you talk to them." },
-  skipped: { dot: "bg-fade", title: "You chose not to share money details", body: "So we looked for solicitors who may work on a no win no fee basis." },
+/** The verdict as one small chip in the results line (Tarun: a card repeating it on every visit is not helpful). Hover for the honest detail, click for the calculator's steps. */
+const VERDICT: Record<Step3Result["verdict"], { cls: string; chip: string; tip: string }> = {
+  likely: { cls: "bg-teal-soft text-teal", chip: "May qualify for legal aid", tip: "SLAB's calculator says you may qualify financially. A solicitor applies for you, and SLAB also checks the case has merit." },
+  unlikely: { cls: "bg-amber-soft text-amber", chip: "Legal aid unlikely", tip: "SLAB's calculator says you may not qualify financially. Some solicitors take cases like this on a no win no fee basis." },
+  unknown: { cls: "bg-subtle text-ink-2", chip: "Legal aid not checked", tip: "We could not get an answer from SLAB's calculator. A solicitor can check this with you." },
+  skipped: { cls: "bg-subtle text-ink-2", chip: "No win no fee search", tip: "You chose not to share money details, so we looked for solicitors who may work on a no win no fee basis." },
 };
 
 type Flag = "legalAid" | "nwnf" | "patients" | "form" | "lawsoc" | "website";
@@ -66,6 +67,8 @@ export default function FirmResults({
   const [open, setOpen] = useState<FirmFinding | null>(null);
   const [scope, setScope] = useState<TraceScope | null>(null);
   const v = VERDICT[result.verdict];
+  const calcSteps = trace.filter((s) => s.agent === CALCULATOR);
+  const quoted = result.verdict === "likely" || result.verdict === "unlikely";
   const ruledOut = result.firms.filter((f) => f.excluded).length;
 
   const shown = result.firms
@@ -85,32 +88,6 @@ export default function FirmResults({
           Played back from test data to show the layout. The firm names are real; the scores and details are made up.
         </Callout>
       )}
-
-      {/* Verdict: one line, details on click */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-card border border-line bg-white px-5 py-4">
-        <span aria-hidden className={cx("size-2.5 shrink-0 rounded-full", v.dot)} />
-        <div className="min-w-[16rem] flex-1">
-          <div className="text-[15px] font-medium text-ink">{v.title}</div>
-          <div className="text-[13px] text-ink-2">
-            {v.body} Most likely way to pay: <span className="font-medium text-ink">{result.route === "legal_aid" ? "legal aid" : "no win no fee"}</span>.
-          </div>
-        </div>
-        {trace.some((s) => s.agent === CALCULATOR) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setScope({
-                title: "The legal aid calculator",
-                subtitle: result.verdict === "likely" || result.verdict === "unlikely" ? `It said: "${result.calculatorText}"` : "What we typed into SLAB's calculator and what happened.",
-                steps: trace.filter((s) => s.agent === CALCULATOR),
-              })
-            }
-          >
-            How we checked
-          </Button>
-        )}
-      </div>
 
       <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Filters */}
@@ -161,8 +138,23 @@ export default function FirmResults({
         {/* Results */}
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-[13px] text-ink-2">
-              <span className="font-medium text-ink">{shown.length}</span> of {result.firms.length} firms · <StatsLine stats={result.stats} inline />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2">
+              {calcSteps.length > 0 ? (
+                <button
+                  title={`${v.tip} Click to see how we checked.`}
+                  onClick={() => setScope({ title: "The legal aid calculator", subtitle: v.tip + (quoted ? ` It said: "${result.calculatorText}"` : ""), steps: calcSteps })}
+                  className={cx("rounded-full px-2.5 py-0.5 text-[12px] font-medium hover:underline", v.cls)}
+                >
+                  {v.chip}
+                </button>
+              ) : (
+                <span title={v.tip} className={cx("rounded-full px-2.5 py-0.5 text-[12px] font-medium", v.cls)}>
+                  {v.chip}
+                </span>
+              )}
+              <span>
+                <span className="font-medium text-ink">{shown.length}</span> of {result.firms.length} firms · <StatsLine stats={result.stats} inline />
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <div role="group" aria-label="Sort" className="flex rounded-ctl border border-line p-0.5 text-[12px]">

@@ -65,13 +65,12 @@ export default function LegalAidStep({ profile, onContinue }: { profile: Profile
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Eyebrow>Compensation · step 1</Eyebrow>
-            <h1 className="display mt-2 text-[32px] text-ink">Can I get legal aid?</h1>
+            <h1 className="display mt-2 text-[32px] text-ink">Check legal aid and find lawyers</h1>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
-            <span>
-              {funding.skipped ? "You chose not to share money details. " : "Using your money answers. "}
-              {changeAnswers}
-            </span>
+            <button className="text-brand hover:underline" onClick={() => setLegalAid({ funding: EMPTY_FUNDING, result: null })}>
+              {funding.skipped ? "Check legal aid instead" : "Change money answers"}
+            </button>
             <Button variant="secondary" size="sm" onClick={run}>
               Check again
             </Button>
@@ -91,7 +90,7 @@ export default function LegalAidStep({ profile, onContinue }: { profile: Profile
 
   return (
     <div className="space-y-8">
-      <PageTitle eyebrow="Compensation · step 1" title="Can I get legal aid?" lede={lede} />
+      <PageTitle eyebrow="Compensation · step 1" title="Check legal aid and find lawyers" lede={lede} />
 
       <AskMissing profile={profile} why="The lawyer search needs this, and it was not covered when we first talked." />
 

@@ -6,7 +6,7 @@ import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
 import { TRACKS, type TrackId } from "../../lib/agent/track";
 import { FitRing } from "./scoreParts";
-import { ArrowLeftIcon, Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
+import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -27,7 +27,7 @@ export const FIELD_LABELS: Record<string, string> = {
 const input = control;
 
 
-export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
+export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
   const missing = missingRequired(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
@@ -43,10 +43,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
     <div>
       {/* The header's blue carries on into the page title, then stops with the stepped lines. */}
       <div className="bg-brand text-white">
-        <div className="mx-auto max-w-3xl px-12 pb-14 pt-6">
-          <button onClick={onClose} className="mb-8 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white">
-            <ArrowLeftIcon /> Back to your case
-          </button>
+        <div className="mx-auto max-w-3xl px-12 pb-14 pt-10">
           <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/70">Profile</div>
           <h1 className="display mt-3 text-[48px] text-white">Your profile</h1>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-6 text-white/85">

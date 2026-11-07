@@ -104,6 +104,8 @@ Each interview question is a full screen under the header: heading in `.display`
 
 ## Do / don't
 
+- **Headlines are never questions.** Page and section titles are statements or helpful instructions ("Check legal aid and find lawyers", not "Can I get legal aid?"). Questions are only for prompts the user answers (Tarun, 2026-11-07).
+- **No back links inside page headers.** The header's profile icon opens and closes the profile; a page does not add its own "Back to …" link at the top (Tarun, 2026-11-07).
 - **Never truncate text** (no `truncate`, ellipsis or line clamps). Let it wrap, or change the layout so it fits; long URLs use `break-all` (Tarun, 2026-11-07).
 - **Progressive disclosure:** a little up front, details on click (Tarun, 2026-11-07).
 

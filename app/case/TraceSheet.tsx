@@ -6,7 +6,7 @@ import { Button, cx, Eyebrow } from "../ui";
 
 /**
  * Full traceability for step 3 (D39): every step an agent took, in time order, for one firm, the calculator, or the whole run.
- * Opened from a firm card, the verdict, or "Whole run". A side sheet over the page; Escape or the backdrop closes it.
+ * Opened from a firm card, the verdict, or "Whole run". A centred modal (Tarun: modals, never side sheets); Escape or the backdrop closes it.
  */
 
 export type TraceScope = { title: string; subtitle?: string; steps: TraceStep[]; whole?: boolean };
@@ -61,9 +61,9 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
   }, [big, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={scope.title}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-10" role="dialog" aria-modal="true" aria-label={scope.title}>
       <button aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-[0_0_40px_rgba(0,0,0,0.15)]">
+      <div className="relative flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-card bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
         <header className="space-y-4 border-b border-line px-8 pt-7 pb-5">
           <div className="flex items-start justify-between gap-4">
             <div>
