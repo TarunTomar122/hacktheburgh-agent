@@ -6,14 +6,25 @@ import { Button, cx } from "./ui";
 /**
  * Right-hand panel that shows the agent's browser live (D32). Mounted once in app/layout.tsx.
  * Hidden until a browser session starts; frames arrive as server-sent events from /api/live.
- * The panel reports its size, and the server sizes the remote page to match, so the page fills it edge to edge.
- * "Take control" forwards the user's clicks, scrolling and typing to the real page.
+ * One tab: the page fills the panel. Several tabs (D36, step 3's parallel agents): a grid of tiles, one per agent,
+ * each with the agent's colour, state and note; clicking a tile focuses it (full quality, take control) until "Back to grid".
+ * The panel reports its size, and the server sizes the focused page to match, so it fills the panel edge to edge.
+ * "Take control" forwards the user's clicks, scrolling and typing to the page being shown.
  * When the browser closes, the panel shows a short notice and then closes itself (D38).
  */
 
-type Frame = { type: "frame"; data: string; url: string; width: number; height: number };
-type LiveMsg = Frame | { type: "end" } | { type: "idle" } | { type: "control"; enabled: boolean };
+type Frame = { type: "frame"; pageId?: string; data: string; url: string; width: number; height: number };
+type LivePage = { pageId: string; label: string; color: string; url: string; state: "starting" | "working" | "done" | "failed"; note: string };
+type LiveStats = { agents: number; sites: number; pages: number; actions: number };
+type LiveMsg =
+  | Frame
+  | { type: "pages"; pages: LivePage[] }
+  | { type: "stats"; stats: LiveStats }
+  | { type: "end" }
+  | { type: "idle" }
+  | { type: "control"; enabled: boolean };
 type Mode = "hidden" | "live" | "ended";
+const SINGLE = "_single"; // frames from a server that does not tag pages
 
 /** How long the "browser has closed" notice stays before the panel closes itself. */
 const CLOSE_AFTER_MS = 2000;
@@ -38,7 +49,7 @@ const sendOrdered = (body: unknown) => {
  */
 function wheelSender() {
   let busy = false;
-  let pending: { x: number; y: number; dx: number; dy: number } | null = null;
+  let pending: { x: number; y: number; dx: number; dy: number; pageId?: string } | null = null;
   const flush = async () => {
     while (pending) {
       const body = { type: "wheel", ...pending };
@@ -48,14 +59,15 @@ function wheelSender() {
       busy = false;
     }
   };
-  return (x: number, y: number, dx: number, dy: number) => {
-    pending = { x, y, dx: (pending?.dx ?? 0) + dx, dy: (pending?.dy ?? 0) + dy };
+  return (x: number, y: number, dx: number, dy: number, pageId?: string) => {
+    const prev = pending && pending.pageId === pageId ? pending : null;
+    pending = { x, y, dx: (prev?.dx ?? 0) + dx, dy: (prev?.dy ?? 0) + dy, pageId };
     if (!busy) void flush();
   };
 }
 function moveSender() {
   let busy = false;
-  let pending: { x: number; y: number } | null = null;
+  let pending: { x: number; y: number; pageId?: string } | null = null;
   const flush = async () => {
     while (pending) {
       const body = { type: "move", ...pending };
@@ -65,8 +77,8 @@ function moveSender() {
       busy = false;
     }
   };
-  return (x: number, y: number) => {
-    pending = { x, y };
+  return (x: number, y: number, pageId?: string) => {
+    pending = { x, y, pageId };
     if (!busy) void flush();
   };
 }
@@ -91,6 +103,25 @@ export default function LiveView() {
   const lastSrc = useRef("");
   const modeRef = useRef<Mode>("hidden");
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Several tabs (D36)
+  const [pages, setPages] = useState<LivePage[]>([]);
+  const [stats, setStats] = useState<LiveStats | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
+  const srcs = useRef(new Map<string, string>()); // latest frame per tab
+  const sizes = useRef(new Map<string, { width: number; height: number }>());
+  const urls = useRef(new Map<string, string>());
+  const tileImgs = useRef(new Map<string, HTMLImageElement>());
+  const [singleId, setSingleId] = useState<string | null>(null); // the tab shown when there is only one
+  const singleRef = useRef<string | null>(null);
+  // Which tab the big view shows: the focused one, or the only one. null = the grid.
+  const grid = pages.length > 1 && focused === null;
+  const bigId = focused ?? (pages.length === 1 ? pages[0].pageId : singleId);
+  const focusedPage = !grid && pages.length > 1 ? pages.find((p) => p.pageId === bigId) : undefined;
+  // Event handlers read the shown tab from a ref (they are created once); keep it in sync after each render.
+  const bigRef = useRef<string | null>(null);
+  useEffect(() => {
+    bigRef.current = grid ? null : bigId;
+  }, [grid, bigId]);
 
   useEffect(() => {
     const es = new EventSource("/api/live");
@@ -98,16 +129,46 @@ export default function LiveView() {
       const msg = JSON.parse(ev.data) as LiveMsg;
       if (msg.type === "frame") {
         clearTimeout(closeTimer.current); // a new session started while the old notice was still showing
-        // Set the image directly instead of through state: many frames a second should not re-render React.
-        lastSrc.current = `data:image/jpeg;base64,${msg.data}`;
-        if (img.current) img.current.src = lastSrc.current;
-        size.current = { width: msg.width, height: msg.height };
-        setUrl((u) => (u === msg.url ? u : msg.url));
+        // Set the images directly instead of through state: many frames a second should not re-render React.
+        const id = msg.pageId ?? SINGLE;
+        const src = `data:image/jpeg;base64,${msg.data}`;
+        srcs.current.set(id, src);
+        sizes.current.set(id, { width: msg.width, height: msg.height });
+        urls.current.set(id, msg.url);
+        if (singleRef.current === null) {
+          singleRef.current = id;
+          setSingleId(id);
+        }
+        const tile = tileImgs.current.get(id);
+        if (tile) tile.src = src;
+        const shown = bigRef.current ?? (singleRef.current === id ? id : null);
+        if (shown === id) {
+          lastSrc.current = src;
+          if (img.current) img.current.src = src;
+          size.current = { width: msg.width, height: msg.height };
+          setUrl((u) => (u === msg.url ? u : msg.url));
+        }
         if (modeRef.current !== "live") {
           modeRef.current = "live";
           setMode("live");
           setOpen(true);
         }
+      } else if (msg.type === "pages") {
+        if (msg.pages.length > 0) clearTimeout(closeTimer.current);
+        setPages(msg.pages);
+        if (msg.pages.length > 0) {
+          singleRef.current = msg.pages[msg.pages.length - 1].pageId;
+          setSingleId(singleRef.current);
+        }
+        // A focused tab that went away: back to the grid.
+        setFocused((f) => (f && !msg.pages.some((p) => p.pageId === f) ? null : f));
+        if (msg.pages.length > 0 && modeRef.current !== "live") {
+          modeRef.current = "live";
+          setMode("live");
+          setOpen(true);
+        }
+      } else if (msg.type === "stats") {
+        setStats(msg.stats);
       } else if (msg.type === "end") {
         if (modeRef.current === "live") {
           modeRef.current = "ended";
@@ -118,6 +179,15 @@ export default function LiveView() {
             modeRef.current = "hidden";
             lastSrc.current = "";
             setMode("hidden");
+            // Forget the old session's tabs so the next run starts clean.
+            srcs.current.clear();
+            sizes.current.clear();
+            urls.current.clear();
+            singleRef.current = null;
+            setSingleId(null);
+            setPages([]);
+            setStats(null);
+            setFocused(null);
           }, CLOSE_AFTER_MS);
         }
         setControl(false);
@@ -160,10 +230,22 @@ export default function LiveView() {
     handle.addEventListener("pointercancel", up);
   };
 
-  // The <img> is not mounted while hidden: show the latest frame as soon as it is.
+  // The <img> is not mounted while hidden or in the grid: show the latest frame as soon as it is.
   useEffect(() => {
-    if (img.current && lastSrc.current) img.current.src = lastSrc.current;
-  }, [mode, open]);
+    const id = grid ? null : bigId;
+    const src = (id && srcs.current.get(id)) || lastSrc.current;
+    if (id) {
+      size.current = sizes.current.get(id) ?? size.current;
+      setUrl(urls.current.get(id) ?? "");
+    }
+    if (img.current && src) img.current.src = src;
+  }, [mode, open, grid, bigId]);
+
+  const focus = (pageId: string | null) => {
+    setFocused(pageId);
+    setControl(false);
+    void send({ type: "focus", pageId });
+  };
 
   // Make room on the right so the panel does not cover the page.
   const docked = mode !== "hidden" && open && width > 0;
@@ -181,7 +263,7 @@ export default function LiveView() {
   // Tell the server the picture area's size so the remote page is the same shape and fills it.
   useEffect(() => {
     const el = stage.current;
-    if (!el || mode !== "live" || !open) return;
+    if (!el || mode !== "live" || !open || grid) return;
     let t: ReturnType<typeof setTimeout> | undefined;
     const report = () => {
       clearTimeout(t);
@@ -197,7 +279,7 @@ export default function LiveView() {
       ro.disconnect();
       clearTimeout(t);
     };
-  }, [mode, open]);
+  }, [mode, open, grid]);
 
   /** Map a point on the image to CSS pixels in the remote page (the image may be letterboxed by object-contain). */
   const toPage = useCallback((clientX: number, clientY: number) => {
@@ -218,11 +300,11 @@ export default function LiveView() {
       const p = toPage(e.clientX, e.clientY);
       // deltaMode 1 = lines (some mice): roughly 40px a line.
       const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1;
-      sendWheel(p.x, p.y, e.deltaX * k, e.deltaY * k);
+      sendWheel(p.x, p.y, e.deltaX * k, e.deltaY * k, bigRef.current ?? undefined);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [control, mode, toPage]);
+  }, [control, mode, toPage, grid]);
 
   const takeControl = () => {
     if (control) return setControl(false);
@@ -281,16 +363,52 @@ export default function LiveView() {
         <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">
           {mode === "live" ? "Live" : "Closed"}
         </span>
-        <div className="flex min-w-0 flex-1 items-center rounded-full bg-white px-4 py-1.5 text-[13px] text-ink-2">
-          <span className="truncate" title={url}>
-            {url.replace(/^https?:\/\/(www\.)?/, "") || "about:blank"}
-          </span>
-        </div>
+        {focused && pages.length > 1 && (
+          <Button variant="secondary" size="sm" onClick={() => focus(null)}>
+            ← Back to grid
+          </Button>
+        )}
+        {grid ? (
+          <div className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{pages.length} agents working at once</div>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white px-4 py-1.5 text-[13px] text-ink-2">
+            {focusedPage && <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: focusedPage.color }} />}
+            {focusedPage && <span className="shrink-0 font-medium text-ink">{focusedPage.label}</span>}
+            <span className="truncate" title={url}>
+              {url.replace(/^https?:\/\/(www\.)?/, "") || "about:blank"}
+            </span>
+          </div>
+        )}
         <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the browser keeps running)">
           Hide
         </Button>
       </div>
 
+      {stats && pages.length > 1 && (
+        <div className="-mt-1 text-[12px] tabular-nums text-muted">
+          {stats.agents} agents · {stats.sites} sites · {stats.pages} pages · {stats.actions} actions
+        </div>
+      )}
+
+      {grid ? (
+        <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
+          {pages.map((p) => (
+            <Tile
+              key={p.pageId}
+              page={p}
+              ended={mode === "ended"}
+              onImg={(el) => {
+                if (el) {
+                  tileImgs.current.set(p.pageId, el);
+                  const src = srcs.current.get(p.pageId);
+                  if (src) el.src = src;
+                } else tileImgs.current.delete(p.pageId);
+              }}
+              onOpen={() => focus(p.pageId)}
+            />
+          ))}
+        </div>
+      ) : (
       <div ref={stage} className="relative min-h-0 flex-1 overflow-hidden rounded-card bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
         <img
@@ -307,17 +425,18 @@ export default function LiveView() {
           onClick={(e) => {
             if (!control || mode !== "live") return;
             img.current?.focus();
-            sendOrdered({ type: "click", ...toPage(e.clientX, e.clientY) });
+            sendOrdered({ type: "click", ...toPage(e.clientX, e.clientY), pageId: bigRef.current ?? undefined });
           }}
           onPointerMove={(e) => {
             if (!control || mode !== "live" || dragging) return;
             const p = toPage(e.clientX, e.clientY);
-            sendMove(p.x, p.y);
+            sendMove(p.x, p.y, bigRef.current ?? undefined);
           }}
           onKeyDown={(e) => {
             if (!control || mode !== "live" || e.metaKey || e.ctrlKey || e.altKey) return;
-            if (e.key.length === 1 && e.key !== " ") sendOrdered({ type: "text", text: e.key });
-            else if (KEYS.has(e.key)) sendOrdered({ type: "key", key: e.key === " " ? "Space" : e.key });
+            const pageId = bigRef.current ?? undefined;
+            if (e.key.length === 1 && e.key !== " ") sendOrdered({ type: "text", text: e.key, pageId });
+            else if (KEYS.has(e.key)) sendOrdered({ type: "key", key: e.key === " " ? "Space" : e.key, pageId });
             else return;
             e.preventDefault();
           }}
@@ -329,14 +448,18 @@ export default function LiveView() {
           </div>
         )}
       </div>
+      )}
 
-      {mode === "live" && (
+      {mode === "live" && grid && (
+        <div className="text-[12px] text-muted">Click a tile to watch one agent up close, or to take control of it. The agents never press Submit.</div>
+      )}
+      {mode === "live" && !grid && (
         <div className="flex items-center gap-2">
           <Button variant={control ? "primary" : "secondary"} size="sm" onClick={takeControl}>
             {control ? "Stop controlling" : "Take control"}
           </Button>
           {control && (
-            <Button variant="secondary" size="sm" onClick={() => void send({ type: "back" })}>
+            <Button variant="secondary" size="sm" onClick={() => void send({ type: "back", pageId: bigRef.current ?? undefined })}>
               Back
             </Button>
           )}
@@ -355,6 +478,40 @@ export default function LiveView() {
         </div>
       )}
     </aside>
+  );
+}
+
+const STATE: Record<LivePage["state"], { text: string; cls: string }> = {
+  starting: { text: "Starting", cls: "bg-subtle text-muted" },
+  working: { text: "Working", cls: "bg-brand-soft text-brand" },
+  done: { text: "Done", cls: "bg-teal-soft text-teal" },
+  failed: { text: "Failed", cls: "bg-danger-soft text-danger" },
+};
+
+/** One agent's tab in the grid: its colour, label and state on top, the page, then what it is doing and where. */
+function Tile({ page, ended, onImg, onOpen }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="group flex flex-col overflow-hidden rounded-card border border-line bg-white text-left transition-colors hover:border-brand/50"
+      style={{ borderTopColor: page.color, borderTopWidth: 3 }}
+      title={`Watch ${page.label} up close`}
+    >
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
+        <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: page.color }} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{page.label}</span>
+        <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", STATE[page.state].cls)}>{STATE[page.state].text}</span>
+      </div>
+      <div className="relative aspect-[16/10] w-full overflow-hidden border-y border-line-soft bg-subtle">
+        <span className="absolute inset-0 flex items-center justify-center text-[12px] text-muted">Opening…</span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
+        <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", (ended || page.state === "failed") && "opacity-50")} />
+      </div>
+      <div className="space-y-0.5 px-3 py-2">
+        <div className="truncate text-[12px] text-ink-2">{page.note || "\u00a0"}</div>
+        <div className="truncate text-[11px] text-muted">{page.url.replace(/^https?:\/\/(www\.)?/, "")}</div>
+      </div>
+    </button>
   );
 }
 

@@ -28,15 +28,17 @@ function Tick({ done }: { done: boolean }) {
 }
 
 type NodeProps = {
+  eyebrow?: string;
   title: string;
   note: string;
   state: StepState | "done";
   active?: boolean;
+  compact?: boolean;
   onClick?: () => void;
 };
 
 /** One box on the map. Solid = you can do it; dashed = waiting or not built yet; blue = the one you are looking at. */
-function Node({ title, note, state, active, onClick }: NodeProps) {
+function Node({ eyebrow, title, note, state, active, compact, onClick }: NodeProps) {
   const disabled = state === "soon";
   return (
     <button
@@ -44,16 +46,20 @@ function Node({ title, note, state, active, onClick }: NodeProps) {
       disabled={disabled}
       aria-current={active ? "step" : undefined}
       className={cx(
-        "w-full max-w-[260px] rounded-card border px-4 py-3 text-left transition-colors",
-        active && "border-brand bg-brand-soft ring-4 ring-brand-soft",
-        !active && state === "done" && "border-teal/50 bg-white hover:border-teal",
-        !active && state === "ready" && "border-line bg-white hover:border-brand/50",
-        !active && state === "locked" && "border-dashed border-rail bg-white hover:border-brand/50",
-        state === "soon" && "cursor-not-allowed border-dashed border-line bg-white",
+        "relative w-full rounded-card border bg-white text-left transition-[border-color,box-shadow]",
+        compact ? "max-w-[220px] px-4 py-2.5" : "max-w-[264px] px-4 py-3",
+        active && "border-brand shadow-[0_0_0_4px_var(--color-brand-soft)]",
+        !active && state === "done" && "border-teal/40 hover:border-teal",
+        !active && state === "ready" && "border-line hover:border-brand/50",
+        !active && state === "locked" && "border-dashed border-rail hover:border-brand/50",
+        state === "soon" && "cursor-not-allowed border-dashed border-line bg-white/60",
       )}
     >
+      {eyebrow && (
+        <div className={cx("text-[10px] font-medium uppercase tracking-[0.12em]", active ? "text-brand" : state === "soon" ? "text-fade" : "text-muted")}>{eyebrow}</div>
+      )}
       <div className={cx("text-[15px] font-medium leading-6", active ? "text-brand" : state === "soon" ? "text-faint" : "text-ink")}>{title}</div>
-      <div className={cx("mt-0.5 flex items-center gap-1.5 text-xs", state === "done" ? "text-teal" : state === "soon" ? "text-faint" : "text-muted")}>
+      <div className={cx("flex items-center gap-1.5 text-xs", state === "done" ? "text-teal" : state === "soon" ? "text-faint" : "text-muted")}>
         {state === "done" && <CheckIcon />}
         {state === "locked" && <LockIcon />}
         {note}
@@ -62,8 +68,30 @@ function Node({ title, note, state, active, onClick }: NodeProps) {
   );
 }
 
-/** Short vertical line between two boxes in the same lane. */
-const Down = ({ on }: { on?: boolean }) => <span aria-hidden className={cx("mx-auto block h-5 w-px", on ? "bg-brand" : "bg-rail")} />;
+/*
+ * Connectors. Each lane is one column of a two-column grid with no gap, so a line drawn from a column's centre to its
+ * inner edge meets the other lane's line exactly in the middle, under "Your story" and above "Your case file".
+ */
+const line = (on?: boolean) => (on ? "border-brand" : "border-rail");
+/** Vertical line between two boxes in the same lane. */
+const Down = ({ on, h = "h-6" }: { on?: boolean; h?: string }) => <span aria-hidden className={cx("mx-auto block w-0 border-l-[1.5px]", h, line(on))} />;
+/** From the middle of the map out to the centre of a lane (split), or back (join). */
+function Branch({ side, on, join }: { side: "left" | "right"; on?: boolean; join?: boolean }) {
+  return (
+    <div aria-hidden className="h-6">
+      <span
+        className={cx(
+          "block h-full w-1/2 border-[1.5px]",
+          line(on),
+          join ? "border-t-0" : "border-b-0",
+          side === "left" ? "border-r-0" : "border-l-0",
+          side === "left" ? (join ? "rounded-bl-[10px]" : "rounded-tl-[10px]") : join ? "rounded-br-[10px]" : "rounded-tr-[10px]",
+        )}
+        style={side === "left" ? { marginRight: 0, marginLeft: "50%" } : { marginLeft: 0, marginRight: "50%" }}
+      />
+    </div>
+  );
+}
 
 export default function PathMap({
   profile,
@@ -91,76 +119,78 @@ export default function PathMap({
     return { step, state, note };
   };
   const lane = (track: Step["track"]) => STEPS.filter((s) => s.track === track).map(view);
-  const answers = lane("answers");
-  const money = lane("compensation");
   const end = lane("end")[0];
   const activeTrack = STEPS.find((s) => s.n === active)?.track;
   const activeMilestones = ms.filter((m) => m.step === active);
+  const lanes = [
+    { id: "answers" as const, side: "left" as const, title: "Get answers", why: "An explanation, an apology, a fix", items: lane("answers") },
+    { id: "compensation" as const, side: "right" as const, title: "Get compensation", why: "Money for what happened", items: lane("compensation") },
+  ];
 
   return (
-    <section aria-label="Your paths" className="border-b border-line bg-subtle">
-      <div className="mx-auto max-w-3xl px-12 pt-8 pb-7">
-        {/* Progress, one line */}
-        <div className="mb-6 flex items-center gap-4">
-          <div className="display text-[32px] leading-none text-ink">{pct}%</div>
-          <div className="min-w-0 flex-1">
-            <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-1.5 overflow-hidden rounded-full bg-line">
-              <div className="h-full rounded-full bg-brand transition-[width] duration-700 ease-out" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="mt-1.5 flex justify-between gap-4 text-xs text-muted">
+    <section aria-label="Your paths" className="border-b border-line bg-paper">
+      <div className="mx-auto max-w-3xl px-12 pt-8 pb-8">
+        {/* Progress */}
+        <div className="mb-7 flex items-end gap-5">
+          <div className="display text-[40px] leading-none text-ink">{pct}%</div>
+          <div className="min-w-0 flex-1 pb-1">
+            <div className="mb-1.5 flex justify-between gap-4 text-xs text-muted">
               <span className="truncate">{next ? <><span className="font-medium text-ink">Next:</span> {next}</> : "Nothing waiting on you"}</span>
-              <span className="shrink-0">{done} of {total} milestones</span>
+              <span className="shrink-0 tabular-nums">{done} of {total} milestones</span>
+            </div>
+            <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-1.5 overflow-hidden rounded-full bg-rail/50">
+              <div className="h-full rounded-full bg-brand transition-[width] duration-700 ease-out" style={{ width: `${pct}%` }} />
             </div>
           </div>
         </div>
 
         {/* Start */}
         <div className="flex justify-center">
-          <Node title="Your story" note={storyDone ? "Done" : "Some details missing"} state={storyDone ? "done" : "ready"} onClick={onOpenProfile} />
+          <Node compact eyebrow="Start" title="Your story" note={storyDone ? "Done" : "Some details missing"} state={storyDone ? "done" : "ready"} onClick={onOpenProfile} />
         </div>
+        <Down on={activeTrack === "answers" || activeTrack === "compensation"} h="h-4" />
 
-        {/* Split: a stub down from the start, then a bar that drops into each lane */}
-        <div aria-hidden className="relative h-8">
-          <span className="absolute left-1/2 top-0 h-3 w-px bg-rail" />
-          <span className={cx("absolute left-1/4 right-1/2 top-3 h-5 rounded-tl-lg border-l border-t", activeTrack === "answers" ? "border-brand" : "border-rail")} />
-          <span className={cx("absolute left-1/2 right-1/4 top-3 h-5 rounded-tr-lg border-r border-t", activeTrack === "compensation" ? "border-brand" : "border-rail")} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          {[
-            { id: "answers" as const, title: "Get answers", why: "An explanation, an apology, a fix", items: answers },
-            { id: "compensation" as const, title: "Get compensation", why: "Money for what happened", items: money },
-          ].map((l) => (
-            <div key={l.id} className="flex flex-col items-center">
-              <div className="mb-3 text-center">
-                <div className={cx("text-[11px] font-medium uppercase tracking-[0.1em]", activeTrack === l.id ? "text-brand" : "text-muted")}>{l.title}</div>
-                <div className="text-xs text-muted">{l.why}</div>
-              </div>
-              {l.items.map((it, i) => (
-                <div key={it.step.n} className="flex w-full flex-col items-center">
-                  {i > 0 && <Down on={activeTrack === l.id && active >= it.step.n} />}
-                  <Node title={it.step.title} note={it.note} state={it.state} active={active === it.step.n} onClick={() => onSelect(it.step.n)} />
+        {/* Two lanes, each in its own column (no gap, so the lines meet in the middle) */}
+        <div className="grid grid-cols-2">
+          {lanes.map((l) => {
+            const on = activeTrack === l.id;
+            return (
+              <div key={l.id} className="flex flex-col items-center">
+                <div className="w-full">
+                  <Branch side={l.side} on={on} />
                 </div>
-              ))}
-            </div>
-          ))}
+                <div className="mb-3 mt-2 text-center">
+                  <div className={cx("text-[11px] font-medium uppercase tracking-[0.12em]", on ? "text-brand" : "text-ink-2")}>{l.title}</div>
+                  <div className="text-xs text-muted">{l.why}</div>
+                </div>
+                <div className="flex w-full flex-col items-center px-3">
+                  {l.items.map((it, i) => (
+                    <div key={it.step.n} className="flex w-full flex-col items-center">
+                      {i > 0 && <Down on={on && active >= it.step.n} />}
+                      <Node eyebrow={`Step ${it.step.n}`} title={it.step.title} note={it.note} state={it.state} active={active === it.step.n} onClick={() => onSelect(it.step.n)} />
+                    </div>
+                  ))}
+                </div>
+                <Down h="h-4" on={activeTrack === "end"} />
+                <div className="w-full">
+                  <Branch side={l.side} join on={activeTrack === "end"} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Join */}
-        <div aria-hidden className="relative h-8">
-          <span className="absolute left-1/4 right-1/2 top-0 h-5 rounded-bl-lg border-b border-l border-rail" />
-          <span className="absolute left-1/2 right-1/4 top-0 h-5 rounded-br-lg border-b border-r border-rail" />
-          <span className="absolute left-1/2 top-5 h-3 w-px bg-rail" />
-        </div>
+        <Down on={activeTrack === "end"} h="h-4" />
         {end && (
           <div className="flex justify-center">
-            <Node title={end.step.title} note={end.note} state={end.state} active={active === end.step.n} onClick={() => onSelect(end.step.n)} />
+            <Node compact eyebrow="Together" title={end.step.title} note={end.note} state={end.state} active={active === end.step.n} onClick={() => onSelect(end.step.n)} />
           </div>
         )}
 
         {/* The step you are on: its checklist */}
         {activeMilestones.length > 0 && (
-          <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4">
+          <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-rail/60 pt-4">
             {activeMilestones.map((m) => (
               <li key={m.label} className={cx("flex items-center gap-2 text-xs", m.done ? "text-ink" : "text-muted")}>
                 <Tick done={m.done} />
