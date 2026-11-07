@@ -276,3 +276,14 @@ User authorized straightforward bug fixes and pushing them. Failed answers and t
 User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's existing three-fill-attempt budget in code and permit filling only shortlisted, non-excluded firms. Report failed work as Needs attention, offer drafting retries, and describe proximity only with a verified approved location. Item 1 is unchanged. Real sending and browser engines are untouched.
 
 <!-- Add new entries above this line. Next number: D57 -->
+
+**D55 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**The agent's browser closes by itself when its job is done**, so the live panel never sits on a stale page.
+- **Legal aid crawl (step 3):** closes the moment the result is emitted. `runStep3` no longer has `keepOpen`.
+- **Research plan (`runPlanner`):** closes every tab when the research ends. Only filled enquiry forms waiting for the user's OK stay (`keepOnlyTabs` in `lib/browser.ts`); the browser closes with its last tab, or after 15 minutes.
+- **Law-firm enquiries (step 4):** each form's tab closes once it is sent or refused by the send gate (`releaseTab` in `lib/agent/enquiry.ts`). Other tabs close when the run ends.
+- **NHS and SPSO complaint forms:** still left open so the user can check them and press Submit; the agent never submits. `closeWhenSubmitted` (`lib/browser.ts`) closes the browser 5 s after the page made a POST and now shows a confirmation it did not show before. It also closes when the user closes the tab, after 10 minutes, and from the buttons "Skip and continue to step 2 (demo)", "Mark as sent" and "I've pressed Send".
+- **Not verified:** the confirmation-text check on the real NHS Lothian and SPSO sites (we never submit there). If it misses, the browser still closes on any of the other signals above.
+- **Tested** with a local fixture form (submit closes it; closing the tab closes it; only the approval tab survives and closes the browser with it).
+
+<!-- Add new entries above this line. Next number: D56 -->
