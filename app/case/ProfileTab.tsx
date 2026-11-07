@@ -27,7 +27,7 @@ export const FIELD_LABELS: Record<string, string> = {
 const input = control;
 
 
-export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
+export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
   // How NHS Lothian should reply is only needed for the complaint path, and only asked once the user takes it (D42).
   const forNhs = profile.track?.chosen === "complaint";
@@ -55,7 +55,7 @@ export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile
       <Stripes />
 
       <div className="mx-auto max-w-3xl space-y-12 px-12 py-12">
-        <PathSection profile={profile} onSwitched={onSwitched} />
+        <PathSection profile={profile} onContinue={onClose} onSwitched={onSwitched} />
 
         {missing.length > 0 ? (
           <Callout tone="warn" title={forNhs ? "Still needed for the NHS form" : "Still needed"}>
@@ -230,7 +230,7 @@ export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile
 }
 
 /** "Your path" (D42): the track they are on, its fit, and the only place to switch (Tarun: not on the step pages). */
-function PathSection({ profile, onSwitched }: { profile: Profile; onSwitched?: (firstStep: number) => void }) {
+function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; onContinue: () => void; onSwitched?: (firstStep: number) => void }) {
   const chosen = profile.track?.chosen ?? null;
   const rec = profile.track?.rec;
   if (!chosen) {
@@ -254,17 +254,22 @@ function PathSection({ profile, onSwitched }: { profile: Profile; onSwitched?: (
           <p className="mt-0.5 text-sm text-ink-2">{TRACKS[chosen].gets}</p>
           {rec?.recommended === chosen && <p className="mt-1 text-xs text-teal">This is the path we suggested.</p>}
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            setTrack({ chosen: other });
-            onSwitched?.(TRACKS[other].steps[0]);
-          }}
-        >
-          Switch to {TRACKS[other].title.toLowerCase()}
-          {otherFit !== undefined && ` (${otherFit}% fit)`}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={onContinue}>
+            Continue
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setTrack({ chosen: other });
+              onSwitched?.(TRACKS[other].steps[0]);
+            }}
+          >
+            Switch to {TRACKS[other].title.toLowerCase()}
+            {otherFit !== undefined && ` (${otherFit}% fit)`}
+          </Button>
+        </div>
       </div>
     </section>
   );
