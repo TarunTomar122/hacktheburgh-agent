@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { EMPTY_FUNDING, fundingMissing, type AgentTile, type FirmFinding, type Funding, type ScoreItem, type Stats, type Step3Result, type TraceStep } from "../../lib/agent/legalAidTypes";
+import { EMPTY_FUNDING, fundingMissing, type AgentTile, type Funding, type Stats, type TraceStep } from "../../lib/agent/legalAidTypes";
 import { setLegalAid, type Profile } from "../../lib/profile";
-import { Button, Callout, control, cx, Eyebrow, PageTitle, SectionTitle } from "../ui";
+import { Button, control, cx, Eyebrow, PageTitle } from "../ui";
 import AskMissing from "./AskMissing";
 import { fixtureMode, runStep3 } from "./legalAidRun";
-import TraceSheet, { type TraceScope } from "./TraceSheet";
+import FirmResults from "./FirmResults";
+import { StatsLine } from "./scoreParts";
 
 /**
  * Step 3 (D36): "Can I get legal aid?" plus "who could take my case".
  * D33: one sentence and one button. Only the calculator's money questions are asked, here, one at a time, and only if missing.
  */
-export default function LegalAidStep({ profile }: { profile: Profile }) {
+export default function LegalAidStep({ profile, onContinue }: { profile: Profile; onContinue: () => void }) {
   const funding = profile.legalAid?.funding ?? EMPTY_FUNDING;
   const saved = profile.legalAid?.result;
   const missing = fundingMissing(funding);
@@ -51,6 +52,43 @@ export default function LegalAidStep({ profile }: { profile: Profile }) {
     ? "We look for lawyers who take this kind of case and may work on a no win no fee basis, on several sites at once."
     : "We check the Scottish Legal Aid Board's calculator with your answers and look for lawyers who take this kind of case, on several sites at once.";
 
+  const changeAnswers = (
+    <button className="text-brand underline underline-offset-2" onClick={() => setLegalAid({ funding: EMPTY_FUNDING, result: null })}>
+      Change them
+    </button>
+  );
+
+  // With results on screen, the header shrinks to one row so the results start high up (progressive disclosure).
+  if (saved && !running) {
+    return (
+      <div className="space-y-6">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Eyebrow>Compensation · step 1</Eyebrow>
+            <h1 className="display mt-2 text-[32px] text-ink">Can I get legal aid?</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
+            <span>
+              {funding.skipped ? "You chose not to share money details. " : "Using your money answers. "}
+              {changeAnswers}
+            </span>
+            <Button variant="secondary" size="sm" onClick={run}>
+              Check again
+            </Button>
+          </div>
+        </header>
+        {error && <p className="text-sm text-danger">{error}</p>}
+        <FirmResults
+          result={saved}
+          sample={profile.legalAid?.sample === true}
+          selected={profile.legalAid?.selected ?? []}
+          onSelected={(ids) => setLegalAid({ selected: ids })}
+          onContinue={onContinue}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <PageTitle eyebrow="Compensation · step 1" title="Can I get legal aid?" lede={lede} />
@@ -62,14 +100,12 @@ export default function LegalAidStep({ profile }: { profile: Profile }) {
       ) : (
         <div className="space-y-3">
           <Button onClick={run} disabled={running}>
-            {running ? "Checking…" : saved ? "Check again" : "Check legal aid and find lawyers"}
+            {running ? "Checking…" : "Check legal aid and find lawyers"}
           </Button>
           {!running && (
             <p className="text-xs text-muted">
               {funding.skipped ? "You chose not to share money details. " : "Using your money answers. "}
-              <button className="text-brand underline underline-offset-2" onClick={() => setLegalAid({ funding: EMPTY_FUNDING, result: null })}>
-                Change them
-              </button>
+              {changeAnswers}
             </p>
           )}
         </div>
@@ -77,7 +113,7 @@ export default function LegalAidStep({ profile }: { profile: Profile }) {
 
       {error && <p className="text-sm text-danger">{error}</p>}
       {(running || (tiles.length > 0 && !saved)) && <AgentsPanel tiles={tiles} stats={stats} status={status} live={live} />}
-      {saved && !running && <Results result={saved} sample={profile.legalAid?.sample === true} />}
+
     </div>
   );
 }
@@ -210,14 +246,6 @@ const STATE: Record<AgentTile["state"], { text: string; cls: string }> = {
   failed: { text: "Failed", cls: "bg-danger-soft text-danger" },
 };
 
-export function StatsLine({ stats }: { stats: Stats }) {
-  return (
-    <div className="text-xs tabular-nums text-muted">
-      {stats.agents} agents · {stats.sites} sites · {stats.pages} pages · {stats.actions} actions
-    </div>
-  );
-}
-
 function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]; stats: Stats | null; status: string | null; live: TraceStep[] }) {
   return (
     <section className="space-y-3" aria-live="polite">
@@ -255,224 +283,3 @@ function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]; stats
 }
 
 /* ------------------------------------------------------------------ results */
-
-const VERDICT: Record<Step3Result["verdict"], { tone: "ok" | "warn" | "info"; title: string; body: string }> = {
-  likely: { tone: "ok", title: "You may qualify financially for legal aid.", body: "A solicitor applies for you, and SLAB also checks the case has merit." },
-  unlikely: { tone: "warn", title: "You may not qualify financially for legal aid.", body: "Some lawyers take cases like this on a no win no fee basis, so we looked for those." },
-  unknown: { tone: "info", title: "We could not get an answer from the calculator.", body: "A solicitor can check whether you qualify when you talk to them." },
-  skipped: { tone: "info", title: "You chose not to share money details.", body: "So we looked for lawyers who may work on a no win no fee basis." },
-};
-
-const host = (url: string) => {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-};
-
-function Badge({ children, cls }: { children: ReactNode; cls: string }) {
-  return <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>{children}</span>;
-}
-
-/** "How well this firm fits what you need" (D39). A fit, never a chance of winning. */
-export function FitRing({ fit, size = 60, title = "How well this firm fits what you need, from the checks below. Not a chance of winning." }: { fit: number; size?: number; title?: string }) {
-  // Everything is drawn in one 56x56 SVG coordinate space, so the number and "FIT" are centred on the ring and scale with it at any size.
-  const r = 22;
-  const c = 2 * Math.PI * r;
-  const n = Math.max(0, Math.min(100, Math.round(fit)));
-  const showLabel = size >= 48;
-  return (
-    <svg width={size} height={size} viewBox="0 0 56 56" className="shrink-0" role="img" aria-label={`${n}% fit`}>
-      <title>{title}</title>
-      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-line-soft)" strokeWidth="4.5" />
-      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-brand)" strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${(n / 100) * c} ${c}`} transform="rotate(-90 28 28)" />
-      <text
-        x="28"
-        y={showLabel ? 26 : 28}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={n === 100 ? 11 : 12.5}
-        fontWeight={600}
-        fill="var(--color-ink)"
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        {n}%
-      </text>
-      {showLabel && (
-        <text x="28" y="36.5" textAnchor="middle" dominantBaseline="central" fontSize="5" letterSpacing="0.6" fill="var(--color-muted)">
-          FIT
-        </text>
-      )}
-    </svg>
-  );
-}
-
-const BAR: Record<ScoreItem["status"], string> = { yes: "bg-teal", no: "bg-danger/60", unknown: "bg-fade" };
-const MARK: Record<ScoreItem["status"], { t: string; cls: string }> = {
-  yes: { t: "✓", cls: "text-teal" },
-  no: { t: "✕", cls: "text-danger" },
-  unknown: { t: "?", cls: "text-muted" },
-};
-
-/** One criterion: label, a small bar (points out of max, coloured by what we found), and the evidence when opened. */
-export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "max" | "status" | "evidence"> }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <li>
-      <button onClick={() => setOpen((o) => !o)} title={row.evidence} aria-expanded={open} className="grid w-full grid-cols-[14px_1fr_auto] items-baseline gap-x-2 gap-y-1 rounded py-1.5 text-left text-[13px] hover:bg-subtle">
-        <span aria-hidden className={cx("text-center text-[12px]", MARK[row.status].cls)}>{MARK[row.status].t}</span>
-        <span className="leading-5 text-ink-2">{row.label}</span>
-        <span className="text-right text-[11px] tabular-nums text-muted">
-          {row.points}/{row.max}
-        </span>
-        <span aria-hidden />
-        <span className="col-span-2 h-1 overflow-hidden rounded-full bg-line-soft">
-          <span className={cx("block h-full rounded-full", BAR[row.status])} style={{ width: `${row.max ? (row.points / row.max) * 100 : 0}%` }} />
-        </span>
-      </button>
-      {open && <p className="mb-1.5 ml-[22px] rounded bg-subtle px-3 py-2 text-[12px] leading-5 text-ink-2">{row.evidence}</p>}
-    </li>
-  );
-}
-
-function FirmCard({ firm, rank, onTrace }: { firm: FirmFinding; rank: number; onTrace?: () => void }) {
-  return (
-    <article className="rounded-card border border-line bg-white p-6">
-      <div className="flex items-start gap-4">
-        {firm.fit !== undefined && <FitRing fit={firm.fit} />}
-        <div className="min-w-0 flex-1">
-          <Eyebrow>Option {rank}</Eyebrow>
-          <h3 className="mt-1 text-[17px] font-medium leading-6 text-ink">{firm.name}</h3>
-          <p className="text-sm text-muted">
-            {firm.town}
-            {firm.distanceMiles !== null && ` · ${firm.distanceMiles < 10 ? firm.distanceMiles.toFixed(1) : Math.round(firm.distanceMiles)} miles away`}
-          </p>
-        </div>
-        {firm.website && (
-          <a href={firm.website} target="_blank" rel="noreferrer" className="shrink-0 text-sm font-medium text-brand underline-offset-2 hover:underline">
-            {host(firm.website)} ↗
-          </a>
-        )}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {firm.legalAid && <Badge cls="bg-brand-soft text-brand">Takes legal aid</Badge>}
-        {firm.noWinNoFee === "yes" && <Badge cls="bg-teal-soft text-teal">No win no fee</Badge>}
-        {firm.actsForPatients === "yes" && <Badge cls="bg-subtle text-ink-2">Acts for patients</Badge>}
-      </div>
-      {firm.breakdown && firm.breakdown.length > 0 ? (
-        <ul className="mt-4 border-t border-line-soft pt-3" aria-label="How the score is made up">
-          {firm.breakdown.map((r) => (
-            <ScoreRow key={r.key} row={r} />
-          ))}
-        </ul>
-      ) : (
-        firm.reasons.length > 0 && (
-          <ul className="mt-4 space-y-1.5">
-            {firm.reasons.map((r) => (
-              <li key={r} className="flex gap-2 text-sm text-ink-2">
-                <span aria-hidden className="text-teal">✓</span>
-                {r}
-              </li>
-            ))}
-          </ul>
-        )
-      )}
-      {onTrace && (
-        <button onClick={onTrace} className="mt-4 text-sm font-medium text-brand underline-offset-2 hover:underline">
-          See how we found them →
-        </button>
-      )}
-    </article>
-  );
-}
-
-const CALCULATOR = "SLAB calculator";
-
-function Results({ result, sample }: { result: Step3Result; sample: boolean }) {
-  const v = VERDICT[result.verdict];
-  const trace: TraceStep[] = result.trace ?? [];
-  const [scope, setScope] = useState<TraceScope | null>(null);
-  const firmScope = (f: FirmFinding): TraceScope => ({ title: f.name, subtitle: f.excluded ? `Left out: ${f.excluded}` : undefined, steps: trace.filter((s) => s.firms?.includes(f.id)) });
-  const top = result.shortlist.map((id) => result.firms.find((f) => f.id === id)).filter((f): f is FirmFinding => !!f);
-  const rest = result.firms.filter((f) => !result.shortlist.includes(f.id));
-  return (
-    <div className="space-y-8">
-      {sample && (
-        <Callout tone="warn" title="Sample data, not a real result.">
-          This was played back from test data to show the layout. The firms are real names, but the scores and details are made up.
-        </Callout>
-      )}
-
-      <Callout tone={v.tone} title={v.title}>
-        <p>{v.body}</p>
-        {result.calculatorText && result.verdict !== "skipped" && (
-          <blockquote className="mt-3 border-l-2 border-line pl-3 font-serif text-[15px] leading-6 text-ink">
-            &ldquo;{result.calculatorText}&rdquo;
-            <span className="mt-1 block font-sans text-xs text-muted">SLAB&apos;s calculator</span>
-          </blockquote>
-        )}
-        <p className="mt-3 text-xs text-muted">
-          Most likely way to pay: <span className="font-medium text-ink">{result.route === "legal_aid" ? "legal aid" : "no win no fee"}</span>
-        </p>
-        {trace.some((s) => s.agent === CALCULATOR) && (
-          <button
-            onClick={() => setScope({ title: "The legal aid calculator", subtitle: "What we typed into SLAB's calculator and what it said.", steps: trace.filter((s) => s.agent === CALCULATOR) })}
-            className="mt-2 text-xs font-medium text-brand underline-offset-2 hover:underline"
-          >
-            See how we checked →
-          </button>
-        )}
-      </Callout>
-
-      <section className="space-y-4">
-        <SectionTitle>Lawyers who could take your case</SectionTitle>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <StatsLine stats={result.stats} />
-          {trace.length > 0 && (
-            <Button variant="secondary" size="sm" onClick={() => setScope({ title: "The whole run", subtitle: `${trace.length} steps by ${new Set(trace.map((s) => s.agent)).size} agents, in time order.`, steps: trace, whole: true })}>
-              See the whole run
-            </Button>
-          )}
-        </div>
-        {top.length === 0 ? (
-          <p className="text-sm text-ink-2">We did not find a firm we could recommend. A solicitor search on the Law Society of Scotland site is the next place to look.</p>
-        ) : (
-          <div className="space-y-3">
-            {top.map((f, i) => (
-              <FirmCard key={f.id} firm={f} rank={i + 1} onTrace={trace.length ? () => setScope(firmScope(f)) : undefined} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {rest.length > 0 && (
-        <details className="group rounded-card border border-line">
-          <summary className="cursor-pointer list-none px-6 py-4 text-sm font-medium text-brand">
-            We also checked {rest.length} other {rest.length === 1 ? "firm" : "firms"}
-          </summary>
-          <ul className="divide-y divide-line-soft border-t border-line-soft">
-            {rest.map((f) => (
-              <li key={f.id} className="flex items-start justify-between gap-4 px-6 py-3 text-sm">
-                <div className="min-w-0">
-                  <div className="font-medium text-ink">
-                    {f.name}
-                    {f.fit !== undefined && <span className="ml-2 text-xs font-normal tabular-nums text-muted">{f.fit}% fit</span>}
-                  </div>
-                  <div className="text-ink-2">{f.excluded ? `Left out: ${f.excluded}` : `Lower on the list${f.reasons.length ? `: ${f.reasons.join(", ")}` : ""}`}</div>
-                </div>
-                {trace.some((s) => s.firms?.includes(f.id)) && (
-                  <button onClick={() => setScope(firmScope(f))} className="shrink-0 text-xs font-medium text-brand underline-offset-2 hover:underline">
-                    How we checked
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      {scope && <TraceSheet scope={scope} runId={result.runId} onClose={() => setScope(null)} />}
-    </div>
-  );
-}

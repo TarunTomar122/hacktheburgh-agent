@@ -16,6 +16,8 @@ import ProfileTab from "./ProfileTab";
 import { streamAgent, type DoneEvent } from "./streamAgent";
 import TrackBar from "./TrackBar";
 import TrackChoice from "./TrackChoice";
+import ContactLawyersStep from "./ContactLawyersStep";
+import StepAside from "./StepAside";
 
 export default function CasePage() {
   const router = useRouter();
@@ -46,23 +48,43 @@ export default function CasePage() {
       <Header name={name} profileOpen={profileOpen} incomplete={incomplete} stripes={!profileOpen} onProfile={() => setProfileOpen((o) => !o)} onOpenProfile={() => setProfileOpen(true)} />
       {profileOpen ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <ProfileTab profile={profile} onClose={() => setProfileOpen(false)} onDeleted={() => router.replace("/")} />
+          <ProfileTab
+            profile={profile}
+            onClose={() => setProfileOpen(false)}
+            onDeleted={() => router.replace("/")}
+            onSwitched={(n) => {
+              setActive(n);
+              setProfileOpen(false);
+            }}
+          />
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           {chosen && <TrackBar profile={profile} active={active} onSelect={setActive} />}
           <main className="min-w-0">
-            <div className="mx-auto max-w-3xl px-12 py-12">
-              {!chosen ? (
+            {!chosen ? (
+              <div className="mx-auto max-w-4xl px-8 py-12">
                 <TrackChoice profile={profile} onChosen={setActive} />
-              ) : active === 2 ? (
-                <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
-              ) : active === 3 ? (
-                <LegalAidStep profile={profile} />
-              ) : (
-                <StepOne profile={profile} />
-              )}
-            </div>
+              </div>
+            ) : active === 3 ? (
+              // Step 3 is a results page: it uses the full width (filters on the left, cards on the right).
+              <div className="mx-auto max-w-6xl px-8 py-10">
+                <LegalAidStep profile={profile} onContinue={() => setActive(4)} />
+              </div>
+            ) : (
+              <div className="mx-auto grid max-w-6xl gap-12 px-8 py-10 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="min-w-0">
+                  {active === 2 ? (
+                    <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
+                  ) : active === 4 ? (
+                    <ContactLawyersStep profile={profile} onBack={() => setActive(3)} />
+                  ) : (
+                    <StepOne profile={profile} />
+                  )}
+                </div>
+                <StepAside profile={profile} step={active} />
+              </div>
+            )}
           </main>
         </div>
       )}

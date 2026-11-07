@@ -9,7 +9,7 @@ export type Milestone = { step: number; label: string; done: boolean };
  *  - from the profile (details complete, draft written, NHS reply received),
  *  - from the agent (form filled up to the review page),
  *  - self-reported by the user ("I've sent it"), because we cannot see them press Send in the other window.
- * Steps 4-5 are not built, so each is one milestone that cannot be done yet. The percentage counts them, so it never reaches 100% early.
+ * Step 5 is not built and step 4 cannot send yet, so those milestones cannot be done yet. The percentage counts them, so it never reaches 100% early.
  */
 export function milestones(p: Profile): Milestone[] {
   const g = p.progress ?? {};
@@ -25,13 +25,14 @@ export function milestones(p: Profile): Milestone[] {
     // Sample (fixture) results never count: they are not a real check.
     { step: 3, label: "Legal aid checked", done: !!p.legalAid?.result && !p.legalAid.sample },
     { step: 3, label: "Lawyers shortlisted", done: !!p.legalAid?.result && !p.legalAid.sample && p.legalAid.result.shortlist.length > 0 },
-    { step: 4, label: "Solicitor chosen", done: false },
+    { step: 4, label: "Lawyers selected", done: (p.legalAid?.selected?.length ?? 0) > 0 && !p.legalAid?.sample },
+    { step: 4, label: "Enquiries sent", done: false },
     { step: 5, label: "Case file complete", done: false },
   ];
 }
 
 export function summarise(ms: Milestone[]) {
   const done = ms.filter((m) => m.done).length;
-  const next = ms.find((m) => !m.done && m.step <= 3);
+  const next = ms.find((m) => !m.done && m.step <= 4);
   return { done, total: ms.length, pct: Math.round((done / ms.length) * 100), next: next?.label ?? null };
 }

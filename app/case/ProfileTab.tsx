@@ -3,7 +3,9 @@
 import { missingRequired, type CaseFacts } from "../../lib/agent/facts";
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
-import { clearProfile, updateFacts, type Profile } from "../../lib/profile";
+import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
+import { TRACKS, type TrackId } from "../../lib/agent/track";
+import { FitRing } from "./scoreParts";
 import { ArrowLeftIcon, Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
 
@@ -25,7 +27,7 @@ export const FIELD_LABELS: Record<string, string> = {
 const input = control;
 
 
-export default function ProfileTab({ profile, onClose, onDeleted }: { profile: Profile; onClose: () => void; onDeleted: () => void }) {
+export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
   const missing = missingRequired(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
@@ -55,6 +57,8 @@ export default function ProfileTab({ profile, onClose, onDeleted }: { profile: P
       <Stripes />
 
       <div className="mx-auto max-w-3xl space-y-12 px-12 py-12">
+        <PathSection profile={profile} onSwitched={onSwitched} />
+
         {missing.length > 0 ? (
           <Callout tone="warn" title="Still needed for the NHS form">
             {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.
@@ -224,5 +228,46 @@ export default function ProfileTab({ profile, onClose, onDeleted }: { profile: P
         </section>
       </div>
     </div>
+  );
+}
+
+/** "Your path" (D42): the track they are on, its fit, and the only place to switch (Tarun: not on the step pages). */
+function PathSection({ profile, onSwitched }: { profile: Profile; onSwitched?: (firstStep: number) => void }) {
+  const chosen = profile.track?.chosen ?? null;
+  const rec = profile.track?.rec;
+  if (!chosen) {
+    return (
+      <section className="space-y-2">
+        <SectionTitle>Your path</SectionTitle>
+        <p className="text-sm text-ink-2">You have not chosen a path yet. Close your profile to see what we suggest.</p>
+      </section>
+    );
+  }
+  const other: TrackId = chosen === "complaint" ? "compensation" : "complaint";
+  const fit = rec?.tracks[chosen].fit;
+  const otherFit = rec?.tracks[other].fit;
+  return (
+    <section className="space-y-4">
+      <SectionTitle>Your path</SectionTitle>
+      <div className="flex flex-wrap items-center gap-5 rounded-card border border-line bg-white p-5">
+        {fit !== undefined && <FitRing fit={fit} size={64} title="How well this path fits what you told us. Not a chance of success." />}
+        <div className="min-w-[14rem] flex-1">
+          <div className="text-[17px] font-medium text-ink">{TRACKS[chosen].title}</div>
+          <p className="mt-0.5 text-sm text-ink-2">{TRACKS[chosen].gets}</p>
+          {rec?.recommended === chosen && <p className="mt-1 text-xs text-teal">This is the path we suggested.</p>}
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setTrack({ chosen: other });
+            onSwitched?.(TRACKS[other].steps[0]);
+          }}
+        >
+          Switch to {TRACKS[other].title.toLowerCase()}
+          {otherFit !== undefined && ` (${otherFit}% fit)`}
+        </Button>
+      </div>
+    </section>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/track";
 import { setTrack, type Profile } from "../../lib/profile";
 import { Button, cx, Eyebrow } from "../ui";
-import { FitRing, ScoreRow } from "./LegalAidStep";
+import { FitRing, ScoreRow } from "./scoreParts";
 import { STEPS } from "./steps";
 
 /**

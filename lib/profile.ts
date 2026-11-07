@@ -18,7 +18,8 @@ export type Profile = {
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
   progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean };
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
-  legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean };
+  /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
+  legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
   /** D42: the recommendation shown after onboarding, and the track the user chose (null until they choose). */
   track?: { chosen: TrackId | null; rec?: TrackRecommendation };
   createdAt: string;
@@ -92,14 +93,16 @@ export function addMessages(more: ChatMessage[]) {
   if (p) write({ ...p, messages: [...p.messages, ...more] });
 }
 
-export function setLegalAid(patch: { funding?: Partial<Funding>; result?: Step3Result | null; sample?: boolean }) {
+export function setLegalAid(patch: { funding?: Partial<Funding>; result?: Step3Result | null; sample?: boolean; selected?: string[] }) {
   const p = read();
   if (!p) return;
   const cur = p.legalAid ?? { funding: EMPTY_FUNDING };
   const funding = { ...cur.funding, ...patch.funding };
   const result = patch.result === null ? undefined : (patch.result ?? cur.result);
   const sample = patch.result === null ? undefined : (patch.sample ?? cur.sample);
-  write({ ...p, legalAid: { funding, result, sample } });
+  // A new run (result: null) clears the old selection: its firm ids may not exist any more.
+  const selected = patch.result === null ? undefined : (patch.selected ?? cur.selected);
+  write({ ...p, legalAid: { funding, result, sample, selected } });
 }
 
 export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation }) {

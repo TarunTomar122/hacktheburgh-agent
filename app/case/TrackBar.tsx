@@ -1,67 +1,65 @@
 "use client";
 
-import { TRACKS, type TrackId } from "../../lib/agent/track";
-import { setTrack, type Profile } from "../../lib/profile";
+import { useEffect, useRef, useState } from "react";
+import { TRACKS } from "../../lib/agent/track";
+import type { Profile } from "../../lib/profile";
 import { cx, LockIcon } from "../ui";
 import { milestones, summarise } from "./progress";
 import { STEPS } from "./steps";
 
-const Check = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+const Check = ({ size = 10 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M2 5.2l2 2L8 3" />
   </svg>
 );
 
+/** Square tick for a milestone (no circles). */
+export function Tick({ done }: { done: boolean }) {
+  return (
+    <span aria-hidden className={cx("mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border", done ? "border-brand bg-brand text-white" : "border-rail bg-white")}>
+      {done && <Check />}
+    </span>
+  );
+}
+
 /**
- * The chosen track only (D42): its name and fit, progress for its milestones, its steps as tabs, and a quiet
- * link to switch to the other track. Replaces the fork map (D35).
+ * The chosen track (D42) as one slim sticky bar, in the manner of Linear/Stripe: the track and its fit on the left, the steps as
+ * tabs, and a small progress meter on the right whose milestones open on click (progressive disclosure). Switching tracks lives
+ * in the profile, not here (Tarun).
  */
 export default function TrackBar({ profile, active, onSelect }: { profile: Profile; active: number; onSelect: (n: number) => void }) {
   const chosen = profile.track!.chosen!;
-  const other: TrackId = chosen === "complaint" ? "compensation" : "complaint";
   const t = TRACKS[chosen];
   const fit = profile.track?.rec?.tracks[chosen].fit;
   const ms = milestones(profile).filter((m) => t.steps.includes(m.step));
   const { done, total, pct, next } = summarise(ms);
   const ombudsmanOpen = profile.ombudsman?.unlocked === true;
+  const [open, setOpen] = useState(false);
+  const pop = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (pop.current && !pop.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   return (
-    <section aria-label="Your path" className="border-b border-line bg-subtle">
-      <div className="mx-auto max-w-3xl px-12 pt-8 pb-6">
-        <div className="flex items-end justify-between gap-6">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Your path</div>
-            <div className="mt-1 flex items-baseline gap-3">
-              <h2 className="display text-[28px] text-ink">{t.title}</h2>
-              {fit !== undefined && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">{fit}% fit</span>}
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setTrack({ chosen: other });
-              onSelect(TRACKS[other].steps[0]);
-            }}
-            className="shrink-0 text-[13px] text-brand hover:underline"
-          >
-            Switch to {TRACKS[other].title.toLowerCase()}
-          </button>
+    <section aria-label="Your path" className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-8 py-2.5">
+        <div className="flex items-baseline gap-2.5">
+          <span className="text-[15px] font-medium text-ink">{t.title}</span>
+          {fit !== undefined && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand">{fit}% fit</span>}
         </div>
 
-        <div className="mt-5 flex items-center gap-4">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="shrink-0 text-xs text-muted">
-            {done} of {total} done
-          </span>
-        </div>
-        {next && (
-          <p className="mt-1.5 text-xs text-ink-2">
-            <span className="font-medium text-ink">Next:</span> {next}
-          </p>
-        )}
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <nav aria-label="Steps" className="flex flex-wrap items-center gap-1">
           {STEPS.filter((s) => t.steps.includes(s.n)).map((s, i) => {
             const state = s.n === 2 && ombudsmanOpen ? "ready" : s.state;
             const mine = ms.filter((m) => m.step === s.n);
@@ -73,21 +71,63 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
                 disabled={state === "soon"}
                 onClick={() => onSelect(s.n)}
                 aria-current={isActive ? "step" : undefined}
+                title={state === "locked" ? s.blurb : undefined}
                 className={cx(
-                  "rounded-card border bg-white px-4 py-3 text-left transition-colors",
-                  isActive ? "border-brand ring-4 ring-brand-soft" : state === "soon" ? "cursor-not-allowed border-dashed border-line" : "border-line hover:border-brand/50",
+                  "flex items-center gap-2 rounded-ctl px-3 py-1.5 text-[13px] transition-colors",
+                  isActive ? "bg-brand-soft text-brand" : state === "soon" ? "cursor-not-allowed text-faint" : "text-ink-2 hover:bg-subtle hover:text-ink",
                 )}
               >
-                <div className={cx("text-[11px] font-medium uppercase tracking-[0.1em]", isActive ? "text-brand" : "text-muted")}>Step {i + 1}</div>
-                <div className={cx("mt-0.5 text-[15px] font-medium leading-6", state === "soon" ? "text-faint" : isActive ? "text-brand" : "text-ink")}>{s.title}</div>
-                <div className={cx("mt-0.5 flex items-center gap-1.5 text-xs", complete ? "text-teal" : "text-muted")}>
-                  {complete && <Check />}
-                  {state === "locked" && <LockIcon />}
-                  {state === "soon" ? "Coming soon" : complete ? "Done" : state === "locked" ? s.blurb : `${mine.filter((m) => m.done).length} of ${mine.length} done`}
-                </div>
+                <span className={cx("flex size-5 items-center justify-center rounded-[4px] text-[11px] font-medium tabular-nums", isActive ? "bg-brand text-white" : complete ? "bg-teal-soft text-teal" : "bg-subtle text-muted")}>
+                  {complete ? <Check /> : i + 1}
+                </span>
+                <span className="font-medium">{s.title}</span>
+                {state === "locked" && <LockIcon />}
+                {state === "soon" && <span className="text-[11px]">soon</span>}
               </button>
             );
           })}
+        </nav>
+
+        <div ref={pop} className="relative ml-auto">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="flex items-center gap-3 rounded-ctl px-2 py-1.5 text-[12px] text-muted hover:bg-subtle hover:text-ink"
+          >
+            <span className="h-1.5 w-24 overflow-hidden rounded-full bg-line-soft">
+              <span className="block h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${pct}%` }} />
+            </span>
+            <span className="tabular-nums">
+              {done} of {total} done
+            </span>
+            <span aria-hidden className={cx("transition-transform", open && "rotate-180")}>
+              ▾
+            </span>
+          </button>
+          {open && (
+            <div className="absolute right-0 top-full z-30 mt-2 w-80 rounded-card border border-line bg-white p-4 shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
+              {next && (
+                <p className="mb-3 text-[13px] text-ink-2">
+                  <span className="font-medium text-ink">Next:</span> {next}
+                </p>
+              )}
+              {STEPS.filter((s) => t.steps.includes(s.n)).map((s) => (
+                <div key={s.n} className="mb-3 last:mb-0">
+                  <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">{s.title}</div>
+                  <ul className="space-y-1.5">
+                    {ms
+                      .filter((m) => m.step === s.n)
+                      .map((m) => (
+                        <li key={m.label} className={cx("flex gap-2 text-[13px] leading-5", m.done ? "text-ink" : "text-muted")}>
+                          <Tick done={m.done} />
+                          {m.label}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
