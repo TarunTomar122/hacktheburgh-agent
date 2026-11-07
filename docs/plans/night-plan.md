@@ -51,11 +51,14 @@ A fictional persona per nation (England, Wales, Northern Ireland, plus Ailsa in 
 ### Phase 3: any country
 Run the same agent on the contrasting set. Log per country: worked / partly / failed, and why (login wall, CAPTCHA, language, no online form). Fix the common failures, not one-offs.
 
-### Phase 4: UI
-Same crew screen and avatars. One new, quiet element: "How it works where you live" (the route map, with sources). Minimal, as before.
+### Phase 4: UI (onboarding and anywhere else is open to change)
+Tarun: onboarding and other parts of the app may change as needed (for example asking or detecting the country early). Same crew screen and avatars. One new, quiet element: "How it works where you live" (the route map, with sources). Minimal, as before.
 
-### Phase 5: recordings (last)
-Record demo runs for the four nations and the best one or two countries, for playback.
+### Phase 5: recordings for the morning (and later the demo)
+Tarun wants to see real runs in the morning: **at least 3 or 4, successes and failures both**. For each run, keep:
+- a **video** of the browser (Playwright `recordVideo`, headless), in `docs/night-runs/<run>/`
+- the **replayable event stream** (`events.ndjson` + screenshots), playable in the app like the step 3 demo
+- a short line in the "Night runs" table below: place, persona, what worked, where it failed, and how to rerun it (one command).
 
 **Open for Tarun (morning):** which pair to show next to Scotland in the demo. Claude's suggestion: England (close but different) and New Zealand (no-fault, completely different).
 
@@ -65,10 +68,18 @@ Record demo runs for the four nations and the best one or two countries, for pla
 |---|---|---|---|---|---|---|---|
 | Scotland | (fixed today) | yes | yes | yes | yes | yes | baseline |
 
+## Night runs (for the morning)
+
+| Run | Place | Persona | Result | Video | Replay | Rerun command |
+|---|---|---|---|---|---|---|
+
 ## Review log
 
 | Phase | Codex | Cursor | Main objections | What changed |
 |---|---|---|---|---|
+
+## Not doing (discussed and dropped, 2026-11-07)
+Whole-case single run, a complexity view, reliability bench, medical records request, reply loop, deadline tracker, Care Opinion, PASS, consultation booking, benefits calculator. Reason: not browser-heavy enough, or not what makes the workflow more complex. A checker agent (re-read every filled form) is possible later but does not add workflow complexity.
 
 ## Side backlog (Sonnet 5.5 subagents, when the main line allows)
 
