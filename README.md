@@ -4,7 +4,7 @@ A browser-use agent that runs a multi-site workflow in a **visible Chromium wind
 
 Current state: one button. It opens the Law Society of Scotland "Find a Solicitor" directory, searches for Edinburgh firms under "Accident and injury", and lists the results. Nothing is submitted anywhere.
 
-See [AGENT.md](AGENT.md) for how the agent works.
+See [AGENT.md](AGENT.md) for how the agent works. Working on this repo? Read [AGENTS.md](AGENTS.md) first, then `docs/PROJECT.md`, `docs/DECISIONS.md` and `docs/ACTIVE_WORK.md`.
 
 ## Run
 
