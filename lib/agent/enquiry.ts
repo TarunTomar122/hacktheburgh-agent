@@ -59,7 +59,7 @@ export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, eviden
     model: MODELS.draft,
     effort: EFFORT.draft,
     instructions: DRAFT_RULES,
-    input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D54): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
+    input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D62): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
     schema: DraftSchema,
     name: "enquiry_draft",
   });

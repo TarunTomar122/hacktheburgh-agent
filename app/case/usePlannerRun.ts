@@ -34,8 +34,8 @@ export type PlannerRunState = {
   enquiries: EnquiryOutcome[];
   result?: PlannerResult;
   startedAt?: number;
-  spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D54)
-  demo: boolean; // playing back a recorded run (D55)
+  spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
+  demo: boolean; // playing back a recorded run (D63)
   skipped: (CrewId | "all")[]; // demo skips asked for
 };
 
@@ -48,7 +48,7 @@ export function usePlannerRun() {
   const [s, setS] = useState<PlannerRunState>(initial);
   const runIdRef = useRef<string | undefined>(undefined);
   const abort = useRef<AbortController | null>(null);
-  // Demo playback (D55): a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
+  // Demo playback (D63): a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
   const rec = useRef<{ events: Rec[]; i: number; timer?: ReturnType<typeof setTimeout> } | null>(null);
   const stopReplay = () => {
     clearTimeout(rec.current?.timer);

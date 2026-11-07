@@ -13,7 +13,7 @@ import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
 
 /**
- * "Prepare your case" (D52, D54). Elliot's crew works through the case as a story, one step at a time.
+ * "Prepare your case" (D52, D62). Elliot's crew works through the case as a story, one step at a time.
  *  Before: the four steps and one button.
  *  During: Elliot's current decision in one sentence (and a moment when he changes the plan), the question if one is
  *          open, then the crew on the left and the spotlight browser on the right. What each crew member did opens
@@ -114,7 +114,7 @@ function Intro({ onStart, onDemo, error }: { onStart: () => void; onDemo: (toEnd
   );
 }
 
-/** Quiet controls for presenting (D55). Kept apart from the product UI so they never read as part of it. */
+/** Quiet controls for presenting (D63). Kept apart from the product UI so they never read as part of it. */
 function DemoBar({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-16 flex flex-wrap items-center justify-center gap-2 text-[12px] text-muted">
@@ -583,14 +583,17 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   const askedInMessage = !!profile.enquiry?.message && /NICE|guideline|MRI/i.test(profile.enquiry.message.body);
   const similar = (ev.cases ?? []).filter((c) => c.kind === "medical_negligence");
   const other = (ev.cases ?? []).filter((c) => c.kind !== "medical_negligence");
+  // Steps skipped from the demo controls, or never reached because the run was stopped early.
+  const skipped = (id: CrewId) => run.says.some((x) => x.from === id && x.text === "Skipped, as you asked.");
+  const reached = (id: CrewId) => run.says.some((x) => x.from === id && x.kind === "report" && x.text !== "Skipped, as you asked.");
 
   const funding =
     result.verdict === "likely"
       ? { title: "Legal aid looks likely", text: "SLAB's own calculator says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you." }
       : result.verdict === "unlikely"
         ? { title: "Legal aid looks unlikely", text: "SLAB's calculator says you probably do not qualify. Many firms take claims like yours on a no win, no fee basis instead; Robin checked which ones say so." }
-        : result.verdict === "skipped"
-          ? { title: "Funding not checked", text: "You skipped the money questions. A solicitor can check legal aid with you." }
+        : result.verdict === "skipped" || skipped("nell") || !reached("nell")
+          ? { title: "Funding not checked", text: skipped("nell") || !reached("nell") ? "Nell did not check legal aid this time. A solicitor can check it with you, or run the crew again." : "You skipped the money questions. A solicitor can check legal aid with you." }
           : { title: "Funding is unclear", text: "We could not read an estimate from SLAB's calculator. A solicitor can check legal aid with you." };
 
   return (
@@ -613,10 +616,10 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
         <CrewMark id="kit" size={56} />
         <div className="min-w-[16rem] flex-1">
           <p className="text-[12px] text-muted">Your next step</p>
-          <h2 className="text-[18px] font-medium leading-7 text-ink">{ready.length ? `Check and send ${ready.length} enquir${ready.length === 1 ? "y" : "ies"}` : "Prepare your enquiries"}</h2>
-          <p className="text-[13px] leading-5 text-muted">{ready.length ? `Kit filled ${ready.length === 1 ? "the form" : "the forms"} for ${ready.map((r) => r.firmName).join(", ")} and stopped before Send.` : "Kit fills each firm's form and stops before Send."}</p>
+          <h2 className="text-[18px] font-medium leading-7 text-ink">{ready.length ? `Check and send ${ready.length} enquir${ready.length === 1 ? "y" : "ies"}` : "Finish preparing your case"}</h2>
+          <p className="text-[13px] leading-5 text-muted">{ready.length ? `Kit filled ${ready.length === 1 ? "the form" : "the forms"} for ${ready.map((r) => r.firmName).join(", ")} and stopped before Send.` : top.length ? "Kit did not fill any enquiry forms this time. Run the crew again and Kit will prepare them." : "The crew stopped before it found solicitors. Run it again to finish the work."}</p>
         </div>
-        <Button onClick={onReview}>{ready.length ? "Review and send" : "Prepare enquiries"}</Button>
+        <Button onClick={ready.length ? onReview : onRestart}>{ready.length ? "Review and send" : "Run again"}</Button>
       </section>
 
       <div className="divide-y divide-line rounded-card border border-line bg-white">
@@ -629,19 +632,21 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
           )}
         </Row>
 
-        <Row crew="robin" topic="Solicitors" title={`${top.length} solicitor${top.length === 1 ? "" : "s"} who could take your case`}>
-          <p className="text-[15px] leading-6 text-ink">Robin checked each firm&apos;s own website and the Law Society register. These fit you best.</p>
+        <Row crew="robin" topic="Solicitors" title={top.length ? `${top.length} solicitor${top.length === 1 ? "" : "s"} who could take your case` : "No solicitors checked yet"}>
+          <p className="text-[15px] leading-6 text-ink">{top.length ? "Robin checked each firm's own website and the Law Society register. These fit you best." : "Robin did not get to check any firms before the run ended."}</p>
           <ul className="mt-2 divide-y divide-line-soft">
             {top.map((f) => (
               <FirmLine key={f.id} f={f} />
             ))}
           </ul>
-          <button className="mt-3 text-[13px] text-brand hover:underline" onClick={onFirms}>
-            See all {result.firms.length} firms Robin looked at
-          </button>
+          {result.firms.length > 0 && (
+            <button className="mt-3 text-[13px] text-brand hover:underline" onClick={onFirms}>
+              See all {result.firms.length} firms Robin looked at
+            </button>
+          )}
         </Row>
 
-        <Row crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : "What the guidance says"}>
+        <Row crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked yet"}>
           {gap && point ? (
             <div className="space-y-4">
               <Said label="What doctors are advised to do">
@@ -662,7 +667,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
               {point.text}
             </Quote>
           ) : (
-            <p className="text-[15px] leading-6 text-ink">Iona did not find a guideline point about your injury.</p>
+            <p className="text-[15px] leading-6 text-ink">{reached("iona") ? "Iona did not find a guideline point about your injury." : "Iona did not read the clinical guidance this time."}</p>
           )}
           {ev.cases && (
             <p className="mt-4 text-[13px] leading-5 text-muted">
@@ -701,7 +706,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
 
       <footer className="flex flex-wrap items-center justify-between gap-4 text-[12px] text-muted">
         <span className="tabular-nums">
-          {s.agents} browser agents · {s.sites} websites · {s.pages} pages · {s.actions} clicks and typing · {run.asks} questions to you · {mmss(run.durationMs)}
+          {s.agents > 0 ? `${s.agents} browser agents · ${s.sites} websites · ${s.pages} pages · ${s.actions} clicks and typing · ${run.asks} questions to you · ${mmss(run.durationMs)}` : "Nothing was checked in a browser this time"}
         </span>
         <span className="flex gap-4">
           <button className="text-brand hover:underline" onClick={onReplay}>

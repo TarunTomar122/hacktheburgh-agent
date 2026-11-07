@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * GET -> { runId, events: [{ t, e }] } (D55). A real recorded planner run (demo/<runId>/events.ndjson, screenshots
+ * GET -> { runId, events: [{ t, e }] } (D63). A real recorded planner run (demo/<runId>/events.ndjson, screenshots
  * alongside), so the run screen and case file can be shown in seconds during a demo. The client plays it back.
  */
 export async function GET() {

@@ -133,7 +133,7 @@ export default function LiveView() {
     return () => mo.disconnect();
   }, []);
   const [highlight, setHighlight] = useState<string | null>(null); // inline: the tab the crew is working on now
-  // Inline (D54, Tarun): small tiles of every browser; the tab the crew is on is highlighted, not enlarged.
+  // Inline (D62, Tarun): small tiles of every browser; the tab the crew is on is highlighted, not enlarged.
   // A tile opens big only when the user clicks it.
   const grid = (!!slot && pages.length > 0) || (pages.length > 1 && focused === null);
   const bigId = focused ?? (pages.length === 1 ? pages[0].pageId : singleId);

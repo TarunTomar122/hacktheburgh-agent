@@ -322,7 +322,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   mkdirSync(runDir, { recursive: true });
   const emit: Emit = (e) => {
     if (e.type !== "stats" && e.type !== "trace") log({ type: "status", message: JSON.stringify(e).slice(0, 2000) });
-    // The whole event stream, timed, so a run can be replayed for a demo (D55, /api/agent/plan/demo).
+    // The whole event stream, timed, so a run can be replayed for a demo (D63, /api/agent/plan/demo).
     try {
       appendFileSync(path.join(runDir, "events.ndjson"), JSON.stringify({ t: Date.now() - startedAt, e }) + "\n");
     } catch {
@@ -365,7 +365,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     emit({ type: "say", say: full });
   };
   const crewState = (id: CrewId, state: "idle" | "working" | "waiting" | "done", note: string) => emit({ type: "crew", id, state, note });
-  const open = new Map<CrewId, number>(); // jobs each crew member still has running (D54: never "idle" while busy)
+  const open = new Map<CrewId, number>(); // jobs each crew member still has running (D62: never "idle" while busy)
   /** Same, remembering the tab's label on the planner's thought so the report can point at exactly its browser steps. */
   const crewFor = <T,>(th: Thought, id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number, firms?: string[]) => {
     th.tab = `${CREW[id].name} · ${task}`;
@@ -402,7 +402,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const firmLine = (f: FirmFinding) =>
     `${f.id}: ${f.name}, ${f.town}${f.distanceMiles !== null ? ` (${f.distanceMiles} miles)` : ""}${f.website ? `, ${f.website}` : ", no website"}${f.legalAid ? ", takes legal aid" : ""}${f.sources.includes("website") ? `. Checked: acts for patients ${said(f.actsForPatients)}; no win no fee ${said(f.noWinNoFee)}; enquiry form ${f.enquiryUrl ? "found" : "not found"}${f.excluded ? `; RULED OUT: ${f.excluded}` : ""}` : ""}`;
 
-  /** What a crew member is doing, in a few plain words, while the tool runs (shown as the hero line, D54). */
+  /** What a crew member is doing, in a few plain words, while the tool runs (shown as the hero line, D62). */
   const doing = (tool: string, a: Record<string, unknown>): string => {
     const firm = firms.get(String(a.firm_id ?? ""))?.name ?? (typeof a.name === "string" ? a.name : "");
     const short = (n: string) => n.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "");
@@ -514,7 +514,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         let r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track, location), 120_000));
         let noLocation = "";
         if (!r.ok && /could not confirm/i.test(r.error) && location.allowed) {
-          // Recovery (D54): SLAB would not take the postcode. Search again without a location rather than asking again.
+          // Recovery (D62): SLAB would not take the postcode. Search again without a location rather than asking again.
           tracer.add({ agent: thought.tab ?? "Robin", color: CREW.robin.color, kind: "recover", text: `SLAB could not confirm ${location.postcode}; searching again without a location` });
           noLocation = ` SLAB could not use ${location.postcode}, so this list is not sorted by distance; do not ask the user about the postcode again.`;
           location = { allowed: false };
@@ -689,7 +689,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         input = [{ role: "user", content: "Call a tool. Use shortlist and then finish when you are done." }];
         continue;
       }
-      // One step at a time (D54): calls run in order. Consecutive check_firm or fill_enquiry calls form one side-by-side batch.
+      // One step at a time (D62): calls run in order. Consecutive check_firm or fill_enquiry calls form one side-by-side batch.
       const PARALLEL = new Set(["check_firm", "fill_enquiry"]);
       // The story order wins over the order the model listed its calls in: Nell, Robin, Iona, shortlist, Kit.
       const STAGE: Record<string, number> = { update_plan: 0, ask_user: 0, slab_calculator: 1, slab_lawyer_list: 2, web_search: 2, visit: 2, check_firm: 3, law_society_check: 3, read_guideline: 4, compare_care: 4, search_case_law: 4, read_judgment: 4, shortlist: 5, fill_enquiry: 6, finish: 7 };

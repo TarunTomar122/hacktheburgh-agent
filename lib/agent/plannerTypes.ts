@@ -34,7 +34,7 @@ export const TOOL_CREW: Record<string, CrewId> = {
   slab_lawyer_list: "robin",
   web_search: "robin",
   visit: "robin",
-  check_firm: "robin", // one agent for solicitors (Tarun, D54): Robin finds and checks them
+  check_firm: "robin", // one agent for solicitors (Tarun, D62): Robin finds and checks them
   law_society_check: "robin",
   read_guideline: "iona",
   search_case_law: "iona",
@@ -111,7 +111,7 @@ export type PlannerEvent =
   | { type: "finding"; text: string; source?: string; crew?: CrewId }
   | { type: "say"; say: Say }
   | { type: "crew"; id: CrewId; state: "idle" | "working" | "waiting" | "done"; note: string }
-  | { type: "spotlight"; crew: CrewId; tab: string } // the worker to show big right now (D54)
+  | { type: "spotlight"; crew: CrewId; tab: string } // the worker to show big right now (D62)
   | { type: "evidence"; evidence: EvidenceResult }
   | { type: "enquiry"; enquiry: EnquiryOutcome }
   | { type: "planner_result"; result: PlannerResult };

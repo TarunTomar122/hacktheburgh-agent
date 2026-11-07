@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Tarun + Claude · DONE · Crew story, one focus, plain case file, firm info modal, demo playback and skips (D62, D63)
+Tarun's notes and the Codex/Cursor review: one agent in focus with a plain status line, the found list instead of big browsers, browser and history modals, the case file rewritten for "what does this mean, what do I do", "why it matters" on every firm check, a clickable firm card in Contact lawyers, and "Run again" when there are no enquiries. Fixed: the Law Society search did not submit in a short window (found 0 of 3; now retries on a fresh form and the tab gets room; headless repro: 3 of 3), "null miles", and "2 more to go" as a status. Merged with Luigi's and Om's work: their fill guards, honest Kit ticks, money parser and demo skips are kept; their postcode question is replaced by the automatic postcode (Tarun). Verified: tsc, eslint, `scripts/test-planner-guards.ts` (updated: Vera is now Robin), date, funding-skip and search-location tests, and a headless demo-playback run through playback, skip, case file and firm modal. Not verified: a fresh full live run after the merge (Tarun asked not to run the crew just to test).
+
 ### 2026-11-07 · Om + Claude · DONE · Demo: skip step 2 (ombudsman) (D61)
 Om: no skip on the ombudsman page. Added "Skip and mark as sent (demo)" beside the fill button in `app/case/OmbudsmanStep.tsx`; it closes the browser and marks step 2 skipped, so the complaint track's meter can reach full. `tsc` and `eslint` clean; not clicked through in a browser yet.
 
