@@ -19,11 +19,14 @@ export default function DateField({
   onChange,
   label = "Date",
   autoFocus,
+  big,
 }: {
   value: string;
   onChange: (v: string) => void;
   label?: string;
   autoFocus?: boolean;
+  /** Full-screen version for the onboarding stage (D40): the three ways to say a date as buttons, and big fields. */
+  big?: boolean;
 }) {
   const [mode, setMode] = useState<DateMode>(value ? dateMode(value) : "exact");
   const initialMonth = value.match(/^([A-Za-z]+) (\d{4})$/);
@@ -47,21 +50,39 @@ export default function DateField({
     onChange(m && /^\d{4}$/.test(y) ? `${m} ${y}` : "");
   }
 
+  const input = big ? "big-input" : "field";
+
   return (
-    <div className="space-y-2">
-      <select aria-label={`${label}: how exact`} className="field" value={mode} onChange={(e) => changeMode(e.target.value as DateMode)}>
-        {MODES.map((m) => (
-          <option key={m.value} value={m.value}>
-            {m.label}
-          </option>
-        ))}
-      </select>
+    <div className={big ? "space-y-6" : "space-y-2"}>
+      {big ? (
+        <div role="group" aria-label={`${label}: how exact`} className="flex flex-wrap gap-2">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              aria-pressed={mode === m.value}
+              onClick={() => changeMode(m.value)}
+              className="btn-ghost !px-4 !py-2 !text-[14px] aria-pressed:!border-brand aria-pressed:!bg-brand-soft aria-pressed:!text-brand"
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <select aria-label={`${label}: how exact`} className="field" value={mode} onChange={(e) => changeMode(e.target.value as DateMode)}>
+          {MODES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      )}
 
       {mode === "exact" && (
         <input
           type="date"
           aria-label={label}
-          className="field"
+          className={input}
           max={today}
           min="1990-01-01"
           autoFocus={autoFocus}
@@ -71,8 +92,8 @@ export default function DateField({
       )}
 
       {mode === "month" && (
-        <div className="grid grid-cols-[1fr_7rem] gap-2">
-          <select aria-label={`${label}: month`} className="field" value={month} onChange={(e) => changeMonthYear(e.target.value, year)}>
+        <div className={big ? "grid grid-cols-[1fr_9rem] gap-6" : "grid grid-cols-[1fr_7rem] gap-2"}>
+          <select aria-label={`${label}: month`} className={input} value={month} onChange={(e) => changeMonthYear(e.target.value, year)}>
             <option value="">Month</option>
             {MONTHS.map((m) => (
               <option key={m} value={m}>
@@ -84,7 +105,7 @@ export default function DateField({
             type="number"
             inputMode="numeric"
             aria-label={`${label}: year`}
-            className="field"
+            className={input}
             placeholder="Year"
             min={1990}
             max={thisYear}
@@ -98,7 +119,7 @@ export default function DateField({
         <input
           type="text"
           aria-label={label}
-          className="field"
+          className={input}
           placeholder="For example, a few days after Christmas"
           autoFocus={autoFocus}
           value={dateMode(value) === "words" ? value : ""}

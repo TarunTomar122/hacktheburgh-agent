@@ -1,19 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
-import { echoFor, inputFor, patchFromAnswer, type InputSpec } from "../lib/agent/inputs";
+import { echoFor, inputFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_MESSAGES } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
-import InputPanel from "./InputPanel";
 import NameStep from "./NameStep";
+import StageInput from "./StageInputs";
 import { Logo } from "./ui";
 
 // Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
+// The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
+const STEPS: Target[] = ["name", "story", "details", "who", "contact", "contactMethod", "emailRisk", "outcome", "done"];
+
 const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
 
 export default function Onboarding() {
@@ -25,13 +28,13 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [spec, setSpec] = useState<InputSpec>(() => inputFor("name", emptyFacts()));
   const [nameDraft, setNameDraft] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
   // Only the opening line so far: show the big one-question screen instead of the chat.
   const naming = messages.length === 1 && !done;
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, thinking, done]);
+  // The screen shows the latest question; while the next one loads, the old one stays up with the OK button busy.
+  const question = [...messages].reverse().find((m) => m.role === "agent")?.content ?? OPENER.content;
+  const agentCount = messages.filter((m) => m.role === "agent").length;
+  const pct = Math.round(((STEPS.indexOf(spec.target) + 1) / STEPS.length) * 100);
 
   /** Sends the conversation (and, for a form or button, the widget's answer). Returns false if it failed, so the panel keeps what was typed. */
   async function run(next: ChatMessage[], answer?: WidgetAnswer): Promise<boolean> {
@@ -107,77 +110,53 @@ export default function Onboarding() {
         <Stripes />
       </div>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col">
-        {naming ? (
-          <div className="flex flex-1 flex-col px-6">
+      {!naming && !done && (
+        <div className="h-1 shrink-0 bg-line-soft" role="progressbar" aria-label="Progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+          <div className="h-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        </div>
+      )}
+
+      <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
+        <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col px-6">
+          {naming ? (
             <NameStep value={nameDraft} onChange={setNameDraft} busy={thinking} error={error} onSubmit={onFree} />
-          </div>
-        ) : (
-          <>
-            <div className="flex-1 space-y-3 overflow-y-auto px-6 pb-2 pt-6">
-              {messages.map((m, i) => (
-                <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-                  <div
-                    className={
-                      "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-sm " +
-                      (m.role === "user" ? "bg-brand text-white" : "bg-mist text-body")
-                    }
-                  >
-                    {m.content}
+          ) : done ? (
+            <div className="fade-up my-auto space-y-5 py-10">
+              <p className="eyebrow">All done</p>
+              <h1 className="display text-[34px] sm:text-[42px]">
+                Here is what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
+              </h1>
+              <div className="space-y-4 rounded-card border border-line bg-paper p-6 text-sm">
+                <Row label="Name" value={[facts.title, facts.firstName, facts.lastName].filter(Boolean).join(" ")} />
+                <Row label="Where it happened" value={facts.incidentLocation} />
+                <Row label="What happened" value={facts.incidentSummary} />
+                {facts.events.length > 0 && (
+                  <div>
+                    <div className="eyebrow">Timeline</div>
+                    <ul className="list-disc pl-5">
+                      {facts.events.map((e, i) => (
+                        <li key={i}>
+                          <span className="font-medium text-ink">{e.date}:</span> {e.what}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
-              ))}
-
-              {thinking && (
-                <div className="flex justify-start">
-                  <div className="rounded-2xl bg-mist px-4 py-2 text-sm text-muted">Thinking…</div>
-                </div>
-              )}
-              {error && spec.kind !== "form" && <p className="text-sm text-danger">{error}</p>}
-
-              {done && (
-                <div className="space-y-3 rounded-2xl border border-hairline bg-cream p-5 text-sm">
-                  <p className="display text-xl">
-                    Here&apos;s what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
-                  </p>
-                  <Row label="Name" value={[facts.title, facts.firstName, facts.lastName].filter(Boolean).join(" ")} />
-                  <Row label="Where it happened" value={facts.incidentLocation} />
-                  <Row label="What happened" value={facts.incidentSummary} />
-                  {facts.events.length > 0 && (
-                    <div>
-                      <div className="eyebrow">Timeline</div>
-                      <ul className="list-disc pl-5">
-                        {facts.events.map((e, i) => (
-                          <li key={i}>
-                            <span className="font-medium text-ink">{e.date}:</span> {e.what}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <Row label="What you'd like" value={facts.desiredOutcome} />
-                  <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
-                  <Row label="Prefer to be contacted by" value={facts.preferredContact} />
-                  <button onClick={start} className="btn-primary mt-2">
-                    Looks right, start my case
-                  </button>
-                </div>
-              )}
-              <div ref={endRef} />
+                )}
+                <Row label="What you'd like" value={facts.desiredOutcome} />
+                <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
+                <Row label="Prefer to be contacted by" value={facts.preferredContact} />
+              </div>
+              <button onClick={start} className="btn-primary !px-7 !py-3 !text-[15px]">
+                Looks right, start my case
+              </button>
             </div>
-
-            {!done && (
-              <InputPanel
-                key={`${spec.target}-${messages.filter((m) => m.role === "agent").length}`}
-                spec={spec}
-                busy={thinking}
-                error={error}
-                onFree={onFree}
-                onAnswer={onAnswer}
-              />
-            )}
-          </>
-        )}
+          ) : (
+            <div key={`${spec.target}-${agentCount}`} className="fade-up my-auto py-10">
+              <h1 className={"display mb-8 whitespace-pre-wrap " + (question.length > 110 ? "text-[26px] sm:text-[30px]" : "text-[32px] sm:text-[40px]")}>{question}</h1>
+              <StageInput spec={spec} busy={thinking} error={error} onFree={onFree} onAnswer={onAnswer} />
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

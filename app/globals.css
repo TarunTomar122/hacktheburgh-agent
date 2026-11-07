@@ -206,15 +206,121 @@ body {
     box-shadow: 0 0 0 4px var(--color-brand-soft);
   }
 
-  /* Dropdowns: one chevron for both systems (`selectControl` in app/ui.tsx and `select.field`). */
+  /* Dropdowns: one chevron for both systems (`selectControl` in app/ui.tsx and `select.field`), and the big stage version. */
   .select,
-  select.field {
+  select.field,
+  select.big-input {
     appearance: none;
     padding-right: 2.25rem;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5l4 4 4-4' fill='none' stroke='%23737373' stroke-width='1.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     background-size: 12px;
+  }
+
+  /* One-question screens (onboarding, D40): a big borderless field with an underline, like Typeform. */
+  .big-input {
+    width: 100%;
+    border: 0;
+    border-bottom: 2px solid var(--color-line);
+    border-radius: 0;
+    background-color: transparent;
+    padding: 0 0 0.75rem;
+    font-family: var(--font-serif);
+    font-size: 2.125rem;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    outline: none;
+    transition: border-color 120ms;
+  }
+  @media (min-width: 640px) {
+    .big-input {
+      font-size: 2.5rem;
+    }
+  }
+  .big-input::placeholder {
+    color: var(--color-fade);
+  }
+  .big-input:focus {
+    border-color: var(--color-brand);
+  }
+  textarea.big-input {
+    resize: none;
+  }
+
+  /* A choice or a tick box as a full-width row, with a lettered key (A, B, C) or a square. */
+  .choice-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.875rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: #fff;
+    padding: 0.875rem 1rem;
+    text-align: left;
+    font-size: 1.0625rem;
+    line-height: 1.5rem;
+    color: var(--color-ink);
+    transition: border-color 120ms, background-color 120ms;
+  }
+  .choice-row:hover:not(:disabled),
+  .choice-row:focus-visible {
+    border-color: var(--color-brand);
+    background: var(--color-brand-soft);
+    outline: none;
+  }
+  .choice-row[aria-pressed="true"],
+  .choice-row[data-on="true"] {
+    border-color: var(--color-brand);
+    background: var(--color-brand-soft);
+  }
+  .choice-row:focus-within {
+    box-shadow: 0 0 0 4px var(--color-brand-soft);
+  }
+  .choice-row:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .keycap {
+    display: inline-flex;
+    height: 1.5rem;
+    min-width: 1.5rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-brand);
+    border-radius: 4px;
+    background: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-brand);
+  }
+  .check {
+    display: inline-flex;
+    height: 1.25rem;
+    width: 1.25rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--color-faint);
+    border-radius: 4px;
+    background: #fff;
+    color: #fff;
+  }
+  .choice-row[data-on="true"] .check {
+    border-color: var(--color-brand);
+    background: var(--color-brand);
+  }
+  .choice-row[data-on="true"] .check::after {
+    content: "";
+    width: 0.3125rem;
+    height: 0.625rem;
+    margin-top: -0.125rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
 
   /* Content that arrives (the name screen): rises 8px while fading in. Off for people who ask for reduced motion. */

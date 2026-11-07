@@ -174,4 +174,9 @@ Why: Tarun wants to see why each firm scored what it did and exactly how the age
 Why: Om asked for a more professional landing page and for the name to be a big field to type into.
 **Limits:** only the name step has the big-field treatment; later questions still use the chat widgets (the free-text story box, forms, buttons, checklist). Making every question a full screen is possible with the same widgets but was not asked for. The opening sentence is duplicated: the screen has its own hero text and the chat still shows `OPENER` from `lib/agent/chat.ts` as its first bubble.
 
-<!-- Add new entries above this line. Next number: D41 -->
+**D41 · 2026-11-07 · Om (requested), built by Claude · decided**
+**Every onboarding question is its own full screen, one at a time (Typeform style).** The agent's question is a large serif heading, with one input below, `OK` or Enter to go on, and a thin progress bar under the stripes. New `app/StageInputs.tsx` and `app/StageControls.tsx` replace `InputPanel` in `app/page.tsx` only. Text and story: a big underlined field. Forms (details, contact): one field per screen with "n of m", a back link and per-field validation (same messages as before), sent to the server as ONE answer at the end, so the API is unchanged. Choices: lettered rows, press A, B, C. Outcome: tick rows plus a big "other" field and a "nothing to add" row. The summary is a card on its own screen. `DateField` gets an opt-in `big` prop.
+Why: the name screen (D40) set the look; a chat with a form under it felt like two products. One question at a time is calmer for someone describing a bad experience, and it works on a phone.
+**Not changed:** `InputPanel.tsx` stays for the case page (`AskMissing`, D33). Interview logic, API shape and `lib/agent/inputs.ts` are untouched. No back navigation between questions, except inside a form (mistakes are fixed in the Profile). A multi-field form as one long scrolling page was rejected: the opposite of one question at a time.
+
+<!-- Add new entries above this line. Next number: D42 -->

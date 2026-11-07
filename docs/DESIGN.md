@@ -65,6 +65,9 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 - **Live grid (D36):** with several agent tabs, the right-hand live panel shows one tile per agent (2 columns, 3 when the panel is wide). **A tile is only the live picture** (no border, header or label; the agent's name and colour are in its cursor pill inside the page); a failed agent gets a thin red wash with its note; the counter "N agents · N sites · N pages · N actions" sits under the panel header. Clicking a tile focuses it (full size, take control); "Back to grid" returns.
 - **Progress:** big serif percentage, thin bar, "N of M milestones", and "Next: ...". Milestones are defined in `app/case/progress.ts`. Honest rules: only things we can know (profile data, the agent reaching the review page) plus self-reported "I've pressed Send". Steps not built count as milestones that cannot be done yet, so the percentage cannot reach 100% early.
 
+## Onboarding screens (D41)
+Each interview question is a full screen under the header: heading in `.display` (32-40 px, 26-30 px if the question is long), input below, `OK` + "or press Enter" (`OkRow`), errors as a red line under the input. Inputs: `.big-input` (serif light, 2px underline, brand on focus), `.choice-row` with `.keycap` (A, B, C) or `.check`. A 4 px brand progress bar sits under the stripes. Components: `app/StageInputs.tsx`, `app/StageControls.tsx`; `DateField` takes `big`.
+
 ## Landing screen (D40)
 
 - **Shell:** the same blue 64px header and stripes as the case page (`Stripes` from `app/case/Header.tsx`), with the logo left and, from the `sm` breakpoint up, "Getting started / Preparing your case" (becomes "Case for / <first name>" once the name is known). Below `sm` only the logo shows. The dev-only "Skip: use demo patient" button sits on the right as a dashed white outline.
@@ -104,7 +107,7 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 
 ## Not done yet
 
-- The onboarding chat after the name (`app/page.tsx`, Om's widgets, `InputPanel`) still uses the class versions and aliases and plain chat bubbles; only the landing screen and the header were brought to the D31 look (D40).
+- `InputPanel` (compact widgets on the case page, D33) still uses the class versions and aliases. The onboarding interview itself uses the stage screens (D41).
 - Two component systems (classes and `app/ui.tsx`) with the same specs. Consolidate into one when there is time.
 - The logo and the favicon (`app/favicon.ico`, `app/icon.png`, `app/apple-icon.png`) come from Om's Elliot monogram (D37). Not done: the page title still says "Case helper"; no web manifest or social-share image.
 - Wordsmith's licensed fonts are not used.
