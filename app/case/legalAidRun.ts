@@ -68,10 +68,14 @@ async function replayFixture(onEvent: (e: Step3Event) => void): Promise<Step3Res
     tick(1);
     await wait(500);
   }
-  for (const f of FIXTURE_RESULT.firms) {
-    onEvent({ type: "firm", firm: f });
-    tick(2);
-    await wait(300);
+  for (const step of FIXTURE_RESULT.trace ?? []) {
+    onEvent({ type: "trace", step });
+    if (step.kind === "found" && step.firms?.length === 1) {
+      const f = FIXTURE_RESULT.firms.find((x) => x.id === step.firms![0]);
+      if (f) onEvent({ type: "firm", firm: f });
+    }
+    tick(1);
+    await wait(180);
   }
   for (const t of FIXTURE_TILES) {
     onEvent({ type: "agent", tile: { ...t, state: t.state === "failed" ? "failed" : "done" } });
