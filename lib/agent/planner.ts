@@ -199,7 +199,7 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
 
 /* ------------------------------------------------------------------ web search and reading any page */
 
-async function webSearch(page: Page, query: string, note: Note, track: Tracker) {
+export async function webSearch(page: Page, query: string, note: Note, track: Tracker) {
   note(`Searching: ${short(query, 50)}`);
   await page.goto("https://search.brave.com/", { waitUntil: "domcontentloaded", timeout: 20000 });
   const box = page.locator("textarea[name=q], input[name=q]").first();

@@ -2,6 +2,7 @@ import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 import type { Funding, Step3Event, Step3Result, Stats, TraceStep } from "./legalAidTypes";
 import type { Draft } from "./draft";
 import type { LedgerEntry } from "./ledger";
+import type { Place, RouteMap } from "./routeTypes";
 
 /**
  * Planner agent contract (D47). Client-safe.
@@ -128,10 +129,27 @@ export type ComplaintResult = {
   message?: string;
 };
 
+/** What discovery found (night plan, "Elliot anywhere"): the route map plus the crew's story. */
+export type DiscoveryResult = {
+  runId: string;
+  runDir: string;
+  route: RouteMap;
+  plan: PlanStep[];
+  thoughts: Thought[];
+  says: Say[];
+  turns: number;
+  asks: number;
+  trace: TraceStep[];
+  stats: Stats;
+};
+
 export type PlannerEvent =
   | Step3Event
   | { type: "complaint_result"; result: ComplaintResult }
   | { type: "model"; entry: LedgerEntry } // one model call (the ledger)
+  | { type: "place"; place: Place } // where the patient's care happened, as read from their words
+  | { type: "route"; route: RouteMap } // the route map so far (discovery)
+  | { type: "discovery_result"; result: DiscoveryResult }
   | { type: "run"; runId: string }
   | { type: "funding"; funding: Funding }
   | { type: "plan"; steps: PlanStep[] }
