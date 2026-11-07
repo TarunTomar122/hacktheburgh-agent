@@ -36,6 +36,7 @@ export default function DateField({
   const today = new Date().toISOString().slice(0, 10);
 
   function changeMode(next: DateMode) {
+    if (next === mode) return;
     setMode(next);
     if (next !== dateMode(value)) onChange("");
     if (next === "month") {

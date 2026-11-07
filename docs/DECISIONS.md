@@ -269,4 +269,7 @@ Why: Om: the points looked exact and told the user nothing more than a tick; fou
 **D54 - 2026-11-07 - Luigi + Codex - decided**
 The latest crew flow asks location permission before research, then asks for the patient's search postcode. Never derive proximity from the hospital or treatment location. Decline, skip or timeout means no distance ranking or proximity score. SLAB must confirm the approved Scottish postcode; retries reuse it. Permission is asked afresh for each run. This supersedes the default Edinburgh proximity assumption in D39. Other stashed UI/scoring changes are not restored.
 
-<!-- Add new entries above this line. Next number: D55 -->
+**D55 - 2026-11-07 - Luigi + Codex - decided**
+User authorized straightforward bug fixes and pushing them. Failed answers and terminal crew runs allow retry; unknown financial inputs remain unknown during fallback; exact dates must exist. Keep broader run lifecycle, approval isolation, evidence scope and retention choices for validation (BUG_REVIEW.md). Correct storage wording; no retention policy or real-send behavior changed.
+
+<!-- Add new entries above this line. Next number: D56 -->

@@ -1,3 +1,4 @@
+import { parseFundingNumber } from "./inputs";
 import { askSearchLocation, type SearchLocation } from "./searchLocation";
 import path from "node:path";
 import type { Page } from "playwright";
@@ -26,6 +27,7 @@ import {
   type Note,
 } from "./legalAid";
 import type { FirmFinding, Funding, Route, Verdict } from "./legalAidTypes";
+import { fundingMissing } from "./legalAidTypes";
 import { CREW, TOOL_CREW, type AskSpec, type CrewId, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say, type Thought } from "./plannerTypes";
 import { compareCare, readGuideline, readJudgment, searchCaseLaw, type GuidelineReading } from "./evidence";
 import { draftEnquiry, fillOne, keepForApproval } from "./enquiry";
@@ -78,11 +80,7 @@ function limiter(n: number) {
   };
 }
 
-const num = (s: string | null) => {
-  if (s === null) return null;
-  const v = Number(s.replace(/[£,\s]/g, "").replace(/k$/i, "000"));
-  return Number.isFinite(v) && v >= 0 ? v : null;
-};
+const num = parseFundingNumber;
 const yes = (s: string | null) => (s === null ? null : /^(y|yes|true)/i.test(s.trim()));
 const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
@@ -155,6 +153,8 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
     const savings = await need("savings", { question: "How much do you have in savings?", why: "The calculator needs your 'disposable capital'. Enter 0 if none.", kind: "money" }, num);
     if (savings !== null) await field(/total disposable capital/i, savings);
   }
+  // A skipped answer is unknown, not zero. Never run the fallback with incomplete finances.
+  if (fundingMissing(funding).length) return { verdict: "unknown" as Verdict, quote: "", skipped: true };
   await page.waitForTimeout(1500);
   let { verdict, quote } = readVerdict(await page.evaluate(() => document.body.innerText));
   if (verdict === "unknown" && !funding.skipped) {

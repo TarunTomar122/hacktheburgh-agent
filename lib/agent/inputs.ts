@@ -155,10 +155,22 @@ export function validatePatch(p: Partial<CaseFacts>): string | null {
     const today = new Date().toISOString().slice(0, 10);
     for (const e of p.events) {
       if (ISO_DATE.test(e.date) && e.date > today) return "That date is in the future. Please check it.";
-      if (ISO_DATE.test(e.date) && Number.isNaN(Date.parse(e.date))) return "That date does not exist. Please check it.";
+      if (ISO_DATE.test(e.date)) {
+        const parsed = new Date(e.date);
+        if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== e.date) return "That date does not exist. Please check it.";
+      }
     }
   }
   return null;
+}
+
+/** Non-negative money/number answer, including decimal thousands such as 2.5k. Blank is unknown, never zero. */
+export function parseFundingNumber(answer: string | null): number | null {
+  if (answer === null) return null;
+  const match = answer.replace(/[£,\s]/g, "").match(/^(\d+(?:\.\d+)?|\.\d+)(k)?$/i);
+  if (!match) return null;
+  const value = Number(match[1]) * (match[2] ? 1000 : 1);
+  return Number.isFinite(value) ? value : null;
 }
 
 // ---------------------------------------------------------------- what the user sees

@@ -25,6 +25,10 @@ Docs only, no code. Wrote `docs/plans/browser-complexity-plan.md` (proposed, not
   - A guessed Irwin Mitchell profile URL returned 404.
 - **Not checked:** `tsc` and `eslint` (no code changed; `node` unavailable here).
 
+### 2026-11-07 - Luigi + Codex - Bug review and targeted fixes
+Reviewed application flows, routes, persistence, planner/browser workers, funding, evidence, enquiries and live view. Fixed question-answer failure recovery, terminal-run retry, final stream line handling and obsolete-stream guards, stale fixture flag, impossible dates, repeated date-mode reset, decimal-thousands parsing and skipped-finances fallback. Corrected server-storage wording. Regression scripts for dates/money, location, mocked calculator and mocked crew UI pass. UI setup initially lacked __name; fixed and blocked real planner requests in the test. Build caught an edit-induced encoding error; affected files normalized to UTF-8. Outstanding validation/decisions: BUG_REVIEW.md. No browser engine or real-send behavior changed. Production build, TypeScript, lint and all four regression scripts passed. Final sync pulled 247eded (documentation only); preserved both progress entries and renumbered our discrepancy to 11.
+
+
 ### 2026-11-07 - Luigi + Codex - Upstream sync
 Pulled 3d3072b. Code merged cleanly. Both branches assigned D53 to different decisions; preserved upstream D53 and renumbered patient location to D54. Documentation conflict resolved by keeping both entries. The user subsequently authorized pushing small conflict resolutions.
 
@@ -280,6 +284,8 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 | # | Date | Found by | What disagrees | Status |
 |---|---|---|---|---|
 | 10 | 2026-11-07 | Lea + Claude | The step 4 run (Tarun + Claude, D46 entry above) reports "Balfour + Manson had no online form". A manual probe the same day found a general enquiry form at `https://www.balfour-manson.co.uk/contact-us/` (name, phone, email, "Nature of Enquiry", location, consent checkbox, invisible reCAPTCHA v3), linked from its medical negligence page as "Fill in our enquiry form". Possibly the agent's harder look did not reach it, or the fixture's website URL differs. Not investigated. | open |
+
+| 11 | 2026-11-07 | Codex | Profile claimed nothing was stored on server, but runners write logs/screenshots. Copy fixed; retention/deletion policy undefined. | open: BUG_REVIEW.md |
 | 9 | 2026-11-07 | Claude | `PROGRESS.md` earlier said step 2 was "records request"; step 2 is now the ombudsman form (D29, D30). | **resolved** 2026-11-07 |
 | 8 | 2026-11-07 | Claude | `PROJECT.md` said the SPSO checker's verdict screen was unseen. It was seen and links to the online form. | **resolved** 2026-11-07 |
 | 7 | 2026-11-07 | Claude | Luigi's decision and mine were both numbered D25. | **resolved** 2026-11-07: mine is D29 (Om's D26-D28 landed first); next free is D33 |

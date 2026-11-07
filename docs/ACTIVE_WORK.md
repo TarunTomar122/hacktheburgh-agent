@@ -7,6 +7,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
 | Patient location permission | Luigi + Codex | Done, idle | Planner, finder, location helpers | Explicit permission and patient postcode in latest crew flow |
+| Bug review and straightforward fixes | Luigi + Codex | Done, idle | Whole-repo review; targeted UI and validation fixes | User authorized review and push of clear fixes |
 | NHS app integration | Luigi + Codex | Done, idle | `app/case/page.tsx`, `app/api/agent/step1/route.ts`, `lib/agent/nhsLothian.ts` | App button verified with fictional patient. Browser remains open up to 10 minutes for review. |
 | Agent core: interview, draft, NHS form fill (step 1) | Tarun + Claude | **Done, idle** (submit not built) | `lib/agent/*`, `app/api/agent/*` | Step 1 runs on the Decisions engine. Next: steps 2+, or submit (needs D14) |
 | UI: onboarding, profile tab, case view | Tarun + Claude | **Case shell redesigned 2026-11-07 (D31).** Onboarding and `/dev` restyled by Om (D26); the case shell, profile page and timeline follow D31 | `app/ui.tsx`, `app/globals.css`, `app/page.tsx`, `app/case/*`, `docs/DESIGN.md` | Follow `docs/DESIGN.md`. Tarun directs the look; ask before changing it |

@@ -42,14 +42,14 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     const ready = r.enquiries.filter((e) => e.status === "ready_to_send").map((e) => e.firmId);
     const selected = [...new Set([...ready, ...r.shortlist])].slice(0, 3);
     setLegalAid({ result: r as Step3Result, sample: false, selected });
-    setEnquiry({ outcomes: r.enquiries, runId: r.runId });
+    setEnquiry({ outcomes: r.enquiries, runId: r.runId, sample: false });
     upsertEnquiries(r.enquiries.filter((e) => e.status === "ready_to_send").map((e) => ({ firmId: e.firmId, firmName: e.firmName, status: "ready_to_send" as const })));
     const run: CaseRunRecord = { runId: r.runId ?? "", says: r.says, plan: r.plan, evidence: r.evidence, asks: r.asks, recoveries: r.recoveries, turns: r.turns, durationMs: Date.now() - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() };
     setCaseRun(run);
   }, [state.status, state.result, state.startedAt]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  if (live) return <Workspace state={state} onAnswer={answer} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onRetry={() => start(profile.facts, profile.legalAid?.funding)} />;
   if (view === "firms" && result)
     return (
       <div className="mx-auto max-w-6xl space-y-6">
@@ -89,7 +89,7 @@ function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
 
 type RunState = ReturnType<typeof usePlannerRun>["state"];
 
-function Workspace({ state, onAnswer }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<void> }) {
+function Workspace({ state, onAnswer, onRetry }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<void>; onRetry: () => void }) {
   const [selected, setSelected] = useState<CrewId | null>(null);
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -138,8 +138,8 @@ function Workspace({ state, onAnswer }: { state: RunState; onAnswer: (id: string
         <section aria-label="What the crew is doing" className="flex min-h-0 flex-col border-line lg:border-r">
           <CrewStrip crew={state.crew} selected={selected} onSelect={select} />
           <Timeline says={state.says} trace={state.trace} runId={state.runId} filter={selected} onTrace={setScope} live />
-          <QuestionDock asks={state.asks} onAnswer={onAnswer} />
-          {state.status === "error" && <p className="border-t border-line px-5 py-3 text-[13px] text-danger">{state.error}</p>}
+          {state.status === "running" && <QuestionDock asks={state.asks} onAnswer={onAnswer} />}
+          {state.status === "error" && <div className="space-y-2 border-t border-line px-5 py-3"><p className="text-[13px] text-danger">{state.error}</p><Button size="sm" onClick={onRetry}>Try again</Button></div>}
         </section>
         <section aria-label="The crew's browsers" className="min-h-0 bg-subtle p-3">
           <div id="live-slot" className="h-full" />
@@ -388,6 +388,7 @@ function QuestionDock({ asks, onAnswer }: { asks: AskSpec[]; onAnswer: (id: stri
   const q = asks[0];
   const [value, setValue] = useState("");
   const [sent, setSent] = useState<string | null>(null);
+  const [answerError, setAnswerError] = useState<{ id: string; message: string } | null>(null);
   const [received, setReceived] = useState(false);
   const last = useRef<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -419,8 +420,13 @@ function QuestionDock({ asks, onAnswer }: { asks: AskSpec[]; onAnswer: (id: stri
   const crew = q.crew ?? "elliot";
   const busy = sent === q.id;
   const submit = (v: string | null) => {
+    if (busy) return;
     setSent(q.id);
-    void onAnswer(q.id, v);
+    setAnswerError(null);
+    void onAnswer(q.id, v).catch((error: unknown) => {
+      setSent((id) => id === q.id ? null : id);
+      setAnswerError({ id: q.id, message: error instanceof Error ? error.message : "Your answer could not be sent. Please try again." });
+    });
   };
   const site = crew === "nell" ? "slab.org.uk" : "";
 
@@ -443,6 +449,7 @@ function QuestionDock({ asks, onAnswer }: { asks: AskSpec[]; onAnswer: (id: stri
           </>
         )}
       </p>
+      {answerError?.id === q.id && <p role="alert" className="mt-2 text-sm text-danger">{answerError.message}</p>}
       <form
         className="mt-3 flex flex-wrap items-center gap-2"
         onSubmit={(e) => {

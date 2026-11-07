@@ -91,6 +91,7 @@ export function usePlannerRun() {
       abort.current?.abort();
       const ctrl = new AbortController();
       abort.current = ctrl;
+      runIdRef.current = undefined;
       setS({ ...initial(), status: "running", startedAt: Date.now() });
       try {
         const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding }), signal: ctrl.signal });
@@ -98,14 +99,22 @@ export function usePlannerRun() {
         const reader = res.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
-        while (true) {
-          const { value, done } = await reader.read();
-          buf += dec.decode(value, { stream: !done });
-          const lines = buf.split("\n");
-          buf = lines.pop() ?? "";
-          for (const line of lines) if (line.trim()) apply(JSON.parse(line));
-          if (done) break;
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (ctrl.signal.aborted || abort.current !== ctrl) return;
+            buf += dec.decode(value, { stream: !done });
+            const lines = buf.split("\n");
+            buf = lines.pop() ?? "";
+            for (const line of lines) if (line.trim()) apply(JSON.parse(line));
+            if (done) break;
+          }
+          if (buf.trim()) apply(JSON.parse(buf));
+        } finally {
+          await reader.cancel().catch(() => {});
+          reader.releaseLock();
         }
+        if (ctrl.signal.aborted || abort.current !== ctrl) return;
         setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result ? "done" : "error", error: cur.result ? undefined : "The run ended without a result" } : cur));
       } catch (e) {
         if (ctrl.signal.aborted) return;
@@ -118,12 +127,14 @@ export function usePlannerRun() {
   /** Send the user's answer (or null to skip). Removed from the open list once the server confirms. */
   const answer = useCallback(async (id: string, value: string | null) => {
     const runId = runIdRef.current;
-    if (!runId) return;
-    await fetch("/api/agent/plan/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, id, answer: value }) }).catch(() => {});
+    if (!runId) throw new Error("The run is not connected. Please try again.");
+    const res = await fetch("/api/agent/plan/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, id, answer: value }) });
+    if (!res.ok) throw new Error(res.status === 404 ? "This question has expired. Wait for the next update or restart the run." : "Your answer could not be sent. Please try again.");
   }, []);
 
   const reset = useCallback(() => {
     abort.current?.abort();
+    runIdRef.current = undefined;
     setS(initial());
   }, []);
 

@@ -91,3 +91,5 @@ Verified 2026-11-07 against our key and OpenAI's official pages (see `docs/PROGR
 - Ideas to deepen complexity (not built, not decided): run the firm search on 8-10 unseen firms; a second complaint route (GP vs hospital); email replies and account-creation flows.
 
 Built D54: new crew runs ask permission then patient postcode before research; no hospital-derived proximity. Live SLAB approved Glasgow and declined-location paths verified on 2026-11-07. Full crew run not retested.
+
+2026-11-07 review: crew failure recovery and input fixes verified with deterministic regression scripts and fictional data. Outstanding sending, cancellation, concurrent runs, stale drafts, evidence scope and retention issues are in BUG_REVIEW.md. No live submissions tested.

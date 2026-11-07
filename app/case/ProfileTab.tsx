@@ -222,7 +222,7 @@ export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile
           >
             Delete all my data
           </button>
-          <p className="text-xs text-muted">Saved in this browser only. Nothing is stored on a server.</p>
+          <p className="text-xs text-muted">Your profile is saved in this browser. Agent runs also create logs and screenshots on the server.</p>
         </section>
       </div>
     </div>
