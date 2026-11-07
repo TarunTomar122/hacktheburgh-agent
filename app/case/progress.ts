@@ -1,4 +1,5 @@
 import { missingRequired } from "../../lib/agent/facts";
+import { fundingMissing } from "../../lib/agent/legalAidTypes";
 import type { Profile } from "../../lib/profile";
 
 export type Milestone = { step: number; label: string; done: boolean };
@@ -8,7 +9,7 @@ export type Milestone = { step: number; label: string; done: boolean };
  *  - from the profile (details complete, draft written, NHS reply received),
  *  - from the agent (form filled up to the review page),
  *  - self-reported by the user ("I've sent it"), because we cannot see them press Send in the other window.
- * Steps 3-5 are not built, so each is one milestone that cannot be done yet. The percentage counts them, so it never reaches 100% early.
+ * Steps 4-5 are not built, so each is one milestone that cannot be done yet. The percentage counts them, so it never reaches 100% early.
  */
 export function milestones(p: Profile): Milestone[] {
   const g = p.progress ?? {};
@@ -20,7 +21,10 @@ export function milestones(p: Profile): Milestone[] {
     { step: 2, label: "NHS Lothian's final reply received", done: p.ombudsman?.unlocked === true },
     { step: 2, label: "Ombudsman form filled in and checked", done: g.spsoFilled === true },
     { step: 2, label: "Complaint sent to the ombudsman", done: g.spsoSent === true },
-    { step: 3, label: "Legal aid checked", done: false },
+    { step: 3, label: "Money questions answered", done: !!p.legalAid && fundingMissing(p.legalAid.funding).length === 0 },
+    // Sample (fixture) results never count: they are not a real check.
+    { step: 3, label: "Legal aid checked", done: !!p.legalAid?.result && !p.legalAid.sample },
+    { step: 3, label: "Lawyers shortlisted", done: !!p.legalAid?.result && !p.legalAid.sample && p.legalAid.result.shortlist.length > 0 },
     { step: 4, label: "Solicitor chosen", done: false },
     { step: 5, label: "Case file complete", done: false },
   ];
@@ -28,6 +32,6 @@ export function milestones(p: Profile): Milestone[] {
 
 export function summarise(ms: Milestone[]) {
   const done = ms.filter((m) => m.done).length;
-  const next = ms.find((m) => !m.done && m.step <= 2);
+  const next = ms.find((m) => !m.done && m.step <= 3);
   return { done, total: ms.length, pct: Math.round((done / ms.length) * 100), next: next?.label ?? null };
 }

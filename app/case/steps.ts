@@ -9,7 +9,7 @@ export type Step = { n: number; title: string; blurb: string; state: StepState; 
 export const STEPS: Step[] = [
   { n: 1, title: "Complain to NHS Lothian", blurb: "We prepare and fill the form", state: "ready", track: "answers" },
   { n: 2, title: "Ombudsman", blurb: "After the NHS replies", state: "locked", track: "answers" },
-  { n: 3, title: "Can I get legal aid?", blurb: "Coming soon", state: "soon", track: "compensation" },
+  { n: 3, title: "Can I get legal aid?", blurb: "Check and find lawyers", state: "ready", track: "compensation" },
   { n: 4, title: "Contact lawyers", blurb: "Coming soon", state: "soon", track: "compensation" },
   { n: 5, title: "Your case file", blurb: "Coming soon", state: "soon", track: "end" },
 ];

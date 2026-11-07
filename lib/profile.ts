@@ -5,6 +5,7 @@ import type { ChatMessage } from "./agent/chat";
 import type { Draft } from "./agent/draft";
 import { emptyFacts, type CaseFacts } from "./agent/facts";
 import type { SpsoAnswers } from "./agent/spsoAnswers";
+import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
 
 /** Everything we keep about the user's case. Stored in this browser only (localStorage). */
 export type Profile = {
@@ -15,6 +16,8 @@ export type Profile = {
   ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers> };
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
   progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean };
+  /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
+  legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean };
   createdAt: string;
   updatedAt: string;
 };
@@ -84,6 +87,16 @@ export function setProgress(patch: NonNullable<Profile["progress"]>) {
 export function addMessages(more: ChatMessage[]) {
   const p = read();
   if (p) write({ ...p, messages: [...p.messages, ...more] });
+}
+
+export function setLegalAid(patch: { funding?: Partial<Funding>; result?: Step3Result | null; sample?: boolean }) {
+  const p = read();
+  if (!p) return;
+  const cur = p.legalAid ?? { funding: EMPTY_FUNDING };
+  const funding = { ...cur.funding, ...patch.funding };
+  const result = patch.result === null ? undefined : (patch.result ?? cur.result);
+  const sample = patch.result === null ? undefined : (patch.sample ?? cur.sample);
+  write({ ...p, legalAid: { funding, result, sample } });
 }
 
 export function clearProfile() {

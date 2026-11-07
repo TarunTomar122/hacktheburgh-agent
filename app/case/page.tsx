@@ -9,6 +9,7 @@ import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
 import Header from "./Header";
+import LegalAidStep from "./LegalAidStep";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
 import { streamAgent, type DoneEvent } from "./streamAgent";
@@ -43,6 +44,8 @@ export default function CasePage() {
             <div className="mx-auto max-w-3xl px-12 py-12">
               {active === 2 ? (
                 <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
+              ) : active === 3 ? (
+                <LegalAidStep profile={profile} />
               ) : (
                 <StepOne profile={profile} />
               )}
