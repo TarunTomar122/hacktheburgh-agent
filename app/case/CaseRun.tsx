@@ -6,6 +6,7 @@ import { CREW, type AskSpec, type CrewId, type PlanStep, type Say } from "../../
 import { setCaseRun, setEnquiry, setLegalAid, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
 import { Button, cx, Eyebrow } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
+import StepStrip, { stepStatuses } from "./crew/StepStrip";
 import FirmResults from "./FirmResults";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun, type CrewState } from "./usePlannerRun";
@@ -67,27 +68,19 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
 
 function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
   return (
-    <div className="mx-auto max-w-4xl py-6">
+    <div className="mx-auto max-w-5xl py-4">
       <Eyebrow>Compensation · step 1</Eyebrow>
       <h1 className="display mt-3 text-[44px] text-ink">Preparing your case</h1>
-      <p className="mt-4 max-w-2xl text-[16px] leading-7 text-ink-2">
-        Elliot and five specialists work out how a claim could be paid for, find and check solicitors near you, gather the medical evidence, and fill in the firms&apos; enquiry forms. They ask you only when a website needs something we don&apos;t know. Nothing is sent without your OK.
-      </p>
-      <div className="mt-8">
-        <Button onClick={onStart}>Start preparing my case</Button>
-        {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      <div className="mt-12">
+        <StepStrip />
       </div>
-      <ul className="mt-14 grid gap-x-8 gap-y-5 border-t border-line pt-8 sm:grid-cols-2 lg:grid-cols-3">
-        {CREW_ORDER.map((id) => (
-          <li key={id} className="flex items-center gap-3">
-            <CrewMark id={id} size={32} />
-            <div>
-              <div className="text-[15px] font-medium text-ink">{CREW[id].name}</div>
-              <div className="text-[13px] text-muted">{CREW[id].role}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-12 flex flex-col items-center gap-4">
+        <Button onClick={onStart}>Start preparing my case</Button>
+        <p className="text-[13px] text-muted">
+          <span className="text-teal">✓</span> Asks you only when needed <span className="mx-2 text-fade">·</span> <span className="text-teal">✓</span> Nothing sent without your OK <span className="mx-2 text-fade">·</span> ≈ 3 min
+        </p>
+        {error && <p className="text-sm text-danger">{error}</p>}
+      </div>
     </div>
   );
 }
@@ -137,7 +130,9 @@ function Workspace({ state, onAnswer }: { state: RunState; onAnswer: (id: string
         <RunMeta elapsed={elapsed} state={state} />
       </header>
 
-      <Workstreams plan={state.plan} />
+      <div className="rounded-card border border-line bg-white px-4 pt-4 pb-3">
+        <StepStrip compact statuses={stepStatuses(state.crew, state.says, state.status === "done")} />
+      </div>
 
       <div ref={fit} style={{ height }} className="grid min-h-[520px] grid-cols-1 overflow-hidden rounded-card border border-line bg-white lg:grid-cols-[minmax(340px,38%)_minmax(0,1fr)]">
         <section aria-label="What the crew is doing" className="flex min-h-0 flex-col border-line lg:border-r">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, cx } from "./ui";
+import { CREW, type CrewId } from "../lib/agent/plannerTypes";
 
 /**
  * Right-hand panel that shows the agent's browser live (D32). Mounted once in app/layout.tsx.
@@ -561,7 +562,12 @@ function Tile({ page, ended, onImg, onOpen, caption }: { page: LivePage; ended: 
       {/* Inline (D52): a small name tag inside the picture, so you know whose tab it is even when their cursor is off screen. */}
       {caption && !failed && (
         <span className="absolute bottom-2 left-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-[4px] bg-white/92 px-1.5 py-0.5 text-[11px] font-medium text-ink">
-          <span aria-hidden className="size-1.5 shrink-0 rounded-[1px]" style={{ background: page.color }} />
+          {crewId(page.label) ? (
+            // eslint-disable-next-line @next/next/no-img-element -- tiny static avatar
+            <img src={`/crew/${crewId(page.label)}-256.png`} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
+          ) : (
+            <span aria-hidden className="size-1.5 shrink-0 rounded-[1px]" style={{ background: page.color }} />
+          )}
           {page.label.split(" · ")[0]}
           <span className="font-normal text-muted">{page.state === "done" ? "done" : page.note ? `· ${page.note}` : ""}</span>
         </span>
@@ -573,6 +579,12 @@ function Tile({ page, ended, onImg, onOpen, caption }: { page: LivePage; ended: 
       )}
     </button>
   );
+}
+
+/** The crew member whose tab this is, from its label ("Robin · SLAB lawyer list"), for the avatar on the tile. */
+function crewId(label: string): CrewId | null {
+  const name = label.split(" · ")[0];
+  return (Object.keys(CREW) as CrewId[]).find((id) => CREW[id].name === name) ?? null;
 }
 
 /** "andersonstrathern.co.uk › legal-expertise › medical-negligence": readable, wraps between parts, never mid-word. */
