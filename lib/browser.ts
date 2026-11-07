@@ -1,5 +1,6 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { attachLiveView } from "./liveview";
+import { installCursor } from "./agentCursor";
 
 // Some sites (e.g. SLAB) return 403 to Playwright's default user-agent.
 const USER_AGENT =
@@ -26,6 +27,7 @@ export async function openSession(): Promise<Session> {
   });
   // tsx/esbuild wraps named functions in a __name() helper that doesn't exist inside the page.
   await context.addInitScript("window.__name = (f) => f;");
+  await installCursor(context);
   attachLiveView(context);
   const page = await context.newPage();
   return { browser, context, page };
@@ -37,7 +39,7 @@ export async function openSession(): Promise<Session> {
  */
 export async function dismissCookies(page: Page, waitMs = 6000): Promise<"rejected" | "accepted" | "none"> {
   const reject = /^\s*(reject( all| cookies)?|decline( all| cookies)?|refuse|deny|only (essential|necessary)( cookies)?|necessary( cookies)? only|i do not accept cookies|continue without accepting)\s*$/i;
-  const accept = /^\s*(accept( all| all cookies| cookies| recommended settings)?|allow all( cookies)?|i agree|agree|ok|okay|got it|close)\s*$/i;
+  const accept = /^\s*(accept( all| all cookies| cookies| recommended settings)?|allow( all)?( cookies)?|i agree|agree|ok|okay|got it|close)\s*$/i;
   const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
     const buttons = page.locator("button, [role=button], a.button, input[type=button], input[type=submit]");

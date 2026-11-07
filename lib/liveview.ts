@@ -1,11 +1,11 @@
 import type { BrowserContext, CDPSession, Page } from "playwright";
 
 /**
- * In-app live view of the agent's browser (D32).
+ * In-app live view of the agent's browser (D32), several tabs at once (D36).
  *
  * Every Playwright context opened through `openSession()` is attached here. We start a CDP screencast
- * (`Page.startScreencast`) on each page in the context and publish JPEG frames from the "active" page
- * (the newest one still open) to a process-wide bus. `app/api/live/route.ts` streams that bus to the
+ * (`Page.startScreencast`) on each tab and publish its JPEG frames, tagged with a `pageId`, to a process-wide
+ * bus. With several tabs, each streams as a small tile except the focused one. `app/api/live/route.ts` streams that bus to the
  * browser as server-sent events and forwards input back via `liveInput()`.
  *
  * One bus per Node process: the demo has one patient and one agent run at a time. If two runs overlap,
@@ -15,11 +15,24 @@ import type { BrowserContext, CDPSession, Page } from "playwright";
 
 export type LiveFrame = {
   type: "frame";
+  pageId: string;
   data: string; // base64 JPEG
   url: string;
   width: number; // CSS pixels of the page viewport the frame shows
   height: number;
 };
+
+/** One tab of the current session, as shown in the grid (D36). */
+export type LivePage = {
+  pageId: string;
+  label: string;
+  color: string;
+  url: string;
+  state: "starting" | "working" | "done" | "failed";
+  note: string;
+};
+export type LiveStats = { agents: number; sites: number; pages: number; actions: number };
+
 /** Keys the panel forwards, with what Chrome needs to treat them as real key presses. */
 const KEYMAP: Record<string, { key: string; code: string; vk: number; text?: string }> = {
   Enter: { key: "Enter", code: "Enter", vk: 13, text: "\r" },
@@ -38,36 +51,47 @@ const KEYMAP: Record<string, { key: string; code: string; vk: number; text?: str
   PageDown: { key: "PageDown", code: "PageDown", vk: 34 },
 };
 
-export type LiveEvent = LiveFrame | { type: "end" } | { type: "control"; enabled: boolean };
+export type LiveEvent =
+  | LiveFrame
+  | { type: "pages"; pages: LivePage[] }
+  | { type: "stats"; stats: LiveStats }
+  | { type: "end" }
+  | { type: "control"; enabled: boolean };
 type Listener = (e: LiveEvent) => void;
 
+/** Every input may name the tab it is for; without `pageId` it goes to the focused tab, else the newest. */
+type Target = { pageId?: string };
 export type LiveInput =
-  | { type: "click"; x: number; y: number } // CSS pixels in the page viewport
-  | { type: "move"; x: number; y: number }
-  | { type: "wheel"; x: number; y: number; dx: number; dy: number }
-  | { type: "key"; key: string } // a Playwright key name, e.g. "Enter", "Backspace", "a"
-  | { type: "text"; text: string }
-  | { type: "back" }
+  | ({ type: "click"; x: number; y: number } & Target) // CSS pixels in the page viewport
+  | ({ type: "move"; x: number; y: number } & Target)
+  | ({ type: "wheel"; x: number; y: number; dx: number; dy: number } & Target)
+  | ({ type: "key"; key: string } & Target) // a key name from KEYMAP, e.g. "Enter"
+  | ({ type: "text"; text: string } & Target)
+  | ({ type: "back" } & Target)
   | { type: "close" }
+  | { type: "focus"; pageId: string | null } // the focused tab streams at full quality, the rest as small tiles
   | { type: "resize"; width: number; height: number }; // size of the panel's picture area, CSS pixels
 
-type Attached = { page: Page; cdp: CDPSession };
+type Attached = { page: Page; cdp: CDPSession; meta: LivePage; hi: boolean | null };
 type Bus = {
   listeners: Set<Listener>;
-  last: LiveFrame | null;
+  frames: Map<string, LiveFrame>;
   live: boolean;
-  /** Pages of the current session, oldest first. The last one is shown. */
+  /** Pages of the current session, oldest first. */
   pages: Attached[];
   context: BrowserContext | null;
   /** Viewport that makes the page fill the panel exactly; null until the panel reports its size. */
   viewport: { width: number; height: number } | null;
+  focus: string | null;
+  stats: LiveStats | null;
+  nextId: number;
 };
 
-const g = globalThis as typeof globalThis & { __liveBus?: Bus };
-const bus: Bus = (g.__liveBus ??= { listeners: new Set(), last: null, live: false, pages: [], context: null, viewport: null });
-bus.viewport ??= null;
+const g = globalThis as typeof globalThis & { __liveBus2?: Bus };
+const bus: Bus = (g.__liveBus2 ??= { listeners: new Set(), frames: new Map(), live: false, pages: [], context: null, viewport: null, focus: null, stats: null, nextId: 1 });
 
 const MIN_WIDTH = 1100; // below this many sites switch to their mobile layout
+const TILE_WIDTH = 640;
 
 /** Same shape as the panel, at least MIN_WIDTH wide, so the frame fills the panel top to bottom. */
 function viewportFor(width: number, height: number) {
@@ -75,16 +99,18 @@ function viewportFor(width: number, height: number) {
   return { width: Math.round(width * scale), height: Math.min(2400, Math.round(height * scale)) };
 }
 
-const screencastOpts = () => ({
-  format: "jpeg" as const,
-  quality: 70,
-  maxWidth: bus.viewport?.width ?? 1300,
-  maxHeight: bus.viewport?.height ?? 900,
-  everyNthFrame: 1,
-});
+/** Full quality for the tab being looked at (or the only tab); small and light for grid tiles. */
+const isHi = (a: Attached) => bus.pages.length <= 1 || bus.focus === a.meta.pageId;
+function screencastOpts(hi: boolean) {
+  const vw = bus.viewport?.width ?? 1300;
+  const vh = bus.viewport?.height ?? 900;
+  return hi
+    ? { format: "jpeg" as const, quality: 70, maxWidth: vw, maxHeight: vh, everyNthFrame: 1 }
+    : { format: "jpeg" as const, quality: 50, maxWidth: TILE_WIDTH, maxHeight: Math.round((TILE_WIDTH * vh) / vw), everyNthFrame: 1 };
+}
 
 function publish(e: LiveEvent) {
-  if (e.type === "frame") bus.last = e;
+  if (e.type === "frame") bus.frames.set(e.pageId, e);
   for (const l of bus.listeners) {
     try {
       l(e);
@@ -93,11 +119,16 @@ function publish(e: LiveEvent) {
     }
   }
 }
+const publishPages = () => publish({ type: "pages", pages: bus.pages.map((p) => p.meta) });
 
-/** Subscribe to frames. The latest frame (if a session is live) is replayed immediately. */
+/** Subscribe. If a session is live, the tab list, the latest frame of each tab and the stats are replayed immediately. */
 export function subscribeLive(listener: Listener): () => void {
   bus.listeners.add(listener);
-  if (bus.live && bus.last) listener(bus.last);
+  if (bus.live) {
+    listener({ type: "pages", pages: bus.pages.map((p) => p.meta) });
+    for (const f of bus.frames.values()) listener(f);
+    if (bus.stats) listener({ type: "stats", stats: bus.stats });
+  }
   return () => bus.listeners.delete(listener);
 }
 
@@ -105,7 +136,23 @@ export function isLive() {
   return bus.live;
 }
 
-const active = () => bus.pages.at(-1)?.page ?? null;
+const host = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "New tab";
+  }
+};
+
+/** Start or restart the screencast at the right quality for this tab. */
+async function stream(a: Attached, force = false) {
+  const hi = isHi(a);
+  if (!force && a.hi === hi) return;
+  a.hi = hi;
+  await a.cdp.send("Page.stopScreencast").catch(() => {});
+  await a.cdp.send("Page.startScreencast", screencastOpts(hi)).catch(() => {});
+}
+const restreamAll = (force = false) => Promise.all(bus.pages.map((p) => stream(p, force)));
 
 async function attachPage(page: Page) {
   const context = page.context();
@@ -115,58 +162,79 @@ async function attachPage(page: Page) {
   } catch {
     return; // page closed before we could attach
   }
-  const entry: Attached = { page, cdp };
+  const pageId = `p${bus.nextId++}`;
+  const entry: Attached = { page, cdp, hi: null, meta: { pageId, label: host(page.url()), color: "#0060df", url: page.url(), state: "starting", note: "" } };
   bus.pages.push(entry);
+  publishPages();
 
   cdp.on("Page.screencastFrame", (f: { data: string; sessionId: number; metadata: { deviceWidth: number; deviceHeight: number } }) => {
-    // Always ack, or Chrome stops sending frames. Only the active page is shown.
-    cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {});
-    if (bus.context !== context || active() !== page) return;
-    publish({ type: "frame", data: f.data, url: page.url(), width: f.metadata.deviceWidth, height: f.metadata.deviceHeight });
+    cdp.send("Page.screencastFrameAck", { sessionId: f.sessionId }).catch(() => {}); // always ack, or Chrome stops sending
+    if (bus.context !== context) return;
+    publish({ type: "frame", pageId, data: f.data, url: page.url(), width: f.metadata.deviceWidth, height: f.metadata.deviceHeight });
   });
-
+  page.on("framenavigated", (frame) => {
+    if (frame !== page.mainFrame()) return;
+    entry.meta = { ...entry.meta, url: frame.url(), label: entry.meta.label === host(entry.meta.url) || entry.meta.label === "New tab" ? host(frame.url()) : entry.meta.label };
+    publishPages();
+  });
   page.on("close", () => {
     bus.pages = bus.pages.filter((p) => p !== entry);
-    // Nudge the page that is now on top to send a fresh frame.
-    const next = bus.pages.at(-1);
-    if (next && bus.context === context) restart(next).catch(() => {});
+    bus.frames.delete(pageId);
+    if (bus.focus === pageId) bus.focus = null;
+    if (bus.context !== context) return;
+    publishPages();
+    void restreamAll(); // the last remaining tab goes back to full quality
   });
 
   if (bus.viewport) await page.setViewportSize(bus.viewport).catch(() => {});
-  await cdp.send("Page.startScreencast", screencastOpts()).catch(() => {});
+  await restreamAll(); // a second tab turns the first into a tile
+  await stream(entry, true);
 }
 
-async function restart({ cdp }: Attached) {
-  await cdp.send("Page.stopScreencast").catch(() => {});
-  await cdp.send("Page.startScreencast", screencastOpts());
+const entryOf = (page: Page) => bus.pages.find((p) => p.page === page);
+
+/** Name a tab and its agent for the grid ("SLAB calculator", colour, state, note). Safe to call often. */
+export function setPageMeta(page: Page, meta: Partial<Omit<LivePage, "pageId" | "url">>) {
+  const e = entryOf(page);
+  if (!e) return;
+  e.meta = { ...e.meta, ...meta };
+  publishPages();
+}
+
+/** Running totals for the grid header ("5 agents · 9 sites · 41 pages · 163 actions"). */
+export function publishStats(stats: LiveStats) {
+  bus.stats = stats;
+  publish({ type: "stats", stats });
 }
 
 async function resize(width: number, height: number) {
   const v = viewportFor(width, height);
   if (bus.viewport && bus.viewport.width === v.width && bus.viewport.height === v.height) return;
   bus.viewport = v;
-  for (const p of bus.pages) {
-    await p.page.setViewportSize(v).catch(() => {});
-    await restart(p).catch(() => {});
-  }
+  for (const p of bus.pages) await p.page.setViewportSize(v).catch(() => {});
+  await restreamAll(true);
 }
 
-/** Called by `openSession()`. Streams every page of this context to the live view until the browser closes. */
+/** Called by `openSession()`. Streams every tab of this context to the live view until the browser closes. */
 export function attachLiveView(context: BrowserContext) {
   if (process.env.LIVEVIEW === "0") return;
   bus.context = context;
   bus.pages = [];
-  bus.last = null;
+  bus.frames.clear();
+  bus.focus = null;
+  bus.stats = null;
   bus.live = true;
   publish({ type: "control", enabled: false });
+  publishPages();
   for (const p of context.pages()) void attachPage(p);
   context.on("page", (p) => void attachPage(p));
   context.on("close", () => {
     if (bus.context !== context) return; // a newer session already took over
     bus.context = null;
     bus.pages = [];
+    bus.frames.clear();
     bus.live = false;
-    bus.last = null;
+    bus.focus = null;
     publish({ type: "end" });
   });
 }
@@ -181,7 +249,13 @@ export async function liveInput(input: LiveInput): Promise<string> {
     await resize(input.width, input.height);
     return "ok";
   }
-  const top = bus.pages.at(-1);
+  if (input.type === "focus") {
+    bus.focus = input.pageId && bus.pages.some((p) => p.meta.pageId === input.pageId) ? input.pageId : null;
+    await restreamAll();
+    return "ok";
+  }
+  const wanted = "pageId" in input ? input.pageId : undefined;
+  const top = bus.pages.find((p) => p.meta.pageId === (wanted ?? bus.focus)) ?? bus.pages.at(-1);
   const page = top?.page;
   if (!top || !page || page.isClosed()) return "no live page";
   // User input goes straight to Chrome over CDP. Playwright's page.mouse / page.keyboard would add the

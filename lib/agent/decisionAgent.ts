@@ -3,6 +3,7 @@ import { decide, probOf, type DAnswer, type DQuestion } from "./decisions";
 import { formatObservation, observe, PLACEHOLDER, unfilledRequired, type El, type Observation } from "./observe";
 import type { OnEvent } from "./events";
 import type { BrowserRun, Value } from "./browserAgent";
+import { pointAt } from "../agentCursor";
 
 /**
  * Browser agent driven by the Decisions API. The model only CHOOSES (which saved value belongs in a field,
@@ -131,6 +132,7 @@ export async function runDecisionAgent(opts: {
     }
     if (!el || (el.kind === "submit" && !opts.allowSubmit && !opts.advance?.test(el.label.trim()))) return finish(page, opts, stats, step, unsure);
     try {
+      await pointAt(page, page.locator(`[data-aid="${el.id}"]`));
       await page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 });
       await page.waitForTimeout(700);
       emit({ type: "action", step, tool: "click", args: { id: el.id, label: el.label.slice(0, 40), confidence: +nav.confidence.toFixed(2) }, result: "ok" });
@@ -241,6 +243,7 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
 
 async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string, { value: string }>): Promise<string> {
   const loc = page.locator(`[data-aid="${el.id}"]`);
+  await pointAt(page, loc); // show the agent's cursor on the field it is about to fill (D36)
   try {
     if (el.kind === "select") {
       await loc.selectOption({ label: choice }, { timeout: 5000 });
@@ -258,6 +261,7 @@ async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string
 async function tickRadio(page: Page, el: El): Promise<string> { return tickCheckbox(page, el); }
 async function tickCheckbox(page: Page, el: El): Promise<string> {
   const loc = page.locator(`[data-aid="${el.id}"]`);
+  await pointAt(page, loc);
   try {
     try { await loc.check({ timeout: 4000 }); } catch { await loc.check({ force: true, timeout: 4000 }); }
     return "ok";
