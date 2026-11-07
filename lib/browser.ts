@@ -24,6 +24,8 @@ export async function openSession(): Promise<Session> {
     locale: "en-GB",
     viewport: { width: 1300, height: 900 },
     userAgent: USER_AGENT,
+    // RECORD_VIDEO=<dir>: a video of every tab, for the night runs (night plan, Phase 5).
+    ...(process.env.RECORD_VIDEO ? { recordVideo: { dir: process.env.RECORD_VIDEO, size: { width: 1300, height: 900 } } } : {}),
   });
   // tsx/esbuild wraps named functions in a __name() helper that doesn't exist inside the page.
   await context.addInitScript("window.__name = (f) => f;");
