@@ -1,5 +1,5 @@
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
-import type { Step3Event, Step3Result } from "./legalAidTypes";
+import type { Funding, Step3Event, Step3Result } from "./legalAidTypes";
 
 /**
  * Planner agent contract (D47). Client-safe.
@@ -90,6 +90,7 @@ export type AskSpec = {
 export type Thought = { i: number; t: number; text: string; tool?: string; detail?: string; result?: string; tab?: string };
 
 export type PlannerResult = Step3Result & {
+  funding?: Funding; // optional for older recorded runs
   message?: EnquiryMessage; // the message Kit actually put in the forms
   plan: PlanStep[];
   thoughts: Thought[];
@@ -104,6 +105,7 @@ export type PlannerResult = Step3Result & {
 export type PlannerEvent =
   | Step3Event
   | { type: "run"; runId: string }
+  | { type: "funding"; funding: Funding }
   | { type: "plan"; steps: PlanStep[] }
   | { type: "thought"; thought: Thought }
   | { type: "ask"; ask: AskSpec }

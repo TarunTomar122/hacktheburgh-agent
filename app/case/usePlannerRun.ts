@@ -33,6 +33,7 @@ export type PlannerRunState = {
   evidence: EvidenceResult;
   enquiries: EnquiryOutcome[];
   result?: PlannerResult;
+  funding?: Funding;
   startedAt?: number;
   spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
   demo: boolean; // playing back a recorded run (D63)
@@ -63,6 +64,8 @@ export function usePlannerRun() {
         case "run":
           runIdRef.current = e.runId;
           return { ...cur, runId: e.runId };
+        case "funding":
+          return { ...cur, funding: e.funding };
         case "plan":
           return { ...cur, plan: e.steps };
         case "spotlight":

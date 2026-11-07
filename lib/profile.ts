@@ -163,8 +163,12 @@ export function upsertEnquiries(records: (Partial<EnquiryRecord> & Pick<EnquiryR
   const cur = [...(p.enquiries ?? [])];
   for (const r of records) {
     const i = cur.findIndex((x) => x.firmId === r.firmId);
-    if (i >= 0) cur[i] = { ...cur[i], ...r };
-    else cur.push({ firmName: r.firmName ?? r.firmId, status: "draft", ...r } as EnquiryRecord);
+    if (i >= 0) {
+      const previous = cur[i];
+      // Form preparation cannot undo delivery or a reply, including its dates.
+      if (["sent", "replied", "not_interested"].includes(previous.status) && r.status && ["draft", "ready_to_send", "email_draft"].includes(r.status)) continue;
+      cur[i] = { ...previous, ...r };
+    } else cur.push({ firmName: r.firmName ?? r.firmId, status: "draft", ...r } as EnquiryRecord);
   }
   write({ ...p, enquiries: cur });
 }

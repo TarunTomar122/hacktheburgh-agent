@@ -6,6 +6,8 @@ Last updated: 2026-11-07. Update this file when you build or verify something.
 
 Ailsa (21, student, Edinburgh) fell on her hand. A&E said sprain; weeks later a GP found a scaphoid fracture that has not healed. The agent interviews her, drafts a complaint, fills the NHS Lothian complaint form in a visible browser (she approves before anything is sent), and later checks the ombudsman and legal aid, finds solicitors, and builds one case file. The browser work is the point of the track; the legal content is just the setting.
 
+Case continuity update (2026-11-07, Codex): planner money answers persist during the run; enquiry actions follow selected firms; preparation preserves sent/replied tracking and other open approval forms. Offline regression checks, TypeScript, lint and production build verified; full live journey not rerun.
+
 ## Flow and status
 
 | # | Step | Status |

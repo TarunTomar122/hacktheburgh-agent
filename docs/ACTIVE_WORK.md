@@ -6,6 +6,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
+| Case continuity fixes | Luigi + Codex | Done, idle | Funding stream, enquiry selection and tracker | User requested three state bug fixes |
 | Review follow-up: bugs 2, 3, 4, 5 | Luigi + Codex | Done, idle | Planner guard, enquiry drafting, progress strip, search summary | User authorized fixes and push absent major conflicts |
 | Patient location permission | Luigi + Codex | Done, idle | Planner, finder, location helpers | Explicit permission and patient postcode in latest crew flow |
 | Bug review and straightforward fixes | Luigi + Codex | Done, idle | Whole-repo review; targeted UI and validation fixes | User authorized review and push of clear fixes |

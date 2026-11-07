@@ -111,7 +111,7 @@ const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" 
 type Ask = (spec: Omit<AskSpec, "id">) => Promise<string | null>;
 const crewOf = (agentName: string): CrewId => (agentName === "SLAB calculator" ? "nell" : "elliot");
 
-export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, note: Note, track: Tracker) {
+export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, note: Note, track: Tracker, onFunding?: (funding: Funding) => void) {
   note("Opening SLAB's calculator");
   await page.goto(SLAB_CALC, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1200);
@@ -150,7 +150,10 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
     note("Waiting for your answer");
     await pointAt(page, page.locator("input:visible, select:visible").last());
     const a = parse(await ask({ ...spec, agent: "SLAB calculator" }));
-    if (a !== null) funding[key] = a;
+    if (a !== null) {
+      funding[key] = a;
+      onFunding?.({ ...funding });
+    }
     note("Got it, carrying on");
     return a;
   };
@@ -498,10 +501,11 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       }
       case "slab_calculator": {
         if (funding.skipped) return "The user chose not to give money details. Treat legal aid as unknown and look at no win no fee.";
-        const r = await tabs(() => crewFor(thought, "nell", "SLAB calculator", (p, note) => calculatorAsking(p, funding, ask, note, track), 8 * 60 * 1000));
+        const r = await tabs(() => crewFor(thought, "nell", "SLAB calculator", (p, note) => calculatorAsking(p, funding, ask, note, track, (value) => emit({ type: "funding", funding: value })), 8 * 60 * 1000));
         if (!r.ok) return `The calculator failed: ${r.error}`;
         if (r.value.skipped) {
           funding.skipped = true;
+          emit({ type: "funding", funding: { ...funding } });
           finding("You skipped the money questions, so legal aid is unknown", "SLAB calculator");
           return "The user did not answer the calculator's questions. Legal aid unknown: consider no win no fee.";
         }
@@ -764,6 +768,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     const all = [...firms.values()].sort((a, b) => b.score - a.score);
     if (!shortlistIds.length) shortlistIds = all.filter((f) => !f.excluded && f.sources.includes("website")).slice(0, 3).map((f) => f.id);
     const result: PlannerResult = {
+      funding: { ...funding },
       verdict: funding.skipped ? "skipped" : verdict,
       route,
       calculatorText: quote,

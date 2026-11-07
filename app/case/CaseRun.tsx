@@ -56,6 +56,10 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   const saved = profile.caseRun;
   const result = profile.legalAid?.result;
 
+  useEffect(() => {
+    if (state.funding && !state.demo) setLegalAid({ funding: state.funding });
+  }, [state.funding, state.demo]);
+
   // A finished run becomes the case file: result, selection, enquiries, the message Kit used and the conversation.
   const persisted = useRef<string | null>(null);
   useEffect(() => {
@@ -65,7 +69,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     // A firm whose form needs a detail only the user has still goes to the review (D64), so it is kept like a ready one.
     const ready = r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => e.firmId);
     const selected = [...new Set([...ready, ...r.shortlist])].slice(0, 3);
-    setLegalAid({ result: r as Step3Result, sample: false, selected });
+    setLegalAid({ result: r as Step3Result, sample: state.demo, selected, ...(!state.demo && r.funding ? { funding: r.funding } : {}) });
     setEnquiry({ outcomes: r.enquiries, runId: r.runId, message: r.message, sample: state.demo });
     upsertEnquiries(r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => ({ firmId: e.firmId, firmName: e.firmName, status: e.status === "ready_to_send" ? ("ready_to_send" as const) : ("draft" as const) })));
     const run: CaseRunRecord = { runId: r.runId ?? "", says: r.says, plan: r.plan, evidence: r.evidence, asks: r.asks, recoveries: r.recoveries, turns: r.turns, durationMs: Date.now() - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() };

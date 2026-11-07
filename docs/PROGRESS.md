@@ -8,6 +8,11 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 - Luigi + Codex - Case continuity fixes
+Saved validated planner money answers incrementally and in the completed result; recorded demos do not overwrite personal funding. Contact cards now follow the selection, retain historical outcomes, offer filling for newly selected firms, and keep automatic replacements selected. Preparation cannot overwrite sent/replied/not-interested tracker status or dates, and those firms cannot reopen the send review. Starting another form preserves unrelated approval tabs.
+Verified offline: test-case-continuity.tsx (storage and rendered selection/action checks), test-funding-skip.ts (mock calculator, immutable answer snapshots), TypeScript, lint and production build. An initial test-edit syntax error was caught and corrected. No live model run or external submissions. Pulled 24d6592 without conflicts before edits. User authorized pushing after review; final fetch and pull were up to date with no conflicts.
+
+
 ### 2026-11-07 · Tarun + Claude · DONE · Editable review and missing details before sending (D64)
 Tarun: we cannot edit what we send to lawyers, and a firm with missing information blocks us. Built: editable fields in the review (including the message), a "Needed to send" section for required fields we have no answer for, `POST /api/agent/step4/edit`, edits applied inside `/send`, and tabs kept open for forms that need a detail. Verified headless against a local fake form (no real firms, no agents): the form started as needing a phone, an edit changed the message and a dropdown in the real page, adding the phone made it ready, send refused with the phone missing and again without consent, then sent after approval; the demo-persona gate still blocks. UI checked on the recorded demo with one firm switched to needs-detail. Not verified: a live run against a real firm's form that is missing a detail (Tarun asked not to run the crew just to test).
 

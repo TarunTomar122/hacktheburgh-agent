@@ -303,10 +303,8 @@ export async function runEnquiries(
   const track = new Tracker(emit);
   const tracer = new Tracer(emit, runDir);
 
-  // A new run replaces the previous one's open tabs.
-  for (const t of REG.tabs.values()) await t.page.close().catch(() => {});
-  REG.tabs.clear();
-  await REG.browser?.close().catch(() => {});
+  // Filling a newly selected firm must not close other forms awaiting approval.
+  for (const firm of firms) await releaseTab(firm.id);
 
   const { browser, context, page } = await openSession();
   REG.browser = browser;

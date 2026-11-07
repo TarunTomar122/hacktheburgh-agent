@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord, EnquiryStatus, FieldEdit, FormField } from "../../lib/agent/enquiryTypes";
 import type { AgentTile, FirmFinding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
-import { setEnquiry, setOutcome, skipStep, upsertEnquiries, type Profile } from "../../lib/profile";
+import { setEnquiry, setLegalAid, setOutcome, skipStep, upsertEnquiries, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, Paper } from "../ui";
 import { draftMessage, editEnquiry, fieldsOf, runStep4, sendEnquiry } from "./enquiryRun";
 import { closeAgentBrowser } from "./streamAgent";
@@ -56,7 +56,10 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const saved = profile.enquiry?.outcomes ?? [];
   const records = profile.enquiries ?? [];
   const [live, setLive] = useState<EnquiryOutcome[] | null>(null);
-  const outcomes = live ?? saved;
+  // Keep historical outcomes in storage, but only offer actions for selected firms.
+  const outcomes = (live ?? saved).filter((o) => selected.includes(o.firmId));
+  const contacted = (id: string) => records.some((r) => r.firmId === id && ["sent", "replied", "not_interested"].includes(r.status));
+  const pending = firms.filter((f) => !outcomes.some((o) => o.firmId === f.id) && !contacted(f.id));
   const [running, setRunning] = useState(false);
   const [writing, setWriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,28 +105,33 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
 
   /** Fill every selected firm, or just one again ("Try again"). Outcomes stream into the cards. */
   async function run(only?: FirmFinding) {
-    if (!message) return;
-    const targets = only ? [only] : firms;
+    if (!message || running) return;
+    const targets = (only ? [only] : firms).filter((f) => selected.includes(f.id) && !contacted(f.id));
+    if (!targets.length) return;
     setRunning(true);
     setError(null);
     setTiles([]);
     setStats(null);
     setLines([]);
-    const start = only ? outcomes.map((o) => (o.firmId === only.id ? { ...o, status: "queued" as const, note: "Trying again" } : o)) : targets.map((f) => ({ firmId: f.id, firmName: f.name, status: "queued" as const, formUrl: null, filled: [], unfilled: [], consents: [], note: "Waiting" }));
+    const start: EnquiryOutcome[] = [...saved.filter((o) => !targets.some((f) => f.id === o.firmId)), ...targets.map((f) => ({ firmId: f.id, firmName: f.name, status: "queued" as const, formUrl: null, filled: [], unfilled: [], consents: [], note: "Waiting" }))];
     setLive(start);
     const upsert = (cur: EnquiryOutcome[] | null, o: EnquiryOutcome) => {
       const list = cur ?? [];
       return list.some((x) => x.firmId === o.firmId) ? list.map((x) => (x.firmId === o.firmId ? o : x)) : [...list, o];
     };
     try {
-      const r = await runStep4({ facts: profile.facts, message, firms: targets, reserves: reserves.filter((x) => !outcomes.some((o) => o.firmId === x.id)), legalAid }, (e) => {
+      const r = await runStep4({ facts: profile.facts, message, firms: targets, reserves: reserves.filter((x) => !contacted(x.id) && !saved.some((o) => o.firmId === x.id)), legalAid }, (e) => {
         if (e.type === "agent") setTiles((ts) => (ts.some((t) => t.id === e.tile.id) ? ts.map((t) => (t.id === e.tile.id ? e.tile : t)) : [...ts, e.tile]));
         else if (e.type === "stats") setStats(e.stats);
         else if (e.type === "status") setStatus(e.message);
         else if (e.type === "trace") setLines((l) => [...l.slice(-5), e.step]);
         else if (e.type === "enquiry") setLive((cur) => upsert(cur, e.enquiry));
       });
-      const merged = r.enquiries.reduce<EnquiryOutcome[]>((acc, o) => upsert(acc, o), only ? outcomes : []);
+      const merged = r.enquiries.reduce<EnquiryOutcome[]>((acc, o) => upsert(acc, o), saved);
+      // Automatic replacements become selected so their cards remain actionable.
+      const replaced = r.enquiries.filter((o) => o.status === "no_form" && /swapped in/i.test(o.note)).map((o) => o.firmId);
+      const replacements = r.enquiries.filter((o) => !selected.includes(o.firmId) && !replaced.includes(o.firmId)).map((o) => o.firmId);
+      if (replaced.length) setLegalAid({ selected: [...new Set([...selected.filter((id) => !replaced.includes(id)), ...replacements])].slice(0, 3) });
       setTrace((t) => (only ? [...t, ...r.trace] : r.trace));
       setRunId(r.runId);
       setEnquiry({ outcomes: merged, runId: r.runId, sample: fixtureMode() });
@@ -173,6 +181,12 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
           </Button>
         )}
       </div>
+
+      {started && pending.length > 0 && (
+        <div className="space-y-3">
+          {pending.map((firm) => <Button key={firm.id} variant="secondary" disabled={running || writing || !message} onClick={() => run(firm)}>Fill enquiry for {firm.name}</Button>)}
+        </div>
+      )}
 
       {!started ? (
         <div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -262,7 +276,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
         </>
       )}
 
-      {review && (
+      {review && selected.includes(review.firmId) && !contacted(review.firmId) && (
         <ApproveModal
           o={review}
           local={!!profile.enquiry?.sample}
@@ -285,7 +299,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
             setScope({ title: info.firmName, steps });
           }}
           onReview={
-            info.status === "ready_to_send" || info.status === "needs_input"
+            selected.includes(info.firmId) && !contacted(info.firmId) && (info.status === "ready_to_send" || info.status === "needs_input")
               ? () => {
                   setInfo(null);
                   setReview(info);
@@ -421,7 +435,7 @@ function FirmCard({
 }) {
   const at = stage(o);
   const busy = BUSY.includes(o.status);
-  const sent = o.status === "sent" || rec?.status === "sent" || rec?.status === "replied";
+  const sent = o.status === "sent" || rec?.status === "sent" || rec?.status === "replied" || rec?.status === "not_interested";
   const due = rec?.status === "sent" && rec.followUpOn && rec.followUpOn <= today();
   const line =
     o.status === "send_blocked"

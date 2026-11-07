@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { calculatorAsking } from "../lib/agent/planner";
-import { EMPTY_FUNDING } from "../lib/agent/legalAidTypes";
+import { EMPTY_FUNDING, type Funding } from "../lib/agent/legalAidTypes";
 import { Tracker, type Note } from "../lib/agent/legalAid";
 
 async function main() {
@@ -20,7 +20,12 @@ async function main() {
     const funding = { ...EMPTY_FUNDING };
     const answers: (string | null)[] = ["no", "no", "0", null, "100", "0"];
     const note = Object.assign(() => {}, { log: async () => {} }) as Note;
-    const result = await calculatorAsking(page, funding, async () => answers.shift() ?? null, note, new Tracker(() => {}));
+    const snapshots: Funding[] = [];
+    const result = await calculatorAsking(page, funding, async () => answers.shift() ?? null, note, new Tracker(() => {}), (value) => snapshots.push(value));
+    assert.equal(snapshots.length, 5);
+    assert.equal(snapshots[0].onBenefits, false);
+    assert.equal(snapshots[0].partner, null); // Earlier events must not mutate with later answers.
+    assert.equal(snapshots.at(-1)?.outgoingsYearly, 100);
     assert.equal(result.skipped, true);
     assert.equal(result.verdict, "unknown");
     assert.equal(funding.netIncomeYearly, null);
