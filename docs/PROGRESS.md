@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · New logo, logo links to landing or profile, full name in the header (D43)
+Om sent a new Elliot logo, asked for "Case for" to show the full name and for a click on the logo to go to the landing page or profile depending on stage. Icons regenerated from the new image (ellipse mask on the measured circle, 1 px inside the edge; `public/logo.png` 192 x 192, `app/icon.png` 512, `app/apple-icon.png` on brand blue, `app/favicon.ico`). `LogoLink` (in `app/ui.tsx`) is used by `app/page.tsx` and `app/case/Header.tsx`. Checked: `tsc` and `eslint` clean; Playwright in Chrome: link target with and without a saved case, click mid-interview (stays), on `/case` (opens the profile, stays open on a second click), from the landing page with a saved case (`/case#profile` opens the profile), plain `/case` (profile closed), header reads "Om Prabhu" once the last name is known; no console errors. NOT checked: `next build`; Safari.
+
 ### 2026-11-07 · Om + Claude · DONE · Fix: the name was asked twice (D41)
 Om: after entering the name, the page asked for it again, and an empty submit then jumped to the next question. Cause: as soon as the name was sent, `app/page.tsx` left the name screen and showed the generic question screen with the opening line and a name box while the first reply was still loading; the reply then replaced it. Now the name screen stays up (button "One moment…") until the first reply arrives; if the reply asks for the name again (the text was not a name) the normal screen shows that question, and if the request fails the name screen returns with the text kept. Checked with Playwright and a slow mocked API for all three cases. NOT checked: the real model reply.
 

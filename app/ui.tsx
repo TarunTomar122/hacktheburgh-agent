@@ -5,6 +5,8 @@
  * Rules and sources: docs/DESIGN.md.
  */
 import Image from "next/image";
+import Link from "next/link";
+import { useProfile } from "../lib/profile";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
@@ -143,7 +145,33 @@ export function Console({ lines, label }: { lines: string[]; label: string }) {
  * as it is (26 KB), with no image-optimiser request at the venue. Pass `className` to change the size, for example `h-12`.
  */
 export function Logo({ className }: { className?: string }) {
-  return <Image src="/logo.png" alt="Elliot" width={171} height={160} priority unoptimized className={cx("h-10 w-auto", className)} />;
+  return <Image src="/logo.png" alt="Elliot" width={192} height={192} priority unoptimized className={cx("h-10 w-auto", className)} />;
+}
+
+/**
+ * The logo as a link (D43). Before the interview is finished it goes to the landing page; once a case exists it goes to the profile.
+ * On the case page, pass `onProfile` to open the profile in place instead of reloading the page.
+ */
+export function LogoLink({ onProfile }: { onProfile?: () => void }) {
+  const profile = useProfile();
+  const hasCase = Boolean(profile);
+  const label = hasCase ? "Open your profile" : "Back to the start";
+  return (
+    <Link
+      href={hasCase ? "/case#profile" : "/"}
+      aria-label={label}
+      title={label}
+      onClick={(e) => {
+        if (hasCase && onProfile) {
+          e.preventDefault();
+          onProfile();
+        }
+      }}
+      className="rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-white"
+    >
+      <Logo />
+    </Link>
+  );
 }
 
 const icon = { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" } as const;

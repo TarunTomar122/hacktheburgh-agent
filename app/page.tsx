@@ -11,7 +11,7 @@ import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
 import StageInput from "./StageInputs";
-import { Logo } from "./ui";
+import { LogoLink } from "./ui";
 
 // Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
 // The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
@@ -91,11 +91,11 @@ export default function Onboarding() {
       <div className="shrink-0">
         <header className="flex h-16 items-center justify-between bg-brand px-6 text-white sm:px-8">
           <div className="flex items-center gap-6">
-            <Logo />
+            <LogoLink />
             <span className="hidden h-7 w-px bg-white/30 sm:block" aria-hidden />
             <div className="hidden leading-tight sm:block">
               <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/70">{facts.firstName ? "Case for" : "Getting started"}</div>
-              <div className="text-sm font-medium">{facts.firstName ?? "Preparing your case"}</div>
+              <div className="text-sm font-medium">{[facts.firstName, facts.lastName].filter(Boolean).join(" ") || "Preparing your case"}</div>
             </div>
           </div>
           {SHOW_SKIP && (

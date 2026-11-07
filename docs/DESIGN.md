@@ -57,7 +57,7 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 
 ## Shell
 
-- **Header (64px, `brand`):** the Elliot logo left (`Logo` in `app/ui.tsx`, 40px tall, from `public/logo.png`), a hairline divider, then "CASE FOR / name". **Profile icon on the right**; it opens the profile page. An amber dot means details are missing.
+- **Header (64px, `brand`):** the Elliot logo left (`Logo` in `app/ui.tsx`, 40px tall, from `public/logo.png`; `LogoLink` makes it a link, D43), a hairline divider, then "CASE FOR / name". **Profile icon on the right**; it opens the profile page. An amber dot means details are missing.
 - **Stripes:** directly under the header, one thick line (4px) then thinner and fainter ones (2px at 60%, 1px at 30%). Component `Stripes` in `app/case/Header.tsx`.
 - **Profile page:** the header's blue **continues** into a taller title band, then **stops** with the same stripes. No left rail on this page.
 - **Superseded by D35 (fork map, `app/case/PathMap.tsx`).** Old: **Left rail ("Your path"), 320px:** progress block on top, then the steps as a timeline on a 1px `rail` line. **No circles.** The active step lights its stretch of the rail in `brand`, gets a `brand-soft` wash, and lists its milestones as small square ticks. Inactive future steps are `fade`. A locked step shows a lock icon and is still clickable (it explains itself).
@@ -112,6 +112,6 @@ Each interview question is a full screen under the header: heading in `.display`
 
 - `InputPanel` (compact widgets on the case page, D33) still uses the class versions and aliases. The onboarding interview itself uses the stage screens (D41).
 - Two component systems (classes and `app/ui.tsx`) with the same specs. Consolidate into one when there is time.
-- The logo and the favicon (`app/favicon.ico`, `app/icon.png`, `app/apple-icon.png`) come from Om's Elliot monogram (D37). Not done: the page title still says "Case helper"; no web manifest or social-share image.
+- The logo and the favicon (`app/favicon.ico`, `app/icon.png`, `app/apple-icon.png`) come from Om's Elliot monogram (D37, replaced by the round version in D43). Not done: the page title still says "Case helper"; no web manifest or social-share image.
 - Wordsmith's licensed fonts are not used.
 - Mobile layout is not designed (the rail is fixed at 320px).

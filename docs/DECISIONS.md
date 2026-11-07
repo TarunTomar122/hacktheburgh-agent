@@ -186,4 +186,9 @@ Why: the name screen (D40) set the look; a chat with a form under it felt like t
 Why: the old flow assumed everyone makes an NHS complaint; someone who wants money would go the legal route instead. Tarun: suggest the direction, then help them do that one thing.
 **Not done:** the NHS complaint draft can include "compensation" in its outcome if the user ticked it (the NHS complaint process does not pay money); the case file (old step 5) has no place in either track yet.
 
-<!-- Add new entries above this line. Next number: D43 -->
+**D43 · 2026-11-07 · Om (requested), built by Claude · decided**
+**New logo, a logo that links, and the full name in the onboarding header.** The logo and favicons are replaced by Om's new Elliot monogram (round, with the ring broken at the top right; `public/logo.png` is now square, 192 x 192, shown 40 px tall). `LogoLink` in `app/ui.tsx` wraps it in both headers: with no saved case it goes to `/` (the landing page); with a saved case it goes to `/case#profile`, and on the case page it opens the profile in place. `app/case/page.tsx` reads `#profile` after mount to open the profile. The onboarding header shows first name plus last name once both are known (the case page already did).
+Why: Om asked for the new icon, for the header name to be the full name, and for the logo to take the user to the right place for their stage.
+**Limits:** the logo on the landing page does nothing while an interview is in progress and no case is saved (it is already the landing page); the interview's answers are held in memory, so a reload from elsewhere still starts again. The old logo (D37) is superseded, its generation script is not in the repo.
+
+<!-- Add new entries above this line. Next number: D44 -->
