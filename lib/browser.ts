@@ -19,11 +19,14 @@ export async function openSession(): Promise<Session> {
   const fast = process.env.HEADLESS === "1";
   const inApp = process.env.SHOW_BROWSER_WINDOW !== "1" && (process.env.IN_APP_BROWSER === "1" || !!process.env.NEXT_RUNTIME);
   const headless = fast || inApp;
-  const browser = await chromium.launch({ headless, slowMo: fast ? 0 : 250 });
+  // BROWSER_CHANNEL=chrome: the installed Google Chrome instead of Playwright's Chromium. Some health sites refuse
+  // headless Chromium with a 403 but serve real Chrome (night run, 2026-11-07: Guy's and St Thomas').
+  const channel = process.env.BROWSER_CHANNEL || undefined;
+  const browser = await chromium.launch({ headless, slowMo: fast ? 0 : 250, channel });
   const context = await browser.newContext({
     locale: "en-GB",
     viewport: { width: 1300, height: 900 },
-    userAgent: USER_AGENT,
+    ...(channel ? {} : { userAgent: USER_AGENT }), // real Chrome sends its own, consistent user agent
     // RECORD_VIDEO=<dir>: a video of every tab, for the night runs (night plan, Phase 5).
     ...(process.env.RECORD_VIDEO ? { recordVideo: { dir: process.env.RECORD_VIDEO, size: { width: 1300, height: 900 } } } : {}),
   });
