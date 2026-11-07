@@ -1,5 +1,6 @@
 "use client";
 
+import AccountMenu from "../AccountMenu";
 import { cx, LogoLink, UserIcon } from "../ui";
 
 /** Wordsmith-blue top bar: logo and case name on the left, profile on the right. Followed by the stepped stripe (one thick line, then thinner ones). */
@@ -15,18 +16,21 @@ export default function Header({ name, profileOpen, incomplete, stripes = true, 
             <div className="text-sm font-medium">{name}</div>
           </div>
         </div>
-        <button
-          onClick={onProfile}
-          aria-label={profileOpen ? "Close profile" : "Open profile"}
-          title="Profile"
-          className={cx(
-            "relative flex h-10 w-10 items-center justify-center rounded-full border transition-colors",
-            profileOpen ? "border-white bg-white text-brand" : "border-white/50 text-white hover:border-white hover:bg-white/10",
-          )}
-        >
-          <UserIcon />
-          {incomplete && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-brand bg-amber" title="Some details are missing" />}
-        </button>
+        <div className="flex items-center gap-4">
+          <AccountMenu />
+          <button
+            onClick={onProfile}
+            aria-label={profileOpen ? "Close profile" : "Open profile"}
+            title="Profile"
+            className={cx(
+              "relative flex h-10 w-10 items-center justify-center rounded-full border transition-colors",
+              profileOpen ? "border-white bg-white text-brand" : "border-white/50 text-white hover:border-white hover:bg-white/10",
+            )}
+          >
+            <UserIcon />
+            {incomplete && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-brand bg-amber" title="Some details are missing" />}
+          </button>
+        </div>
       </header>
       {stripes && <Stripes />}
     </div>

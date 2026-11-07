@@ -9,6 +9,7 @@ import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, SAMPLE_FACTS, type DemoPersona } from "../lib/agent/sample";
 import { createProfile, setTrack } from "../lib/profile";
 import { Stripes } from "./case/Header";
+import AccountMenu from "./AccountMenu";
 import NameStep from "./NameStep";
 import StageInput from "./StageInputs";
 import ReviewEditor from "./ReviewEditor";
@@ -126,21 +127,24 @@ export default function Onboarding() {
               <div className="text-sm font-medium">{[facts.firstName, facts.lastName].filter(Boolean).join(" ") || "Preparing your case"}</div>
             </div>
           </div>
-          {SHOW_SKIP && (
-            <div className="flex shrink-0 items-center gap-2" aria-label="Developer shortcut: load a fictional demo patient">
-              <span className="hidden text-[11px] text-white/70 md:inline">Try a demo:</span>
-              {DEMO_PERSONAS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => skipWith(p)}
-                  title={`Dev shortcut, fictional: ${p.name}. ${p.blurb}`}
-                  className="rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {SHOW_SKIP && (
+              <div className="flex shrink-0 items-center gap-2" aria-label="Developer shortcut: load a fictional demo patient">
+                <span className="hidden text-[11px] text-white/70 md:inline">Try a demo:</span>
+                {DEMO_PERSONAS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => skipWith(p)}
+                    title={`Dev shortcut, fictional: ${p.name}. ${p.blurb}`}
+                    className="rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <AccountMenu />
+          </div>
         </header>
         <Stripes />
       </div>

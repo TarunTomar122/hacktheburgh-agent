@@ -51,8 +51,31 @@ export type Profile = {
   updatedAt: string;
 };
 
-const KEY = "case-profile-v2";
+const LEGACY_KEY = "case-profile-v2";
 const EVENT = "case-profile-change";
+
+/** Whose case this browser shows (D74). Null with no accounts, which keeps the one shared key below. */
+let owner: string | null = null;
+const key = () => (owner ? `${LEGACY_KEY}:${owner}` : LEGACY_KEY);
+
+/**
+ * Called by the account provider before anything reads the profile. With a signed-in user the case is saved under that user's
+ * own key. A case saved before accounts existed moves to the first user who signs in (it is moved, not copied, so a second
+ * person on the same browser starts clean). Runs during render, so it only does something that is safe to repeat.
+ */
+export function setProfileOwner(sub: string | null) {
+  owner = sub;
+  if (!sub || typeof window === "undefined") return;
+  try {
+    const old = localStorage.getItem(LEGACY_KEY);
+    if (old !== null && localStorage.getItem(key()) === null) {
+      localStorage.setItem(key(), old);
+      localStorage.removeItem(LEGACY_KEY);
+    }
+  } catch {
+    // storage blocked: the profile simply starts empty
+  }
+}
 
 function subscribe(cb: () => void) {
   window.addEventListener("storage", cb);
@@ -73,7 +96,7 @@ function upgrade(p: Profile): Profile {
 
 function read(): Profile | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key());
     return raw ? upgrade(JSON.parse(raw) as Profile) : null;
   } catch {
     return null;
@@ -81,7 +104,7 @@ function read(): Profile | null {
 }
 
 function write(p: Profile) {
-  localStorage.setItem(KEY, JSON.stringify({ ...p, updatedAt: new Date().toISOString() }));
+  localStorage.setItem(key(), JSON.stringify({ ...p, updatedAt: new Date().toISOString() }));
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -190,7 +213,7 @@ export function upsertEnquiries(records: (Partial<EnquiryRecord> & Pick<EnquiryR
 }
 
 export function clearProfile() {
-  localStorage.removeItem(KEY);
+  localStorage.removeItem(key());
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -198,7 +221,7 @@ export function clearProfile() {
 export function useProfile(): Profile | null | undefined {
   const raw = useSyncExternalStore(
     subscribe,
-    () => localStorage.getItem(KEY) ?? "",
+    () => localStorage.getItem(key()) ?? "",
     () => undefined,
   );
   return useMemo(() => {
