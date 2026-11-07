@@ -4,39 +4,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord, EnquiryStatus } from "../../lib/agent/enquiryTypes";
 import type { AgentTile, FirmFinding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
 import { setEnquiry, setOutcome, upsertEnquiries, type Profile } from "../../lib/profile";
-import { Button, Callout, control, cx, Eyebrow, PageTitle, Paper, SectionTitle, selectControl } from "../ui";
+import { Button, Callout, control, cx, Eyebrow, PageTitle, Paper } from "../ui";
 import { draftMessage, runStep4, sendEnquiry } from "./enquiryRun";
 import { AgentsPanel } from "./LegalAidStep";
 import { fixtureMode } from "./legalAidRun";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 
 /**
- * Step 4 (D45): contact up to 3 firms. D33 pattern: the firms, the message (editable), one button. The agents fill each firm's
- * enquiry form and stop; the user approves each firm (seeing what was filled and any consent boxes) and only then does the agent
- * press Send. No form found -> an email draft. Replies are tracked by hand below.
+ * Step 4 (D45, D46): contact up to 3 firms.
+ * Before the run: the message (left) and one button (right). After: one card per firm, side by side, each with a small
+ * progress track and ONE next action that changes with its state. The card itself opens how the agent did it.
+ * The agent retries failures by itself, falls back to a backup engine, and swaps in the next best firm when a firm has no
+ * online form, so the user rarely has to do anything but approve. Replies are tracked on the same card.
  */
-
-const STATUS: Record<EnquiryStatus, { t: string; cls: string }> = {
-  queued: { t: "Waiting", cls: "bg-subtle text-muted" },
-  finding_form: { t: "Looking for their form", cls: "bg-brand-soft text-brand" },
-  filling: { t: "Filling their form", cls: "bg-brand-soft text-brand" },
-  ready_to_send: { t: "Ready for your approval", cls: "bg-brand text-white" },
-  needs_input: { t: "Needs an answer", cls: "bg-amber-soft text-amber" },
-  email_draft: { t: "No form: email ready", cls: "bg-amber-soft text-amber" },
-  sending: { t: "Sending", cls: "bg-brand-soft text-brand" },
-  sent: { t: "Sent", cls: "bg-teal-soft text-teal" },
-  send_blocked: { t: "Not sent", cls: "bg-danger-soft text-danger" },
-  failed: { t: "Failed", cls: "bg-danger-soft text-danger" },
-};
-
-const TRACK_STATUS: Record<EnquiryRecord["status"], string> = {
-  draft: "Not sent yet",
-  ready_to_send: "Ready to send",
-  email_draft: "Email to send",
-  sent: "Sent, waiting for a reply",
-  replied: "They replied",
-  not_interested: "Not interested",
-};
 
 const today = () => new Date().toISOString().slice(0, 10);
 /** 3 working days after a date (weekends skipped). Our rule of thumb for a follow-up, not a legal deadline. */
@@ -51,14 +31,28 @@ export function followUpFrom(iso: string, days = 3) {
 }
 const nice = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "");
 
+const BUSY: EnquiryStatus[] = ["queued", "finding_form", "filling", "sending"];
+
+/** Where a firm is on the way: form found, filled, your OK, sent. */
+function stage(o: EnquiryOutcome): number {
+  if (o.status === "sent") return 4;
+  if (o.status === "ready_to_send" || o.status === "send_blocked" || o.status === "needs_input") return 2;
+  if (o.status === "filling") return 1;
+  return 0;
+}
+
 export default function ContactLawyersStep({ profile, onBack }: { profile: Profile; onBack: () => void }) {
   const result = profile.legalAid?.result;
-  const firms = (profile.legalAid?.selected ?? []).map((id) => result?.firms.find((f) => f.id === id)).filter((f): f is FirmFinding => !!f);
+  const selected = profile.legalAid?.selected ?? [];
+  const firms = selected.map((id) => result?.firms.find((f) => f.id === id)).filter((f): f is FirmFinding => !!f);
+  // Next best checked firms with a website, to swap in when a selected firm has no online form (D46).
+  const reserves = (result?.firms ?? []).filter((f) => !selected.includes(f.id) && !f.excluded && f.website).sort((a, b) => b.score - a.score).slice(0, 4);
   const verdict = result?.verdict;
   const route = result?.route;
   const legalAid = useMemo(() => (verdict && route ? { verdict, route } : undefined), [verdict, route]);
   const message = profile.enquiry?.message;
   const saved = profile.enquiry?.outcomes ?? [];
+  const records = profile.enquiries ?? [];
   const [live, setLive] = useState<EnquiryOutcome[] | null>(null);
   const outcomes = live ?? saved;
   const [running, setRunning] = useState(false);
@@ -71,7 +65,6 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const [trace, setTrace] = useState<TraceStep[]>([]);
   const [runId, setRunId] = useState<string | undefined>(profile.enquiry?.runId);
   const [review, setReview] = useState<EnquiryOutcome | null>(null);
-  const [email, setEmail] = useState<EnquiryOutcome | null>(null);
   const [scope, setScope] = useState<TraceScope | null>(null);
 
   // The message is written once from the profile; the user can edit it.
@@ -102,31 +95,34 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
     );
   }
 
-  async function run() {
+  /** Fill every selected firm, or just one again ("Try again"). Outcomes stream into the cards. */
+  async function run(only?: FirmFinding) {
     if (!message) return;
+    const targets = only ? [only] : firms;
     setRunning(true);
     setError(null);
     setTiles([]);
     setStats(null);
     setLines([]);
-    setTrace([]);
-    setLive(firms.map((f) => ({ firmId: f.id, firmName: f.name, status: "queued", formUrl: null, filled: [], unfilled: [], consents: [], note: "Waiting" })));
+    const start = only ? outcomes.map((o) => (o.firmId === only.id ? { ...o, status: "queued" as const, note: "Trying again" } : o)) : targets.map((f) => ({ firmId: f.id, firmName: f.name, status: "queued" as const, formUrl: null, filled: [], unfilled: [], consents: [], note: "Waiting" }));
+    setLive(start);
+    const upsert = (cur: EnquiryOutcome[] | null, o: EnquiryOutcome) => {
+      const list = cur ?? [];
+      return list.some((x) => x.firmId === o.firmId) ? list.map((x) => (x.firmId === o.firmId ? o : x)) : [...list, o];
+    };
     try {
-      const r = await runStep4({ facts: profile.facts, message, firms, legalAid }, (e) => {
+      const r = await runStep4({ facts: profile.facts, message, firms: targets, reserves: reserves.filter((x) => !outcomes.some((o) => o.firmId === x.id)), legalAid }, (e) => {
         if (e.type === "agent") setTiles((ts) => (ts.some((t) => t.id === e.tile.id) ? ts.map((t) => (t.id === e.tile.id ? e.tile : t)) : [...ts, e.tile]));
         else if (e.type === "stats") setStats(e.stats);
         else if (e.type === "status") setStatus(e.message);
         else if (e.type === "trace") setLines((l) => [...l.slice(-5), e.step]);
-        else if (e.type === "enquiry") setLive((cur) => (cur ?? []).map((o) => (o.firmId === e.enquiry.firmId ? e.enquiry : o)));
+        else if (e.type === "enquiry") setLive((cur) => upsert(cur, e.enquiry));
       });
-      setTrace(r.trace);
+      const merged = r.enquiries.reduce<EnquiryOutcome[]>((acc, o) => upsert(acc, o), only ? outcomes : []);
+      setTrace((t) => (only ? [...t, ...r.trace] : r.trace));
       setRunId(r.runId);
-      setEnquiry({ outcomes: r.enquiries, runId: r.runId, sample: fixtureMode() });
-      upsertEnquiries(
-        r.enquiries
-          .filter((o) => o.status === "ready_to_send" || o.status === "email_draft")
-          .map((o) => ({ firmId: o.firmId, firmName: o.firmName, status: o.status as "ready_to_send" | "email_draft" })),
-      );
+      setEnquiry({ outcomes: merged, runId: r.runId, sample: fixtureMode() });
+      upsertEnquiries(r.enquiries.filter((o) => o.status === "ready_to_send").map((o) => ({ firmId: o.firmId, firmName: o.firmName, status: "ready_to_send" as const })));
       setLive(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -138,81 +134,98 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
 
   const markSent = (o: EnquiryOutcome, at = new Date().toISOString()) =>
     upsertEnquiries([{ firmId: o.firmId, firmName: o.firmName, status: "sent", sentAt: at, followUpOn: followUpFrom(at) }]);
+  const started = outcomes.length > 0 || running;
+  // A firm with no online form that was replaced drops to a one-line note; one we could not replace keeps its card.
+  const swapped = (o: EnquiryOutcome) => o.status === "no_form" && /swapped in/i.test(o.note);
+  const active = outcomes.filter((o) => !swapped(o));
+  const swappedOut = outcomes.filter(swapped);
 
   return (
-    <div className="space-y-8">
-      <PageTitle eyebrow="Compensation · step 2" title="Contact lawyers" lede="We fill in each firm's enquiry form with your message and stop. You check each one, and only then do we press Send." />
-
-      {/* The firms, compact */}
-      <div className="flex flex-wrap items-center gap-2">
-        {firms.map((f) => (
-          <span key={f.id} className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-[13px] text-ink">
-            {f.name}
-            {f.fit !== undefined && <span className="tabular-nums text-muted">{f.fit}%</span>}
-          </span>
-        ))}
-        <button className="text-[13px] text-brand hover:underline" onClick={onBack}>
-          Change
-        </button>
+    <div className="@container space-y-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <PageTitle eyebrow="Compensation · step 2" title="Contact lawyers" />
+        {trace.length > 0 && !running && (
+          <button className="text-[13px] text-muted hover:text-brand" onClick={() => setScope({ title: "Everything the agents did", steps: trace, whole: true })}>
+            Agent log
+          </button>
+        )}
       </div>
 
-      <MessageDoc message={message} writing={writing} disabled={running} />
+      {!started ? (
+        <div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_300px]">
+          <MessageDoc message={message} writing={writing} disabled={running} />
+          <aside className="space-y-4 self-start rounded-card border border-line bg-white p-5 @3xl:sticky @3xl:top-6">
+            <Eyebrow>Sending to</Eyebrow>
+            <ul className="space-y-2">
+              {firms.map((f) => (
+                <li key={f.id} className="flex items-center justify-between gap-3 text-[14px] text-ink">
+                  <span>{f.name}</span>
+                  {f.fit !== undefined && <span className="shrink-0 tabular-nums text-xs text-muted">{f.fit}%</span>}
+                </li>
+              ))}
+            </ul>
+            <Button className="w-full" onClick={() => run()} disabled={!message || writing}>
+              Fill their enquiry forms
+            </Button>
+            <p className="text-xs leading-5 text-muted">
+              Our agents fill each form and stop. Nothing is sent until you approve it.{" "}
+              <button className="text-brand hover:underline" onClick={onBack}>
+                Change firms
+              </button>
+            </p>
+          </aside>
+        </div>
+      ) : (
+        <>
+          {running && <AgentsPanel tiles={tiles} stats={stats} status={status} live={lines} />}
+          {error && <p className="text-sm text-danger">{error}</p>}
+          {profile.enquiry?.sample && !running && <p className="text-xs text-amber">Sample data (fixture): nothing was visited and nothing can be sent.</p>}
 
-      {error && <p className="text-sm text-danger">{error}</p>}
+          <div className="grid gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+            {active.map((o) => {
+              const firm = result?.firms.find((f) => f.id === o.firmId);
+              const rec = records.find((r) => r.firmId === o.firmId);
+              return (
+                <FirmCard
+                  key={o.firmId}
+                  o={o}
+                  firm={firm}
+                  rec={rec}
+                  running={running}
+                  onOpen={() => {
+                    const steps = trace.filter((s) => s.firms?.includes(o.firmId));
+                    if (steps.length) setScope({ title: o.firmName, steps });
+                  }}
+                  onReview={() => setReview(o)}
+                  onRetry={() => firm && run(firm)}
+                  onReply={(status) => upsertEnquiries([{ firmId: o.firmId, firmName: o.firmName, status }])}
+                />
+              );
+            })}
+          </div>
 
-      <Button onClick={run} disabled={!message || running || writing}>
-        {running ? "Filling their forms…" : outcomes.length ? "Fill their forms again" : "Fill their enquiry forms"}
-      </Button>
-
-      {running && <AgentsPanel tiles={tiles} stats={stats} status={status} live={lines} />}
-
-      {outcomes.length > 0 && (
-        <section className="space-y-3">
-          <SectionTitle>Each firm</SectionTitle>
-          {profile.enquiry?.sample && !running && (
-            <p className="text-xs text-amber">Sample data (fixture): nothing was visited and nothing can be sent.</p>
+          {swappedOut.length > 0 && (
+            <ul className="space-y-1 text-[13px] text-muted">
+              {swappedOut.map((o) => (
+                <li key={o.firmId}>
+                  <span className="text-ink-2">{o.firmName}</span> had no online form, so the agent {o.note.replace(/^.*swapped in/i, "swapped in")}.
+                </li>
+              ))}
+            </ul>
           )}
-          <ul className="divide-y divide-line-soft rounded-card border border-line bg-white">
-            {outcomes.map((o) => (
-              <li key={o.firmId} className="flex flex-wrap items-start gap-x-4 gap-y-2 px-5 py-4">
-                <div className="min-w-[14rem] flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[15px] font-medium text-ink">{o.firmName}</span>
-                    <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS[o.status].cls)}>{STATUS[o.status].t}</span>
-                  </div>
-                  <p className="mt-1 text-[13px] leading-5 text-ink-2">{o.status === "send_blocked" && !o.note ? "Not sent: this is a demo persona; we never send fictional enquiries to real firms." : o.note}</p>
-                  {o.question && <p className="mt-1 text-[13px] text-amber">The form asks: {o.question}</p>}
-                  {o.sentAt && <p className="mt-1 text-xs text-muted">Sent {nice(o.sentAt)}{o.confirmation ? `. They said: “${o.confirmation}”` : ""}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {trace.some((s) => s.firms?.includes(o.firmId)) && (
-                    <Button variant="ghost" size="sm" onClick={() => setScope({ title: o.firmName, steps: trace.filter((s) => s.firms?.includes(o.firmId)) })}>
-                      How we did it
-                    </Button>
-                  )}
-                  {(o.status === "ready_to_send" || o.status === "send_blocked") && (
-                    <Button size="sm" variant={o.status === "ready_to_send" ? "primary" : "secondary"} onClick={() => setReview(o)}>
-                      Review and approve
-                    </Button>
-                  )}
-                  {o.status === "email_draft" && (
-                    <Button size="sm" variant="secondary" onClick={() => setEmail(o)}>
-                      Open email draft
-                    </Button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-          {trace.length > 0 && (
-            <button className="text-[13px] text-brand hover:underline" onClick={() => setScope({ title: "The whole run", steps: trace, whole: true })}>
-              See everything the agents did
-            </button>
+
+          {!running && (
+            <details className="group rounded-card border border-line bg-white">
+              <summary className="cursor-pointer list-none px-5 py-3 text-[13px] text-ink-2 hover:text-ink">
+                <span className="mr-2 inline-block transition-transform group-open:rotate-90">›</span>The message we used
+              </summary>
+              <div className="border-t border-line-soft p-5">
+                <MessageDoc message={message} writing={false} disabled />
+              </div>
+            </details>
           )}
-        </section>
+        </>
       )}
-
-      <Tracker records={profile.enquiries ?? []} />
 
       {review && (
         <ApproveModal
@@ -225,18 +238,114 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
           }}
         />
       )}
-      {email && (
-        <EmailModal
-          o={email}
-          onClose={() => setEmail(null)}
-          onSent={() => {
-            markSent(email);
-            setEmail(null);
-          }}
-        />
-      )}
       {scope && <TraceSheet scope={scope} runId={runId} onClose={() => setScope(null)} />}
     </div>
+  );
+}
+
+const STAGES = ["Form found", "Filled", "Your OK", "Sent"];
+
+/** One firm: who, where it is on the way, one plain line, and exactly one next action. The card opens the agent's steps. */
+function FirmCard({
+  o,
+  firm,
+  rec,
+  running,
+  onOpen,
+  onReview,
+  onRetry,
+  onReply,
+}: {
+  o: EnquiryOutcome;
+  firm?: FirmFinding;
+  rec?: EnquiryRecord;
+  running: boolean;
+  onOpen: () => void;
+  onReview: () => void;
+  onRetry: () => void;
+  onReply: (s: EnquiryRecord["status"]) => void;
+}) {
+  const at = stage(o);
+  const busy = BUSY.includes(o.status);
+  const sent = o.status === "sent" || rec?.status === "sent" || rec?.status === "replied";
+  const due = rec?.status === "sent" && rec.followUpOn && rec.followUpOn <= today();
+  const line =
+    o.status === "send_blocked"
+      ? "Not sent: this is a demo persona, and we never send fictional enquiries to real firms."
+      : rec?.status === "replied"
+        ? "They replied."
+        : sent
+          ? `Sent ${nice(rec?.sentAt ?? o.sentAt)}.${rec?.followUpOn ? ` Follow up from ${nice(rec.followUpOn)} if no reply.` : ""}`
+          : o.status === "failed"
+            ? "The agent tried twice and could not finish this one."
+            : o.status === "ready_to_send"
+              ? "Form filled. Check it, then we send it."
+              : o.status === "needs_input"
+                ? (o.question ?? "Their form asks for something we do not know.")
+                : o.status === "no_form"
+                  ? "No online enquiry form on their website, and no other checked firm to swap in. A phone call works just as well."
+                  : o.note;
+  return (
+    <article
+      onClick={onOpen}
+      className={cx(
+        "flex cursor-pointer flex-col rounded-card border bg-white p-5 transition-colors hover:border-brand/40",
+        o.status === "ready_to_send" ? "border-brand/50" : due ? "border-amber/50" : "border-line",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-[16px] font-medium leading-6 text-ink">{o.firmName}</h3>
+          <p className="text-xs text-muted">
+            {[firm?.town, firm?.distanceMiles != null ? `${firm.distanceMiles < 1 ? firm.distanceMiles.toFixed(1) : Math.round(firm.distanceMiles)} miles` : null].filter(Boolean).join(" · ")}
+            {o.swappedFor ? ` · in place of ${o.swappedFor}` : ""}
+          </p>
+        </div>
+        {firm?.fit !== undefined && <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand">{firm.fit}% fit</span>}
+      </div>
+
+      {/* Where it is: four stages, the current one pulses while an agent works on it. */}
+      <ol className="mt-5 grid grid-cols-4 gap-1.5" aria-label="Progress">
+        {STAGES.map((label, i) => {
+          const done = sent ? true : i < at;
+          const stuck = o.status === "failed" || o.status === "send_blocked" || o.status === "no_form";
+          const now = !sent && i === at && !stuck;
+          return (
+            <li key={label}>
+              <div className={cx("h-1.5 rounded-full", done ? "bg-teal" : now ? (busy ? "animate-pulse bg-brand" : "bg-brand") : stuck && i === at ? (o.status === "no_form" ? "bg-amber/60" : "bg-danger/60") : "bg-line-soft")} />
+              <div className={cx("mt-1.5 text-[11px] leading-4", done || now ? "text-ink-2" : "text-faint")}>{label}</div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className={cx("mt-4 flex-1 text-[13px] leading-5", o.status === "failed" || o.status === "send_blocked" ? "text-danger" : due ? "text-amber" : "text-ink-2")}>
+        {due ? `No reply since ${nice(rec?.sentAt)}. Worth a short follow-up now.` : line}
+      </p>
+
+      <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+        {o.status === "ready_to_send" && !sent && (
+          <Button className="w-full" size="sm" onClick={onReview}>
+            Review and send
+          </Button>
+        )}
+        {o.status === "failed" && (
+          <Button className="w-full" size="sm" variant="secondary" disabled={running} onClick={onRetry}>
+            Try again
+          </Button>
+        )}
+        {o.status === "no_form" && firm?.phone && (
+          <a href={`tel:${firm.phone.replace(/\s+/g, "")}`} className="flex w-full items-center justify-center rounded-ctl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-faint">
+            Call them: {firm.phone}
+          </a>
+        )}
+        {sent && rec?.status !== "replied" && (
+          <Button className="w-full" size="sm" variant="secondary" onClick={() => onReply("replied")}>
+            They replied
+          </Button>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -371,98 +480,5 @@ function ApproveModal({ o, onClose, onResult }: { o: EnquiryOutcome; onClose: ()
       )}
       {error && <p className="text-sm text-danger">{error}</p>}
     </Modal>
-  );
-}
-
-function EmailModal({ o, onClose, onSent }: { o: EnquiryOutcome; onClose: () => void; onSent: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const e = o.email;
-  return (
-    <Modal
-      title={o.firmName}
-      sub="We could not find an online form, so here is an email to send yourself."
-      onClose={onClose}
-      footer={
-        <div className="flex flex-wrap items-center gap-3">
-          {e && (
-            <a href={e.mailto} className="inline-flex items-center rounded-ctl bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand/90">
-              Open in your email app
-            </a>
-          )}
-          {e && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                void navigator.clipboard?.writeText(`${e.subject}\n\n${e.body}`).then(() => setCopied(true));
-              }}
-            >
-              {copied ? "Copied" : "Copy the text"}
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={onSent}>
-            I&apos;ve sent it
-          </Button>
-        </div>
-      }
-    >
-      {e ? (
-        <dl className="grid grid-cols-[80px_1fr] gap-x-4 gap-y-2 text-[13px]">
-          <dt className="text-muted">To</dt>
-          <dd className="break-all text-ink">{e.to ?? "We did not find an address. Use the firm's website."}</dd>
-          <dt className="text-muted">Subject</dt>
-          <dd className="text-ink">{e.subject}</dd>
-          <dt className="text-muted">Message</dt>
-          <dd className="whitespace-pre-wrap font-serif text-[15px] leading-6 text-ink">{e.body}</dd>
-        </dl>
-      ) : (
-        <p className="text-sm text-ink-2">No email draft came back.</p>
-      )}
-    </Modal>
-  );
-}
-
-/** Replies, tracked by hand until the app can read the inbox. A nudge appears once the follow-up date has passed. */
-function Tracker({ records }: { records: EnquiryRecord[] }) {
-  if (records.length === 0) return null;
-  const due = records.filter((r) => r.status === "sent" && r.followUpOn && r.followUpOn <= today());
-  return (
-    <section className="space-y-3">
-      <SectionTitle>Replies</SectionTitle>
-      {due.map((r) => (
-        <Callout key={r.firmId} tone="warn" title={`No reply from ${r.firmName} yet`}>
-          You sent it on {nice(r.sentAt)}. A short follow-up email or call is reasonable now (our rule of thumb is 3 working days, not a legal deadline).
-        </Callout>
-      ))}
-      <ul className="divide-y divide-line-soft rounded-card border border-line bg-white">
-        {records.map((r) => (
-          <li key={r.firmId} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
-            <div className="min-w-[12rem] flex-1">
-              <div className="text-[14px] font-medium text-ink">{r.firmName}</div>
-              <div className="text-xs text-muted">
-                {r.sentAt ? `Sent ${nice(r.sentAt)}` : "Not sent yet"}
-                {r.followUpOn && r.status === "sent" && ` · follow up from ${nice(r.followUpOn)}`}
-              </div>
-            </div>
-            <select
-              className={selectControl + " !w-56"}
-              value={r.status}
-              aria-label={`Status for ${r.firmName}`}
-              onChange={(e) => {
-                const status = e.target.value as EnquiryRecord["status"];
-                const sentAt = status === "sent" && !r.sentAt ? new Date().toISOString() : r.sentAt;
-                upsertEnquiries([{ firmId: r.firmId, status, sentAt, followUpOn: sentAt ? followUpFrom(sentAt) : r.followUpOn }]);
-              }}
-            >
-              {(Object.keys(TRACK_STATUS) as EnquiryRecord["status"][]).map((k) => (
-                <option key={k} value={k}>
-                  {TRACK_STATUS[k]}
-                </option>
-              ))}
-            </select>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

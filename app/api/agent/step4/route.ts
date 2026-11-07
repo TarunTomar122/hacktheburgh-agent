@@ -8,6 +8,8 @@ const Body = z.object({
   message: z.object({ subject: z.string().min(1), body: z.string().min(1) }),
   // The firm objects come from step 3's result; only the fields the runner reads are checked strictly.
   firms: z.array(z.object({ id: z.string(), name: z.string(), website: z.string().nullable(), enquiryUrl: z.string().nullable(), email: z.string().nullable() }).passthrough()).min(1).max(MAX_ENQUIRIES),
+  // Next best checked firms, best first, to swap in when a firm has no online form (D46).
+  reserves: z.array(z.object({ id: z.string(), name: z.string(), website: z.string().nullable(), enquiryUrl: z.string().nullable(), email: z.string().nullable() }).passthrough()).max(10).optional(),
   legalAid: z.object({ verdict: z.enum(["likely", "unlikely", "unknown", "skipped"]), route: z.enum(["legal_aid", "no_win_no_fee"]) }).optional(),
 });
 
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
       };
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- firms are full FirmFinding objects from step 3 (passthrough)
-        await runEnquiries({ ...parsed.data, firms: parsed.data.firms as any }, { onEvent: send, keepOpen: true });
+        await runEnquiries({ ...parsed.data, firms: parsed.data.firms as any, reserves: (parsed.data.reserves ?? []) as any }, { onEvent: send, keepOpen: true });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
       } finally {

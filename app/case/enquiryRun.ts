@@ -19,7 +19,7 @@ export async function draftMessage(facts: CaseFacts, legalAid: LegalAidSummary):
   return data as EnquiryMessage;
 }
 
-export async function runStep4(body: { facts: CaseFacts; message: EnquiryMessage; firms: FirmFinding[]; legalAid: LegalAidSummary }, onEvent: (e: Step4Event) => void): Promise<Step4Result> {
+export async function runStep4(body: { facts: CaseFacts; message: EnquiryMessage; firms: FirmFinding[]; reserves?: FirmFinding[]; legalAid: LegalAidSummary }, onEvent: (e: Step4Event) => void): Promise<Step4Result> {
   if (fixtureMode()) return replay(body.firms, onEvent);
   const dropped = () => new Error("The connection to the app's server dropped (it may have restarted). Nothing was sent. Try again.");
   const res = await fetch("/api/agent/step4", { method: "POST", headers: json, body: JSON.stringify(body) }).catch(() => {

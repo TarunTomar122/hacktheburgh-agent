@@ -4,6 +4,7 @@ import { z } from "zod";
 import { dismissCookies, openSession } from "../browser";
 import { pointAt } from "../agentCursor";
 import type { Value } from "./browserAgent";
+import { runBrowserAgent } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { decide } from "./decisions";
 import type { EnquiryMessage, EnquiryOutcome, Step4Event, Step4Result } from "./enquiryTypes";
@@ -220,28 +221,30 @@ export async function fillOne(
   put({ ...base, status: f.enquiryUrl ? "filling" : "finding_form", note: f.enquiryUrl ? "Opening their enquiry form" : "Looking for their enquiry form" });
   const found = await findForm(p, f, note, track as Tracker);
   if (!found) {
-    const to = f.email;
-    const mailto = `mailto:${to ?? ""}?subject=${encodeURIComponent(input.message.subject)}&body=${encodeURIComponent(input.message.body)}`;
-    await note.log("recover", to ? `No online form found; wrote an email to ${to} instead` : "No online form found and no email address listed; wrote an email to send yourself", { shot: true });
-    note("No form: email draft ready");
-    return { ...base, status: "email_draft", email: { to, subject: input.message.subject, body: input.message.body, mailto }, note: to ? `No online form found, so we wrote an email to ${to}` : "No online form found and SLAB lists no email; use the firm's website to find an address" };
+    await note.log("recover", "No online enquiry form on their site, even after a harder look", { shot: true });
+    note("No online form");
+    return { ...base, status: "no_form", note: "No online enquiry form on their website" };
   }
   const formUrl = p.url();
   put({ ...base, status: "filling", formUrl, note: "Filling their enquiry form" });
   note("Filling their enquiry form");
   await pointAt(p, p.locator(FORM_SEL).first()).catch(() => {});
   const before = await snapshot(p);
-  const run = await runDecisionAgent({
-    page: p,
-    goal: "Fill in this law firm's enquiry form with the saved values. Leave fields empty when no saved value fits. Do not tick any checkbox and do not submit.",
-    values: enquiryValues(input.facts, input.message),
-    allowCheckboxes: false,
-    allowSubmit: false,
-    maxSteps: 6,
-    onEvent: (e) => {
-      if (e.type === "action") track.bump("action");
-    },
-  });
+  const goal = "Fill in this law firm's enquiry form with the saved values. Leave fields empty when no saved value fits. Do not tick any checkbox and do not submit.";
+  const values = enquiryValues(input.facts, input.message);
+  const onEvent = (e: { type: string }) => {
+    if (e.type === "action") track.bump("action");
+  };
+  let run: { status: string; question?: string };
+  try {
+    run = await runDecisionAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 6, onEvent });
+  } catch (e) {
+    // Recovery (D46): the Decisions API is down or overloaded. Switch to the backup engine (tool-calling model) and carry on.
+    const why = (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120);
+    note("Main engine unavailable; switching to the backup engine");
+    await note.log("recover", `The decision service failed (${why}). Switched to the backup engine to fill the form.`);
+    run = await runBrowserAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 10, onEvent });
+  }
   const form = await readForm(p, before);
   await note.log("type", `Filled ${form.filled.length} field${form.filled.length === 1 ? "" : "s"}; stopped before Send`, {
     shot: true,
@@ -261,7 +264,7 @@ export async function fillOne(
 /* ------------------------------------------------------------------ the run */
 
 export async function runEnquiries(
-  input: { facts: CaseFacts; message: EnquiryMessage; firms: FirmFinding[]; legalAid?: LegalAidSummary },
+  input: { facts: CaseFacts; message: EnquiryMessage; firms: FirmFinding[]; reserves?: FirmFinding[]; legalAid?: LegalAidSummary },
   opts: { onEvent?: (e: Step4Event) => void; keepOpen?: boolean } = {},
 ): Promise<Step4Result> {
   const firms = input.firms.slice(0, MAX_ENQUIRIES);
@@ -298,25 +301,53 @@ export async function runEnquiries(
     const base = (f: FirmFinding): EnquiryOutcome => ({ firmId: f.id, firmName: f.name, status: "queued", formUrl: null, filled: [], unfilled: [], consents: [], note: "Waiting" });
     firms.forEach((f) => put(base(f)));
 
-    await Promise.all(
-      firms.map((f) =>
-        agent(
+    // One worker per firm. A failure is retried once by itself; a firm with no online form is swapped for the
+    // next best reserve firm (D46), so the user still ends up with up to 3 firms they can contact.
+    const reserves = (input.reserves ?? []).filter((r) => r.website && !firms.some((f) => f.id === r.id));
+    const order: string[] = firms.map((f) => f.id);
+    const label = (f: FirmFinding) => f.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 28);
+    const work = async (f: FirmFinding, swappedFor?: string): Promise<void> => {
+      let attempts = 0;
+      let last: EnquiryOutcome | undefined;
+      while (attempts < 2) {
+        attempts++;
+        const r = await agent(
           ctx,
-          f.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 28),
+          attempts > 1 ? `${label(f)} (retry)` : label(f),
           async (p, note) => {
-            const o = await fillOne(p, f, input, note, track, put);
+            const o = await fillOne(p, f, input, note, track, (x) => put({ ...x, swappedFor, attempts }));
             if (o.status === "ready_to_send") REG.tabs.set(f.id, { page: p, firm: f, email: input.facts.email, runId, tracer, note });
-            put(o);
+            return o;
           },
           150_000,
           [f.id],
-        ).then((r) => {
-          if (!r.ok) put({ ...(outcomes.get(f.id) ?? base(f)), status: "failed", note: `Stopped: ${r.error}` });
-        }),
-      ),
-    );
+        );
+        if (r.ok) {
+          last = { ...r.value, swappedFor, attempts };
+          break;
+        }
+        last = { ...(outcomes.get(f.id) ?? base(f)), status: "failed", note: `Stopped: ${r.error}`, swappedFor, attempts };
+        if (attempts < 2) {
+          put({ ...last, status: "filling", note: "Something went wrong; trying again" });
+          tracer.add({ agent: label(f), color: "#e64d00", kind: "recover", text: `Failed (${r.error}); retrying once`, firms: [f.id] });
+          await new Promise((res) => setTimeout(res, 2500));
+        }
+      }
+      put(last!);
+      if (last!.status === "no_form") {
+        const next = reserves.shift();
+        if (next) {
+          put({ ...last!, note: `No online enquiry form, so we swapped in ${next.name}` });
+          tracer.add({ agent: label(f), color: "#e64d00", kind: "recover", text: `${f.name} has no online form; swapping in ${next.name}`, firms: [f.id, next.id] });
+          order.push(next.id);
+          put({ ...base(next), status: "finding_form", note: `Replacing ${f.name}`, swappedFor: f.name });
+          await work(next, f.name);
+        } else put({ ...last!, note: "No online enquiry form, and no other checked firm left to try" });
+      }
+    };
+    await Promise.all(firms.map((f) => work(f)));
 
-    const result: Step4Result = { enquiries: firms.map((f) => outcomes.get(f.id)!), stats: track.stats, runId, trace: tracer.steps };
+    const result: Step4Result = { enquiries: order.map((id) => outcomes.get(id)!).filter(Boolean), stats: track.stats, runId, trace: tracer.steps };
     send4({ type: "result", result });
     if (opts.keepOpen && REG.tabs.size > 0) {
       keep = true; // the filled forms stay open for the approvals (closed after 15 minutes)

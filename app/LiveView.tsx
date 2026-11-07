@@ -87,7 +87,8 @@ const sendMove = moveSender();
 
 export default function LiveView() {
   const [mode, setMode] = useState<Mode>("hidden");
-  const [open, setOpen] = useState(true);
+  // Closed until the user clicks the floating button: the agents work in the background (Tarun, 2026-11-07).
+  const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [control, setControl] = useState(false);
   // Panel width, remembered between reloads. 0 on the server (the panel renders nothing there anyway).
@@ -151,7 +152,6 @@ export default function LiveView() {
         if (modeRef.current !== "live") {
           modeRef.current = "live";
           setMode("live");
-          setOpen(true);
         }
       } else if (msg.type === "pages") {
         if (msg.pages.length > 0) clearTimeout(closeTimer.current);
@@ -165,7 +165,6 @@ export default function LiveView() {
         if (msg.pages.length > 0 && modeRef.current !== "live") {
           modeRef.current = "live";
           setMode("live");
-          setOpen(true);
         }
       } else if (msg.type === "stats") {
         setStats(msg.stats);
@@ -326,7 +325,7 @@ export default function LiveView() {
         className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[13px] font-medium text-white hover:bg-brand/90"
       >
         <Dot live={mode === "live"} light />
-        {mode === "live" ? "Watch the agent's browser" : "Agent's browser (closed)"}
+        {mode === "live" ? (pages.length > 1 ? `Watch ${pages.length} agents live` : "Watch the agent live") : "Agent's browser (closed)"}
       </button>
     );
   }
@@ -358,37 +357,42 @@ export default function LiveView() {
           )}
         />
       </div>
-      <div className="flex items-center gap-3">
-        <Dot live={mode === "live"} />
-        <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">
-          {mode === "live" ? "Live" : "Closed"}
-        </span>
-        {focused && pages.length > 1 && (
-          <Button variant="secondary" size="sm" onClick={() => focus(null)}>
-            ← Back to grid
-          </Button>
-        )}
-        {grid ? (
-          <div className="min-w-0 flex-1 text-[13px] font-medium text-ink">{pages.length} agents working at once</div>
-        ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white px-4 py-1.5 text-[13px] text-ink-2">
-            {focusedPage && <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: focusedPage.color }} />}
-            {focusedPage && <span className="shrink-0 font-medium text-ink">{focusedPage.label}</span>}
-            <span className="break-all" title={url}>
-              {url.replace(/^https?:\/\/(www\.)?/, "") || "about:blank"}
-            </span>
+      {/* Two quiet lines: who you are watching (and Hide), then where it is. Nothing squeezed into a pill. */}
+      <div>
+        <div className="flex items-center gap-3">
+          {focused && pages.length > 1 ? (
+            <button onClick={() => focus(null)} title="Back to all agents" aria-label="Back to all agents" className="flex size-8 shrink-0 items-center justify-center rounded-ctl border border-line bg-white text-ink-2 hover:border-faint hover:text-ink">
+              ←
+            </button>
+          ) : (
+            <Dot live={mode === "live"} />
+          )}
+          <div className="min-w-0 flex-1 text-[15px] font-medium text-ink">
+            {grid ? (
+              `${pages.length} agents working at once`
+            ) : focusedPage ? (
+              <span className="inline-flex items-center gap-2">
+                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: focusedPage.color }} />
+                {focusedPage.label}
+              </span>
+            ) : mode === "live" ? (
+              "The agent's browser"
+            ) : (
+              "Browser closed"
+            )}
           </div>
-        )}
-        <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the browser keeps running)">
-          Hide
-        </Button>
-      </div>
-
-      {stats && pages.length > 1 && (
-        <div className="-mt-1 text-[12px] tabular-nums text-muted">
-          {stats.agents} agents · {stats.sites} sites · {stats.pages} pages · {stats.actions} actions
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)} title="Hide the panel (the agents keep working)">
+            Hide
+          </Button>
         </div>
-      )}
+        <div className="mt-1 pl-11 text-[12px] leading-5 text-muted">
+          {grid
+            ? stats
+              ? `${stats.sites} sites · ${stats.pages} pages · ${stats.actions} actions · click one to watch it up close`
+              : "Click one to watch it up close"
+            : crumbs(url)}
+        </div>
+      </div>
 
       {grid ? (
         <div className={cx("grid min-h-0 flex-1 content-start gap-2 overflow-y-auto", width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
@@ -503,6 +507,18 @@ function Tile({ page, ended, onImg, onOpen }: { page: LivePage; ended: boolean; 
       )}
     </button>
   );
+}
+
+/** "andersonstrathern.co.uk › legal-expertise › medical-negligence": readable, wraps between parts, never mid-word. */
+function crumbs(url: string) {
+  if (!url || url === "about:blank") return "Starting…";
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split("/").filter(Boolean).map((p) => decodeURIComponent(p).replace(/[-_]+/g, " "));
+    return [u.hostname.replace(/^www\./, ""), ...parts].join(" › ");
+  } catch {
+    return url;
+  }
 }
 
 function Dot({ live, light }: { live: boolean; light?: boolean }) {

@@ -200,4 +200,18 @@ Why: Om wanted a harder email check and no second question for a postcode he had
 **Step 4: contact up to 3 firms, and the agent presses Send only after the user approves each one.** Contract `lib/agent/enquiryTypes.ts` (`MAX_ENQUIRIES` = 3). One message is drafted from the profile (facts only, first person, no claim of negligence) and can be edited. Agents fill each firm's enquiry form in parallel tabs and stop before Send; the tabs stay open so the approval can be acted on. The approval shows what was filled and lists every consent checkbox text; **only boxes the user ticks in our app are ticked on the firm's form.** No form after a harder look (contact links, popups, footer, iframes; about 5 hops) -> an email draft with a `mailto`. **Send gate:** the server refuses (`send_blocked`, with the reason) unless `ALLOW_REAL_SEND=1` **and** the profile email is not an example.com address, so a fictional patient can never reach a real firm. Invisible reCAPTCHA on submit is reported, not worked around. Replies are tracked by hand (`profile.enquiries`; follow-up 3 working days after sending, a rule of thumb, not a deadline) until inbox reading exists. Step 3's selection stops at 3. Ownership: the frontend agent built the UI, and owns the backend from 2026-11-07 (parent thread moved to the evidence agent). Numbered D45 because Om's D43 and D44 landed first (the contract draft said D43).
 Why: Tarun wants the agent to do the sending, but never without the user seeing exactly what goes and agreeing to each consent; and a demo must never contact a real law firm.
 
-<!-- Add new entries above this line. Next number: D46 -->
+**D46 · 2026-11-07 · Tarun (asked), Claude (built) · decided**
+**Step 4 asks as little as possible of the user and recovers by itself.**
+- **One card per firm, side by side.** Each card shows a 4-stage track (Form found, Filled, Your OK, Sent) and **exactly one** next action, which changes with the state: "Review and send", "Try again" (only after the agent's own retry failed), "Call them" (no form and nothing to swap) or "They replied". The card itself opens the agent's steps for that firm, and one quiet "Agent log" shows the whole run.
+- **Replies are tracked on the card.** The separate tracker list is gone.
+- **No email drafts.** We cannot send email for the user, so a draft was a dead end. When a firm has no online form even after a harder look, the run **swaps in the next best checked firm** (`reserves`, best first, sent by the client). This is shown as one line on the screen and as a `recover` trace step.
+- **Recovery:**
+  - Each firm is retried once automatically after a failure.
+  - If the Decisions API fails (e.g. 503), filling switches to the backup tool-calling engine (`runBrowserAgent`) and logs it.
+  - New status `no_form` and fields `swappedFor` and `attempts` in `lib/agent/enquiryTypes.ts`. `email_draft` is legacy.
+- **Layout:** step 4 uses the full width (no side panel). Step layouts use container queries, so the content adapts to the space it really has when the live panel takes half the window.
+- **Live panel:** it no longer opens by itself. It starts as the floating "Watch N agents live" button. Its header is two plain lines: who you are watching and Hide, then the address as "site › section › page".
+
+Why: Tarun found the old screen confusing (three buttons per firm, a duplicate replies list, a dead-end email draft, a failure with no way out) and the auto-opening panel unhelpful.
+
+<!-- Add new entries above this line. Next number: D47 -->

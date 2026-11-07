@@ -8,6 +8,22 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Tarun + Claude · DONE · Step 4 redesign and recovery (D46); planner backend started (D47)
+**Step 4:**
+- **Real run in the app:** compensation persona, 3 sample firms (step 3 fixture), real firm websites, about 40 s, filling only (the send gate stays closed).
+- **Outcome:** Drummond Miller and Anderson Strathern were filled and left at "Review and send". Balfour + Manson had no online form, and there was nothing to swap in (the fixture has no other firm with a website), so its card says so; there is no phone number in the fixture.
+- **Screenshots checked:** 3 cards side by side, the live panel closed with the "Watch 3 agents live" button.
+- **Not verified:** the swap with a real step 3 result, and the backup-engine path (needs the Decisions API to fail).
+
+**Planner (D47, backend only, `lib/agent/planner.ts`):** a reasoning model with tools plans its own route through the compensation research. One CLI run with scripted answers took 141 s, 9 turns, 8 agents and 7 sites:
+- It planned, then ran SLAB's calculator and lawyer list in parallel.
+- The calculator asked its 6 questions one at a time, mid-run.
+- It replanned when the estimate was unclear.
+- It searched the web with Brave (Google blocks headless browsers; DuckDuckGo returned nothing), found Thompsons Scotland, which is not on SLAB's list, and checked it.
+- It ran the Law Society check, shortlisted and finished.
+
+Fixed since that run: the calculator's radios are now found by page order (verdict "likely" re-tested), the Law Society searches each start from a fresh form (3 of 3 in 25 s, before: 1 of 3 in 55 s), and the shortlist is sorted by fit. **Not built yet:** the planner's routes and its left-hand panel.
+
 ### 2026-11-07 · Claude (frontend agent) · DONE · No labels above headlines; step 4 locked until firms are picked
 Tarun: "a headline over a headline". `PageTitle` no longer draws the small label (callers that still pass `eyebrow` are ignored), and the hand-made ones are gone (step 3 results header, "Your next step", the profile banner's "Profile", the trace modal's "How we found this"). Rule in `docs/DESIGN.md`. Step 4 ("Contact lawyers") is disabled in the track bar, with a lock and the tooltip "Pick up to 3 solicitors in the previous step first", until at least one firm is ticked in step 3. Checked headlessly (tab disabled with the tooltip before picking, enabled after; no labels above titles).
 

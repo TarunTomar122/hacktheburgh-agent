@@ -61,7 +61,7 @@ export default function CasePage() {
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           {chosen && <TrackBar profile={profile} active={active} onSelect={setActive} />}
-          <main className="min-w-0">
+          <main className="@container min-w-0">
             {!chosen ? (
               <div className="mx-auto max-w-4xl px-8 py-12">
                 <TrackChoice profile={profile} onChosen={setActive} />
@@ -71,8 +71,13 @@ export default function CasePage() {
               <div className="mx-auto max-w-6xl px-8 py-10">
                 <LegalAidStep profile={profile} onContinue={() => setActive(4)} />
               </div>
+            ) : active === 4 ? (
+              // Step 4 is firm cards side by side: full width too, no side panel (D46).
+              <div className="mx-auto max-w-6xl px-8 py-10">
+                <ContactLawyersStep profile={profile} onBack={() => setActive(3)} />
+              </div>
             ) : (
-              <div className="mx-auto grid max-w-6xl gap-12 px-8 py-10 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <div className="mx-auto grid max-w-6xl gap-12 px-8 py-10 @4xl:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="min-w-0">
                   {active === 2 ? (
                     <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />

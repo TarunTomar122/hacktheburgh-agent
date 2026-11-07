@@ -23,7 +23,8 @@ export type EnquiryStatus =
   | "filling"
   | "ready_to_send" // form filled, waiting for the user's approval
   | "needs_input" // the form asks something we do not know; see `question`
-  | "email_draft" // no form found: use the email draft
+  | "no_form" // no online form found even after a harder look; the run swaps in the next best firm (D46)
+  | "email_draft" // legacy (D45): no longer produced
   | "sending"
   | "sent"
   | "send_blocked" // approval given but the send gate refused (demo persona, or sending not enabled)
@@ -42,6 +43,8 @@ export type EnquiryOutcome = {
   note: string; // one plain line: "Form filled on their contact page", "Blocked: demo persona"
   sentAt?: string;
   confirmation?: string; // what the firm's page said after Send
+  swappedFor?: string; // this firm was brought in because <firm name> had no online form (D46)
+  attempts?: number; // how many times the agent tried (it retries once by itself after a failure)
 };
 
 export type Step4Result = { enquiries: EnquiryOutcome[]; stats: Stats; runId: string; trace: TraceStep[] };
