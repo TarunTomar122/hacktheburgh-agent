@@ -128,3 +128,5 @@ How to update: change the item's Status/Notes/Last touched in the same commit as
 **Not verified:** the link between them. Nothing reads the SLAB result and feeds it into the firm's form yet. Also unclear what the correct behaviour is if the user *is* eligible: the checkbox text says "you agree that you are not eligible for legal aid, unless seeking assistance with Medical Negligence", so ticking it is a statement the user must agree to themselves, not something the agent should infer. Treat the SLAB result as an input to *which firms to contact* and as a prompt to the user, not as automatic consent.
 
 **Next step:** pass the SLAB verdict into the saved values for the firm step, and make the agent ask the user before ticking that box.
+
+Session verification (2026-11-07, Codex): approved patient postcode selection and direct-click recovery verified against SLAB; G1 1XW returned Glasgow distances. Declined path excluded distances. Existing backlog statuses unchanged.

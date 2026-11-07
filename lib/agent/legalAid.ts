@@ -1,3 +1,5 @@
+import { chooseFinderLocation } from "./finderLocation";
+import type { SearchLocation } from "./searchLocation";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { BrowserContext, Page } from "playwright";
@@ -271,7 +273,7 @@ export async function fillCalculatorDirectly(page: Page, f: Funding, track: Trac
 
 /* ------------------------------------------------------------------ 2. SLAB finder */
 
-export type SlabCard = { name: string; town: string; distanceMiles: number | null; website: string | null; email: string | null; phone: string | null; profile: string | null };
+export type SlabCard = { distanceOrigin?: string; name: string; town: string; distanceMiles: number | null; website: string | null; email: string | null; phone: string | null; profile: string | null };
 
 async function readSlabCards(page: Page): Promise<SlabCard[]> {
   return page.$$eval(".card-solicitor", (cards) =>
@@ -296,11 +298,12 @@ async function readSlabCards(page: Page): Promise<SlabCard[]> {
   );
 }
 
-export async function runFinder(page: Page, note: Note, track: Tracker): Promise<SlabCard[]> {
+export async function runFinder(page: Page, note: Note, track: Tracker, location?: SearchLocation): Promise<SlabCard[]> {
   note("Opening SLAB's lawyer list");
   await page.goto(SLAB_FINDER, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1200);
   await dismissCookies(page, 3000);
+  const origin = await chooseFinderLocation(page, location);
   await note.log("open", "Opened SLAB's Find a Solicitor", { shot: true });
   note("Choosing Civil, Medical negligence, active firms");
   const v = (key: string, description: string, value: string): Value => ({ key, description, value });
@@ -316,8 +319,8 @@ export async function runFinder(page: Page, note: Note, track: Tracker): Promise
       ],
       allowSubmit: true,
       maxSteps: 8,
-      // Leave the location alone (it defaults to Edinburgh) and never use the site-wide search.
-      ignore: (el) => /auto detect|manually choose|language|entire website|solicitor's section|guidance|^news$/i.test(el.label) || /search_special/.test(el.name),
+      // Location is set only through the consent-controlled helper.
+      ignore: (el) => /auto detect|manually choose|language|entire website|solicitor's section|guidance|^news$/i.test(el.label) || /search_special|search_address_new/.test(el.name),
       onEvent: (e) => {
         if (e.type === "action") {
           track.bump("action");
@@ -337,6 +340,7 @@ export async function runFinder(page: Page, note: Note, track: Tracker): Promise
     await note.log("recover", "The agent's search showed no firms (the radio buttons are hidden). Doing the same search with direct clicks", { shot: true });
     await page.goto(SLAB_FINDER, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(1000);
+    await chooseFinderLocation(page, location);
     for (const sel of ["label[for=category_parent_civil]"]) {
       await pointAt(page, page.locator(sel));
       await page.locator(sel).click();
@@ -356,10 +360,12 @@ export async function runFinder(page: Page, note: Note, track: Tracker): Promise
     await page.waitForTimeout(2500);
     cards = await readSlabCards(page);
   }
+  cards = cards.map((card) => ({ ...card, distanceMiles: origin ? card.distanceMiles : null, distanceOrigin: origin }));
+  if (!origin) cards.sort((a, b) => a.name.localeCompare(b.name));
   const total = (await page.locator("body").innerText()).match(/Showing (\d+) results?/i)?.[1];
   note(`Read ${cards.length}${total ? ` of ${total}` : ""} firms`);
   if (cards.length) await pointAt(page, page.locator(".card-solicitor").first());
-  await note.log("found", `Found ${cards.length} offices: civil legal aid, medical negligence, active in the last 12 months, nearest first`, { shot: true, detail: cards.slice(0, 12).map((c, i) => `${i + 1}. ${c.name}, ${c.town} (${c.distanceMiles ?? "?"} miles)`).join("\n") });
+  await note.log("found", `Found ${cards.length} offices: civil legal aid, medical negligence, active in the last 12 months, ${origin ? `nearest to ${origin} first` : "distance excluded"}`, { shot: true, detail: cards.slice(0, 12).map((c, i) => `${i + 1}. ${c.name}, ${c.town} (${c.distanceMiles ?? "?"} miles)`).join("\n") });
   const seen = new Set<string>();
   for (const [i, c] of cards.entries()) {
     const id = slug(c.name);
@@ -402,6 +408,7 @@ export function mergeCards(cards: SlabCard[]): FirmFinding[] {
       name: c.name,
       town: c.town,
       distanceMiles: c.distanceMiles,
+      distanceOrigin: c.distanceOrigin,
       website: c.website ?? prev?.website ?? null,
       email: c.email ?? prev?.email ?? null,
       phone: c.phone,
@@ -431,21 +438,22 @@ export function score(f: FirmFinding, route: Route, ev: Evidence = {}): FirmFind
   const la = route === "legal_aid";
   const checked = f.sources.includes("website");
   const tri = (b: boolean | null): ScoreItem["status"] => (b === null ? "unknown" : b ? "yes" : "no");
-  const miles = f.distanceMiles;
+  const miles = f.distanceOrigin ? f.distanceMiles : null;
   const rows: ScoreItem[] = [
     { key: "legal_aid", label: "Takes legal aid for medical negligence", max: la ? 30 : 5, points: f.legalAid ? (la ? 30 : 5) : 0, status: tri(f.legalAid), evidence: ev.legal_aid ?? "Listed on SLAB's Find a Solicitor under Civil > Medical negligence" },
     { key: "active", label: "Did civil legal aid work in the last 12 months", max: 10, points: f.activeRecently ? 10 : 0, status: tri(f.activeRecently), evidence: "Still listed with SLAB's 'active solicitors only' filter on" },
-    { key: "distance", label: "Close to you", max: 20, points: miles === null ? 0 : miles <= 3 ? 20 : miles <= 15 ? 10 : 0, status: miles === null ? "unknown" : miles <= 15 ? "yes" : "no", evidence: miles === null ? "No distance on SLAB's list" : `SLAB's finder: ${miles} miles from Edinburgh city centre` },
+    { key: "distance", label: "Close to you", max: miles === null ? 0 : 20, points: miles === null ? 0 : miles <= 3 ? 20 : miles <= 15 ? 10 : 0, status: miles === null ? "unknown" : miles <= 15 ? "yes" : "no", evidence: miles === null ? "Distance excluded: no confirmed patient search location" : `SLAB's finder: ${miles} miles from the approved patient postcode ${f.distanceOrigin}` },
     { key: "lawsoc", label: "On the Law Society register", max: 5, points: f.sources.includes("lawsoc") ? 5 : 0, status: f.sources.includes("lawsoc") ? "yes" : ev.lawsoc ? "no" : "unknown", evidence: ev.lawsoc ?? "Not looked up" },
     { key: "patients", label: "Acts for patients", max: 20, points: f.actsForPatients === "yes" ? 20 : 0, status: f.actsForPatients, evidence: ev.patients ?? "Website not checked" },
     { key: "nwnf", label: "Offers no win, no fee", max: la ? 10 : 30, points: f.noWinNoFee === "yes" ? (la ? 10 : 30) : 0, status: f.noWinNoFee, evidence: ev.nwnf ?? "Website not checked" },
     { key: "form", label: "Has an online enquiry form", max: 10, points: f.enquiryUrl ? 10 : 0, status: f.enquiryUrl ? "yes" : checked ? "no" : "unknown", evidence: ev.form ?? (f.enquiryUrl ? `Form at ${f.enquiryUrl}` : "Website not checked") },
     { key: "checked", label: "We could read their website", max: 15, points: checked ? 15 : 0, status: checked ? "yes" : f.website ? "unknown" : "no", evidence: ev.checked ?? (f.website ? "Not one of the firms we visited" : "No website on SLAB's list") },
   ];
+  if (miles === null) rows.splice(rows.findIndex((row) => row.key === "distance"), 1);
   const points = rows.reduce((n, r) => n + r.points, 0);
   const max = rows.reduce((n, r) => n + r.max, 0);
-  const reasons = rows.filter((r) => r.status === "yes" && r.points > 0).map((r) => (r.key === "distance" ? `Office ${miles! < 1 ? miles!.toFixed(1) : Math.round(miles!)} miles from Edinburgh centre` : r.label));
-  return { ...f, score: points, fit: Math.round((points / max) * 100), breakdown: rows, reasons };
+  const reasons = rows.filter((r) => r.status === "yes" && r.points > 0).map((r) => (r.key === "distance" ? `Office ${miles! < 1 ? miles!.toFixed(1) : Math.round(miles!)} miles from ${f.distanceOrigin}` : r.label));
+  return { ...f, distanceMiles: miles, score: points, fit: Math.round((points / max) * 100), breakdown: rows, reasons };
 }
 
 /* ------------------------------------------------------------------ 3. Law Society check */

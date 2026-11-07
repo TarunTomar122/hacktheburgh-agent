@@ -86,3 +86,5 @@ Verified 2026-11-07 against our key and OpenAI's official pages (see `docs/PROGR
 - A general coding agent with a browser could do this once. The defensible claims are reliability, speed, safety gates, and recovery from failures.
 - "Everything stays local" is **not** true: data goes to OpenAI and to the organisations the user chooses. Do not claim it.
 - Ideas to deepen complexity (not built, not decided): run the firm search on 8-10 unseen firms; a second complaint route (GP vs hospital); email replies and account-creation flows.
+
+Built D54: new crew runs ask permission then patient postcode before research; no hospital-derived proximity. Live SLAB approved Glasgow and declined-location paths verified on 2026-11-07. Full crew run not retested.

@@ -56,7 +56,8 @@ export type FirmFinding = {
   id: string; // stable slug of the firm name
   name: string;
   town: string;
-  distanceMiles: number | null; // from SLAB's finder
+  distanceMiles: number | null;
+  distanceOrigin?: string; // from SLAB's finder
   website: string | null;
   email: string | null;
   phone: string | null;

@@ -1,3 +1,4 @@
+import { askSearchLocation, type SearchLocation } from "./searchLocation";
 import path from "node:path";
 import type { Page } from "playwright";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
@@ -307,6 +308,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const funding: Funding = { onBenefits: null, partner: null, dependants: null, netIncomeYearly: null, outgoingsYearly: null, savings: null, skipped: false, ...fundingIn };
   const firms = new Map<string, FirmFinding>();
   const evidence = new Map<string, Evidence>();
+  let location: SearchLocation = { allowed: false };
   let verdict: Verdict = "unknown";
   let quote = "";
   let route: Route = "legal_aid";
@@ -435,12 +437,12 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return `SLAB estimate: ${verdict}. Its words: "${quote}"`;
       }
       case "slab_lawyer_list": {
-        const r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track), 120_000));
+        const r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track, location), 120_000));
         if (!r.ok) return `SLAB's lawyer list failed: ${r.error}`;
         for (const f of mergeCards(r.value)) if (!firms.has(f.id)) firms.set(f.id, f);
         const list = [...firms.values()].filter((f) => f.legalAid);
         finding(`SLAB lists ${list.length} firms that take medical negligence legal aid`, "SLAB lawyer list");
-        return `Found ${list.length} firms (nearest first):\n${list.slice(0, 15).map(firmLine).join("\n")}`;
+        return `Found ${list.length} firms (${location.allowed ? `nearest to ${location.postcode} first` : "without distance ranking"}):\n${list.slice(0, 15).map(firmLine).join("\n")}`;
       }
       case "web_search": {
         const r = await tabs(() => crewFor(thought, "robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
@@ -565,9 +567,10 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   let reviewing = false;
   let turns = 0;
   try {
+    location = await askSearchLocation((question) => ask({ ...question, agent: "Robin", crew: "robin" }));
     const story = [facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n");
     const known = Object.entries(funding).filter(([, v]) => v !== null && v !== false).map(([k, v]) => `${k}=${v}`).join(", ") || "none yet";
-    let input: ResponseInputItem[] | string = `Patient: ${facts.firstName ?? "the patient"}, postcode ${facts.postcode ?? "unknown"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${story}\nWhat they want: ${facts.desiredOutcome ?? "not said"}\nMoney answers already known: ${known}\n\nPlan and run the research.`;
+    let input: ResponseInputItem[] | string = `Patient: ${facts.firstName ?? "the patient"}, approved search postcode ${location.allowed ? location.postcode : "not shared"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${story}\nWhat they want: ${facts.desiredOutcome ?? "not said"}\nMoney answers already known: ${known}\n\nUse only the approved search postcode for nearby-firm searches. Never infer the patient location from the hospital or treatment location. If location is not shared, do not use proximity ranking.\nPlan and run the research.`;
     let prev: string | undefined;
     let finished = false;
 

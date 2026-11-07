@@ -266,4 +266,7 @@ Why: Om: the points looked exact and told the user nothing more than a tick; fou
 - **During the run:** the same strip is the progress bar (`app/case/crew/StepStrip.tsx`): waiting, working, needs you or done, worked out only from the crew's real states and reports.
 - **Tiles:** each tile's name tag in the live grid shows the avatar.
 
-<!-- Add new entries above this line. Next number: D54 -->
+**D54 - 2026-11-07 - Luigi + Codex - decided**
+The latest crew flow asks location permission before research, then asks for the patient's search postcode. Never derive proximity from the hospital or treatment location. Decline, skip or timeout means no distance ranking or proximity score. SLAB must confirm the approved Scottish postcode; retries reuse it. Permission is asked afresh for each run. This supersedes the default Edinburgh proximity assumption in D39. Other stashed UI/scoring changes are not restored.
+
+<!-- Add new entries above this line. Next number: D55 -->
