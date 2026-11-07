@@ -1,6 +1,7 @@
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 import type { Funding, Step3Event, Step3Result, Stats, TraceStep } from "./legalAidTypes";
 import type { Draft } from "./draft";
+import type { LedgerEntry } from "./ledger";
 
 /**
  * Planner agent contract (D47). Client-safe.
@@ -130,6 +131,7 @@ export type ComplaintResult = {
 export type PlannerEvent =
   | Step3Event
   | { type: "complaint_result"; result: ComplaintResult }
+  | { type: "model"; entry: LedgerEntry } // one model call (the ledger)
   | { type: "run"; runId: string }
   | { type: "funding"; funding: Funding }
   | { type: "plan"; steps: PlanStep[] }

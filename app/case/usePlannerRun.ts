@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
+import type { LedgerEntry } from "../../lib/agent/ledger";
 import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type ComplaintResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 
@@ -39,12 +40,13 @@ export type PlannerRunState = {
   spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
   demo: boolean; // playing back a recorded run (D63)
   skipped: (CrewId | "all")[]; // demo skips asked for
+  models: LedgerEntry[]; // every model call so far (the ledger)
 };
 
 const idleCrew = (): Record<CrewId, CrewState> =>
   Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "idle", note: "", since: Date.now() }])) as Record<CrewId, CrewState>;
 
-const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [] });
+const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [], models: [] });
 
 export function usePlannerRun() {
   const [s, setS] = useState<PlannerRunState>(initial);
@@ -95,6 +97,8 @@ export function usePlannerRun() {
           return { ...cur, enquiries: cur.enquiries.some((x) => x.firmId === e.enquiry.firmId) ? cur.enquiries.map((x) => (x.firmId === e.enquiry.firmId ? e.enquiry : x)) : [...cur.enquiries, e.enquiry] };
         case "planner_result":
           return { ...cur, status: "done", result: e.result, firms: e.result.firms, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+        case "model":
+          return { ...cur, models: [...cur.models, e.entry] };
         case "complaint_result":
           return { ...cur, status: "done", complaint: e.result, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
         case "error":

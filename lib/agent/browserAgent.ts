@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 import type { FunctionTool, ResponseFunctionToolCall } from "openai/resources/responses/responses";
-import { EFFORT, MODELS, openai } from "./llm";
+import { EFFORT, MODELS, respond } from "./llm";
 import { formatObservation, observe, unfilledRequired, type El, type Observation } from "./observe";
 import type { OnEvent, RunStatus } from "./events";
 
@@ -84,7 +84,7 @@ export async function runBrowserAgent(opts: {
     ].filter(Boolean).join("\n\n");
 
     const t0 = Date.now();
-    const res = await openai().responses.create({
+    const res = await respond({
       model: MODELS.browser,
       reasoning: { effort: EFFORT.browser },
       instructions: system,
@@ -92,7 +92,7 @@ export async function runBrowserAgent(opts: {
       tools: TOOLS,
       tool_choice: "required",
       parallel_tool_calls: true,
-    });
+    }, "form agent (backup engine)");
     stats.calls++; stats.ms += Date.now() - t0; stats.inputTokens += res.usage?.input_tokens ?? 0;
     const calls = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
 

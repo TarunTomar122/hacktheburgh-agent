@@ -1,5 +1,6 @@
 // Thin client for OpenAI's Decisions API (POST /v1/decisions). Typed answers only: no free text comes back.
 // Docs checked 2026-11-07: https://developers.openai.com/api/reference/resources/decisions
+import { record } from "./ledger";
 
 export const DECISION_MODEL = process.env.DECISION_MODEL ?? "gpt-6-luna";
 
@@ -31,6 +32,7 @@ export async function decide(input: string, questions: DQuestion[]): Promise<{ a
     const json = (await res.json().catch(() => ({}))) as { answers?: DAnswer[]; usage?: DUsage; error?: { message?: string } };
     if (res.ok && json.answers) {
       const u = json.usage ?? { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
+      record({ task: "decisions", model: DECISION_MODEL, inTok: u.input_tokens, outTok: u.output_tokens, ms: Date.now() - t });
       return { answers: json.answers, usage: u, ms: Date.now() - t };
     }
     lastErr = `${res.status} ${json.error?.message ?? "unknown error"}`;

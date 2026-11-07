@@ -5,7 +5,8 @@ import type { Page } from "playwright";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
 import { closeWhenSubmitted, keepOnlyTabs, openSession } from "../browser";
 import { agent, Tracer, Tracker, type Note } from "./legalAid";
-import { openai, MODELS } from "./llm";
+import { respond, MODELS } from "./llm";
+import { enterLedger } from "./ledger";
 import { makeLogger } from "./events";
 import type { CaseFacts } from "./facts";
 import { missingRequired } from "./facts";
@@ -91,6 +92,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
     }
     opts.onEvent?.(e);
   };
+  enterLedger({ runId, runDir, agent: "elliot", t0: startedAt, emit });
   emit({ type: "run", runId });
   const track = new Tracker(emit);
   const tracer = new Tracer(emit, runDir);
@@ -309,7 +311,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
     let prev: string | undefined;
     let finished = false;
     for (turns = 1; turns <= MAX_TURNS && !finished; turns++) {
-      const res: Response = await openai().responses.create({
+      const res: Response = await respond({
         model: MODELS.draft,
         reasoning: { effort: "low" },
         instructions: SYSTEM,
@@ -318,7 +320,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
         tool_choice: "required",
         parallel_tool_calls: false,
         ...(prev ? { previous_response_id: prev } : {}),
-      });
+      }, "complaint planner");
       prev = res.id;
       const calls = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
       if (!calls.length) {

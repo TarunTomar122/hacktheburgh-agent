@@ -9,7 +9,8 @@ import { z } from "zod";
 import { dismissCookies, keepOnlyTabs, openSession } from "../browser";
 import { pointAt } from "../agentCursor";
 import type { CaseFacts } from "./facts";
-import { EFFORT, MODELS, openai, structured } from "./llm";
+import { EFFORT, MODELS, respond, structured } from "./llm";
+import { enterLedger } from "./ledger";
 import { makeLogger } from "./events";
 import {
   agent,
@@ -333,6 +334,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     }
     opts.onEvent?.(e);
   };
+  enterLedger({ runId, runDir, agent: "elliot", t0: startedAt, emit });
   emit({ type: "run", runId });
   const track = new Tracker(emit);
   const tracer = new Tracer(emit, runDir);
@@ -677,7 +679,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     let finished = false;
 
     for (turns = 1; turns <= MAX_TURNS && !finished; turns++) {
-      const res: Response = await openai().responses.create({
+      const res: Response = await respond({
         model: MODELS.draft,
         reasoning: { effort: "low" },
         instructions: SYSTEM,
@@ -686,7 +688,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         tool_choice: "required",
         parallel_tool_calls: true,
         ...(prev ? { previous_response_id: prev } : {}),
-      });
+      }, "planner");
       prev = res.id;
       const calls: ResponseFunctionToolCall[] = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
       if (!calls.length) {

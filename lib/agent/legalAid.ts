@@ -1,4 +1,6 @@
 import { chooseFinderLocation } from "./finderLocation";
+import { withLedger } from "./ledger";
+import { CREW, type CrewId } from "./plannerTypes";
 import type { SearchLocation } from "./searchLocation";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -97,6 +99,12 @@ export type LogExtra = Partial<Pick<TraceStep, "url" | "detail" | "confidence" |
 /** The tile note, plus `.log` (add a trace step, optionally with a screenshot) for the agent's own tab. */
 export type Note = ((s: string) => void) & { log: (kind: TraceStep["kind"], text: string, extra?: LogExtra) => Promise<void> };
 
+/** "Robin · SLAB lawyer list" -> "robin" (the ledger's agent); anything else counts as the lead. */
+const crewOfLabel = (label: string): CrewId => {
+  const name = label.split(" · ")[0].trim().toLowerCase();
+  return (Object.keys(CREW) as CrewId[]).includes(name as CrewId) ? (name as CrewId) : "elliot";
+};
+
 /** One browser agent in its own tab: a coloured cursor, a grid tile, and a time limit. Failures are reported, not thrown. */
 export async function agent<T>(
   ctx: { context: BrowserContext; emit: Emit; track: Tracker; tracer: Tracer; first?: Page },
@@ -134,7 +142,7 @@ export async function agent<T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const value = await Promise.race([
-      work(page, note),
+      withLedger({ agent: crewOfLabel(label) }, () => work(page, note)),
       new Promise<never>((_, rej) => (timer = setTimeout(() => rej(new Error("Took too long")), timeoutMs))),
     ]);
     update({ state: "done", note: tile.note });
