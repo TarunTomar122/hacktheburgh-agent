@@ -13,6 +13,7 @@ export type Milestone = { step: number; label: string; done: boolean };
  */
 export function milestones(p: Profile): Milestone[] {
   const g = p.progress ?? {};
+  const skipped = g.skipped ?? []; // steps the user skipped in the demo (D60)
   return [
     { step: 1, label: "Your details are complete", done: missingRequired(p.facts).length === 0 },
     { step: 1, label: "Complaint written", done: !!p.draft?.details.trim() },
@@ -30,7 +31,7 @@ export function milestones(p: Profile): Milestone[] {
     { step: 4, label: "Enquiries sent", done: (p.enquiries ?? []).some((e) => e.status === "sent" || e.status === "replied" || e.status === "not_interested") },
     { step: 4, label: "A firm replied", done: (p.enquiries ?? []).some((e) => e.status === "replied") },
     { step: 5, label: "Case file complete", done: false },
-  ];
+  ].map((m) => ({ ...m, done: m.done || skipped.includes(m.step) }));
 }
 
 export function summarise(ms: Milestone[]) {

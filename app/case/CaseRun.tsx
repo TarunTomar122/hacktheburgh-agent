@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FIXTURE_RESULT } from "../../lib/agent/legalAidFixture";
 import type { Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
-import { setCaseRun, setEnquiry, setLegalAid, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
+import { setCaseRun, setEnquiry, setLegalAid, skipStep, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
 import { Button, cx, Eyebrow } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip, { stepStatuses } from "./crew/StepStrip";
@@ -65,6 +65,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   // Demo (D58): skip the research and go on to step 4 with the three sample firms, as if the crew had found them.
   const skipToStepFour = () => {
     setLegalAid({ result: FIXTURE_RESULT, sample: true, selected: FIXTURE_RESULT.shortlist.slice(0, 3) });
+    skipStep(3);
     onReviewEnquiries();
   };
   return <Intro error={state.status === "error" ? state.error : undefined} onStart={() => start(profile.facts, profile.legalAid?.funding)} onSkip={skipToStepFour} />;

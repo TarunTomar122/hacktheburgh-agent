@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Skipping a step completes it in the progress meter (D60)
+Om: after skipping, the top-right meter still said "1 of 6 done". Added `skipStep` and `progress.skipped`; the three demo skips call it and `milestones()` counts a skipped step's milestones as done. `tsc` and `eslint` clean; not clicked through in a browser yet.
+
 ### 2026-11-07 - Luigi + Codex - Fix review items 2, 3, 4 and 5
 Enquiry filling now requires a current shortlisted, non-excluded firm and reserves one of three attempt slots synchronously before any model/browser call. Duplicate active/ready fills are blocked; failed attempts can retry within the remaining budget. Draft failures are shown before forms are filled and offer a retry. Worker reports carry an explicit success flag; the step strip shows Needs attention for failures, including legacy error reports, and successful retries replace failures for that same worker/task/tab. Search summaries use confirmed approved-postcode distances only; declining permission never produces a nearest/null-miles claim.
 Verified: planner-guards regression (including concurrent slot claims and mixed failed/successful firm checks) and mocked browser drafting failure/retry. Fictional data only, no external submissions. Item 1 (medical comparison message) remains unchanged as requested. TypeScript, lint and production build passed. Final pull was already up to date with no conflicts. No live-site engine changes.

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
-import { setDraft, setOmbudsman, setProgress, useProfile, type Profile } from "../../lib/profile";
+import { setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
 import { Button, Callout, Console, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
@@ -180,6 +180,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
           disabled={filling}
           onClick={() => {
             void closeAgentBrowser(); // the half-filled form is no use any more
+            skipStep(1);
             setOmbudsman({ unlocked: true });
             onContinue();
           }}

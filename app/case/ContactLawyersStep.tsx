@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord, EnquiryStatus } from "../../lib/agent/enquiryTypes";
 import type { AgentTile, FirmFinding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
-import { setEnquiry, setOutcome, upsertEnquiries, type Profile } from "../../lib/profile";
+import { setEnquiry, setOutcome, skipStep, upsertEnquiries, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, PageTitle, Paper } from "../ui";
 import { draftMessage, runStep4, sendEnquiry } from "./enquiryRun";
 import { closeAgentBrowser } from "./streamAgent";
@@ -150,6 +150,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
     const skipped = targets.filter((o) => !isSent(o.firmId) && o.status !== "no_form").map((o) => ({ ...o, status: "sent" as const, sentAt: at, note: "Skipped in the demo: nothing was actually sent" }));
     setEnquiry({ outcomes: [...targets.filter((o) => !skipped.some((s) => s.firmId === o.firmId)), ...skipped] });
     upsertEnquiries(skipped.map((o) => ({ firmId: o.firmId, firmName: o.firmName, status: "sent" as const, sentAt: at, followUpOn: followUpFrom(at) })));
+    skipStep(4);
     setLive(null);
   };
   const skippable = outcomes.length ? outcomes.filter((o) => o.status !== "no_form").map((o) => o.firmId) : firms.map((f) => f.id);

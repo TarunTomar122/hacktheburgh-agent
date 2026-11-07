@@ -30,7 +30,7 @@ export type Profile = {
   /** Step 2 (ombudsman). Opens after the NHS replies; answers are asked there, not at onboarding (D29). Missing in older saved profiles. */
   ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers> };
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
-  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean };
+  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; skipped?: number[] };
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
   /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
@@ -99,6 +99,13 @@ export function setOmbudsman(patch: { unlocked?: boolean; answers?: Partial<Spso
   if (!p) return;
   const cur = p.ombudsman ?? { unlocked: false, answers: {} };
   write({ ...p, ombudsman: { unlocked: patch.unlocked ?? cur.unlocked, answers: patch.answers ? { ...cur.answers, ...patch.answers } : cur.answers } });
+}
+
+/** Demo (D60): the user skipped this step, so every milestone of it counts as done. */
+export function skipStep(step: number) {
+  const p = read();
+  const cur = p?.progress?.skipped ?? [];
+  if (p && !cur.includes(step)) write({ ...p, progress: { ...p.progress, skipped: [...cur, step] } });
 }
 
 export function setProgress(patch: NonNullable<Profile["progress"]>) {

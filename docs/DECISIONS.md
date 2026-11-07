@@ -291,4 +291,7 @@ User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's exist
 **D59 · 2026-11-07 · Om (asked), Claude (built) · decided**
 **Demo skip on step 4 ("Contact lawyers").** "Skip and mark as sent (demo)" sits beside "Fill their enquiry forms" and above the firm cards (`app/case/ContactLawyersStep.tsx`). It closes the agent's browser, marks every firm that has a form (or every picked firm, if nothing was filled yet) as sent with the note "Skipped in the demo: nothing was actually sent", and starts the three-day follow-up clock, so the demo can go on to "A firm replied". Nothing is sent. The button hides once every firm is marked. Same idea as D49 and D58.
 
-<!-- Add new entries above this line. Next number: D60 -->
+**D60 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**A skipped step counts as done in the progress meter.** The demo skip buttons (D49 step 1, D58 step 3, D59 step 4) now call `skipStep(n)` (`lib/profile.ts`), which records the step in `progress.skipped`. `milestones()` (`app/case/progress.ts`) treats every milestone of a skipped step as done, so skipping steps 3 and 4 shows "6 of 6 done" on the compensation track. Real results are untouched: sample data still does not count as a real check anywhere else. Step 2 (ombudsman) has no skip button, so on the complaint track its milestones still need the real steps.
+
+<!-- Add new entries above this line. Next number: D61 -->
