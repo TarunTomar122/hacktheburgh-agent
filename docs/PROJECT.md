@@ -10,6 +10,8 @@ Case continuity update (2026-11-07, Codex): planner money answers persist during
 
 Complaint scope (D71, 2026-11-07): unconfirmed treatment locations are draft-only with edit/copy/download. NHS form entry points reject them before navigation; local deadlines and guidance remain unverified. Offline regression verified. Routing uses a limited named-site allowlist, not a complete directory.
 
+Onboarding update (D72, 2026-11-07): one visible question, date-specific event prompt, own-care default, retry for unintelligible stories and editable final review. Browser regression verified cancel, validation and persisted corrections; live extraction accepted short/misspelled meaningful answers and rejected the two random-letter examples.
+
 ## Flow and status
 
 | # | Step | Status |

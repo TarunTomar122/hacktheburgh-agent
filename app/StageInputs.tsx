@@ -134,6 +134,11 @@ function StageForm({
   const baseId = useId();
   const total = spec.fields.length;
   const f = spec.fields[i];
+  const eventDate = values.eventDate?.trim();
+  const dateLabel = eventDate && /^\d{4}-\d{2}-\d{2}$/.test(eventDate)
+    ? new Date(`${eventDate}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+    : eventDate;
+  const question = f.key === "eventWhat" && dateLabel ? `You entered “${dateLabel}”. What happened at that time?` : f.label;
   const value = values[f.key] ?? "";
   const id = `${baseId}-${f.key}`;
   const setValue = (v: string) => setValues((s) => ({ ...s, [f.key]: v }));
@@ -232,13 +237,9 @@ function StageForm({
             {i + 1} of {total}
           </p>
         )}
-        {f.kind === "date" || f.kind === "select" ? (
-          <p className="font-serif text-[26px] font-light leading-tight text-ink">{f.label}</p>
-        ) : (
-          <label htmlFor={id} className="block font-serif text-[26px] font-light leading-tight text-ink">
-            {f.label}
-          </label>
-        )}
+        <h1 className="display text-[32px] leading-tight text-ink sm:text-[40px]">
+          {f.kind === "date" || f.kind === "select" ? question : <label htmlFor={id}>{question}</label>}
+        </h1>
         {f.hint && <p className="mt-1.5 text-sm text-muted">{f.hint}</p>}
         {note && <p className="mt-1.5 text-sm text-brand">{note}</p>}
         <div className="mt-6">{control}</div>

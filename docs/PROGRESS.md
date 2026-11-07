@@ -8,6 +8,21 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 - Luigi + Codex - Edit the final onboarding summary
+Added Edit details before starting the case: names, treatment location, story, desired outcome, contact details and dated timeline events can be corrected, added or removed. Changes stay in a local editor until Save changes; Cancel discards them. Required fields, dates and contact formats are validated; the start button is hidden during editing. Verified in an isolated browser using a mocked interview and fictional data: cancel, rejected empty first name, corrected story/timeline, and persisted facts after starting the case. The first test found textarea accessible labels included content; explicit labels fixed this. A test selector also matched Next's route announcer and was narrowed. TypeScript and lint passed. No real model calls or submissions in the editor test. User subsequently authorized push; final fetch/pull found main up to date and no conflicts.
+
+### 2026-11-07 - Luigi + Codex - Give the event question its date context
+The event-description screen now shows the date just entered, including rough dates in the user's own words, and asks what happened at that time. Added a hint distinguishing the accident from a medical appointment, with an example. Exact dates display in readable UK format. No answer-processing changes.
+
+### 2026-11-07 - Luigi + Codex - Retry unintelligible story answers
+The existing extraction call now separately judges whether the latest free-text answer is understandable. Unintelligible text raises the existing InputError before any facts are merged, keeping the current question and entered text for correction. The prompt explicitly accepts short answers, typos, uncertainty and other languages. This does not add dictionary-based restrictions to personal names or structured form fields. Verified with live extraction on fictional text: both random-letter examples rejected; "I fell" and a misspelled arm-injury account accepted; caller facts unchanged. TypeScript and lint passed. This remains model judgment, not a guarantee for every possible input.
+
+### 2026-11-07 - Luigi + Codex - Assume own care in onboarding
+User requested removing the own-care question. New facts and missing values in older profiles default to me; onboarding skips the who stage and its progress slot. Explicit someone_else values remain intact. Already-open interviews on that question advance to the next missing detail after hot reload.
+
+### 2026-11-07 - Luigi + Codex - One question per onboarding field
+The shared interview reply stayed above every field in a grouped answer, so the date question remained visible above the later event-description input. Hide that group-level heading for form inputs and promote the current field's label to the screen heading. Other question types keep their existing heading. Field order, validation and submitted answers are unchanged.
+
 ### 2026-11-07 - Luigi + Codex - Unsupported complaint route (D71)
 Pulled a48cc49: D69 restored the old step 1 page, so the screenshot's crew flow was no longer the default. Fixed both screens and the server runners. Unconfirmed treatment locations now get a facts-only editable draft, copy/download, and explicit unverified recipient/deadlines/guidance; no retry or NHS/SPSO continuation is offered there. Server tests prove Mater Dei returns before browser/model work with no time-limit or guideline result. Added a fracture-context gate for the complaint evidence tool and draft evidence injection. The allowlist is intentionally limited, so unrecognised NHS clinics require manual checking. Existing saved summaries containing unsupported guidance are replaced in this view with saved-story/timeline text, without changing saved facts.
 Verification: scripts/test-complaint-scope.tsx passes (including both NHS entry points rejecting before page use, draft-only crew result and rendered export actions). TypeScript/lint passed; no real sites or submissions used. Production build passed. User authorized push after review; final pull was up to date with no conflicts, and the regression, TypeScript and lint checks passed again.

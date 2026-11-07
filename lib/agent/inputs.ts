@@ -45,7 +45,6 @@ export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboardi
   if (blank(f.firstName)) return "name";
   if (blank(f.incidentSummary)) return "story";
   if (f.events.length === 0 || f.events.some((e) => blank(e.date)) || blank(f.incidentLocation)) return "details";
-  if (f.complainingFor === null) return "who";
   if (blank(f.lastName) || blank(f.address) || blank(f.postcode) || blank(f.phone) || blank(f.email)) return "contact";
   if (scope === "nhs" && f.preferredContact === null) return "contactMethod";
   if (scope === "nhs" && f.preferredContact === "Email" && f.emailRiskAccepted === null) return "emailRisk";
@@ -60,6 +59,7 @@ export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboardi
  */
 export function normaliseFacts(f: CaseFacts): CaseFacts {
   const out = { ...f };
+  out.complainingFor ??= "me";
   if (out.address && blank(out.postcode)) {
     const s = splitPostcode(out.address);
     if (s) {
@@ -207,7 +207,7 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         fields.push({ key: "eventDate", label: "When did it happen?", kind: "date", required: true, hint: "A rough date is fine." });
       }
       if (f.events.length === 0) {
-        fields.push({ key: "eventWhat", label: "In a few words, what happened then?", kind: "text", required: true });
+        fields.push({ key: "eventWhat", label: "What happened on the date you just entered?", kind: "text", required: true, hint: "Describe the event you are dating, such as the accident or a medical appointment. For example: ‘I went to A&E and was advised to use ice.’" });
       }
       if (blank(f.incidentLocation)) {
         fields.push({ key: "incidentLocation", label: "Where did you receive the medical care you're concerned about?", kind: "text", required: true, suggestions: PLACE_SUGGESTIONS, hint: "Name the hospital, ward, clinic or GP surgery. If you had an accident, tell us where you were treated, rather than where the accident happened." });

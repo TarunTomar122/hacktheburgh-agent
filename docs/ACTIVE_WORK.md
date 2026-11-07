@@ -6,6 +6,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
+| Onboarding clarity and review | Luigi + Codex | Done, idle | Questions, own-care default, extraction validation and summary editor | D72; reviewed and user authorized push |
 | Unsupported complaint location | Luigi + Codex | Done, idle | complaintScope, complaint screens, draft and NHS runners | D71; user requested the screenshot issues be fixed |
 | Case continuity fixes | Luigi + Codex | Done, idle | Funding stream, enquiry selection and tracker | User requested three state bug fixes |
 | Complaint crew (step 1) | Tarun + Claude | **Built (D65) but not shown: step 1 is the earlier page again (D69).** | `lib/agent/complaintPlanner.ts`, `complaintAgents.ts`, `app/case/ComplaintRun.tsx`, `app/case/page.tsx` | Same run screen as step 3; demo run in `demo/complaint-*` |

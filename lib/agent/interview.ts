@@ -10,6 +10,7 @@ export type { ChatMessage } from "./chat";
 export class InputError extends Error {}
 
 const Extract = z.object({
+  answerUnderstood: z.boolean().describe("Whether the latest answer has an understandable meaning in context. False for random letters or meaningless text; true for meaningful short answers, uncertainty, spelling mistakes or another language."),
   facts: CaseFacts.describe("The full updated facts. Keep everything already known; add or correct from the latest answer only."),
   acknowledgement: z
     .string()
@@ -20,6 +21,8 @@ const Extract = z.object({
 const INSTRUCTIONS = `You read what a person tells you about care they received from the NHS in Scotland, and record it as facts for an NHS Lothian complaint form. You do not choose the next question: the program does that.
 
 Recording facts
+- First judge the latest answer, not whether earlier messages were understandable. Set answerUnderstood to false for random keyboard characters or text with no understandable meaning, such as 'dfahkdiosfaiojf' or 'afkjnfaf'. Do not turn this into an incident or invent a meaning. Keep the existing facts unchanged in that case.
+- Accept meaningful short answers, imperfect spelling, informal language and other languages. 'I fell', 'hurt my arm', and 'I cannot remember' are understandable. Missing detail is not gibberish; the program will ask follow-up questions.
 - Only record what the user actually said. Never guess or invent a fact. If unsure, leave it null.
 - Keep everything already known. Add or correct from the latest answer only.
 - The user may give several facts in one answer: capture all of them.
@@ -83,6 +86,7 @@ export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = 
         schema: Extract,
         name: "interview_extract",
       });
+      if (!turn.answerUnderstood) throw new InputError("I couldn't understand that answer. Please try again in your own words. A short sentence is fine.");
       merged = mergeFacts(known, turn.facts);
       // Consent and the outcome are only ever taken from their own question, whatever else the user said.
       if (asked !== "emailRisk") merged.emailRiskAccepted = known.emailRiskAccepted;

@@ -4,18 +4,19 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
-import { echoFor, inputFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
+import { echoFor, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, type DemoPersona } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
 import StageInput from "./StageInputs";
+import ReviewEditor from "./ReviewEditor";
 import { LogoLink } from "./ui";
 
 // Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
 // The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
-const STEPS: Target[] = ["name", "story", "details", "who", "contact", "outcome", "done"];
+const STEPS: Target[] = ["name", "story", "details", "contact", "outcome", "done"];
 
 const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
 
@@ -24,15 +25,18 @@ export default function Onboarding() {
   const [messages, setMessages] = useState<ChatMessage[]>([OPENER]);
   const [facts, setFacts] = useState<CaseFacts>(emptyFacts());
   const [done, setDone] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [spec, setSpec] = useState<InputSpec>(() => inputFor("name", emptyFacts()));
+  const [savedSpec, setSpec] = useState<InputSpec>(() => inputFor("name", emptyFacts()));
+  // Advance existing interviews past the removed question after a hot reload.
+  const spec = savedSpec.target === "who" ? inputFor(nextTarget(normaliseFacts(facts)), normaliseFacts(facts)) : savedSpec;
   const [nameDraft, setNameDraft] = useState("");
   // It stays up while the first reply is on its way, so the opening question never flashes back as a second name question.
   const naming = !done && (messages.length === 1 || (thinking && spec.target === "name" && messages.length === 2));
 
   // The screen shows the latest question; while the next one loads, the old one stays up with the OK button busy.
-  const question = [...messages].reverse().find((m) => m.role === "agent")?.content ?? OPENER.content;
+  const question = savedSpec.target === "who" ? questionFor(spec.target, normaliseFacts(facts)) : [...messages].reverse().find((m) => m.role === "agent")?.content ?? OPENER.content;
   const agentCount = messages.filter((m) => m.role === "agent").length;
   const pct = Math.round(((STEPS.indexOf(spec.target) + 1) / STEPS.length) * 100);
 
@@ -129,13 +133,14 @@ export default function Onboarding() {
             <NameStep value={nameDraft} onChange={setNameDraft} busy={thinking} error={error} onSubmit={onFree} />
           ) : done ? (
             <div className="fade-up my-auto space-y-5 py-10">
-              <p className="eyebrow">All done</p>
+              <p className="eyebrow">Review your details</p>
               <h1 className="display text-[34px] sm:text-[42px]">
-                Here is what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
+                {editing ? "Edit your details" : "Here is what I have."} <span className="text-muted">Check and correct anything before starting your case.</span>
               </h1>
+              {editing ? <ReviewEditor facts={facts} onSave={(updated) => { setFacts(updated); setEditing(false); }} onCancel={() => setEditing(false)} /> : <>
               <div className="space-y-4 rounded-card border border-line bg-paper p-6 text-sm">
                 <Row label="Name" value={[facts.title, facts.firstName, facts.lastName].filter(Boolean).join(" ")} />
-                <Row label="Where it happened" value={facts.incidentLocation} />
+                <Row label="Where you received care" value={facts.incidentLocation} />
                 <Row label="What happened" value={facts.incidentSummary} />
                 {facts.events.length > 0 && (
                   <div>
@@ -153,13 +158,17 @@ export default function Onboarding() {
                 <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
                 <Row label="Prefer to be contacted by" value={facts.preferredContact} />
               </div>
+              <div className="flex flex-wrap gap-3">
+              <button onClick={() => setEditing(true)} className="btn-ghost !px-7 !py-3 !text-[15px]">Edit details</button>
               <button onClick={start} className="btn-primary !px-7 !py-3 !text-[15px]">
                 Looks right, start my case
               </button>
+              </div>
+              </>}
             </div>
           ) : (
             <div key={`${spec.target}-${agentCount}`} className="fade-up my-auto py-10">
-              <h1 className={"display mb-8 whitespace-pre-wrap " + (question.length > 110 ? "text-[26px] sm:text-[30px]" : "text-[32px] sm:text-[40px]")}>{question}</h1>
+              {spec.kind !== "form" && <h1 className={"display mb-8 whitespace-pre-wrap " + (question.length > 110 ? "text-[26px] sm:text-[30px]" : "text-[32px] sm:text-[40px]")}>{question}</h1>}
               <StageInput spec={spec} busy={thinking} error={error} onFree={onFree} onAnswer={onAnswer} />
             </div>
           )}

@@ -66,7 +66,7 @@ function subscribe(cb: () => void) {
  * full schema and answer "Bad request", so every field missing from a saved profile is filled with its empty value here.
  */
 function upgrade(p: Profile): Profile {
-  return { ...p, facts: { ...emptyFacts(), ...p.facts } };
+  return { ...p, facts: { ...emptyFacts(), ...p.facts, complainingFor: p.facts.complainingFor ?? "me" } };
 }
 
 function read(): Profile | null {

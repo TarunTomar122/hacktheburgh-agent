@@ -37,7 +37,7 @@ export const CaseFacts = z.object({
 export type CaseFacts = z.infer<typeof CaseFacts>;
 
 export const emptyFacts = (): CaseFacts => ({
-  complainingFor: null,
+  complainingFor: "me",
   title: null,
   firstName: null,
   lastName: null,
