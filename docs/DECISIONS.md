@@ -286,4 +286,7 @@ User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's exist
 - **Not verified:** the confirmation-text check on the real NHS Lothian and SPSO sites (we never submit there). If it misses, the browser still closes on any of the other signals above.
 - **Tested** with a local fixture form (submit closes it; closing the tab closes it; only the approval tab survives and closes the browser with it).
 
-<!-- Add new entries above this line. Next number: D56 -->
+**D56 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**Demo skip on step 3 ("Preparing your case").** The intro screen has "Skip and continue to step 4 (demo)" beside the start button (`app/case/CaseRun.tsx`). It saves the step 3 sample result (`FIXTURE_RESULT`: three sample firms) as the profile's legal aid result, marks it as sample data and selects the three shortlisted firms, then opens step 4. No research runs. Step 4 then works on those firms' real websites (fills forms; the send gate stays closed). Same idea as D49.
+
+<!-- Add new entries above this line. Next number: D57 -->

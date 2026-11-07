@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { FIXTURE_RESULT } from "../../lib/agent/legalAidFixture";
 import type { Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 import { setCaseRun, setEnquiry, setLegalAid, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
@@ -61,12 +62,17 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={() => start(profile.facts, profile.legalAid?.funding)} />;
-  return <Intro error={state.status === "error" ? state.error : undefined} onStart={() => start(profile.facts, profile.legalAid?.funding)} />;
+  // Demo (D56): skip the research and go on to step 4 with the three sample firms, as if the crew had found them.
+  const skipToStepFour = () => {
+    setLegalAid({ result: FIXTURE_RESULT, sample: true, selected: FIXTURE_RESULT.shortlist.slice(0, 3) });
+    onReviewEnquiries();
+  };
+  return <Intro error={state.status === "error" ? state.error : undefined} onStart={() => start(profile.facts, profile.legalAid?.funding)} onSkip={skipToStepFour} />;
 }
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
+function Intro({ onStart, onSkip, error }: { onStart: () => void; onSkip: () => void; error?: string }) {
   return (
     <div className="mx-auto max-w-5xl py-4">
       <Eyebrow>Compensation · step 1</Eyebrow>
@@ -75,7 +81,12 @@ function Intro({ onStart, error }: { onStart: () => void; error?: string }) {
         <StepStrip />
       </div>
       <div className="mt-12 flex flex-col items-center gap-4">
-        <Button onClick={onStart}>Start preparing my case</Button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button onClick={onStart}>Start preparing my case</Button>
+          <Button variant="secondary" onClick={onSkip} title="Demo: no research is done. Opens step 4 with three sample firms.">
+            Skip and continue to step 4 (demo)
+          </Button>
+        </div>
         <p className="text-[13px] text-muted">
           <span className="text-teal">✓</span> Asks you only when needed <span className="mx-2 text-fade">·</span> <span className="text-teal">✓</span> Nothing sent without your OK <span className="mx-2 text-fade">·</span> ≈ 3 min
         </p>
