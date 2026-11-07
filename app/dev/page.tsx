@@ -24,31 +24,32 @@ export default function DevSearch() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-10">
-      <h1 className="text-2xl font-semibold">Browser agent</h1>
-      <p className="text-sm text-zinc-500">
+      <div>
+        <div className="eyebrow mb-3">Developer tools</div>
+        <h1 className="display text-4xl">
+          Browser <span className="hl-violet">agent</span>
+        </h1>
+      </div>
+      <p className="text-sm text-muted">
         Opens a visible browser and searches the Law Society of Scotland directory for Edinburgh
         accident and injury firms.
       </p>
-      <button
-        onClick={run}
-        disabled={running}
-        className="w-fit rounded-md bg-black px-4 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black"
-      >
+      <button onClick={run} disabled={running} className="btn-primary w-fit">
         {running ? "Searching…" : "Search for something"}
       </button>
 
-      {result && "error" in result && <p className="text-red-600">Error: {result.error}</p>}
+      {result && "error" in result && <p className="text-danger">Error: {result.error}</p>}
       {result && "firms" in result && (
         <section className="flex flex-col gap-3">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted">
             {result.total ?? "?"} results found, showing {result.firms.length}
           </p>
           <ul className="flex flex-col gap-2">
             {result.firms.map((f) => (
-              <li key={f.name + f.address} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-                <div className="font-medium">{f.name}</div>
-                <div className="text-sm text-zinc-500">{f.address}</div>
-                <div className="text-xs text-zinc-500">
+              <li key={f.name + f.address} className="card p-3">
+                <div className="font-medium text-ink">{f.name}</div>
+                <div className="text-sm text-muted">{f.address}</div>
+                <div className="text-xs text-muted">
                   {f.legalAid ? "Legal aid · " : ""}
                   {f.partners ?? "?"} partners
                 </div>

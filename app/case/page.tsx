@@ -34,35 +34,45 @@ export default function CasePage() {
 
   return (
     <div className="flex h-screen">
-      <aside className="flex w-72 shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800">
+      <aside className="flex w-72 shrink-0 flex-col border-r border-hairline bg-cream">
         <div className="p-5">
-          <div className="text-sm text-zinc-500">Case for</div>
-          <div className="text-lg font-semibold">{name}</div>
+          <div className="eyebrow">Case for</div>
+          <div className="display mt-1 text-2xl">{name}</div>
         </div>
         <nav className="flex-1 space-y-1 px-3">
           <button
             onClick={() => setActive("profile")}
-            className={"flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm " + (active === "profile" ? "bg-zinc-100 dark:bg-zinc-900" : "")}
+            className={
+              "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-ink " +
+              (active === "profile" ? "border border-hairline bg-paper shadow-sm" : "border border-transparent hover:bg-paper/60")
+            }
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-200 text-xs dark:bg-zinc-800">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-xs font-medium text-brand">
               {(f.firstName ?? "?").charAt(0).toUpperCase()}
             </span>
             <span className="flex-1">Profile</span>
-            {incomplete && <span className="h-2 w-2 rounded-full bg-amber-500" title="Some details are missing" />}
+            {incomplete && <span className="h-2 w-2 rounded-full bg-orange" title="Some details are missing" />}
           </button>
-          <div className="px-3 pt-4 pb-1 text-xs uppercase text-zinc-400">Steps</div>
+          <div className="eyebrow px-3 pt-5 pb-1">Steps</div>
           {STEPS.map((s) => (
             <button
               key={s.n}
               disabled={!s.ready}
               onClick={() => setActive(s.n)}
               className={
-                "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm " +
-                (active === s.n ? "bg-zinc-100 dark:bg-zinc-900 " : "") +
-                (s.ready ? "" : "cursor-not-allowed text-zinc-400")
+                "flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm " +
+                (active === s.n ? "border-hairline bg-paper text-ink shadow-sm " : "border-transparent ") +
+                (s.ready ? (active === s.n ? "" : "text-ink hover:bg-paper/60") : "cursor-not-allowed text-faint")
               }
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full border border-current text-xs">{s.n}</span>
+              <span
+                className={
+                  "flex h-6 w-6 items-center justify-center rounded-full text-xs " +
+                  (active === s.n && s.ready ? "bg-brand text-white" : "border border-current")
+                }
+              >
+                {s.n}
+              </span>
               <span className="flex-1">{s.title}</span>
               {!s.ready && <span className="text-xs">Soon</span>}
             </button>
@@ -80,9 +90,6 @@ export default function CasePage() {
     </div>
   );
 }
-
-const box =
-  "w-full rounded-md border border-zinc-300 bg-transparent p-3 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700";
 
 function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -173,15 +180,17 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-8">
       <header>
-        <div className="text-sm text-zinc-500">Step 1</div>
-        <h1 className="text-2xl font-semibold">Complain to NHS Lothian</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <div className="eyebrow">Step 1</div>
+        <h1 className="display mt-2 text-4xl">
+          Complain to <span className="hl-blue">NHS Lothian</span>
+        </h1>
+        <p className="mt-3 text-sm text-muted">
           We prepare the complaint. You review and edit it, and nothing is sent until you approve.
         </p>
       </header>
 
       {missing.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+        <div className="rounded-lg border border-orange/40 bg-orange-50 p-3 text-sm text-body">
           Before we can fill in the form we still need: {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.{" "}
           <button onClick={openProfile} className="underline">
             Open your profile
@@ -195,47 +204,47 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
           <button
             onClick={write}
             disabled={busy || filling || missing.length > 0}
-            className="rounded-md border border-zinc-300 px-3 py-1 text-xs disabled:opacity-40 dark:border-zinc-700"
+            className="btn-ghost !px-3 !py-1 !text-xs"
           >
             {busy ? "Writing…" : draft ? "Write it again" : "Write my draft"}
           </button>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {!draft && !busy && <p className="text-sm text-zinc-500">We write this from your profile. You can edit every word.</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {!draft && !busy && <p className="text-sm text-muted">We write this from your profile. You can edit every word.</p>}
         {draft && (
           <fieldset disabled={filling} className="space-y-3">
             <label className="block space-y-1">
-              <span className="text-xs uppercase text-zinc-500">Details of your complaint</span>
-              <textarea rows={12} className={box} value={draft.details} onChange={(e) => setDraft({ ...draft, details: e.target.value })} />
+              <span className="eyebrow">Details of your complaint</span>
+              <textarea rows={12} className="field" value={draft.details} onChange={(e) => setDraft({ ...draft, details: e.target.value })} />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs uppercase text-zinc-500">Where it happened</span>
-              <textarea rows={2} className={box} value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />
+              <span className="eyebrow">Where it happened</span>
+              <textarea rows={2} className="field" value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />
             </label>
             <label className="block space-y-1">
-              <span className="text-xs uppercase text-zinc-500">What you would like to happen</span>
-              <textarea rows={2} className={box} value={draft.outcome} onChange={(e) => setDraft({ ...draft, outcome: e.target.value })} />
+              <span className="eyebrow">What you would like to happen</span>
+              <textarea rows={2} className="field" value={draft.outcome} onChange={(e) => setDraft({ ...draft, outcome: e.target.value })} />
             </label>
           </fieldset>
         )}
       </section>
 
-      <section className="flex items-center gap-4 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
-        <div className="flex-1 text-sm text-zinc-500">
+      <section className="flex items-center gap-4 rounded-lg border border-dashed border-line bg-mist p-4">
+        <div className="flex-1 text-sm text-muted">
           Review the draft above, then open the NHS form with your saved details. The browser stays open for review for up to 10 minutes. Demo data is for review only.
         </div>
-        <button onClick={fill} disabled={busy || filling || missing.length > 0 || !draft?.details.trim() || !draft?.location.trim()} className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-black">
+        <button onClick={fill} disabled={busy || filling || missing.length > 0 || !draft?.details.trim() || !draft?.location.trim()} className="btn-primary">
           {filling ? "Filling the form…" : "Approve draft and fill NHS form"}
         </button>
       </section>
       {progress.length > 0 && (
-        <section aria-label="Browser agent progress" className="space-y-2 text-sm text-zinc-500">
+        <section aria-label="Browser agent progress" className="space-y-2 text-sm text-muted">
           <h2 className="font-medium">Browser activity</h2>
           <ol>{progress.map((message, i) => <li key={i}>{message}</li>)}</ol>
         </section>
       )}
       {result && (
-        <section role="status" className="space-y-2 rounded-lg border border-zinc-300 p-4 text-sm dark:border-zinc-700">
+        <section role="status" className="card space-y-2 text-sm">
           <h2 className="font-medium">{result.status === "ready_to_submit" ? "Form filled and ready for review" : "The form needs your attention"}</h2>
           <p>{result.summary}</p>
           {result.question && <p>{result.question}</p>}

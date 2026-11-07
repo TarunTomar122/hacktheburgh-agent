@@ -26,6 +26,9 @@ Not in scope for now: booking an expert (solicitor chooses and instructs experts
 - UI: onboarding chat, `/case` with a Profile tab (view and edit every fact, saved in the browser's localStorage) and a steps sidebar. Step 1 now has a draft approval and form-fill button, streamed browser activity, and results with missing fields/questions. Verified through the app on 2026-11-07 with fictional Ailsa data. The filled browser stays open up to 10 minutes for review. Submission remains manual and untested.
 - `/dev`: button that searches the Law Society directory in a headed browser.
 - Dev shortcut: the onboarding page has a **"Skip: use demo patient"** button (dev builds only) that loads the fictional Ailsa Reid from `lib/agent/sample.ts` with a ready-made draft and opens `/case` (D24).
+- Interview inputs (D28): code picks each question and its input type (date picker, dropdown, buttons, checklist, tel/email fields); free text only for the first name and the story. **Unverified:** the free-text model path; title list and place suggestions against the real NHS form.
+- Interview manner (D27): plain words, GP-like then solicitor-like by stage, no jargon. **Unverified:** how the model actually behaves with the new prompt; not run yet.
+- Theme (D26): Wordsmith palette plus self-hosted Inter and Newsreader. Tokens in `app/globals.css`; shared classes `.display`, `.eyebrow`, `.btn-primary`, `.btn-ghost`, `.field`, `.card`, `.hl-blue`, `.hl-violet`. **Verified** (2026-11-07): colours and font names read from wordsmith.ai; typecheck, lint and a production build pass; pages screenshotted with fictional data. **Unverified:** that Newsreader is the closest free match to GT Ultra Median; that the commercial fonts are not redistributable (we did not read their licences).
 
 ## Verified site facts
 

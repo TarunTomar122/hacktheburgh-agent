@@ -21,7 +21,10 @@ export const CaseFacts = z.object({
       }),
     )
     .describe("Timeline of what happened, oldest first"),
-  desiredOutcome: z.string().nullable().describe("What they want to happen, e.g. explanation, apology, changes"),
+  desiredOutcome: z
+    .string()
+    .nullable()
+    .describe("What they want to happen, e.g. explanation, apology, changes. null until they have been asked; an empty string if they were asked and had nothing to add."),
   emailRiskAccepted: z
     .boolean()
     .nullable()

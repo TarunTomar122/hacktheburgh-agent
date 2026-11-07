@@ -1,71 +1,111 @@
 import { z } from "zod";
 import { EFFORT, MODELS, structured } from "./llm";
 import { CaseFacts, emptyFacts, mergeFacts, missingRequired } from "./facts";
+import { inputFor, nextTarget, normaliseFacts, parseName, patchFromAnswer, questionFor, validatePatch, type InputSpec, type Target } from "./inputs";
 
 import type { ChatMessage } from "./chat";
 export type { ChatMessage } from "./chat";
 
-const Turn = z.object({
-  facts: CaseFacts.describe("The full updated facts. Keep everything already known; add or correct from the latest answer."),
-  reply: z.string().describe("What to say to the user next: one short question, or a brief wrap-up if done."),
-  done: z.boolean().describe("True only when every required fact is known."),
+/** Thrown when a widget answer is not valid (bad postcode, future date). The route turns it into a 400. */
+export class InputError extends Error {}
+
+const Extract = z.object({
+  facts: CaseFacts.describe("The full updated facts. Keep everything already known; add or correct from the latest answer only."),
+  acknowledgement: z
+    .string()
+    .describe("Zero or one short sentence showing you heard them, in their own words. Empty if the answer was only a plain detail. Never a question."),
 });
 
-const INSTRUCTIONS = `You are the intake assistant for someone who may have received poor medical care in Scotland.
-Your job is to collect the facts needed to fill in an NHS Lothian complaint form, by chatting in simple, warm, plain words.
+// The order of the questions and their wording are fixed in code (inputs.ts, D28). The model only reads free text.
+const INSTRUCTIONS = `You read what a person tells you about care they received from the NHS in Scotland, and record it as facts for an NHS Lothian complaint form. You do not choose the next question: the program does that.
 
-Rules:
-- Order matters: after their first name, ask what happened and let them tell the story. Ask for last name and contact details AFTER the story, never before.
-- Ask ONE question at a time. Keep it short. No jargon.
+Recording facts
 - Only record what the user actually said. Never guess or invent a fact. If unsure, leave it null.
+- Keep everything already known. Add or correct from the latest answer only.
 - The user may give several facts in one answer: capture all of them.
-- Build the timeline in "events" (oldest first) as you learn dates and what happened.
-- Contact details (address, postcode, phone, email) can be asked together as one question.
-- Be sensitive. The user may be hurt or worried. Do not give legal or medical advice.
-- If they choose Email as their preferred contact, the NHS form shows this disclaimer: "I request NHS Lothian to contact me via email in relation to my enquiry. I understand and accept the risk that sending clinical information by an un-secured internet address involves the risk that the information can be diverted/sent to other parties/become lost and understand that NHS Lothian takes no responsibility for this." Explain it in one plain sentence and ask a clear yes/no. Set emailRiskAccepted true only for an explicit yes, false for an explicit no. Never assume consent. If they say no, offer Letter or Phone Call instead.
-- Once every required fact is known, ask once whether they want to add anything about what they would like to happen (desiredOutcome), then wrap up.
-- "done" is true only when all required facts are known AND desiredOutcome has been asked about.
-Required facts: complainingFor, firstName, lastName, address, postcode, phone, email, preferredContact, incidentLocation, incidentSummary, at least one event with a date, and emailRiskAccepted if preferredContact is Email.`;
+- incidentSummary is what went wrong, in the user's own words. If they add more later, extend it rather than replacing it.
+- Build the timeline in "events" (oldest first). Use YYYY-MM-DD only for a full date. Otherwise copy their wording, such as "early July 2026". Do not turn a rough date into an exact one.
+- Never suggest or fill in a date, a name or a place the user has not given.
+- desiredOutcome: set it only if the question being answered is the one about what they would like to happen. If they say they have nothing to add, set it to an empty string.
+- emailRiskAccepted: set it only if the question being answered is the email question. true only for an explicit yes, false for an explicit no.
+- preferredContact is one of Letter, Email, Phone Call. Set it only if they clearly chose.
+
+The acknowledgement
+- Say it the way a good GP or a careful solicitor would, but only in everyday words. Unhurried and calm, never theatrical.
+- No jargon at all. Use no medical term the user has not used first, and no legal term ever (nothing like "negligence", "liability", "breach" or "duty of care"). Use their own words for their injury and the places they went.
+- Do not diagnose, do not say who was at fault, do not say what will happen, and do not give advice.
+- One short sentence at most, without a question. Vary how you start. Never say "I'm sorry to hear that".
+- Leave it empty when the answer was only a plain detail such as a phone number or a yes or no.
+- Use British spelling.`;
 
 export type InterviewResult = {
   facts: CaseFacts;
   reply: string;
   done: boolean;
   missing: string[];
+  /** What the question is about, and which kind of input answers it. The UI renders this. */
+  target: Target;
+  input: InputSpec;
 };
 
-/** One turn of the intake chat. Pass the whole conversation so far (the agent's opener included). */
-export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = emptyFacts()): Promise<InterviewResult> {
-  const transcript = messages.map((m) => `${m.role === "agent" ? "Assistant" : "User"}: ${m.content}`).join("\n");
-  const input = `Facts known so far:\n${JSON.stringify(known)}\n\nConversation:\n${transcript}\n\nReturn the updated facts and the next thing to say.`;
+export type WidgetAnswer = Record<string, string | string[] | boolean>;
 
-  let turn = await structured({
-    model: MODELS.interview,
-    effort: EFFORT.interview,
-    instructions: INSTRUCTIONS,
-    input,
-    schema: Turn,
-    name: "interview_turn",
-  });
+/**
+ * One turn of the intake chat. Pass the whole conversation so far (the agent's opener included).
+ * - `answer` is what a form, button or checklist gave us for the question currently open. No model call.
+ * - Without it, the last message is free text and the model reads it.
+ */
+export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = emptyFacts(), answer?: WidgetAnswer): Promise<InterviewResult> {
+  const asked = nextTarget(known);
+  let merged: CaseFacts;
+  let acknowledgement = "";
 
-  let facts = mergeFacts(known, turn.facts);
-  let missing = missingRequired(facts);
-
-  // The model says "done" too early sometimes. Code decides, not the model.
-  if (turn.done && missing.length > 0) {
-    turn = await structured({
-      model: MODELS.interview,
-      effort: EFFORT.interview,
-      instructions: INSTRUCTIONS,
-      input: `${input}\n\nYou said done, but these required facts are still missing: ${missing.join(", ")}. Ask for them.`,
-      schema: Turn,
-      name: "interview_turn",
-    });
-    facts = mergeFacts(facts, turn.facts);
-    missing = missingRequired(facts);
+  if (answer) {
+    const patch = patchFromAnswer(asked, known, answer);
+    const problem = validatePatch(patch);
+    if (problem) throw new InputError(problem);
+    merged = { ...known, ...patch };
+  } else {
+    const text = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+    const name = asked === "name" ? parseName(text) : null;
+    if (name) {
+      merged = { ...known, firstName: name };
+    } else {
+      const transcript = messages.map((m) => `${m.role === "agent" ? "Assistant" : "User"}: ${m.content}`).join("\n");
+      const input = `Facts known so far:\n${JSON.stringify(known)}\n\nThe question the user is answering now:\n${questionFor(asked, known)}\n\nConversation:\n${transcript}\n\nReturn the updated facts and the acknowledgement.`;
+      const turn = await structured({
+        model: MODELS.interview,
+        effort: EFFORT.interview,
+        instructions: INSTRUCTIONS,
+        input,
+        schema: Extract,
+        name: "interview_extract",
+      });
+      merged = mergeFacts(known, turn.facts);
+      // Consent and the outcome are only ever taken from their own question, whatever else the user said.
+      if (asked !== "emailRisk") merged.emailRiskAccepted = known.emailRiskAccepted;
+      if (asked !== "outcome") merged.desiredOutcome = known.desiredOutcome;
+      acknowledgement = turn.acknowledgement.trim();
+    }
+    // Typed text can hold a mistake the model passed on; drop a bad value so the form asks for it again.
+    if (merged.postcode && validatePatch({ postcode: merged.postcode })) merged.postcode = known.postcode;
+    if (merged.phone && validatePatch({ phone: merged.phone })) merged.phone = known.phone;
+    if (merged.email && validatePatch({ email: merged.email })) merged.email = known.email;
   }
 
-  return { facts, reply: turn.reply, done: turn.done && missing.length === 0, missing };
+  const emailDeclined = asked === "emailRisk" && merged.emailRiskAccepted === false;
+  const facts = normaliseFacts(merged);
+  const target = nextTarget(facts);
+  const reply = [acknowledgement, questionFor(target, facts, { emailDeclined })].filter(Boolean).join(" ");
+
+  return {
+    facts,
+    reply,
+    done: target === "done" && missingRequired(facts).length === 0,
+    missing: missingRequired(facts),
+    target,
+    input: inputFor(target, facts, { emailDeclined }),
+  };
 }
 
 export { OPENER } from "./chat";

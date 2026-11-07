@@ -105,4 +105,22 @@ Why: saves a minute or more per reload while developing steps. It is a developer
 Connect the existing NHS browser agent to the Step 1 approval/fill button. Keep the visible filled browser open for review until the user closes it or 10 minutes elapse, then clean up. The API returns completion immediately. The fictional demo still ends before submission, consistent with D14 and D21.
 Why: Luigi requested the NHS form browser workflow, and the backend existed while its UI entry point was disabled.
 
-<!-- Add new entries above this line. Next number: D26 -->
+
+**D26 · 2026-11-07 · Om, built by Claude · proposed (needs Tarun to confirm; see Discrepancy 5)**
+Restyle the UI with Wordsmith's colour scheme (the track sponsor's site). Light theme only; the old dark-mode variants are removed. Tokens are in `app/globals.css` under `@theme`: white page, `#181818` text, `#0A0A0A` headings, `#737373` secondary text, `#0060DF` primary blue, `#9333EA` violet accent, `#FCF7EE` cream (sidebar, summary card), `#F5F5F5` and `#E5E5E5` neutrals, `#0B1221` navy (defined, unused), teal and orange for status. Verified: colours and font names were read from wordsmith.ai's computed styles and stylesheet on 2026-11-07 across 14 pages. Derived by us, not measured: the violet highlight tint and the button hover darkening.
+Why: match the sponsor's look for the demo.
+**Fonts:** wordsmith.ai uses Basel Grotesk and GT Ultra Median, which we believe are commercial (licences not read). This repo is public and we have no licence to redistribute them, so we ship Inter (body) and Newsreader (headlines, weight 300), both SIL OFL, self-hosted in `public/fonts/` (no network needed at the venue). Newsreader as the closest free match is a visual judgement. How to swap in licensed files: `public/fonts/README.md`.
+Also: Geist (Google Fonts) removed from `app/layout.tsx`. Alert text uses the body colour on the orange and teal tints, because the brand colours on those tints measured about 3.4:1 contrast. The dev-only demo-patient button (D24) keeps its behaviour and is restyled as a dashed ghost button.
+
+**D27 · 2026-11-07 · Om (requested), built by Claude · proposed**
+The intake interview speaks in plain words with a slight professional manner that depends on the stage: a GP taking a history while the user tells the story, a solicitor at a first meeting for dates, places and what was in writing, a courteous clerk for contact details, a solicitor asking about goals for the desired outcome, then a short plain wrap-up. **No jargon at all**: no medical term the user has not used first, no legal term ever. At most one short acknowledgement, then one question; British spelling; no lists. Implemented only as prompt text in `lib/agent/interview.ts` plus a new opening line in `lib/agent/chat.ts`. All data and safety rules are unchanged: one question at a time, story before contact details, the email-risk wording and explicit-yes rule, only record what the user said, code decides "done" (D6, D7).
+Why: the replies read as generic. Tone is the only thing changed.
+**Limits:** the stage is inferred by the model from the facts it holds, using rules written in the prompt. It is not computed in code, so it can drift. If it does, compute the stage in code from `missingRequired` and pass it in as input. Not yet tried against the model (see `docs/PROGRESS.md`).
+
+**D28 · 2026-11-07 · Om (requested), built by Claude · proposed**
+The interview picks each question and its input type in code (`lib/agent/inputs.ts`), instead of the model choosing the next question in free text. Free text only where the answer is really free text (first name, the story). Everything else uses a suited input: date picker with exact / month and year / own words, text fields for place, `tel` and `email` fields, a postcode check, a title dropdown, buttons for who the complaint is about, the contact method and the email consent, and a checklist for the desired outcome. Widget answers skip the model. Supersedes the "stage is worked out by the model" part of D27: the stage is now computed by `nextTarget`, and the question wording is in `questionFor`.
+Why: Om asked that not everything be a text box. It also makes the order predictable, removes a model call from most turns, and stops consent being inferred from loose text.
+**Rules kept:** consent (`emailRiskAccepted`) and `desiredOutcome` are only read from their own question; declining the email risk clears the contact method; code, not the model, decides "done".
+**Limits:** the title list (Mr, Mrs, Miss, Ms, Mx, Dr, Prof) and the hospital suggestions are our own and not checked against the NHS form. The model path (free text) is still not tried live.
+
+<!-- Add new entries above this line. Next number: D29 -->
