@@ -1,12 +1,15 @@
 export type StepState = "ready" | "locked" | "soon";
 
-export type Step = { n: number; title: string; blurb: string; state: StepState };
+/** Which path a step belongs to (D35): two paths run side by side and join at the case file. */
+export type Track = "answers" | "compensation" | "end";
 
-/** The path. Step 2's state is overridden at runtime once the NHS has replied (see Timeline). */
+export type Step = { n: number; title: string; blurb: string; state: StepState; track: Track };
+
+/** The paths. Step 2's state is overridden at runtime once the NHS has replied (see PathMap). */
 export const STEPS: Step[] = [
-  { n: 1, title: "Complain to NHS Lothian", blurb: "We prepare and fill the form", state: "ready" },
-  { n: 2, title: "Ombudsman", blurb: "Opens after the NHS final reply", state: "locked" },
-  { n: 3, title: "Legal aid check", blurb: "Coming soon", state: "soon" },
-  { n: 4, title: "Find a solicitor", blurb: "Coming soon", state: "soon" },
-  { n: 5, title: "Your case file", blurb: "Coming soon", state: "soon" },
+  { n: 1, title: "Complain to NHS Lothian", blurb: "We prepare and fill the form", state: "ready", track: "answers" },
+  { n: 2, title: "Ombudsman", blurb: "After the NHS replies", state: "locked", track: "answers" },
+  { n: 3, title: "Can I get legal aid?", blurb: "Coming soon", state: "soon", track: "compensation" },
+  { n: 4, title: "Contact lawyers", blurb: "Coming soon", state: "soon", track: "compensation" },
+  { n: 5, title: "Your case file", blurb: "Coming soon", state: "soon", track: "end" },
 ];

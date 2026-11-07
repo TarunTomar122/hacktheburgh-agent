@@ -12,7 +12,7 @@ import Header from "./Header";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
 import { streamAgent, type DoneEvent } from "./streamAgent";
-import Timeline from "./Timeline";
+import PathMap from "./PathMap";
 
 export default function CasePage() {
   const router = useRouter();
@@ -37,9 +37,9 @@ export default function CasePage() {
           <ProfileTab profile={profile} onClose={() => setProfileOpen(false)} onDeleted={() => router.replace("/")} />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1">
-          <Timeline profile={profile} active={active} onSelect={setActive} />
-          <main className="min-w-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <PathMap profile={profile} active={active} onSelect={setActive} onOpenProfile={() => setProfileOpen(true)} />
+          <main className="min-w-0">
             <div className="mx-auto max-w-3xl px-12 py-12">
               {active === 2 ? (
                 <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
