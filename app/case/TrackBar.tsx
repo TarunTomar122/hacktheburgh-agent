@@ -5,7 +5,7 @@ import { TRACKS } from "../../lib/agent/track";
 import type { Profile } from "../../lib/profile";
 import { cx, LockIcon } from "../ui";
 import { milestones, summarise } from "./progress";
-import { STEPS } from "./steps";
+import { stepsFor } from "./steps";
 
 const Check = ({ size = 10 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -28,6 +28,7 @@ export function Tick({ done }: { done: boolean }) {
  * in the profile, not here (Tarun).
  */
 export default function TrackBar({ profile, active, onSelect }: { profile: Profile; active: number; onSelect: (n: number) => void }) {
+  const STEPS_ = stepsFor(profile.route && "map" in profile.route ? profile.route.map : undefined);
   const chosen = profile.track!.chosen!;
   const t = TRACKS[chosen];
   const fit = profile.track?.rec?.tracks[chosen].fit;
@@ -60,7 +61,7 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
         </div>
 
         <nav aria-label="Steps" className="flex flex-wrap items-center gap-1">
-          {STEPS.filter((s) => t.steps.includes(s.n)).map((s, i) => {
+          {STEPS_.filter((s) => t.steps.includes(s.n)).map((s, i) => {
             const state = s.n === 2 && ombudsmanOpen ? "ready" : s.state;
             // Step 4 needs firms picked in step 3; until then it is disabled and says why (Tarun).
             const needsPick = s.n === 4 && !(profile.legalAid?.selected?.length);
@@ -113,7 +114,7 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
                   <span className="font-medium text-ink">Next:</span> {next}
                 </p>
               )}
-              {STEPS.filter((s) => t.steps.includes(s.n)).map((s) => (
+              {STEPS_.filter((s) => t.steps.includes(s.n)).map((s) => (
                 <div key={s.n} className="mb-3 last:mb-0">
                   <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">{s.title}</div>
                   <ul className="space-y-1.5">

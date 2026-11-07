@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
-import { setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
+import { setDraft, setOmbudsman, setProgress, setRoute, skipStep, useProfile, type Profile } from "../../lib/profile";
 import { Button, Callout, Console, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
 import Header from "./Header";
 import CaseRun from "./CaseRun";
+import DiscoveryRun from "./DiscoveryRun";
+import RouteMapCard from "./RouteMap";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
 import { closeAgentBrowser, streamAgent, type DoneEvent } from "./streamAgent";
@@ -67,8 +69,19 @@ export default function CasePage() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           {chosen && <TrackBar profile={profile} active={active} onSelect={setActive} />}
           <main className="@container min-w-0">
-            {!chosen ? (
-              <div className="mx-auto max-w-4xl px-8 py-12">
+            {!profile.route ? (
+              // Night plan ("Elliot anywhere"): first the crew works out how the system works where the care happened.
+              <div className="px-8 py-8">
+                <DiscoveryRun profile={profile} onDone={(map, sample) => setRoute({ map, sample })} />
+                <p className="mt-6 text-center text-[13px]">
+                  <button className="text-muted hover:text-brand hover:underline" onClick={() => setRoute({ skipped: true })}>
+                    Skip for now
+                  </button>
+                </p>
+              </div>
+            ) : !chosen ? (
+              <div className="mx-auto max-w-4xl space-y-10 px-8 py-12">
+                {"map" in profile.route && <RouteMapCard route={profile.route.map} compact />}
                 <TrackChoice profile={profile} onChosen={setActive} />
               </div>
             ) : active === 3 ? (

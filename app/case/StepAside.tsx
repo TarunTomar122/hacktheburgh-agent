@@ -4,12 +4,13 @@ import { TRACKS } from "../../lib/agent/track";
 import type { Profile } from "../../lib/profile";
 import { Eyebrow } from "../ui";
 import { milestones } from "./progress";
-import { STEPS } from "./steps";
+import { stepsFor } from "./steps";
 import { Tick } from "./TrackBar";
 
 /** The right-hand column of a step page: what this step does, its checklist, and what the path gets you. Sticky, compact. */
 export default function StepAside({ profile, step }: { profile: Profile; step: number }) {
-  const s = STEPS.find((x) => x.n === step);
+  const STEPS_ = stepsFor(profile.route && "map" in profile.route ? profile.route.map : undefined);
+  const s = STEPS_.find((x) => x.n === step);
   const chosen = profile.track?.chosen;
   if (!s) return null;
   const mine = milestones(profile).filter((m) => m.step === step);

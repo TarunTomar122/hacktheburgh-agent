@@ -9,6 +9,7 @@ import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidT
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord } from "./agent/enquiryTypes";
 import type { TrackId, TrackRecommendation } from "./agent/track";
 import type { ComplaintResult, EvidenceResult, PlanStep, Say } from "./agent/plannerTypes";
+import type { RouteMap } from "./agent/routeTypes";
 
 export type CaseRunRecord = {
   runId: string;
@@ -40,6 +41,8 @@ export type Profile = {
   /** D52: the crew's last run, for the case file and "Review the run" (conversation, plan, evidence, counts). */
   caseRun?: CaseRunRecord;
   complaintRun?: ComplaintRunRecord;
+  /** Night plan ("Elliot anywhere"): how the system works where the care happened, worked out live by the crew. */
+  route?: { map: RouteMap; sample: boolean } | { skipped: true };
   /** Step 4: the message (editable), the last run's outcome per firm (`sample` = fixture), and the tracker (updated by hand for now). */
   enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
   enquiries?: EnquiryRecord[];
@@ -143,6 +146,11 @@ export function setCaseRun(run: CaseRunRecord | null) {
 export function setComplaintRun(run: ComplaintRunRecord | null) {
   const p = read();
   if (p) write({ ...p, complaintRun: run ?? undefined });
+}
+
+export function setRoute(route: Profile["route"] | null) {
+  const p = read();
+  if (p) write({ ...p, route: route ?? undefined });
 }
 
 export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation }) {

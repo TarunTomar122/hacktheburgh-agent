@@ -5,7 +5,7 @@ import { TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/
 import { setTrack, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import { CheckRow, FitRing } from "./scoreParts";
-import { STEPS } from "./steps";
+import { stepsFor } from "./steps";
 
 /**
  * After onboarding (D42): one recommended track with its fit % and the reasons, one button to continue,
@@ -13,6 +13,7 @@ import { STEPS } from "./steps";
  * told us, never a chance of success.
  */
 export default function TrackChoice({ profile, onChosen }: { profile: Profile; onChosen: (firstStep: number) => void }) {
+  const STEPS_ = stepsFor(profile.route && "map" in profile.route ? profile.route.map : undefined);
   const rec = profile.track?.rec;
   const [error, setError] = useState<string | null>(null);
   const asked = useRef(false);
@@ -51,7 +52,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
 
   const best = rec.recommended;
   const other: TrackId = best === "complaint" ? "compensation" : "complaint";
-  const steps = (t: TrackId) => STEPS.filter((s) => TRACKS[t].steps.includes(s.n));
+  const steps = (t: TrackId) => STEPS_.filter((s) => TRACKS[t].steps.includes(s.n));
 
   return (
     <div className="space-y-10">
