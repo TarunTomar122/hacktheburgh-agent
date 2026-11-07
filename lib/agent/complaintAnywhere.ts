@@ -176,10 +176,23 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
           }
           case "prepare_message": {
             if (!draft) return "Write the complaint first (draft_complaint).";
-            const where = body?.wall ?? body?.what ?? "";
-            message = `To: ${body?.body ?? "the provider"}\n${where}\n\nSubject: Complaint about my care at ${facts.incidentLocation ?? "your hospital"}\n\n${draft.details}${draft.outcome ? `\n\nWhat I would like: ${draft.outcome}` : ""}\n\n${[facts.firstName, facts.lastName].filter(Boolean).join(" ")}\n${facts.address ?? ""} ${facts.postcode ?? ""}\n${facts.phone ?? ""}\n${facts.email ?? ""}`;
-            form = { ...form, status: "not_started", note: "This body takes complaints by email or post; your message is ready." };
-            return `Message ready. Send it to: ${short(where, 160)}`;
+            // Robin reads the body's own page for where complaints go: an email or postal address, quoted and checked.
+            const page = body?.url ?? body?.sources[0]?.url;
+            let to = "";
+            let toQuote = "";
+            if (page) {
+              const r = await kit.inTab(thought, "robin", short(`${body?.body ?? "Provider"} contact`, 26), (p, note) => readPage({ page: p, note, track: kit.track }, page, "Exactly which email address or postal address should a patient send a complaint to? Quote the address."), 90_000);
+              if (r.ok) {
+                const q = r.value.quotes.find((x) => x.checked && /@|\b[A-Z]{1,2}\d/.test(x.quote));
+                const email = (q?.quote ?? r.value.answer).match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0];
+                to = email ?? (q ? q.quote : "");
+                toQuote = q?.quote ?? "";
+              }
+            }
+            message = `${to ? `To: ${to}\n` : ""}Subject: Complaint about my care at ${facts.incidentLocation ?? "your hospital"}\n\nDear ${body?.body ?? "Complaints team"},\n\n${draft.details}${draft.outcome ? `\n\nWhat I would like: ${draft.outcome}` : ""}\n\nYours sincerely,\n${[facts.firstName, facts.lastName].filter(Boolean).join(" ")}\n${[facts.address, facts.postcode].filter(Boolean).join(", ")}\n${facts.phone ?? ""}\n${facts.email ?? ""}`;
+            form = { ...form, status: "not_started", note: to ? `${body?.body ?? "The provider"} takes complaints by email or post. Your message is ready to send to ${to}.` : `${body?.body ?? "The provider"} takes complaints by email or post. Your message is ready; we could not confirm the address on their page.`, url: page ?? form.url };
+            if (to) kit.finding(`Complaints go to ${to}`, page, "robin");
+            return to ? `Message ready. Send it to: ${to}${toQuote ? ` (their page: "${short(toQuote, 120)}")` : ""}` : "Message ready, but the address could not be confirmed on their page.";
           }
           default:
             return `Unknown tool ${call.name}`;

@@ -119,6 +119,11 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
   const rest = summary.slice(first.length).trim();
   const ready = run.form.status === "ready_to_submit";
   const filledForm = ready || run.form.status === "needs_input";
+  // No online form: the crew prepared the message and found where it goes (D66 draft).
+  const byEmail = !filledForm && !!run.message;
+  const to = run.message?.match(/^To: (.+)$/m)?.[1] ?? "";
+  const subject = run.message?.match(/^Subject: (.+)$/m)?.[1] ?? "Complaint";
+  const letter = run.message?.replace(/^To: .+\n/m, "").replace(/^Subject: .+\n+/m, "") ?? "";
   const ev = run.evidence;
   const gap = ev.gaps?.[0];
   const point = ev.guideline?.points[0];
@@ -147,7 +152,7 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
         <CrewMark id="kit" size={56} />
         <div className="min-w-[16rem] flex-1">
           <p className="text-[12px] text-muted">Your next step</p>
-          <h2 className="text-[18px] font-medium leading-7 text-ink">{sent ? "Your complaint is sent" : ready ? "Check the form and press Submit" : filledForm ? "Finish the form, then press Submit" : "Run the crew again"}</h2>
+          <h2 className="text-[18px] font-medium leading-7 text-ink">{sent ? "Your complaint is sent" : ready ? "Check the form and press Submit" : filledForm ? "Finish the form, then press Submit" : byEmail ? (to.includes("@") ? "Send your complaint by email" : "Send your complaint") : "Run the crew again"}</h2>
           <p className="text-[13px] leading-5 text-muted">
             {sent
               ? `Next, ${body} replies. If their final answer does not put things right, the independent review is step 2.`
@@ -155,7 +160,9 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
                 ? "This is a recorded run: nothing was filled in or sent. In a real run the form waits in the browser for you."
                 : filledForm
                   ? `Kit filled in ${body}'s form and stopped. Read it, change anything you like, and press Submit yourself.${run.form.unfilled.length ? ` It still needs: ${run.form.unfilled.join(", ")}.` : ""}`
-                  : "The form could not be filled this time."}
+                  : byEmail
+                    ? `${body} has no online form. Elliot wrote your message${to ? ` and Robin found where it goes: ${to}` : ""}. Read it, change anything you like, and send it yourself.`
+                    : "The form could not be filled this time."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -173,6 +180,20 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
                 }}
               >
                 I&apos;ve pressed Submit
+              </Button>
+            </>
+          ) : byEmail && !sample ? (
+            <>
+              <Button variant="secondary" onClick={() => void navigator.clipboard?.writeText(letter)}>
+                Copy message
+              </Button>
+              {to.includes("@") && (
+                <a className="inline-flex" href={`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(letter)}`}>
+                  <Button>Open in your email</Button>
+                </a>
+              )}
+              <Button variant="secondary" onClick={() => setProgress({ nhsSent: true })}>
+                I&apos;ve sent it
               </Button>
             </>
           ) : sample ? (
@@ -257,7 +278,7 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
           )}
         </Row>
 
-        <Row crew="kit" topic={`${body}'s form`} title={ready ? "Filled in, not sent" : filledForm ? "Filled in as far as possible" : "Not filled in"}>
+        <Row crew="kit" topic={byEmail ? "Your message" : `${body}'s form`} title={ready ? "Filled in, not sent" : filledForm ? "Filled in as far as possible" : byEmail ? "Ready to send, not sent" : "Not filled in"}>
           {filledForm ? (
             <div className="space-y-3">
               <ul className="divide-y divide-line-soft text-[14px]">
@@ -274,7 +295,14 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
               </a>
             </div>
           ) : (
-            <p className="text-[15px] leading-6 text-ink">{skipped("kit") || !reached("kit") ? "Kit did not fill in the form this time." : run.form.note}</p>
+            byEmail ? (
+              <div className="space-y-2">
+                {to && <p className="text-[14px] text-muted">To: <span className="text-ink">{to}</span></p>}
+                <p className="max-h-80 overflow-y-auto whitespace-pre-line rounded-[6px] border border-line-soft bg-subtle px-4 py-3 font-serif text-[15px] leading-7 text-ink">{letter}</p>
+              </div>
+            ) : (
+              <p className="text-[15px] leading-6 text-ink">{skipped("kit") || !reached("kit") ? "Kit did not fill in the form this time." : run.form.note}</p>
+            )
           )}
         </Row>
       </div>
