@@ -20,6 +20,13 @@ Why this is real browser work, not more of the same: the *shape* of the process 
 ## Ambition (Tarun, 2026-11-07, before sleeping)
 "We can do more." Go for browser workflows that would be impossible without a very smart browser agent. Research a lot; implement the more complicated workflows where the agent really shines. Tarun trusts the night run with real power: use it.
 
+## Live and dynamic, nothing hardcoded (Tarun, 2026-11-07)
+"Do not hardcode the paths or anything, that would defeat the purpose of a complicated workflow using browser use. It has to be a live dynamic agent."
+- The agent finds every body, website, page and form **itself, at run time**: live search, live navigation, reading and judging what it finds.
+- No per-country URLs, routes, scripts or site flows in code or prompts.
+- `docs/research/jurisdictions/` is an **answer key** for grading the agent after a run. It is never given to the agent.
+- The existing Scotland site code (SLAB calculator and finder, Law Society register, NHS Lothian form) may only help **after** the agent has reached that site by itself, and the generic path must work without it. Prefer making it generic.
+
 ## Heartbeat
 A heartbeat fires every 30 minutes (session cron, :13 and :43) and checks: on track with this plan, very high-quality UI with no clutter, everything fully integrated end to end, Codex and Cursor scores at 9/10, ambition, safety, notes pushed. A one-shot wrap-up fires at 06:47 to make the morning summary current.
 
@@ -46,12 +53,12 @@ Nothing stops at a prototype or a script. Every item is **fully integrated end t
 
 ### Phase 0: research (official sources, written down)
 For each of England, Wales, Northern Ireland, Scotland: who you complain to, the ombudsman or regulator, the compensation route (court, redress scheme), funding (legal aid, no win no fee), how to find a lawyer (directory or register), clinical guidelines body, time limits, and the actual web pages and forms. Then the same, more briefly, for a contrasting set: Ireland, New Zealand, one US state, France, Germany, Sweden, India, Australia. Output: `docs/research/jurisdictions/<place>.md`, every line with a link.
-This is ground truth to **check** the agent against, not a script for it. The agent must find these itself.
+This is the **answer key** to grade the agent against after runs. It is never given to the agent; the agent must find all of it itself, live.
 
 ### Phase 1: design
 1. **Discovery (Robin).** New first step. From the story and the user's location, research the system and produce a **route map**: bodies, routes, deadlines, funding, directories, forms, each with an official source and a quote. Typed schema (zod), with confidence and "not found".
 2. **Planning (Elliot).** The planner builds its plan from the route map instead of today's fixed story.
-3. **Doing (generic workers).** `visit` reads any page. Kit fills unknown forms (already built for arbitrary law firm sites). Iona finds the local clinical guideline, not only NICE. The Scotland-specific code (SLAB calculator, SLAB solicitor finder, Law Society of Scotland register, NHS Lothian form) becomes **known-site skills** that the generic agent uses when discovery lands on those sites.
+3. **Doing (generic workers).** `visit` reads any page. A generic "search this site" worker uses a site's own search box, filters and pagination. Kit fills unknown forms (already built for arbitrary law firm sites). Iona finds the local clinical guideline, not only NICE. The Scotland-specific code is not given to the agent; at most it helps once the agent has reached that site by itself (see "Live and dynamic").
 4. **Where the place comes from.** Assumed (Tarun to confirm): the agent works it out from the story and postcode/address, and the user confirms it.
 
 ### Phase 2: all four UK nations, end to end
