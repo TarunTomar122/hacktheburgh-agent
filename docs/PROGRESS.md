@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Step 2 back to the version before D66 (D68)
+Om asked for the previous version of the complaint route and to keep the story-box change. Restored the pre-D66 files and removed the four files D66 added (list in D68). A new commit, not a rewrite: `79db341` stays in history. `app/StageInputs.tsx` (D67) is untouched. The failed-text retry loop that D66 fixed is back with the old version.
+
 ### 2026-11-07 · Om + Claude · DONE · Onboarding story box grows as you type (D67)
 Om: the box was too big and should grow with the text. `app/StageInputs.tsx` now sizes the textarea from its content (two lines to start, capped at 60% of the window height). Tested in headless Chrome on a clean clone of origin/main through a temporary page: 84 px empty, 192 px for two sentences, 540 px capped (it scrolls inside), 84 px again when cleared, 192 px for five typed lines. Not tested on a phone, and not tested through the full onboarding because the name step calls the model and there was no key in the test workspace. tsc and eslint clean.
 

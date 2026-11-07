@@ -101,7 +101,6 @@ Each interview question is a full screen under the header: heading in `.display`
 | `Callout` | `info` / `warn` / `ok` / `danger` tints |
 | `Console` | Dark mono activity log; the newest line is white |
 | `Eyebrow`, `LockIcon`, `UserIcon`, `ArrowLeftIcon`, `Logo` | Small pieces |
-| `Section`, `CheckList`, `ClockCard`, `Timeline`, `Chip`, `HelpCard`, `FormAgentRun` (`app/case/ComplaintParts.tsx`, D66) | The step 2 page: a card with a serif statement title; claims with a box (yes / no / not clear) and their evidence always visible; a time limit as a bar with today marked; a vertical path with dates; small status chips; free-help note; the form agent shown as one row like the step 3 crew |
 
 ## Do / don't
 

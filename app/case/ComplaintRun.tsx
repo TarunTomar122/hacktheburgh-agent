@@ -163,7 +163,7 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
               <Button
                 onClick={() => {
                   void closeAgentBrowser();
-                  setProgress({ nhsSent: true, nhsSentAt: new Date().toISOString() });
+                  setProgress({ nhsSent: true });
                 }}
               >
                 I&apos;ve pressed Submit
