@@ -8,6 +8,11 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Suggestion page first; contact method only on the complaint path (D49)
+Om sent a screenshot of the profile page with "Still needed for the NHS form: How to contact you" and no path chosen, and asked for the suggestion page first and the contact question only for someone who picks complaint. Found: the profile banner used `missingRequired` (which includes the NHS-only questions) whatever the path, and the logo (D43) sent a user with a case but no path straight to the profile. Fixed both (see D49); also clears `#profile` from the address after use. Checked: `tsc` and `eslint` clean; Playwright in Chrome with the complaint demo patient: lands on the suggestion page; the logo there stays on it (profile not opened); the profile before choosing says "Everything we need so far is here"; after choosing complaint the logo opens the profile with the NHS banner; from the landing page the logo goes to `/case` or `/case#profile` by stage; a reload does not reopen the profile; with the contact method blanked, choosing complaint shows "How should NHS Lothian reply to your complaint?" on step 1 and not before. NOT checked: a full real interview with the live model; `next build`.
+
+### 2026-11-07 · Om + Claude · DONE · Demo: skip step 1 and continue to step 2 (D46)
+
 ### 2026-11-07 · Om + Claude · DONE · Demo: skip step 1 and continue to step 2 (D48)
 Om: the demo does not file the NHS complaint, so step 1 needs a skip. Added "Skip and continue to step 2 (demo)" beside the fill button in `app/case/page.tsx` (always visible; disabled while the agent runs). It unlocks step 2 and opens it; the "filled in" and "sent" milestones stay unticked. Checked: `tsc` and `eslint` clean; Playwright in Chrome with the Callum demo patient: button present and enabled on step 1, click opens step 2 unlocked, no sent flag written, no page errors. NOT checked: the button during an agent run (it is disabled by `filling`; not exercised); `next build`.
 

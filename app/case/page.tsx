@@ -25,10 +25,13 @@ export default function CasePage() {
   const [picked, setActive] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  // /case#profile (the logo on the landing page) opens with the profile showing. Read after mount: during a client-side
+  // /case#profile (the logo on the landing page, once a path is chosen) opens with the profile showing. Read after mount: during a client-side
   // navigation the address is not updated yet at the first render.
   useEffect(() => {
-    if (window.location.hash === "#profile") setProfileOpen(true); // eslint-disable-line react-hooks/set-state-in-effect
+    if (window.location.hash === "#profile") {
+      setProfileOpen(true); // eslint-disable-line react-hooks/set-state-in-effect
+      window.history.replaceState(null, "", window.location.pathname); // so a reload or Back does not reopen it
+    }
   }, []);
 
   useEffect(() => {
@@ -45,7 +48,7 @@ export default function CasePage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <Header name={name} profileOpen={profileOpen} incomplete={incomplete} stripes={!profileOpen} onProfile={() => setProfileOpen((o) => !o)} onOpenProfile={() => setProfileOpen(true)} />
+      <Header name={name} profileOpen={profileOpen} incomplete={incomplete} stripes={!profileOpen} onProfile={() => setProfileOpen((o) => !o)} onLogo={(to) => setProfileOpen(to === "profile")} />
       {profileOpen ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <ProfileTab

@@ -151,22 +151,22 @@ export function Logo({ className }: { className?: string }) {
 }
 
 /**
- * The logo as a link (D43). Before the interview is finished it goes to the landing page; once a case exists it goes to the profile.
- * On the case page, pass `onProfile` to open the profile in place instead of reloading the page.
+ * The logo as a link (D43, D49), by stage: no case yet -> the landing page; a case but no path chosen -> the suggestion page;
+ * a path chosen -> the profile. On the case page, pass `onGo` to do it in place instead of reloading the page.
  */
-export function LogoLink({ onProfile }: { onProfile?: () => void }) {
+export function LogoLink({ onGo }: { onGo?: (to: "home" | "profile") => void }) {
   const profile = useProfile();
-  const hasCase = Boolean(profile);
-  const label = hasCase ? "Open your profile" : "Back to the start";
+  const stage = !profile ? "start" : profile.track?.chosen ? "profile" : "suggestion";
+  const label = stage === "start" ? "Back to the start" : stage === "suggestion" ? "Back to your suggestion" : "Open your profile";
   return (
     <Link
-      href={hasCase ? "/case#profile" : "/"}
+      href={stage === "start" ? "/" : stage === "suggestion" ? "/case" : "/case#profile"}
       aria-label={label}
       title={label}
       onClick={(e) => {
-        if (hasCase && onProfile) {
+        if (stage !== "start" && onGo) {
           e.preventDefault();
-          onProfile();
+          onGo(stage === "profile" ? "profile" : "home");
         }
       }}
       className="rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-white"

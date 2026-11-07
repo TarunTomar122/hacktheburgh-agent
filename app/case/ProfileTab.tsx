@@ -1,6 +1,6 @@
 "use client";
 
-import { missingRequired, type CaseFacts } from "../../lib/agent/facts";
+import { missingForOnboarding, missingRequired, type CaseFacts } from "../../lib/agent/facts";
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
@@ -29,7 +29,9 @@ const input = control;
 
 export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
-  const missing = missingRequired(f);
+  // How NHS Lothian should reply is only needed for the complaint path, and only asked once the user takes it (D42).
+  const forNhs = profile.track?.chosen === "complaint";
+  const missing = forNhs ? missingRequired(f) : missingForOnboarding(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
   const set = (k: keyof CaseFacts) => (v: string) => updateFacts({ [k]: v === "" ? null : v } as Partial<CaseFacts>);
 
@@ -56,11 +58,11 @@ export default function ProfileTab({ profile, onDeleted, onSwitched }: { profile
         <PathSection profile={profile} onSwitched={onSwitched} />
 
         {missing.length > 0 ? (
-          <Callout tone="warn" title="Still needed for the NHS form">
+          <Callout tone="warn" title={forNhs ? "Still needed for the NHS form" : "Still needed"}>
             {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.
           </Callout>
         ) : (
-          <Callout tone="ok" title="Everything the NHS form needs is here." />
+          <Callout tone="ok" title={forNhs ? "Everything the NHS form needs is here." : "Everything we need so far is here."} />
         )}
 
         <section className="space-y-5">
