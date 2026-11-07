@@ -45,7 +45,7 @@ export const TOOL_CREW: Record<string, CrewId> = {
 };
 
 /** One line in the crew's conversation: Elliot assigns, a worker reports, someone asks you. */
-export type Say = { i: number; t: number; from: CrewId; to?: CrewId | "you"; kind: "assign" | "report" | "plan" | "ask" | "note" | "done"; text: string; detail?: string; tool?: string; tab?: string /* the worker tab label, to match its trace steps exactly */ };
+export type Say = { i: number; t: number; from: CrewId; to?: CrewId | "you"; kind: "assign" | "report" | "plan" | "ask" | "note" | "done"; ok?: boolean; text: string; detail?: string; tool?: string; tab?: string /* the worker tab label, to match its trace steps exactly */ };
 
 /** Evidence gathered by Iona, kept with the result (D48). */
 export type EvidenceResult = {

@@ -69,15 +69,17 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
 
   // The message is written once from the profile; the user can edit it.
   const asked = useRef(false);
+  const [draftAttempt, setDraftAttempt] = useState(0);
   useEffect(() => {
     if (message || firms.length === 0 || asked.current) return;
     asked.current = true;
     setWriting(true);
+    setError(null);
     draftMessage(profile.facts, legalAid)
       .then((m) => setEnquiry({ message: m }))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setWriting(false));
-  }, [message, firms.length, profile.facts, legalAid]);
+  }, [message, firms.length, profile.facts, legalAid, draftAttempt]);
 
   if (firms.length === 0) {
     return (
@@ -153,7 +155,11 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
 
       {!started ? (
         <div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_300px]">
-          <MessageDoc message={message} writing={writing} disabled={running} />
+          <div className="space-y-3">
+            <MessageDoc message={message} writing={writing} disabled={running} />
+            {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+            {error && !message && !writing && <Button variant="secondary" size="sm" onClick={() => { asked.current = false; setDraftAttempt((n) => n + 1); }}>Try writing the message again</Button>}
+          </div>
           <aside className="space-y-4 self-start rounded-card border border-line bg-white p-5 @3xl:sticky @3xl:top-6">
             <Eyebrow>Sending to</Eyebrow>
             <ul className="space-y-2">

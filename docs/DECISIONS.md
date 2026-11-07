@@ -272,4 +272,7 @@ The latest crew flow asks location permission before research, then asks for the
 **D55 - 2026-11-07 - Luigi + Codex - decided**
 User authorized straightforward bug fixes and pushing them. Failed answers and terminal crew runs allow retry; unknown financial inputs remain unknown during fallback; exact dates must exist. Keep broader run lifecycle, approval isolation, evidence scope and retention choices for validation (BUG_REVIEW.md). Correct storage wording; no retention policy or real-send behavior changed.
 
-<!-- Add new entries above this line. Next number: D56 -->
+**D56 - 2026-11-07 - Luigi + Codex - decided**
+User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's existing three-fill-attempt budget in code and permit filling only shortlisted, non-excluded firms. Report failed work as Needs attention, offer drafting retries, and describe proximity only with a verified approved location. Item 1 is unchanged. Real sending and browser engines are untouched.
+
+<!-- Add new entries above this line. Next number: D57 -->

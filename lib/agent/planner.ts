@@ -1,3 +1,4 @@
+import { EnquiryFillGuard, solicitorSummary } from "./plannerGuards";
 import { parseFundingNumber } from "./inputs";
 import { askSearchLocation, type SearchLocation } from "./searchLocation";
 import path from "node:path";
@@ -320,6 +321,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   let guideline: GuidelineReading | null = null;
   let message: EnquiryMessage | null = null;
   const enquiries = new Map<string, EnquiryOutcome>();
+  const fillGuard = new EnquiryFillGuard();
   const t0 = Date.now();
   let asks = 0;
   const say = (s: Omit<Say, "i" | "t">) => {
@@ -371,8 +373,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return funding.skipped ? "You skipped the money questions, so legal aid stays unknown." : verdict === "likely" ? `SLAB's estimate: likely to qualify for legal aid. "${quote}"` : verdict === "unlikely" ? `SLAB's estimate: unlikely to qualify. "${quote}"` : "I could not read SLAB's estimate.";
       case "slab_lawyer_list": {
         const list = [...firms.values()].filter((f) => f.legalAid);
-        const near = list[0];
-        return list.length ? `Found ${list.length} firms that take legal aid for medical negligence. Nearest: ${near.name}, ${near.distanceMiles} miles.` : out;
+        return list.length ? solicitorSummary(list, location) : out;
       }
       case "web_search": {
         const n = (out.match(/^\d+\./gm) ?? []).length;
@@ -528,22 +529,28 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       }
       case "fill_enquiry": {
         const firm = firms.get(s("firm_id"));
-        if (!firm) return "Unknown firm id.";
-        if (!firm.website && !firm.enquiryUrl) return `${firm.name} has no website to fill a form on.`;
-        message ??= await draftEnquiry(facts, { verdict: funding.skipped ? "skipped" : verdict, route });
-        const msg = message;
-        const r = await tabs(() =>
-          crewFor(thought, "kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
-            const o = await fillOne(p, firm, { facts, message: msg }, note, track, (x) => emit({ type: "enquiry", enquiry: x }));
-            if (o.status === "ready_to_send") keepForApproval(firm.id, { page: p, firm, email: facts.email, runId, tracer, note });
-            return o;
-          }, 150_000, [firm.id]),
-        );
-        const o: EnquiryOutcome = r.ok ? r.value : { firmId: firm.id, firmName: firm.name, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: `Stopped: ${r.error}` };
-        enquiries.set(firm.id, o);
-        emit({ type: "enquiry", enquiry: o });
-        finding(`${firm.name}: ${o.status === "ready_to_send" ? "enquiry form filled, waiting for your OK" : o.note}`, o.formUrl ?? undefined, "kit");
-        return `${firm.name}: ${o.status}. ${o.note}`;
+        const blocked = fillGuard.claim(firm, shortlistIds);
+        if (blocked || !firm) return `Blocked: ${blocked ?? "Unknown firm id."}`;
+        let ready = false;
+        try {
+          message ??= await draftEnquiry(facts, { verdict: funding.skipped ? "skipped" : verdict, route });
+          const msg = message;
+          const r = await tabs(() =>
+            crewFor(thought, "kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
+              const o = await fillOne(p, firm, { facts, message: msg }, note, track, (x) => emit({ type: "enquiry", enquiry: x }));
+              if (o.status === "ready_to_send") keepForApproval(firm.id, { page: p, firm, email: facts.email, runId, tracer, note });
+              return o;
+            }, 150_000, [firm.id]),
+          );
+          const o: EnquiryOutcome = r.ok ? r.value : { firmId: firm.id, firmName: firm.name, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: `Stopped: ${r.error}` };
+          enquiries.set(firm.id, o);
+          ready = o.status === "ready_to_send";
+          emit({ type: "enquiry", enquiry: o });
+          finding(`${firm.name}: ${o.status === "ready_to_send" ? "enquiry form filled, waiting for your OK" : o.note}`, o.formUrl ?? undefined, "kit");
+          return `${firm.name}: ${o.status}. ${o.note}`;
+        } finally {
+          fillGuard.finish(firm.id, ready);
+        }
       }
       case "ask_user": {
         const answer = await ask({ agent: "Planner", crew: "elliot", question: s("question"), why: s("why"), kind: (s("kind") as AskSpec["kind"]) || "text", options: a.options as string[] | undefined });
@@ -615,8 +622,10 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
             emit({ type: "thought", thought: { ...thought } });
           }
           if (who !== "elliot") {
-            const text = /^(Error|Could not|.*failed)/.test(out) ? `I hit a problem: ${short(out, 160)}` : describe(call.name, args, out);
-            say({ from: who, to: "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab });
+            const failed = /^(Error|Could not|Blocked:|.*failed)/.test(out);
+            const ok = !failed && (call.name !== "fill_enquiry" || enquiries.get(String(args.firm_id))?.status === "ready_to_send");
+            const text = failed ? `I hit a problem: ${short(out, 160)}` : describe(call.name, args, out);
+            say({ from: who, to: "elliot", kind: "report", ok, text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab });
             crewState(who, "idle", short(text, 90));
           } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: short(out.replace(/\n/g, "; "), 200), tool: call.name });
           else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });

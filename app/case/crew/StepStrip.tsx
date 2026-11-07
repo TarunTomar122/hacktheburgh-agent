@@ -19,7 +19,7 @@ export const STEPS: Step[] = [
   { crew: ["kit"], title: "Fill enquiries", line: "Kit fills each firm's form" },
 ];
 
-export type StepStatus = "pending" | "working" | "waiting" | "done" | "skipped";
+export type StepStatus = "pending" | "working" | "waiting" | "done" | "skipped" | "failed";
 
 /** Live status of each step from the crew's states and reports. `finished` = the whole run is over. */
 export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finished: boolean): StepStatus[] {
@@ -28,9 +28,13 @@ export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finis
     if (st.crew.some((id) => crew[id]?.state === "working")) return "working";
     // Step 2 is done when Vera (the checker) has reported; the others when their one crew member has.
     const finisher = st.crew[st.crew.length - 1];
-    const reported = says.some((s) => s.kind === "report" && s.from === finisher);
-    if (reported) return "done";
-    if (finished) return says.some((s) => s.kind === "report" && st.crew.includes(s.from)) ? "done" : "skipped";
+    const latest = new Map<string, Say>();
+    for (const report of says) if (report.kind === "report" && st.crew.includes(report.from)) latest.set(`${report.from}:${report.tool ?? "report"}:${report.tab ?? ""}`, report);
+    const reports = [...latest.values()];
+    // Old saved runs lack ok: retain compatibility with their explicit error reports.
+    if (reports.some((s) => s.ok === false || (s.ok === undefined && /^I hit a problem:|^Error:|^Could not/i.test(s.text)))) return "failed";
+    if (reports.some((s) => s.from === finisher)) return "done";
+    if (finished) return reports.length ? "done" : "skipped";
     return "pending";
   });
 }
@@ -54,7 +58,7 @@ export default function StepStrip({ statuses, compact }: { statuses?: StepStatus
               </span>
               {s && s !== "pending" && (
                 <span className="absolute -bottom-1 right-1 flex size-5 items-center justify-center rounded-[5px] border border-line bg-white">
-                  {s === "skipped" ? <span className="text-[10px] text-faint">–</span> : <StateMark state={s === "waiting" ? "waiting" : s === "working" ? "working" : "done"} />}
+                  {s === "failed" ? <span aria-label="needs attention" className="text-[12px] text-danger">!</span> : s === "skipped" ? <span className="text-[10px] text-faint">–</span> : <StateMark state={s === "waiting" ? "waiting" : s === "working" ? "working" : "done"} />}
                 </span>
               )}
             </div>
@@ -62,8 +66,8 @@ export default function StepStrip({ statuses, compact }: { statuses?: StepStatus
               <span className="mr-1.5 text-muted tabular-nums">{i + 1}</span>
               {st.title}
             </div>
-            <div className={cx("leading-5", compact ? "text-[12px]" : "mt-1 text-[13px]", s === "waiting" ? "text-amber" : "text-muted")}>
-              {s === "waiting" ? `${CREW[st.crew[0]].name} needs one detail from you` : s === "skipped" ? "Not needed this time" : st.line}
+            <div className={cx("leading-5", compact ? "text-[12px]" : "mt-1 text-[13px]", s === "failed" ? "text-danger" : s === "waiting" ? "text-amber" : "text-muted")}>
+              {s === "failed" ? "Needs attention" : s === "waiting" ? `${CREW[st.crew[0]].name} needs one detail from you` : s === "skipped" ? "Not needed this time" : st.line}
             </div>
           </li>
         );
