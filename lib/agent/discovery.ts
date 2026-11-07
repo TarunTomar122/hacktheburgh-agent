@@ -113,6 +113,12 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
           const label = ROUTE_KINDS.find((k) => k.kind === a.kind)?.label ?? String(a.kind);
           return s ? `${label}: ${s.body}. ${s.what}${s.confidence === "confirmed" ? "" : s.confidence === "likely" ? " (one official source)" : " (not confirmed yet)"}` : out;
         }
+        if (name === "web_search") {
+          const hits = [...out.matchAll(/^\d+\. (.*?) — (\S+)/gm)];
+          return hits.length ? `${hits.length} results for "${short(String(a.query ?? ""), 60)}". Top: ${host(hits[0][2])}.` : "No useful results.";
+        }
+        if (name === "read_page") return short(out.split("\n")[1] ?? out, 220);
+        if (name === "explore_site") return out.startsWith("Found:") ? short(out.split("\n")[1] ?? out, 220) : short(out, 220);
         return short(out.split("\n")[0], 200);
       },
       failed: (name, out) => /^(Error|Could not|Blocked)/.test(out) || (name === "explore_site" && /^Not found/.test(out)),

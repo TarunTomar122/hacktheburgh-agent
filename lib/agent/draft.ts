@@ -37,3 +37,20 @@ export async function draftComplaint(facts: CaseFacts, evidence?: DraftEvidence)
     name: "complaint_draft",
   });
 }
+
+/**
+ * The complaint, addressed to whichever body discovery found (night plan, "Elliot anywhere"). Same rules as above, no
+ * place baked in: the body, the place and its own guidance come from the route map at run time.
+ */
+export async function draftComplaintTo(facts: CaseFacts, to: { body: string; place: string; language?: string }, evidence?: DraftEvidence): Promise<Draft> {
+  if (!hasFractureContext(facts)) evidence = undefined;
+  const instructions = `You write the text for a complaint to ${to.body} (${to.place}) about the patient's care, in the first person, on behalf of the patient.
+Rules:
+- Use ONLY the facts given. Do not add medical claims, diagnoses, blame, dates or details that are not in the facts.
+- Plain, polite, factual. Chronological. Short paragraphs. No legal language.
+- Include the dates and places from the timeline. Do not include the patient's contact details (they go in separate fields).
+- If desiredOutcome is null, return an empty string for outcome.${evidence ? `
+- An "evidence" item is given: a clinical guidance recommendation and a question it raises. Add ONE short paragraph near the end that quotes the recommendation exactly, names its source, and politely asks ${to.body} to explain how it was followed in the patient's care. Do not say it was not followed. Do not say anyone was at fault.` : ""}
+- Write in ${to.language ?? "English"}.`;
+  return structured({ model: MODELS.draft, effort: EFFORT.draft, instructions, input: `Facts:\n${JSON.stringify(facts, null, 2)}${evidence ? `\n\nEvidence:\n${JSON.stringify(evidence, null, 2)}` : ""}`, schema: Draft, name: "complaint_draft", data: ["health", "identity"] });
+}
