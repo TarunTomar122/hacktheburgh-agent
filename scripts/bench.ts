@@ -8,6 +8,7 @@ import { runDecisionAgent } from "../lib/agent/decisionAgent";
 import { observe, unfilledRequired, type El } from "../lib/agent/observe";
 import { nhsValues } from "../lib/agent/nhsLothian";
 import { SAMPLE } from "./agent-nhs";
+import { fillOne } from "../lib/agent/enquiry";
 import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_SPSO } from "../lib/agent/sample";
 import { SPSO_AGENT_OPTIONS, SPSO_FORM, spsoValues } from "../lib/agent/spso";
 import type { AgentEvent } from "../lib/agent/events";
@@ -30,6 +31,8 @@ type Task = {
   /** Multi-page forms (advance / stopAtUrl / ignore) only exist in the Decisions engine. */
   decisionsOnly?: boolean; advance?: RegExp; stopAtUrl?: RegExp; ignore?: (el: { label: string; name: string; kind: string }, url: string) => boolean;
   check: (page: Page, run: BrowserRun, startUrl: string) => Promise<Check>;
+  /** Tasks that run their own agent code (e.g. step 4's find-and-fill) instead of the plain engine. They navigate themselves. */
+  custom?: (page: Page) => Promise<Check>;
 };
 
 async function els(page: Page): Promise<El[]> { return (await observe(page)).elements; }
@@ -50,6 +53,26 @@ async function honeypotsEmpty(page: Page): Promise<boolean> {
 }
 const verdict = (fails: string[]): Check => ({ pass: fails.length === 0, why: fails.join("; ") || "ok" });
 const pageText = (page: Page) => page.evaluate(() => (document.querySelector("main") ?? document.body).innerText.replace(/\s+/g, " "));
+
+/* Step 4 enquiry forms verified on 2026-11-07. Nothing is ever submitted: fillOne stops before Send by design. */
+const ENQ: { id: string; name: string; website: string; enquiryUrl?: string; consents?: number }[] = [
+  { id: "anderson", name: "Anderson Strathern", website: "https://www.andersonstrathern.co.uk/", enquiryUrl: "https://www.andersonstrathern.co.uk/legal-expertise/medical-negligence/", consents: 2 },
+  { id: "mfmac", name: "MFMac", website: "https://mfmac.com/legal-expertise/individuals-and-families/personal-injury/medical-negligence-compensation" },
+  { id: "irwin", name: "Irwin Mitchell", website: "https://www.irwinmitchell.com/" },
+  { id: "balfour", name: "Balfour and Manson", website: "https://www.balfour-manson.co.uk/" },
+  { id: "drummond", name: "Drummond Miller", website: "https://www.drummondmiller.co.uk/" },
+];
+async function enquiryCheck(page: Page, e: (typeof ENQ)[number]): Promise<Check> {
+  const firm = { id: e.id, name: e.name, town: "Edinburgh", distanceMiles: null, website: e.website, email: null, phone: null, sources: ["slab" as const], legalAid: true, activeRecently: true, actsForPatients: "unknown" as const, noWinNoFee: "unknown" as const, enquiryUrl: e.enquiryUrl ?? null, score: 0, reasons: [], excluded: null };
+  const o = await fillOne(page, firm, { facts: SAMPLE_FACTS, message: { subject: "Benchmark test (never sent)", body: "Benchmark test message. This form is never submitted." } });
+  const text = await pageText(page);
+  const fails: string[] = [];
+  if (o.status !== "ready_to_send") fails.push(`status ${o.status}: ${o.note}`);
+  if (!o.filled.some((f) => f.value.trim() === SAMPLE_FACTS.email)) fails.push("our email is not on the form");
+  if (/thank you for (your|getting)|has been (sent|received)|we will be in touch/i.test(text)) fails.push("a thank-you page appeared");
+  if (e.consents !== undefined && o.consents.length !== e.consents) fails.push(`expected ${e.consents} consent boxes, got ${o.consents.length}`);
+  return fails.length ? { pass: false, why: fails.join("; ") } : { pass: true, why: `${o.filled.length} fields, ${o.consents.length} consents, ${o.formUrl}` };
+}
 
 const TASKS: Task[] = [
   { id: "nhs", url: "https://www.nhslothian.scot/yourrights/online-feedback-form/", goal: "Fill in the NHS Lothian online feedback/complaint form using the saved values. Do not submit.", allowCheckboxes: true,
@@ -96,6 +119,8 @@ const TASKS: Task[] = [
   { id: "spso-form", url: SPSO_FORM, decisionsOnly: true, goal: "Complete the SPSO online complaint form page by page using the saved values, clicking Next to move on. Never click Save for later and never submit the complaint.",
     values: spsoValues(SAMPLE_FACTS, SAMPLE_DRAFT, SAMPLE_SPSO), allowCheckboxes: true, ...SPSO_AGENT_OPTIONS,
     check: async (page) => { const t = await pageText(page); const missing = ["Review and send your complaint", "Ailsa", "Reid", "14 Example Street", "July 2026", "DEMO-0001"].filter((x) => !t.includes(x)); return /\/form\/review\/?$/.test(page.url()) && missing.length === 0 ? { pass: true, why: "reached the review page with the right details; nothing sent" } : { pass: false, why: `url ${page.url()} missing ${missing.join(", ") || "-"}` }; } },
+  // Step 4 (D45): find each firm's enquiry form (looking harder when no URL is known) and fill it, stopping before Send.
+  ...ENQ.map((e): Task => ({ id: `enq-${e.id}`, url: e.website, goal: "", values: [], decisionsOnly: true, check: async () => ({ pass: false, why: "custom" }), custom: (page) => enquiryCheck(page, e) })),
   { id: "lawsoc", url: "https://www.lawscot.org.uk/find-a-solicitor/", goal: "Search the directory for firms: set the location and area of law from the saved values, then run the search.", allowSubmit: true, maxSteps: 8,
     values: [v("search_location", "City or postcode to search in", "Edinburgh"), v("area_of_law", "Area of law needed", "Accident and injury")],
     check: async (page) => { const t = await pageText(page); const m = t.match(/(\d+)\s+results? found/i); return m && Number(m[1]) > 0 ? { pass: true, why: `${m[1]} results` } : { pass: false, why: "no results shown" }; } },
@@ -107,6 +132,10 @@ async function runOne(task: Task, engine: "decisions" | "tools") {
   const events: AgentEvent[] = [];
   const t0 = Date.now();
   try {
+    if (task.custom) {
+      const chk = await task.custom(page);
+      return { task: task.id, engine, pass: chk.pass, why: chk.why, status: chk.pass ? "ready_to_submit" : "fail", steps: 0, calls: 0, modelMs: 0, wallMs: Date.now() - t0, tokens: 0, blocked: 0 };
+    }
     await page.goto(task.url, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(1500);
     await dismissCookies(page, 3000);

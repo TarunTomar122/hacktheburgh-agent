@@ -10,6 +10,7 @@
     "agent:interview": "tsx --env-file=.env.local scripts/agent-interview.ts",
     "agent:nhs": "tsx --env-file=.env.local scripts/agent-nhs.ts",
     "agent:spso": "tsx --env-file=.env.local scripts/agent-spso.ts",
+    "agent:step4": "tsx --env-file=.env.local scripts/agent-step4.ts",
     "bench": "tsx --env-file=.env.local scripts/bench.ts"
   },
   "dependencies": {

@@ -40,10 +40,10 @@ export const LAWSOC = "https://www.lawscot.org.uk/find-a-solicitor/";
 const FIRMS_TO_VET = 4;
 const FIRM_TIMEOUT_MS = 75_000;
 
-type Emit = (e: Step3Event) => void;
+export type Emit = (e: Step3Event) => void;
 
 /** Counts what the agents did, for the live grid and the result. */
-class Tracker {
+export class Tracker {
   sites = new Set<string>();
   pages = 0;
   actions = 0;
@@ -68,7 +68,7 @@ class Tracker {
 }
 
 /** Everything every agent did, in order, with screenshots (D39). Streamed live and returned with the result. */
-class Tracer {
+export class Tracer {
   steps: TraceStep[] = [];
   t0 = Date.now();
   constructor(private emit: Emit, public runDir: string) {
@@ -91,12 +91,12 @@ class Tracer {
   }
 }
 
-type LogExtra = Partial<Pick<TraceStep, "url" | "detail" | "confidence" | "firms">> & { shot?: boolean | string };
+export type LogExtra = Partial<Pick<TraceStep, "url" | "detail" | "confidence" | "firms">> & { shot?: boolean | string };
 /** The tile note, plus `.log` (add a trace step, optionally with a screenshot) for the agent's own tab. */
-type Note = ((s: string) => void) & { log: (kind: TraceStep["kind"], text: string, extra?: LogExtra) => Promise<void> };
+export type Note = ((s: string) => void) & { log: (kind: TraceStep["kind"], text: string, extra?: LogExtra) => Promise<void> };
 
 /** One browser agent in its own tab: a coloured cursor, a grid tile, and a time limit. Failures are reported, not thrown. */
-async function agent<T>(
+export async function agent<T>(
   ctx: { context: BrowserContext; emit: Emit; track: Tracker; tracer: Tracer; first?: Page },
   label: string,
   work: (page: Page, note: Note) => Promise<T>,
@@ -180,7 +180,7 @@ export function readVerdict(text: string): { verdict: Verdict; quote: string } {
 }
 
 /** Visible text without waiting: some sites (SLAB) have no <main>, and a locator would wait 30 s for it. */
-const pageText = (page: Page) => page.evaluate(() => (document.querySelector("main") as HTMLElement | null)?.innerText || document.body.innerText).catch(() => "");
+export const pageText = (page: Page) => page.evaluate(() => (document.querySelector("main") as HTMLElement | null)?.innerText || document.body.innerText).catch(() => "");
 
 async function runCalculator(page: Page, funding: Funding, note: Note, track: Tracker) {
   note("Opening SLAB's calculator");
@@ -228,7 +228,7 @@ async function runCalculator(page: Page, funding: Funding, note: Note, track: Tr
 }
 
 /** The calculator's fields by their labels (read 2026-11-07). Used only when the agent did not finish. */
-async function fillCalculatorDirectly(page: Page, f: Funding, track: Tracker) {
+export async function fillCalculatorDirectly(page: Page, f: Funding, track: Tracker) {
   const radio = async (question: RegExp, answer: "Yes" | "No") => {
     const id = await page.evaluate(
       ({ q, a }) => {
@@ -270,7 +270,7 @@ async function fillCalculatorDirectly(page: Page, f: Funding, track: Tracker) {
 
 /* ------------------------------------------------------------------ 2. SLAB finder */
 
-type SlabCard = { name: string; town: string; distanceMiles: number | null; website: string | null; email: string | null; phone: string | null; profile: string | null };
+export type SlabCard = { name: string; town: string; distanceMiles: number | null; website: string | null; email: string | null; phone: string | null; profile: string | null };
 
 async function readSlabCards(page: Page): Promise<SlabCard[]> {
   return page.$$eval(".card-solicitor", (cards) =>
@@ -295,7 +295,7 @@ async function readSlabCards(page: Page): Promise<SlabCard[]> {
   );
 }
 
-async function runFinder(page: Page, note: Note, track: Tracker): Promise<SlabCard[]> {
+export async function runFinder(page: Page, note: Note, track: Tracker): Promise<SlabCard[]> {
   note("Opening SLAB's lawyer list");
   await page.goto(SLAB_FINDER, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1200);
@@ -371,14 +371,14 @@ async function runFinder(page: Page, note: Note, track: Tracker): Promise<SlabCa
 
 /* ------------------------------------------------------------------ merging and scoring */
 
-const core = (name: string) =>
+export const core = (name: string) =>
   name
     .toLowerCase()
     .replace(/[&+]/g, " ")
     .replace(/\b(llp|ltd|limited|solicitors?|lawyers?|law|the|and|co|ws|sssc|scotland|plc|nominees|trustees)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-const slug = (name: string) => core(name).replace(/\s+/g, "-") || "firm";
+export const slug = (name: string) => core(name).replace(/\s+/g, "-") || "firm";
 /** "Balfour + Manson LLP" and "Balfour and Manson Solicitors" are the same firm. */
 const sameFirm = (a: string, b: string) => {
   const x = core(a), y = core(b);
@@ -449,7 +449,7 @@ export function score(f: FirmFinding, route: Route, ev: Evidence = {}): FirmFind
 
 /* ------------------------------------------------------------------ 3. Law Society check */
 
-async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: Note, track: Tracker) {
+export async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: Note, track: Tracker) {
   await page.goto(LAWSOC, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForSelector("input[name=FirmName]", { timeout: 20000 });
   await dismissCookies(page, 3000);
@@ -458,7 +458,11 @@ async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: Note, tra
   for (const f of firms) {
     note(`Checking ${f.name.slice(0, 30)}`);
     const query = core(f.name).split(" ").slice(0, 3).join(" ");
-    // The results page repeats the search form; only the visible copy works.
+    // The search box on a results page does not submit again, so every search starts from a fresh form.
+    if (found.size + firms.indexOf(f) > 0) {
+      await page.goto(LAWSOC, { waitUntil: "domcontentloaded", timeout: 30000 });
+      await page.waitForSelector("input[name=FirmName]", { timeout: 20000 });
+    }
     const box = page.locator("input[name=FirmName]:visible").first();
     await pointAt(page, box);
     await box.fill(query);
@@ -470,7 +474,7 @@ async function lawSocietyCheck(page: Page, firms: FirmFinding[], note: Note, tra
     await pointAt(page, btn);
     // The search is a page load with the query in the URL: wait for *this* search, not the previous results.
     await Promise.all([
-      page.waitForURL((u) => (u.searchParams.get("FirmName") ?? "").toLowerCase() === query, { timeout: 20000 }).catch(() => {}),
+      page.waitForURL((u) => (u.searchParams.get("FirmName") ?? "").toLowerCase() === query, { timeout: 12000 }).catch(() => {}),
       btn.click(),
     ]);
     track.bump("action");
@@ -499,9 +503,9 @@ const registrable = (u: string) => {
 };
 const said = (a: DAnswer | undefined) => (a && a.type === "choice" ? `${a.choice} (confidence ${a.confidence.toFixed(2)})` : "no answer");
 
-type Vetted = Partial<FirmFinding> & { evidence: Evidence };
+export type Vetted = Partial<FirmFinding> & { evidence: Evidence };
 
-async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: Tracker): Promise<Vetted> {
+export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: Tracker): Promise<Vetted> {
   if (!firm.website) throw new Error("No website listed");
   note("Opening their website");
   await page.goto(firm.website, { waitUntil: "domcontentloaded", timeout: 25000 });
