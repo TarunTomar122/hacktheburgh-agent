@@ -33,6 +33,9 @@ Docs only, no code. Wrote `docs/plans/browser-complexity-plan.md` (proposed, not
 ### 2026-11-07 - Luigi + Codex - Bug review and targeted fixes
 Reviewed application flows, routes, persistence, planner/browser workers, funding, evidence, enquiries and live view. Fixed question-answer failure recovery, terminal-run retry, final stream line handling and obsolete-stream guards, stale fixture flag, impossible dates, repeated date-mode reset, decimal-thousands parsing and skipped-finances fallback. Corrected server-storage wording. Regression scripts for dates/money, location, mocked calculator and mocked crew UI pass. UI setup initially lacked __name; fixed and blocked real planner requests in the test. Build caught an edit-induced encoding error; affected files normalized to UTF-8. Outstanding validation/decisions: BUG_REVIEW.md. No browser engine or real-send behavior changed. Production build, TypeScript, lint and all four regression scripts passed. Final sync pulled 247eded (documentation only); preserved both progress entries and renumbered our discrepancy to 11.
 
+### 2026-11-07 · Om + Claude · DONE · Demo: skip step 4 and mark enquiries as sent (D57)
+Om: the skip has to be on the Contact lawyers page too. Added "Skip and mark as sent (demo)" before and after the forms are filled; it closes the agent's browser and marks the enquiries as sent without sending anything. `tsc` and `eslint` clean; not clicked through in a browser yet.
+
 ### 2026-11-07 · Om + Claude · DONE · Demo: skip step 3 and continue to step 4 (D56)
 Om: no skip on the legal aid page. Added "Skip and continue to step 4 (demo)" to the step 3 intro in `app/case/CaseRun.tsx`; it loads the three sample firms and opens step 4. `tsc` and `eslint` clean; not clicked through in a browser yet.
 

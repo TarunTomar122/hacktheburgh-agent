@@ -289,4 +289,7 @@ User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's exist
 **D56 · 2026-11-07 · Om (asked), Claude (built) · decided**
 **Demo skip on step 3 ("Preparing your case").** The intro screen has "Skip and continue to step 4 (demo)" beside the start button (`app/case/CaseRun.tsx`). It saves the step 3 sample result (`FIXTURE_RESULT`: three sample firms) as the profile's legal aid result, marks it as sample data and selects the three shortlisted firms, then opens step 4. No research runs. Step 4 then works on those firms' real websites (fills forms; the send gate stays closed). Same idea as D49.
 
-<!-- Add new entries above this line. Next number: D57 -->
+**D57 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**Demo skip on step 4 ("Contact lawyers").** "Skip and mark as sent (demo)" sits beside "Fill their enquiry forms" and above the firm cards (`app/case/ContactLawyersStep.tsx`). It closes the agent's browser, marks every firm that has a form (or every picked firm, if nothing was filled yet) as sent with the note "Skipped in the demo: nothing was actually sent", and starts the three-day follow-up clock, so the demo can go on to "A firm replied". Nothing is sent. The button hides once every firm is marked. Same idea as D49 and D56.
+
+<!-- Add new entries above this line. Next number: D58 -->

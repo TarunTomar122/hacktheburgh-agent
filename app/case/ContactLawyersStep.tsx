@@ -6,6 +6,7 @@ import type { AgentTile, FirmFinding, Stats, TraceStep } from "../../lib/agent/l
 import { setEnquiry, setOutcome, upsertEnquiries, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, PageTitle, Paper } from "../ui";
 import { draftMessage, runStep4, sendEnquiry } from "./enquiryRun";
+import { closeAgentBrowser } from "./streamAgent";
 import { AgentsPanel } from "./LegalAidStep";
 import { fixtureMode } from "./legalAidRun";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
@@ -137,6 +138,22 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const markSent = (o: EnquiryOutcome, at = new Date().toISOString()) =>
     upsertEnquiries([{ firmId: o.firmId, firmName: o.firmName, status: "sent", sentAt: at, followUpOn: followUpFrom(at) }]);
   const started = outcomes.length > 0 || running;
+
+  // Demo (D57): no real enquiry is sent, so the demo can carry on as if every firm had been sent its enquiry.
+  const isSent = (id: string) => ["sent", "replied", "not_interested"].includes(records.find((r) => r.firmId === id)?.status ?? "");
+  const skipSending = () => {
+    void closeAgentBrowser(); // the filled forms are no use any more
+    const at = new Date().toISOString();
+    const targets: EnquiryOutcome[] = outcomes.length
+      ? outcomes.filter((o) => !(o.status === "no_form" && /swapped in/i.test(o.note)))
+      : firms.map((f) => ({ firmId: f.id, firmName: f.name, status: "queued" as const, formUrl: null, filled: [], unfilled: [], consents: [], note: "" }));
+    const skipped = targets.filter((o) => !isSent(o.firmId) && o.status !== "no_form").map((o) => ({ ...o, status: "sent" as const, sentAt: at, note: "Skipped in the demo: nothing was actually sent" }));
+    setEnquiry({ outcomes: [...targets.filter((o) => !skipped.some((s) => s.firmId === o.firmId)), ...skipped] });
+    upsertEnquiries(skipped.map((o) => ({ firmId: o.firmId, firmName: o.firmName, status: "sent" as const, sentAt: at, followUpOn: followUpFrom(at) })));
+    setLive(null);
+  };
+  const skippable = outcomes.length ? outcomes.filter((o) => o.status !== "no_form").map((o) => o.firmId) : firms.map((f) => f.id);
+  const canSkip = !running && !writing && skippable.some((id) => !isSent(id));
   // A firm with no online form that was replaced drops to a one-line note; one we could not replace keeps its card.
   const swapped = (o: EnquiryOutcome) => o.status === "no_form" && /swapped in/i.test(o.note);
   const active = outcomes.filter((o) => !swapped(o));
@@ -173,6 +190,9 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
             <Button className="w-full" onClick={() => run()} disabled={!message || writing}>
               Fill their enquiry forms
             </Button>
+            <Button className="w-full" variant="secondary" disabled={running || writing} onClick={skipSending} title="Demo: nothing is sent. Marks every enquiry as sent.">
+              Skip and mark as sent (demo)
+            </Button>
             <p className="text-xs leading-5 text-muted">
               Our agents fill each form and stop. Nothing is sent until you approve it.{" "}
               <button className="text-brand hover:underline" onClick={onBack}>
@@ -186,6 +206,14 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
           {running && <AgentsPanel tiles={tiles} stats={stats} status={status} live={lines} />}
           {error && <p className="text-sm text-danger">{error}</p>}
           {profile.enquiry?.sample && !running && <p className="text-xs text-amber">Sample data (fixture): nothing was visited and nothing can be sent.</p>}
+
+          {canSkip && (
+            <div className="flex justify-end">
+              <Button variant="secondary" size="sm" onClick={skipSending} title="Demo: nothing is sent. Marks every enquiry as sent.">
+                Skip and mark as sent (demo)
+              </Button>
+            </div>
+          )}
 
           <div className="grid gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
             {active.map((o) => {
