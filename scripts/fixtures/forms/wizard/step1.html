@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>About you - Make a complaint</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><header><strong>Northfield Health Board</strong></header>
+<main>
+<aside class="side"><form onsubmit="return false"><strong>Already started?</strong><p>Sign in to resume a saved complaint.</p>
+<label for="resume-email">Email address</label><input type="email" id="resume-email" name="resume-email">
+<label for="resume-pw">Password</label><input type="password" id="resume-pw" name="resume-pw">
+<button class="btn" type="submit">Continue complaint</button></form></aside>
+<p class="steps">Step 1 of 4</p>
+<h1>About you</h1>
+<form id="f" novalidate>
+<div class="form-group"><label for="first">First name</label><input type="text" id="first" name="first"></div>
+<div class="form-group"><label for="last">Last name</label><input type="text" id="last" name="last"></div>
+<div class="form-group"><label for="email">Email address</label><input type="email" id="email" name="email"></div>
+<div class="form-group"><label for="tel">Telephone number</label><input type="tel" id="tel" name="tel"></div>
+<div class="form-group"><fieldset class="form-group" id="behalf-fs"><legend>Are you making this complaint on behalf of someone else?</legend>
+<div class="radios"><input type="radio" id="behalf" name="behalf" value="yes" required><label for="behalf">Yes</label>
+<input type="radio" id="behalf-no" name="behalf" value="no"><label for="behalf-no">No</label></div></fieldset></div>
+<div id="cond" hidden>
+<div class="form-group"><label for="patient">Full name of the patient</label><input type="text" id="patient" name="patient" required></div>
+<div class="form-group"><label for="rel">Your relationship to the patient</label>
+<select id="rel" name="rel" required><option value="">Please select</option><option>Parent</option><option>Spouse or partner</option><option>Son or daughter</option><option>Friend</option><option>Other</option></select></div>
+</div>
+<button class="btn" type="submit">Continue</button>
+</form>
+</main>
+<footer><a href="#">Accessibility</a></footer>
+<script>
+document.querySelectorAll('input[name=behalf]').forEach(function (r) { r.addEventListener('change', function () { document.getElementById('cond').hidden = radio('behalf') !== 'yes'; }); });
+wizard('f', 'step2.html', [
+  { id: 'first', check: function () { return val('first') ? '' : 'Enter your first name'; } },
+  { id: 'last', check: function () { return val('last') ? '' : 'Enter your last name'; } },
+  { id: 'email', check: function () { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val('email')) ? '' : 'Enter an email address in the correct format'; } },
+  { id: 'behalf', check: function () { return radio('behalf') ? '' : 'Select yes if you are complaining for someone else'; } },
+  { id: 'patient', check: function () { return radio('behalf') !== 'yes' || val('patient') ? '' : "Enter the patient's full name"; } },
+  { id: 'rel', check: function () { return radio('behalf') !== 'yes' || val('rel') ? '' : 'Select your relationship to the patient'; } },
+]);
+</script></body></html>

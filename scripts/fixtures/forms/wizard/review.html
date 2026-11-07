@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Check your answers - Make a complaint</title><link rel="stylesheet" href="style.css"></head>
+<body><header><strong>Northfield Health Board</strong></header>
+<main>
+<p class="steps">Step 4 of 4</p>
+<h1>Check your answers before sending your complaint</h1>
+<dl id="list"></dl>
+<form method="post" action="/submit"><input type="hidden" name="payload" id="payload">
+<button class="btn" type="submit">Submit complaint</button></form>
+</main>
+<script>
+const a = JSON.parse(sessionStorage.getItem('answers') || '{}');
+const names = { first: 'First name', last: 'Last name', email: 'Email', tel: 'Telephone', behalf: 'On behalf of someone else', patient: 'Patient', rel: 'Relationship', when: 'Date', where: 'Hospital', 'dept[]': 'Departments', details: 'What happened', ref: 'Reference', outcome: 'Outcome', contact: 'Contact by', eth: 'Ethnic group' };
+document.getElementById('list').innerHTML = Object.keys(names).filter(function (k) { return a[k]; }).map(function (k) { return '<dt>' + names[k] + '</dt><dd>' + String(a[k]).replace(/</g, '&lt;') + '</dd><dd><a href="#">Change</a></dd>'; }).join('');
+document.getElementById('payload').value = JSON.stringify(a);
+</script></body></html>

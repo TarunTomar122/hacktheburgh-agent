@@ -1,0 +1,71 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Kontaktanfrage – Kanzlei Beispiel Medizinrecht</title>
+<link rel="stylesheet" href="wizard/style.css">
+<style>.step{display:none}.step.on{display:block}.send{display:inline-block;background:#0b5;color:#fff;padding:10px 16px;margin-top:18px;cursor:pointer}</style></head>
+<body><header><strong>Kanzlei Beispiel</strong> · <a href="#">Team</a> · <a href="#">Kontakt</a></header>
+<main>
+<h1>Ersteinschätzung anfragen</h1>
+<p class="steps" id="stepper">Schritt 1 von 3</p>
+<form id="f" novalidate onsubmit="return false">
+<section class="step on" id="s1">
+<h2>Ihre Kontaktdaten</h2>
+<div class="form-group"><label for="vn">Vorname *</label><input type="text" id="vn" name="vorname" required></div>
+<div class="form-group"><label for="nn">Nachname *</label><input type="text" id="nn" name="nachname" required></div>
+<div class="form-group"><label for="tel">Telefon *</label><input type="tel" id="tel" name="telefon" required></div>
+<div class="form-group"><label for="mail">E-Mail *</label><input type="email" id="mail" name="email" required></div>
+<fieldset class="form-group"><legend>Geburtsdatum</legend>
+<label for="gd">Tag</label><input type="text" id="gd" name="geb_tag" inputmode="numeric" style="width:60px">
+<label for="gm">Monat</label><input type="text" id="gm" name="geb_monat" inputmode="numeric" style="width:60px">
+<label for="gy">Jahr</label><input type="text" id="gy" name="geb_jahr" inputmode="numeric" style="width:90px"></fieldset>
+<button type="button" class="btn" id="n1">Weiter</button>
+</section>
+<section class="step" id="s2">
+<h2>Ihr Anliegen</h2>
+<div class="form-group"><label for="art">Art des Anliegens *</label><select id="art" name="art" required><option value="">Bitte wählen</option><option>Arzthaftung / Behandlungsfehler</option><option>Arbeitsrecht</option><option>Mietrecht</option><option>Sonstiges</option></select></div>
+<div class="form-group"><label for="msg">Ihre Nachricht *</label><textarea id="msg" name="nachricht" required></textarea></div>
+<fieldset class="form-group"><legend>Haben Sie eine Rechtsschutzversicherung? *</legend>
+<input type="radio" id="r1" name="rsv" value="ja" required><label for="r1">Ja</label>
+<input type="radio" id="r2" name="rsv" value="nein"><label for="r2">Nein</label></fieldset>
+<div class="form-group" id="vsgroup" hidden><label for="vs">Name der Versicherung *</label><input type="text" id="vs" name="versicherung" required></div>
+<button type="button" class="btn" id="b2" style="background:#777">Zurück</button> <button type="button" class="btn" id="n2">Weiter</button>
+</section>
+<section class="step" id="s3">
+<h2>Datenschutz</h2>
+<p>Bitte bestätigen Sie die Datenschutzhinweise. Danach können Sie Ihre Anfrage absenden.</p>
+<div class="form-group"><input type="checkbox" id="ds" name="datenschutz" required><label for="ds" style="display:inline">Ich stimme der Verarbeitung meiner Daten gemäß der Datenschutzerklärung zu. *</label></div>
+<div class="form-group"><input type="checkbox" id="nl" name="newsletter"><label for="nl" style="display:inline">Newsletter abonnieren</label></div>
+<div class="send" role="button" tabindex="0" id="send" onclick="sendIt()">Anfrage absenden</div>
+</section>
+</form>
+<div id="sent" hidden><h2>Vielen Dank, Ihre Anfrage wurde gesendet.</h2></div>
+</main>
+<footer><a href="#">Impressum</a></footer>
+<script>
+function v(id) { return document.getElementById(id).value.trim(); }
+function err(id, msg) {
+  var el = document.getElementById(id), g = el.closest('.form-group');
+  g.classList.add('form-group--error'); el.setAttribute('aria-invalid', 'true');
+  var m = document.createElement('span'); m.className = 'error-message'; m.id = id + '-err'; m.textContent = msg; g.appendChild(m);
+  el.setAttribute('aria-describedby', id + '-err');
+}
+function clear() { document.querySelectorAll('.error-message').forEach(function (n) { n.remove(); }); document.querySelectorAll('[aria-invalid]').forEach(function (n) { n.removeAttribute('aria-invalid'); }); document.querySelectorAll('.form-group--error').forEach(function (n) { n.classList.remove('form-group--error'); }); }
+function show(n) { document.querySelectorAll('.step').forEach(function (s) { s.classList.remove('on'); }); document.getElementById('s' + n).classList.add('on'); document.getElementById('stepper').textContent = 'Schritt ' + n + ' von 3'; }
+document.getElementById('n1').onclick = function () {
+  clear(); var bad = false;
+  if (!v('vn')) { err('vn', 'Bitte Vornamen angeben'); bad = true; }
+  if (!v('nn')) { err('nn', 'Bitte Nachnamen angeben'); bad = true; }
+  if (!/^\d{6,15}$/.test(v('tel'))) { err('tel', 'Bitte geben Sie die Telefonnummer nur mit Ziffern ein (ohne Leerzeichen und +)'); bad = true; }
+  if (!/@/.test(v('mail'))) { err('mail', 'Bitte gültige E-Mail angeben'); bad = true; }
+  if (!bad) show(2);
+};
+document.querySelectorAll('input[name=rsv]').forEach(function (r) { r.onchange = function () { document.getElementById('vsgroup').hidden = !document.getElementById('r1').checked; }; });
+document.getElementById('b2').onclick = function () { show(1); };
+document.getElementById('n2').onclick = function () {
+  clear(); var bad = false;
+  if (!v('art')) { err('art', 'Bitte wählen'); bad = true; }
+  if (v('msg').length < 10) { err('msg', 'Bitte beschreiben Sie Ihr Anliegen'); bad = true; }
+  if (!document.querySelector('input[name=rsv]:checked')) { err('r1', 'Bitte auswählen'); bad = true; }
+  if (document.getElementById('r1').checked && !v('vs')) { err('vs', 'Bitte Versicherung angeben'); bad = true; }
+  if (!bad) show(3);
+};
+function sendIt() { fetch('/submit', { method: 'POST', body: 'x' }); document.getElementById('f').hidden = true; document.getElementById('sent').hidden = false; }
+</script></body></html>
