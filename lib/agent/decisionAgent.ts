@@ -110,6 +110,16 @@ export async function runDecisionAgent(opts: {
       // If an unticked consent box is what's missing, ask about that specifically.
       const f = await finish(page, opts, stats, step, unsure);
       if (f.status === "needs_input" && f.question) return f;
+      // Multi-page forms: nothing on this page is unresolved (only optional fields we have no data for, e.g. diversity
+      // monitoring), so "ask" means the model is unsure, not that data is missing. Move on with the allowed "Next" button.
+      const next = opts.advance && unsure.length === 0 && f.status === "ready_to_submit" ? obs.elements.find((e) => e.kind === "submit" && !e.disabled && opts.advance!.test(e.label.trim())) : undefined;
+      if (next) {
+        await page.locator(`[data-aid="${next.id}"]`).click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(700);
+        emit({ type: "action", step, tool: "click", args: { id: next.id, label: next.label.slice(0, 40), reason: "nothing required left on this page" }, result: "ok" });
+        unsure = [];
+        continue;
+      }
       return result("needs_input", "The model says it needs more information.", step, { unfilled: unsure, question: `I need more information to continue: ${unsure.join("; ") || "unclear what to do next"}` });
     }
     const id = Number(nav.choice.replace("click:", ""));

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Draft } from "../../../../lib/agent/draft";
 import { CaseFacts, missingRequired } from "../../../../lib/agent/facts";
+import { ExtraAnswers } from "../../../../lib/agent/extra";
 import { fillSpsoComplaint } from "../../../../lib/agent/spso";
 import { SpsoAnswers, spsoProblems } from "../../../../lib/agent/spsoAnswers";
 
@@ -10,9 +11,9 @@ import { SpsoAnswers, spsoProblems } from "../../../../lib/agent/spsoAnswers";
  * It never presses Send. The last event has type "done" (ready_to_submit | needs_input | incomplete | max_steps).
  */
 export async function POST(req: Request) {
-  const parsed = z.object({ facts: CaseFacts, draft: Draft, answers: SpsoAnswers }).safeParse(await req.json().catch(() => null));
+  const parsed = z.object({ facts: CaseFacts, draft: Draft, answers: SpsoAnswers, extra: ExtraAnswers.optional() }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request", detail: parsed.error.message }, { status: 400 });
-  const { facts, draft, answers } = parsed.data;
+  const { facts, draft, answers, extra } = parsed.data;
   const problems = [...(missingRequired(facts).length ? ["Complete your profile first."] : []), ...spsoProblems(draft, answers)];
   if (problems.length) return Response.json({ error: problems.join(" ") }, { status: 400 });
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
         if (!cancelled) controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
       };
       try {
-        await fillSpsoComplaint(facts, draft, answers, { onEvent: send, keepOpen: true });
+        await fillSpsoComplaint(facts, draft, answers, { onEvent: send, keepOpen: true, extra });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message : String(e) });
       } finally {

@@ -5,6 +5,7 @@ import { dismissCookies, openSession } from "../browser";
 import { runBrowserAgent, type BrowserRun, type Value } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { makeLogger, type OnEvent } from "./events";
+import { extraValues, type ExtraAnswers } from "./extra";
 
 export const NHS_LOTHIAN_FORM = "https://www.nhslothian.scot/yourrights/online-feedback-form/";
 
@@ -33,7 +34,7 @@ export type Step1Result = BrowserRun & { screenshot?: string; runDir: string };
  * Fill the NHS Lothian form in a visible browser and STOP before submitting.
  * Submitting is deliberately not implemented yet: it needs a human approval path and a decision on test data.
  */
-export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; keepOpen?: boolean } = {}): Promise<Step1Result> {
+export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; keepOpen?: boolean; extra?: ExtraAnswers } = {}): Promise<Step1Result> {
   const runDir = path.join(process.cwd(), ".runs", new Date().toISOString().replace(/[:.]/g, "-"));
   const emit = makeLogger(runDir, opts.onEvent);
   const { browser, page } = await openSession();
@@ -49,7 +50,7 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
     const run = await runAgent({
       page,
       goal: "Fill in the NHS Lothian online feedback/complaint form using the saved values. Do not submit.",
-      values: nhsValues(facts, draft),
+      values: [...nhsValues(facts, draft), ...extraValues(opts.extra)],
       allowCheckboxes: facts.emailRiskAccepted === true,
       onEvent: emit,
     });

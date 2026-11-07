@@ -63,16 +63,24 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 - **Left rail ("Your path"), 320px:** progress block on top, then the steps as a timeline on a 1px `rail` line. **No circles.** The active step lights its stretch of the rail in `brand`, gets a `brand-soft` wash, and lists its milestones as small square ticks. Inactive future steps are `fade`. A locked step shows a lock icon and is still clickable (it explains itself).
 - **Progress:** big serif percentage, thin bar, "N of M milestones", and "Next: ...". Milestones are defined in `app/case/progress.ts`. Honest rules: only things we can know (profile data, the agent reaching the review page) plus self-reported "I've pressed Send". Steps not built count as milestones that cannot be done yet, so the percentage cannot reach 100% early.
 
+## Steps (D33)
+
+- **No forms in our app.** A step is a title, one sentence about what will happen, and one primary button. The agent prepares everything from onboarding and earlier steps.
+- **Never show or ask again** anything agreed in an earlier step.
+- **The user reviews on the real form** in the other window (the agent stops before Submit/Send). Do not mirror the form's questions on our screen.
+- **Ask only what is missing, on the step:** `AskMissing` (profile facts, using the onboarding inputs) before the run; `AgentAsk` (the exact field the agent could not fill) after it, then the fill runs again.
+- After a successful run: one `ok` callout ("It is waiting for you in the other window") and a self-reported "I've pressed Submit/Send".
+
 ## Components (`app/ui.tsx`)
 
 | Component | Use |
 |---|---|
 | `Button` | `primary` (brand, flat), `secondary` (hairline), `ghost` (brand text). Sizes `md`, `sm`. **Never put a primary button in the same row as the paragraph that explains it.** |
-| `ActionCard` | Title, explanation, then the button **underneath**. The pattern for "approve and run" moments |
+| `ActionCard` | Title, explanation, then the button **underneath**. Currently unused (steps are one button, D33) |
 | `PageTitle` | Eyebrow, light serif title, lede |
 | `SectionTitle` | Serif heading with a hairline; optional right-hand action |
 | `Field` + `control` / `selectControl` | Label above (eyebrow style), 5px radius, `line` border, brand border plus a 4px `brand-soft` ring on focus. Selects have a custom chevron |
-| `Paper` | Cream document panel. The draft reads as a document and edits in place (Edit / Done per block) instead of one big text box |
+| `Paper` | Cream document panel. (The draft panel was removed by D33: the user reviews on the real form) |
 | `Card` | White, hairline border |
 | `Callout` | `info` / `warn` / `ok` / `danger` tints |
 | `Console` | Dark mono activity log; the newest line is white |

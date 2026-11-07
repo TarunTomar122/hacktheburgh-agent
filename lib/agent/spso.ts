@@ -10,6 +10,7 @@ import { DOC_OPTION, spsoProblems, type SpsoAnswers } from "./spsoAnswers";
 export { spsoProblems };
 export type { SpsoAnswers };
 import { makeLogger, type OnEvent } from "./events";
+import { extraValues, type ExtraAnswers } from "./extra";
 
 /** The SPSO online complaint form starts here (the checker at /form/complaint-checker links to it). */
 export const SPSO_FORM = "https://forms.spso.org.uk/spso/form/delay/";
@@ -56,7 +57,6 @@ export function spsoValues(facts: CaseFacts, draft: Draft, a: SpsoAnswers): Valu
     { key: "email", description: "Email address", value: facts.email ?? "" },
     { key: "confirm_email", description: "Confirm email address (the same email typed again)", value: facts.email ?? "" },
     { key: "organisation", description: "The organisation complained about", value: "NHS Lothian" },
-    { key: "final_reply_date", description: "Date NHS Lothian sent its final written reply", value: a.finalReplyDate },
     { key: "nhs_reference", description: "NHS Lothian's complaint reference number", value: a.nhsReference },
     { key: "what_happened", description: "What the user thinks the organisation has done wrong: the full account of the complaint (the main text box, at least 20 words)", value: draft.details },
     { key: "where", description: "Where the care happened", value: draft.location },
@@ -64,7 +64,7 @@ export function spsoValues(facts: CaseFacts, draft: Draft, a: SpsoAnswers): Valu
     { key: "doc_stage1_response", description: "Do you have a stage 1 response from the organisation in writing?", value: DOC_OPTION[a.documents.stage1Response] },
     { key: "doc_own_complaint", description: "If you complained to the organisation in writing, do you have a copy of this to provide?", value: DOC_OPTION[a.documents.ownComplaint] },
     { key: "doc_other", description: "Any other additional complaint correspondence, e.g. a copy of an SAER/SCI", value: DOC_OPTION[a.documents.other] },
-    { key: "other_reviews", description: "Has the complaint been subject to any other reviews, e.g. a Significant Adverse Event Review?", value: a.otherReviews ? "Yes" : "No" },
+    { key: "other_reviews", description: "Has the complaint been subject to any other reviews, e.g. a Significant Adverse Event Review?", value: { yes: "Yes", no: "No", dont_know: "Don't know" }[a.otherReviews] },
     { key: "reported_to_regulator", description: "Has the user reported the matter to any regulators, e.g. the GMC or NMC?", value: a.reportedToRegulator ? "Yes" : "No" },
     { key: "impact", description: "How the matter has affected the user (in their own words)", value: a.impact },
     { key: "desired_outcome", description: "What would resolve the complaint / the outcome the user wants the ombudsman to achieve", value: a.outcome },
@@ -88,7 +88,7 @@ export type SpsoResult = BrowserRun & { screenshot?: string; runDir: string };
  * Walk the SPSO online complaint form page by page and STOP before the final submit.
  * Only buttons labelled "Next" may be clicked ("Save for later" and "Submit" never are).
  */
-export async function fillSpsoComplaint(facts: CaseFacts, draft: Draft, answers: SpsoAnswers, opts: { onEvent?: OnEvent; keepOpen?: boolean } = {}): Promise<SpsoResult> {
+export async function fillSpsoComplaint(facts: CaseFacts, draft: Draft, answers: SpsoAnswers, opts: { onEvent?: OnEvent; keepOpen?: boolean; extra?: ExtraAnswers } = {}): Promise<SpsoResult> {
   const runDir = path.join(process.cwd(), ".runs", "spso-" + new Date().toISOString().replace(/[:.]/g, "-"));
   const emit = makeLogger(runDir, opts.onEvent);
   const { browser, page } = await openSession();
@@ -102,7 +102,7 @@ export async function fillSpsoComplaint(facts: CaseFacts, draft: Draft, answers:
     const run = await runDecisionAgent({
       page,
       goal: "Complete the SPSO online complaint form page by page using the saved values, clicking Next to move on. Never click Save for later and never submit the complaint.",
-      values: spsoValues(facts, draft, answers),
+      values: [...spsoValues(facts, draft, answers), ...extraValues(opts.extra)],
       allowCheckboxes: answers.readConfirmed,
       ...SPSO_AGENT_OPTIONS,
       onEvent: emit,

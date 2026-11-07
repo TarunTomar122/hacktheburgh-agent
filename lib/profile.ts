@@ -3,7 +3,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { ChatMessage } from "./agent/chat";
 import type { Draft } from "./agent/draft";
-import type { CaseFacts } from "./agent/facts";
+import { emptyFacts, type CaseFacts } from "./agent/facts";
 import type { SpsoAnswers } from "./agent/spsoAnswers";
 
 /** Everything we keep about the user's case. Stored in this browser only (localStorage). */
@@ -31,10 +31,18 @@ function subscribe(cb: () => void) {
   };
 }
 
+/**
+ * Profiles saved by an older version can lack fields added since (e.g. medicalRecords). The API routes check the
+ * full schema and answer "Bad request", so every field missing from a saved profile is filled with its empty value here.
+ */
+function upgrade(p: Profile): Profile {
+  return { ...p, facts: { ...emptyFacts(), ...p.facts } };
+}
+
 function read(): Profile | null {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Profile) : null;
+    return raw ? upgrade(JSON.parse(raw) as Profile) : null;
   } catch {
     return null;
   }
@@ -72,6 +80,12 @@ export function setProgress(patch: NonNullable<Profile["progress"]>) {
   if (p) write({ ...p, progress: { ...p.progress, ...patch } });
 }
 
+/** Add to the saved conversation (used when a step asks the user for something that was missing). */
+export function addMessages(more: ChatMessage[]) {
+  const p = read();
+  if (p) write({ ...p, messages: [...p.messages, ...more] });
+}
+
 export function clearProfile() {
   localStorage.removeItem(KEY);
   window.dispatchEvent(new Event(EVENT));
@@ -88,7 +102,7 @@ export function useProfile(): Profile | null | undefined {
     if (raw === undefined) return undefined;
     if (raw === "") return null;
     try {
-      return JSON.parse(raw) as Profile;
+      return upgrade(JSON.parse(raw) as Profile);
     } catch {
       return null;
     }

@@ -1,21 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { SAMPLE_SPSO } from "../../lib/agent/sample";
-import { DOC_OPTION, SPSO_YES_NO, spsoComplete, spsoProblems, wordCount, type DocRoute, type SpsoAnswers } from "../../lib/agent/spsoAnswers";
-import { setOmbudsman, setProgress as markProgress, type Profile } from "../../lib/profile";
-import { ActionCard, Button, Callout, Card, cx, Console, control, Eyebrow, Field, LockIcon, PageTitle, SectionTitle, selectControl } from "../ui";
+import { useEffect, useRef, useState } from "react";
+import { defaultAssumptions, spsoProblems, wordCount, type SpsoAnswers } from "../../lib/agent/spsoAnswers";
+import { setDraft, setOmbudsman, setProgress as markProgress, type Profile } from "../../lib/profile";
+import { Button, Callout, control, cx, Console, Eyebrow, LockIcon, PageTitle } from "../ui";
+import type { ExtraAnswers } from "../../lib/agent/extra";
+import AgentAsk from "./AgentAsk";
+import AskMissing from "./AskMissing";
 import { streamAgent, type DoneEvent } from "./streamAgent";
 
 // Same rule as the onboarding skip button (D24): a developer shortcut, never part of the real journey.
 const DEMO = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
-
-const DOCS: { key: keyof SpsoAnswers["documents"]; label: string }[] = [
-  { key: "finalResponse", label: "NHS Lothian's final reply (it should mention the ombudsman)" },
-  { key: "stage1Response", label: "An earlier (stage 1) reply, if there was one" },
-  { key: "ownComplaint", label: "A copy of your own written complaint" },
-  { key: "other", label: "Any other letters or emails about the complaint" },
-];
 
 export default function OmbudsmanStep({ profile, goToStepOne }: { profile: Profile; goToStepOne: () => void }) {
   const unlocked = profile.ombudsman?.unlocked === true;
@@ -23,87 +18,45 @@ export default function OmbudsmanStep({ profile, goToStepOne }: { profile: Profi
 }
 
 /** Where the user is on the path to this step. */
-const JOURNEY: { title: string; text: string; state: "now" | "wait" | "later" }[] = [
-  { title: "You complain to NHS Lothian", text: "Step 1. We prepare the complaint and fill in their form. This is where you are.", state: "now" },
-  { title: "NHS Lothian investigates and writes back", text: "Their final written reply. The ombudsman needs a copy, so keep the letter.", state: "wait" },
-  { title: "This step opens", text: "We fill in the ombudsman's complaint form from your profile. You check it and press Send yourself.", state: "later" },
+const JOURNEY: { title: string; state: "now" | "wait" | "later" }[] = [
+  { title: "You complain to NHS Lothian (you are here)", state: "now" },
+  { title: "NHS Lothian writes back with a final reply", state: "wait" },
+  { title: "This step opens", state: "later" },
 ];
 
-function Locked({ profile, goToStepOne }: { profile: Profile; goToStepOne: () => void }) {
-  const events = profile.facts.events.filter((e) => e.date.trim() || e.what.trim());
+function Locked({ goToStepOne }: { profile: Profile; goToStepOne: () => void }) {
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <PageTitle
         eyebrow={
           <span className="inline-flex items-center gap-1.5">
-            <LockIcon /> Step 2 · Locked until NHS Lothian replies
+            <LockIcon /> Step 2 · Opens after NHS Lothian replies
           </span>
         }
         title="Ombudsman"
-        lede="The Scottish Public Services Ombudsman (SPSO) is who you go to if NHS Lothian does not put things right."
+        lede="If NHS Lothian's final reply does not put things right, this is where you go next. The ombudsman only looks at a complaint once you have that reply."
       />
 
-      <Callout tone="warn" title="You can only do this after NHS Lothian has finished with your complaint.">
-        The ombudsman will only look at a complaint once you have the organisation&apos;s <b>final written response</b>. Their own checker stops you if you
-        answer &ldquo;no&rdquo; to having one, so opening it early would just be turned away.
-      </Callout>
+      <ol className="relative border-l border-rail">
+        {JOURNEY.map((j) => (
+          <li key={j.title} className="relative py-2.5 pl-6">
+            <span aria-hidden className={cx("absolute -left-px top-0 h-full w-0.5", j.state === "now" ? "bg-brand" : "bg-transparent")} />
+            <div className={cx("text-[15px] font-medium leading-6", j.state === "now" ? "text-brand" : j.state === "wait" ? "text-ink" : "text-faint")}>{j.title}</div>
+          </li>
+        ))}
+      </ol>
 
-      <section className="space-y-5">
-        <SectionTitle>How you get here</SectionTitle>
-        <ol className="relative border-l border-rail">
-          {JOURNEY.map((j) => (
-            <li key={j.title} className="relative py-3 pl-6">
-              <span aria-hidden className={cx("absolute -left-px top-0 h-full w-0.5", j.state === "now" ? "bg-brand" : "bg-transparent")} />
-              <div className={cx("text-[17px] font-medium leading-6", j.state === "now" ? "text-brand" : j.state === "wait" ? "text-ink" : "text-faint")}>{j.title}</div>
-              <p className={cx("mt-0.5 max-w-[60ch] text-sm leading-5", j.state === "later" ? "text-faint" : "text-ink-2")}>{j.text}</p>
-            </li>
-          ))}
-        </ol>
+      <div className="flex flex-wrap gap-3">
         <Button variant="secondary" size="sm" onClick={goToStepOne}>
           Back to step 1
         </Button>
-      </section>
-
-      <section className="space-y-5">
-        <SectionTitle>Your timeline so far</SectionTitle>
-        <p className="max-w-[60ch] text-sm leading-5 text-ink-2">
-          There is a time limit: the ombudsman&apos;s checker asks whether it has been more or less than a year since you first knew about the problem.
-          That is why we keep these dates, and why the wait for the NHS reply is worth keeping an eye on.
-        </p>
-        {events.length === 0 ? (
-          <p className="text-sm text-muted">No events yet. Add them in your profile.</p>
-        ) : (
-          <ol className="relative border-l border-rail">
-            {events.map((e, i) => (
-              <li key={i} className="py-3 pl-6">
-                <Eyebrow>{e.date || "Date not given"}</Eyebrow>
-                <p className="mt-0.5 max-w-[60ch] text-[15px] leading-6 text-ink">{e.what}</p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-
-      {DEMO && (
-        <Card className="border-dashed">
-          <Eyebrow>Developer shortcut</Eyebrow>
-          <p className="mt-1 text-sm text-ink-2">Skip the wait and open this step with a demo reply.</p>
-          <Button variant="secondary" size="sm" className="mt-3" onClick={() => setOmbudsman({ unlocked: true, answers: SAMPLE_SPSO })}>
+        {DEMO && (
+          <Button variant="ghost" size="sm" onClick={() => setOmbudsman({ unlocked: true })} title="Developer shortcut">
             Demo: pretend NHS Lothian has replied
           </Button>
-        </Card>
-      )}
+        )}
+      </div>
     </div>
-  );
-}
-
-function YesNo({ value, onChange }: { value: boolean | undefined; onChange: (v: boolean) => void }) {
-  return (
-    <select className={selectControl + " !w-32"} value={value === undefined ? "" : value ? "yes" : "no"} onChange={(e) => e.target.value && onChange(e.target.value === "yes")}>
-      <option value="">Choose…</option>
-      <option value="yes">Yes</option>
-      <option value="no">No</option>
-    </select>
   );
 }
 
@@ -111,22 +64,62 @@ function Unlocked({ profile }: { profile: Profile }) {
   const a: Partial<SpsoAnswers> = profile.ombudsman?.answers ?? {};
   const set = (patch: Partial<SpsoAnswers>) => setOmbudsman({ answers: patch });
   const draft = profile.draft;
+  const [writing, setWriting] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<string[]>([]);
   const [result, setResult] = useState<DoneEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const problems = draft ? spsoProblems(draft, a) : [];
-  const ready = spsoComplete(draft, a);
-  const docs = a.documents ?? ({} as Partial<SpsoAnswers["documents"]>);
+  const [impactDraft, setImpactDraft] = useState("");
+  const answers = { ...defaultAssumptions(), ...a } as SpsoAnswers;
+  // Profiles saved before 2026-11-07 evening stored otherReviews as a yes/no boolean.
+  if (typeof (answers.otherReviews as unknown) === "boolean") answers.otherReviews = (answers.otherReviews as unknown) ? "yes" : "no";
+  const problems = draft ? spsoProblems(draft, answers) : ["Your complaint is still being written."];
+  const impactMissing = a.outcome !== undefined && wordCount(a.impact ?? "") === 0;
 
-  async function run() {
-    if (!draft || !spsoComplete(draft, a) || running) return;
+  // The agent prepares everything from onboarding (D33): the complaint text if step 1 never ran, then the ombudsman's two answers.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current || a.outcome !== undefined) return;
+    started.current = true;
+    void (async () => {
+      setWriting(true);
+      setError(null);
+      try {
+        let d = draft;
+        if (!d) {
+          const r = await fetch("/api/agent/draft", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts: profile.facts }) });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error ?? "Could not write the complaint");
+          setDraft(j);
+          d = j;
+        }
+        const res = await fetch("/api/agent/step2-draft", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ facts: profile.facts, draft: d, messages: profile.messages }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Could not prepare the ombudsman text");
+        setOmbudsman({ answers: { ...defaultAssumptions(), ...a, impact: data.impact ?? "", outcome: data.outcome } });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        started.current = false;
+      } finally {
+        setWriting(false);
+      }
+    })();
+  });
+
+  async function run(extra?: ExtraAnswers) {
+    if (!draft || problems.length > 0 || running) return;
+    const approved = { ...answers, readConfirmed: true };
+    set({ readConfirmed: true }); // the approval below includes "I have read the SPSO page"
     setRunning(true);
     setError(null);
     setResult(null);
     setProgress(["Starting the browser agent…"]);
     try {
-      const done = await streamAgent("/api/agent/step2", { facts: profile.facts, draft, answers: a }, (line) => setProgress((p) => [...p.slice(-19), line]));
+      const done = await streamAgent("/api/agent/step2", { facts: profile.facts, draft, answers: approved, extra }, (line) => setProgress((p) => [...p.slice(-19), line]));
       setResult(done);
       if (done.status === "ready_to_submit") markProgress({ spsoFilled: true });
     } catch (e) {
@@ -136,107 +129,54 @@ function Unlocked({ profile }: { profile: Profile }) {
     }
   }
 
+  const preparing = writing || !draft || a.outcome === undefined;
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <PageTitle
         eyebrow="Step 2"
         title="Complain to the ombudsman"
-        lede="We fill in the SPSO complaint form for you. It stops at the last page. You check it and press Send yourself."
+        lede="We fill in the ombudsman's form with what you have already told us. You check it on their form and press Send."
       />
 
-      {!draft && <Callout tone="warn" title="Write your NHS complaint first">We reuse the complaint you wrote in step 1.</Callout>}
+      <AskMissing profile={profile} why="The ombudsman's form needs this, and it did not come up before." />
 
-      <section className="space-y-4">
-        <SectionTitle>A few things only you know</SectionTitle>
-        <p className="text-sm text-ink-2">Have NHS Lothian&apos;s final letter to hand. We do not guess any of these.</p>
-        <Card className="divide-y divide-line-soft !p-0">
-          {SPSO_YES_NO.map((q) => (
-            <div key={q.key} className="flex items-center justify-between gap-6 px-6 py-4 text-sm">
-              <span className="flex-1 text-ink">{q.label}</span>
-              <YesNo value={a[q.key]} onChange={(v) => set({ [q.key]: v })} />
-            </div>
-          ))}
-        </Card>
-        <div className="grid grid-cols-2 gap-5">
-          <Field label="Date of NHS Lothian's final reply">
-            <input className={control} value={a.finalReplyDate ?? ""} onChange={(e) => set({ finalReplyDate: e.target.value })} placeholder="e.g. 2026-10-20" />
-          </Field>
-          <Field label="NHS Lothian's reference number" hint="If the letter has one">
-            <input className={control} value={a.nhsReference ?? ""} onChange={(e) => set({ nhsReference: e.target.value })} />
-          </Field>
-        </div>
-        <Field label="How has this affected you?">
-          <textarea rows={4} className={control} value={a.impact ?? ""} onChange={(e) => set({ impact: e.target.value })} />
-        </Field>
-        <Field label="What would you like the ombudsman to achieve?" hint={`At least 15 words · ${wordCount(a.outcome ?? "")} so far`}>
-          <textarea rows={3} className={control} value={a.outcome ?? profile.facts.desiredOutcome ?? ""} onChange={(e) => set({ outcome: e.target.value })} />
-        </Field>
-      </section>
-
-      <section className="space-y-4">
-        <SectionTitle>Your documents</SectionTitle>
-        <p className="text-sm text-ink-2">
-          The form asks how you will give them the letters. Uploading from here is not built yet, so choose post, or &ldquo;don&apos;t have it&rdquo;.
-        </p>
-        <Card className="divide-y divide-line-soft !p-0">
-          {DOCS.map((d) => (
-            <div key={d.key} className="flex items-center justify-between gap-6 px-6 py-4 text-sm">
-              <span className="flex-1 text-ink">{d.label}</span>
-              <select
-                className={selectControl + " !w-60"}
-                value={docs[d.key] ?? ""}
-                onChange={(e) => e.target.value && set({ documents: { ...docs, [d.key]: e.target.value as DocRoute } as SpsoAnswers["documents"] })}
-              >
-                <option value="">Choose…</option>
-                <option value="post">{DOC_OPTION.post}</option>
-                <option value="none">{DOC_OPTION.none}</option>
-              </select>
-            </div>
-          ))}
-        </Card>
-      </section>
-
-      <label className="flex cursor-pointer items-start gap-3 rounded-card border border-line bg-subtle p-4 text-sm text-ink-2">
-        <input type="checkbox" className="mt-0.5 h-4 w-4 accent-brand" checked={a.readConfirmed === true} onChange={(e) => set({ readConfirmed: e.target.checked })} />
-        <span>
-          The SPSO form asks you to confirm you have read its{" "}
-          <a className="font-medium text-brand underline underline-offset-2" href="https://www.spso.org.uk/making-complaint" target="_blank" rel="noreferrer">
-            &ldquo;Making a complaint&rdquo; page
-          </a>
-          . I have read it.
-        </span>
-      </label>
-
-      {problems.length > 0 && a.outcome !== undefined && (
-        <ul className="list-disc space-y-1 pl-5 text-sm text-amber">
-          {problems.map((p) => (
-            <li key={p}>{p}</li>
-          ))}
-        </ul>
-      )}
-
-      <ActionCard
-        title="Ready?"
-        action={
-          <Button onClick={run} disabled={!ready || running}>
-            {running ? "Filling…" : "Fill in the SPSO form"}
-          </Button>
-        }
-      >
-        The agent opens the SPSO form in a separate browser window and fills it in. Nothing is sent.
-      </ActionCard>
-
-      {error && <p className="text-sm text-danger">{error}</p>}
-      {progress.length > 0 && (
-        <section className="space-y-3">
-          <Eyebrow>Browser activity</Eyebrow>
-          <Console label="Browser agent progress" lines={progress} />
+      {impactMissing && (
+        <section className="overflow-hidden rounded-card border border-brand/30 bg-white">
+          <div className="space-y-1 bg-brand-soft/60 px-6 py-4">
+            <Eyebrow className="text-brand">One thing we still need</Eyebrow>
+            <p className="text-[15px] leading-6 text-ink">How has this affected you?</p>
+            <p className="text-xs text-muted">The ombudsman&apos;s form requires it, and it did not come up before. A sentence or two is enough.</p>
+          </div>
+          <div className="space-y-3 p-4">
+            <textarea rows={3} className={control} value={impactDraft} onChange={(e) => setImpactDraft(e.target.value)} placeholder="For example: I am still in pain and I have missed work." />
+            <Button size="sm" disabled={!impactDraft.trim()} onClick={() => set({ impact: impactDraft.trim() })}>
+              Save
+            </Button>
+          </div>
         </section>
       )}
+
+      {error && <p className="text-sm text-danger">{error}</p>}
+
+      <div className="space-y-3">
+        <Button onClick={() => run()} disabled={preparing || impactMissing || problems.length > 0 || running}>
+          {running ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in the ombudsman's form"}
+        </Button>
+        <p className="max-w-[60ch] text-xs leading-5 text-muted">
+          By continuing you confirm you have read the ombudsman&apos;s{" "}
+          <a className="text-brand underline underline-offset-2" href="https://www.spso.org.uk/making-complaint" target="_blank" rel="noreferrer">
+            &ldquo;Making a complaint&rdquo; page
+          </a>
+          ; their form asks you to tick that.
+        </p>
+      </div>
+
+      {progress.length > 0 && <Console label="Browser agent progress" lines={progress} />}
       {result &&
         (result.status === "ready_to_submit" ? (
-          <Callout tone="ok" title="The form is filled in up to “Review and send”.">
-            Check every answer in the browser window, tick the confirmation box once your documents are on their way, and press Send yourself. We never send it for you.
+          <Callout tone="ok" title="Done. It is waiting for you in the other window.">
+            Check each section there and use its &ldquo;edit&rdquo; link to change anything. Then press Send yourself.
             <div className="mt-3">
               {profile.progress?.spsoSent ? (
                 <span className="font-medium text-teal">Marked as sent. Nice work.</span>
@@ -248,9 +188,7 @@ function Unlocked({ profile }: { profile: Profile }) {
             </div>
           </Callout>
         ) : (
-          <Callout tone="warn" title="The agent stopped before the end.">
-            {result.question ?? result.summary}
-          </Callout>
+          <AgentAsk key={result.summary + result.unfilled.join()} result={result} busy={running} onAnswer={(extra) => run(extra)} />
         ))}
     </div>
   );

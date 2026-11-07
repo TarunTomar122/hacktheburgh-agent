@@ -31,6 +31,7 @@ Read this before proposing something. Each row says what it was, why we dropped 
 | **Pitching "no one else could build this"** | A general coding agent with a browser could run this once. The defensible claims are reliability, speed, safety gates and recovery. | n/a |
 | **Automating NHS Lothian's records portal** (D29) | It needs a real account on a supplier's site; not testable with fake data. Records are an optional profile field instead. | Tarun wants it and we have a safe way to test |
 | **Uploading documents to the SPSO form** (D30) | Needs a real file from the user; the demo has none. The step offers "post" or "don't have it". | We have a sample file and a decision on file handling |
+| **Showing the form's questions or a review screen in our app** (D33) | It copies the real form onto our site and makes the user type twice. The user reviews and edits on the real form instead. | A form has no review page and the user cannot fix things there |
 | **Dark mode** (D31) | Wordsmith's look is light; two themes double the design work. `dark:` never applies. | Someone designs it |
 | **Pressing "Send complaint" or "Save for later" on any real form** | Hard rule: never submit real forms; "Save for later" may create a saved record. Only "Next" is allowed on the SPSO form. | n/a |
 

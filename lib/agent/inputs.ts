@@ -154,7 +154,8 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         ],
       };
     case "contact": {
-      const fields: FormField[] = [{ key: "title", label: "Title (optional)", kind: "select", required: false, options: TITLES, autoComplete: "honorific-prefix" }];
+      // Never ask again for something we already have (D33): the optional title only shows if it is still blank.
+      const fields: FormField[] = blank(f.title) ? [{ key: "title", label: "Title (optional)", kind: "select", required: false, options: TITLES, autoComplete: "honorific-prefix" }] : [];
       if (blank(f.lastName)) fields.push({ key: "lastName", label: "Last name", kind: "text", required: true, autoComplete: "family-name" });
       if (blank(f.address)) fields.push({ key: "address", label: "Address", kind: "text", required: true, autoComplete: "street-address" });
       if (blank(f.postcode)) fields.push({ key: "postcode", label: "Postcode", kind: "postcode", required: true, autoComplete: "postal-code" });

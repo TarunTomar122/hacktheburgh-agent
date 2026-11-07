@@ -45,8 +45,9 @@ Models are set by env var: `INTERVIEW_MODEL`, `DRAFT_MODEL` (defaults `gpt-5.4-m
 1. Use `runDecisionAgent` (see `lib/agent/nhsLothian.ts` for the pattern: open session, go to the URL, `dismissCookies`, build `Value[]` from the facts, run, check). Do **not** write a new loop.
 2. Give the agent a clear `goal` and a `Value[]` list with a plain-English `description` for every value. The descriptions are what the model matches against labels.
 3. Add a task for your site to `scripts/bench.ts` with a code check that reads the live page, then run `npm run bench -- --only <id>`. Run the whole suite before and after touching `observe.ts` or the engine.
-4. Multi-page forms: pass `advance` (e.g. `/^next/i`) so only those buttons may be clicked, `stopAtUrl` for the final review page, and `ignore` for traps such as a login box (see `SPSO_AGENT_OPTIONS` in `lib/agent/spso.ts`). Set `allowCheckboxes` only when the user has actually agreed to the boxes. Set `allowSubmit` only for read-only pages.
-5. Log what you did in `docs/PROGRESS.md` and anything you chose in `docs/DECISIONS.md`.
+4. **The step screen is one sentence and one button (D33).** Derive every value from the profile, earlier steps or a model draft from what the user said; use `AskMissing` for missing facts and `AgentAsk` for fields the agent could not fill; never mirror the form on our screen or re-ask anything agreed earlier. Pass `extra` answers through to your fill function (`lib/agent/extra.ts`).
+5. Multi-page forms: pass `advance` (e.g. `/^next/i`) so only those buttons may be clicked, `stopAtUrl` for the final review page, and `ignore` for traps such as a login box (see `SPSO_AGENT_OPTIONS` in `lib/agent/spso.ts`). Set `allowCheckboxes` only when the user has actually agreed to the boxes. Set `allowSubmit` only for read-only pages.
+6. Log what you did in `docs/PROGRESS.md` and anything you chose in `docs/DECISIONS.md`.
 
 **Benchmark** (`npm run bench`, headless, never submits): 10/10 on the last full run. Details and limits in `docs/PROGRESS.md`.
 
