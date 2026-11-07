@@ -6,7 +6,8 @@ import path from "node:path";
  * alongside), so the run screen and case file can be shown in seconds during a demo. The client plays it back.
  */
 export async function GET(req: Request) {
-  const flow = new URL(req.url).searchParams.get("flow") === "complaint" ? "complaint" : "step3";
+  const asked = new URL(req.url).searchParams.get("flow");
+  const flow = asked === "complaint" || asked === "discovery" ? asked : "step3";
   const root = path.join(process.cwd(), "demo");
   try {
     const runId = (await readdir(root)).filter((d) => new RegExp(`^${flow}-[0-9T-]+Z?$`).test(d)).sort().at(-1);

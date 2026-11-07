@@ -6,6 +6,9 @@
 ## Resume here (kept current; read this first after any pause or limit reset)
 - **Done and pushed:** plan, design draft (`docs/plans/anywhere-design.md`), model ledger (`lib/agent/ledger.ts`, test `scripts/test-ledger.ts`), shared worker contract (`lib/agent/workers/types.ts`).
 - **Running (started ~23:10):** research agents writing `docs/research/jurisdictions/*.md` (England, Wales, Northern Ireland, Ireland+NZ+Australia, US-CA+France+Germany+Sweden+India); builders for `lib/agent/workers/explore.ts` (readPage, exploreSite), `fillForm.ts` (multi-page filler), `searchDirectory.ts` + `questionnaire.ts`; Codex and Cursor design reviews.
+- **Also running:** onboarding for any country (builder: facts `country`/`region`, international address/phone, place confirmation, wording).
+- **Parked:** `lib/agent/discovery.ts` is in `~/night-parked/` until `workers/explore.ts` exists (it imports it); then move it back and re-enable the `DISCOVERY-HOOK` line in `app/api/agent/plan/route.ts`.
+- **Built since:** `lib/agent/crewRun.ts` (reusable crew run: parallel crew, asks, skips, ledger), `routeTypes.ts`, `place.ts`; discovery events in `usePlannerRun`.
 - **If a running item never reported back, it died:** check whether its files exist and pass `npx tsc --noEmit`; finish or restart it.
 - **Next:** apply review changes to the design; build the discovery planner (route map) on the workers; onboarding place detection; generic complaint flow; generic escalation; generic compensation flow; UI; local models (Ollama pulling qwen3:8b and LFM2 into `~/.ollama`); runs per UK nation; countries; recordings.
 - **Heartbeat:** session cron every 30 min (:13, :43) + one-shot wrap-up 06:47. It survives usage limits as long as this Claude session stays open.

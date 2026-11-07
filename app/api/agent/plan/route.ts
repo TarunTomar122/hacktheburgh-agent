@@ -11,7 +11,7 @@ import { runPlanner } from "../../../../lib/agent/planner";
  * The first event is {type:"run", runId}; answers to the crew's questions go to POST /api/agent/plan/answer.
  */
 export async function POST(req: Request) {
-  const parsed = z.object({ facts: CaseFacts, funding: Funding.partial().optional(), flow: z.enum(["compensation", "complaint"]).optional() }).safeParse(await req.json().catch(() => null));
+  const parsed = z.object({ facts: CaseFacts, funding: Funding.partial().optional(), flow: z.enum(["compensation", "complaint", "discovery"]).optional() }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request", detail: parsed.error.message }, { status: 400 });
   if (parsed.data.flow === "complaint" && missingRequired(parsed.data.facts).length) {
     return Response.json({ error: "Complete your profile before making a complaint" }, { status: 400 });
@@ -31,6 +31,8 @@ export async function POST(req: Request) {
       // Keep the connection alive while the crew waits for the user's answer.
       ping = setInterval(() => send({ type: "ping" }), 15000);
       try {
+        // DISCOVERY-HOOK (re-add when lib/agent/discovery.ts is back from ~/night-parked):
+        // if (parsed.data.flow === "discovery") await runDiscovery(parsed.data.facts, { onEvent: send }); else
         if (parsed.data.flow === "complaint") await runComplaint(parsed.data.facts, { onEvent: send, keepOpen: true });
         else await runPlanner(parsed.data.facts, parsed.data.funding ?? {}, { onEvent: send, keepOpen: true });
       } catch (e) {

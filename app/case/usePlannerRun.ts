@@ -4,8 +4,9 @@ import { useCallback, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
 import type { LedgerEntry } from "../../lib/agent/ledger";
+import type { Place, RouteMap } from "../../lib/agent/routeTypes";
 import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
-import { CREW, type AskSpec, type CrewId, type ComplaintResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
+import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 
 /**
  * Client state for one planner run (D47, D48): streams /api/agent/plan, keeps the crew's conversation, plan, states,
@@ -41,6 +42,9 @@ export type PlannerRunState = {
   demo: boolean; // playing back a recorded run (D63)
   skipped: (CrewId | "all")[]; // demo skips asked for
   models: LedgerEntry[]; // every model call so far (the ledger)
+  place?: Place; // discovery: where the care happened
+  route?: RouteMap; // discovery: the route map so far
+  discovery?: DiscoveryResult;
 };
 
 const idleCrew = (): Record<CrewId, CrewState> =>
@@ -97,6 +101,12 @@ export function usePlannerRun() {
           return { ...cur, enquiries: cur.enquiries.some((x) => x.firmId === e.enquiry.firmId) ? cur.enquiries.map((x) => (x.firmId === e.enquiry.firmId ? e.enquiry : x)) : [...cur.enquiries, e.enquiry] };
         case "planner_result":
           return { ...cur, status: "done", result: e.result, firms: e.result.firms, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+        case "place":
+          return { ...cur, place: e.place };
+        case "route":
+          return { ...cur, route: e.route };
+        case "discovery_result":
+          return { ...cur, status: "done", discovery: e.result, route: e.result.route, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
         case "model":
           return { ...cur, models: [...cur.models, e.entry] };
         case "complaint_result":
@@ -110,7 +120,7 @@ export function usePlannerRun() {
   }, []);
 
   const start = useCallback(
-    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" = "compensation") => {
+    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" = "compensation") => {
       abort.current?.abort();
       stopReplay();
       const ctrl = new AbortController();
@@ -139,7 +149,7 @@ export function usePlannerRun() {
           reader.releaseLock();
         }
         if (ctrl.signal.aborted || abort.current !== ctrl) return;
-        setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint ? "done" : "error", error: cur.result || cur.complaint ? undefined : "The run ended without a result" } : cur));
+        setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery ? "done" : "error", error: cur.result || cur.complaint || cur.discovery ? undefined : "The run ended without a result" } : cur));
       } catch (e) {
         if (ctrl.signal.aborted) return;
         setS((cur) => ({ ...cur, status: "error", error: e instanceof Error ? e.message : String(e) }));
@@ -168,7 +178,7 @@ export function usePlannerRun() {
     while (r.i < r.events.length && r.events[r.i].t - t < 80) apply(r.events[r.i++].e);
     if (r.i >= r.events.length) {
       rec.current = null;
-      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint ? "done" : "error", error: cur.result || cur.complaint ? undefined : "The recording ended without a result" } : cur));
+      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery ? "done" : "error", error: cur.result || cur.complaint || cur.discovery ? undefined : "The recording ended without a result" } : cur));
       return;
     }
     const gap = r.events[r.i].t - r.events[r.i - 1].t;
@@ -176,11 +186,11 @@ export function usePlannerRun() {
   }, [apply]);
 
   const replay = useCallback(
-    async (opts: { toEnd?: boolean; flow?: "compensation" | "complaint" } = {}) => {
+    async (opts: { toEnd?: boolean; flow?: "compensation" | "complaint" | "discovery" } = {}) => {
       abort.current?.abort();
       stopReplay();
       setS({ ...initial(), status: "running", startedAt: Date.now(), demo: true });
-      const res = await fetch(opts.flow === "complaint" ? "/api/agent/plan/demo?flow=complaint" : "/api/agent/plan/demo").catch(() => null);
+      const res = await fetch(opts.flow && opts.flow !== "compensation" ? `/api/agent/plan/demo?flow=${opts.flow}` : "/api/agent/plan/demo").catch(() => null);
       const data = res?.ok ? ((await res.json()) as { events: Rec[] }) : null;
       if (!data?.events.length) {
         setS((cur) => ({ ...cur, status: "error", error: "No recorded demo run is available yet." }));
