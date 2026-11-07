@@ -7,7 +7,7 @@ import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
 import { echoFor, HELP_ROUTES, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, type HelpRoute, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, SAMPLE_FACTS, type DemoPersona } from "../lib/agent/sample";
-import { createProfile, setTrack } from "../lib/profile";
+import { createProfile, setTrack, startDemo } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import AccountMenu from "./AccountMenu";
 import NameStep from "./NameStep";
@@ -88,9 +88,9 @@ export default function Onboarding() {
     return run([...messages, { role: "user", content: echo }], answer);
   }
 
-  /** Dev shortcut (D24): load a fictional persona with onboarding complete and go to the recommendation. */
+  /** Dev shortcut (D24): load a fictional persona with onboarding complete and go to the recommendation. It runs as a demo (D75): nothing is saved to the account. */
   function skipWith(p: DemoPersona) {
-    createProfile(p.facts, p.messages, p.draft);
+    startDemo(p.facts, p.messages, p.draft);
     router.push("/case");
   }
 

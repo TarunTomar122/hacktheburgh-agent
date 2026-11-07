@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 - Om + Claude - DONE (not yet tried on Tiger) - Cases saved to the account in Tiger Data (D75)
+
+Signed-in people's cases are stored in Postgres (Tiger Data) keyed by their Auth0 id and show on any device; the browser keeps an instant copy. Onboarding demo personas run in a per-tab sandbox and write nothing. Files: `lib/db.ts`, `app/api/profile/route.ts`, `lib/profile.ts`, `app/AccountMenu.tsx`, `app/page.tsx`, `app/welcome/page.tsx`, `app/case/ProfileTab.tsx`, `scripts/db-check.ts`, `.env.example`, `package.json`. 22 checks pass against a local Postgres. **Unverified:** the real Tiger connection (`npm run db:check`), real Auth0 email-code login.
+
 ### 2026-11-07 - Luigi + Codex - Email option for explanation/apology (D73)
 Added an explicit email-draft route for explanation-only, apology-only and both together, with formal complaint and compensation alternatives. Mixed/additional goals keep the existing route choice. Email drafts contain saved facts and a request, editable subject/body persisted locally, copy/download, no unverified recipient or automatic sending/escalation. Profile can switch existing eligible cases to email mode. A facts-change warning preserves edits until explicitly rebuilt.
 Verified scripts/test-complaint-email.ts: goal combinations and mixed-goal exclusion, isolated browser enters email mode without agent requests, edits survive reload, formal complaint switch works and no browser errors. TypeScript/lint passed; production build checked. Fictional data only; no external submissions. Changes remain local.
@@ -375,6 +379,7 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 
 | # | Date | Found by | What disagrees | Status |
 |---|---|---|---|---|
+| 13 | 2026-11-07 | Claude | D74 said a case is stored in the browser only. D75 now also stores it in Tiger Data for signed-in people; `docs/PROJECT.md` and the Profile tab copy updated. In-case demo shortcuts still write sample data to a real saved case. | open |
 | 12 | 2026-11-07 | Claude | `AGENTS.md` item 7 says "No logins". That was written for the agent (it signs in to no site, D4) but reads as if the app has none. D74 adds accounts for the people using the app. `AGENTS.md` not edited (shared file). | open |
 | 10 | 2026-11-07 | Lea + Claude | The step 4 run (Tarun + Claude, D46 entry above) reports "Balfour + Manson had no online form". A manual probe the same day found a general enquiry form at `https://www.balfour-manson.co.uk/contact-us/` (name, phone, email, "Nature of Enquiry", location, consent checkbox, invisible reCAPTCHA v3), linked from its medical negligence page as "Fill in our enquiry form". Possibly the agent's harder look did not reach it, or the fixture's website URL differs. Not investigated. | open |
 

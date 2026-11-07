@@ -3,7 +3,7 @@
 import { missingForOnboarding, missingRequired, type CaseFacts } from "../../lib/agent/facts";
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
-import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
+import { clearProfile, setTrack, updateFacts, useDemo, useSyncStatus, type Profile } from "../../lib/profile";
 import { TRACKS, type TrackId } from "../../lib/agent/track";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
@@ -28,6 +28,8 @@ const input = control;
 
 
 export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
+  const demo = useDemo();
+  const saved = useSyncStatus() !== "off"; // saving to the account is on (D75)
   const f = profile.facts;
   // How NHS Lothian should reply is only needed for the complaint path, and only asked once the user takes it (D42).
   const forNhs = profile.track?.chosen === "complaint" && profile.track?.complaintMode !== "email";
@@ -225,7 +227,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
           <Eyebrow>Your data</Eyebrow>
           <button
             onClick={() => {
-              if (window.confirm("Delete everything saved about your case on this device?")) {
+              if (window.confirm(demo ? "Close this demo case?" : saved ? "Delete everything saved about your case, on every device you use?" : "Delete everything saved about your case on this device?")) {
                 clearProfile();
                 onDeleted();
               }
@@ -234,7 +236,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
           >
             Delete all my data
           </button>
-          <p className="text-xs text-muted">Your profile is saved in this browser. Agent runs also create logs and screenshots on the server.</p>
+          <p className="text-xs text-muted">{demo ? "This is a demo case. It is kept in this tab only and is not saved to any account." : saved ? "Your profile is saved to your account and kept in this browser. Agent runs also create logs and screenshots on the server." : "Your profile is saved in this browser. Agent runs also create logs and screenshots on the server."}</p>
         </section>
       </div>
     </div>
