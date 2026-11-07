@@ -69,7 +69,7 @@ export default function NameStep({
         </span>
       </div>
 
-      <p className="mt-14 text-[13px] text-muted">A few questions so we can prepare your case. Nothing is sent to the NHS yet.</p>
+      <p className="mt-14 text-[13px] text-muted">A few questions so we can prepare your case. Nothing is sent to anyone yet.</p>
     </form>
   );
 }

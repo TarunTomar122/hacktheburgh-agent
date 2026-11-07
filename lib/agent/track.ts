@@ -16,7 +16,7 @@ export const TRACKS: Record<TrackId, { title: string; short: string; what: strin
   complaint: {
     title: "Make a complaint",
     short: "Complaint",
-    what: "We write your complaint and fill in NHS Lothian's form. If their final reply doesn't put things right, we take it to the ombudsman.",
+    what: "We write your complaint and fill in the complaint form of whoever ran your care. If their final reply doesn't put things right, we take it to the ombudsman.",
     gets: "An explanation, an apology, changes to how things are done. Not money.",
     steps: [1, 2],
   },

@@ -3,8 +3,8 @@
 import { useId, useState } from "react";
 import {
   emailProblem,
-  isPhone,
-  isPostcode,
+  phoneProblem,
+  postcodeProblem,
   splitPostcode,
   outcomeSentence,
   type FormField,
@@ -127,7 +127,7 @@ function FormPanel({
   function submit() {
     // A postcode typed inside the address fills the postcode field (D44).
     const all = { ...values };
-    if (spec.fields.some((f) => f.key === "postcode") && !(all.postcode ?? "").trim()) {
+    if (spec.fields.some((f) => f.key === "postcode" && f.uk !== false) && !(all.postcode ?? "").trim()) {
       const found = splitPostcode(all.address ?? "");
       if (found) {
         all.address = found.address;
@@ -138,12 +138,10 @@ function FormPanel({
     for (const f of spec.fields) {
       const v = (all[f.key] ?? "").trim();
       if (f.required && !v) return setProblem(`Please fill in: ${f.label.replace(/\?$/, "")}.`);
-      if (v && f.kind === "postcode" && !isPostcode(v)) return setProblem("That postcode does not look right. It should look like EH1 1AA.");
-      if (v && f.kind === "tel" && !isPhone(v)) return setProblem("That telephone number does not look right. Use digits only, for example 07700 900123.");
-      if (v && f.kind === "email") {
-        const bad = emailProblem(v);
-        if (bad) return setProblem(bad);
-      }
+      const bad = !v ? null : f.kind === "postcode" ? postcodeProblem(v, f.uk ?? null) : f.kind === "tel" ? phoneProblem(v, f.uk ?? null) : null;
+      if (bad) return setProblem(bad);
+      const badEmail = v && f.kind === "email" ? emailProblem(v) : null;
+      if (badEmail) return setProblem(badEmail);
     }
     setProblem(null);
     onAnswer(all);
@@ -218,8 +216,8 @@ function FormInput({
             autoCapitalize={f.kind === "postcode" ? "characters" : undefined}
             autoFocus={autoFocus}
             list={f.suggestions ? `${id}-list` : undefined}
-            placeholder={f.kind === "postcode" ? "EH1 1AA" : f.kind === "tel" ? "07700 900123" : f.kind === "email" ? "name@example.com" : undefined}
-            maxLength={f.kind === "postcode" ? 8 : undefined}
+            placeholder={f.placeholder ?? (f.kind === "email" ? "name@example.com" : undefined)}
+            maxLength={f.kind === "postcode" ? (f.uk ? 8 : 12) : undefined}
             className="field"
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -257,7 +255,7 @@ function Choice({
     <div className={bar + " space-y-3"}>
       {spec.disclaimer && (
         <details className="card p-3 text-xs text-muted">
-          <summary className="cursor-pointer">Read the exact wording NHS Lothian shows</summary>
+          <summary className="cursor-pointer">Read the exact wording on the form</summary>
           <p className="mt-2">{spec.disclaimer}</p>
         </details>
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { emailProblem, isPhone, isPostcode, outcomeSentence, splitPostcode, type FormField, type InputSpec } from "../lib/agent/inputs";
+import { emailProblem, outcomeSentence, phoneProblem, postcodeProblem, splitPostcode, type FormField, type InputSpec } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import DateField from "./DateField";
 import { ErrorLine, OkRow } from "./StageControls";
@@ -108,8 +108,9 @@ function FreeText({
 
 function problemWith(f: FormField, v: string): string | null {
   if (f.required && !v) return `Please fill in: ${f.label.replace(/\?$/, "")}.`;
-  if (v && f.kind === "postcode" && !isPostcode(v)) return "That postcode does not look right. It should look like EH1 1AA.";
-  if (v && f.kind === "tel" && !isPhone(v)) return "That telephone number does not look right. Use digits only, for example 07700 900123.";
+  // The UK checks only apply where the place is in the UK (f.uk, set from the facts by inputFor).
+  if (v && f.kind === "postcode") return postcodeProblem(v, f.uk ?? null);
+  if (v && f.kind === "tel") return phoneProblem(v, f.uk ?? null);
   if (v && f.kind === "email") return emailProblem(v);
   return null;
 }
@@ -149,8 +150,8 @@ function StageForm({
     let auto = false;
     if (f.key === "address") {
       const at = spec.fields.findIndex((x) => x.key === "postcode");
-      // Only a postcode we filled in ourselves (or none yet) may be replaced by one found in the address.
-      const open = at > i && (autoPostcode || !(next.postcode ?? "").trim());
+      // Only a postcode we filled in ourselves (or none yet) may be replaced by one found in the address; only UK postcodes are recognised, so not outside the UK.
+      const open = at > i && spec.fields[at].uk !== false && (autoPostcode || !(next.postcode ?? "").trim());
       const found = open ? splitPostcode(v.trim()) : null;
       if (found) {
         next = { ...next, address: found.address, postcode: found.postcode };
@@ -201,8 +202,8 @@ function StageForm({
           autoComplete={f.autoComplete}
           autoCapitalize={f.kind === "postcode" ? "characters" : undefined}
           list={f.suggestions ? `${id}-list` : undefined}
-          placeholder={f.kind === "postcode" ? "EH1 1AA" : f.kind === "tel" ? "07700 900123" : f.kind === "email" ? "name@example.com" : "Type your answer here"}
-          maxLength={f.kind === "postcode" ? 8 : undefined}
+          placeholder={f.placeholder ?? (f.kind === "email" ? "name@example.com" : f.kind === "postcode" || f.kind === "tel" ? "" : "Type your answer here")}
+          maxLength={f.kind === "postcode" ? (f.uk ? 8 : 12) : undefined}
           className="big-input"
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -306,7 +307,7 @@ function StageChoice({
     <div className="space-y-5">
       {spec.disclaimer && (
         <details className="card p-4 text-sm text-ink-2">
-          <summary className="cursor-pointer font-medium text-ink">Read the exact wording NHS Lothian shows</summary>
+          <summary className="cursor-pointer font-medium text-ink">Read the exact wording on the form</summary>
           <p className="mt-3 leading-6">{spec.disclaimer}</p>
         </details>
       )}

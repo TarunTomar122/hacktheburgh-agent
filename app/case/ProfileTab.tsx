@@ -1,7 +1,7 @@
 "use client";
 
-import { missingForOnboarding, missingRequired, type CaseFacts } from "../../lib/agent/facts";
-import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
+import { missingForOnboarding, missingRequired, placeIsUK, type CaseFacts } from "../../lib/agent/facts";
+import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, phoneProblem, postcodeProblem, splitPostcode, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
 import { TRACKS, type TrackId } from "../../lib/agent/track";
@@ -18,6 +18,8 @@ export const FIELD_LABELS: Record<string, string> = {
   phone: "Telephone",
   email: "Email",
   preferredContact: "How to contact you",
+  country: "Country",
+  region: "Region",
   incidentLocation: "Where it happened",
   incidentSummary: "What happened",
   events: "Timeline (at least one dated event)",
@@ -29,11 +31,13 @@ const input = control;
 
 export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
-  // How NHS Lothian should reply is only needed for the complaint path, and only asked once the user takes it (D42).
+  // How the reply should come is only needed for the complaint path, and only asked once the user takes it (D42).
   const forNhs = profile.track?.chosen === "complaint";
   const missing = forNhs ? missingRequired(f) : missingForOnboarding(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
   const set = (k: keyof CaseFacts) => (v: string) => updateFacts({ [k]: v === "" ? null : v } as Partial<CaseFacts>);
+  // UK postcode and phone rules only for a UK place (null = place not known yet).
+  const uk = placeIsUK(f);
 
   function setEvent(i: number, patch: Partial<CaseFacts["events"][number]>) {
     updateFacts({ events: f.events.map((e, j) => (j === i ? { ...e, ...patch } : e)) });
@@ -58,11 +62,11 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <PathSection profile={profile} onContinue={onClose} onSwitched={onSwitched} />
 
         {missing.length > 0 ? (
-          <Callout tone="warn" title={forNhs ? "Still needed for the NHS form" : "Still needed"}>
+          <Callout tone="warn" title={forNhs ? "Still needed for the complaint form" : "Still needed"}>
             {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.
           </Callout>
         ) : (
-          <Callout tone="ok" title={forNhs ? "Everything the NHS form needs is here." : "Everything we need so far is here."} />
+          <Callout tone="ok" title={forNhs ? "Everything the complaint form needs is here." : "Everything we need so far is here."} />
         )}
 
         <section className="space-y-5">
@@ -95,7 +99,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
                 onChange={(e) => set("address")(e.target.value)}
                 onBlur={(e) => {
                   // A postcode typed inside the address goes to the postcode field, if that is empty (D44).
-                  const found = !f.postcode?.trim() ? splitPostcode(e.target.value) : null;
+                  const found = uk !== false && !f.postcode?.trim() ? splitPostcode(e.target.value) : null;
                   if (found) {
                     set("address")(found.address);
                     set("postcode")(found.postcode);
@@ -103,18 +107,18 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
                 }}
               />
             </Field>
-            <Field label="Postcode" problem={f.postcode && !isPostcode(f.postcode) ? "This does not look like a UK postcode, for example EH1 1AA." : null}>
+            <Field label={uk === true ? "Postcode" : "Postcode (if you have one)"} problem={f.postcode ? postcodeProblem(f.postcode, uk) : null}>
               <input
                 className={input}
                 autoComplete="postal-code"
                 autoCapitalize="characters"
-                maxLength={8}
+                maxLength={uk === true ? 8 : 12}
                 value={text("postcode")}
                 onChange={(e) => set("postcode")(e.target.value)}
-                onBlur={(e) => e.target.value && set("postcode")(formatPostcode(e.target.value))}
+                onBlur={(e) => e.target.value && uk !== false && set("postcode")(formatPostcode(e.target.value))}
               />
             </Field>
-            <Field label="Telephone" problem={f.phone && !isPhone(f.phone) ? "Use digits only, for example 07700 900123." : null}>
+            <Field label="Telephone" problem={f.phone ? phoneProblem(f.phone, uk) : null}>
               <input type="tel" inputMode="tel" autoComplete="tel" className={input} value={text("phone")} onChange={(e) => set("phone")(e.target.value)} />
             </Field>
             <Field label="Email" className="col-span-2" problem={f.email ? emailProblem(f.email) : null}>
@@ -153,13 +157,17 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <section className="space-y-5">
           <SectionTitle>What happened</SectionTitle>
           <Field label="Where it happened">
-            <input className={input} list="place-suggestions" value={text("incidentLocation")} onChange={(e) => set("incidentLocation")(e.target.value)} />
-            <datalist id="place-suggestions">
-              {PLACE_SUGGESTIONS.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
+            <input className={input} value={text("incidentLocation")} onChange={(e) => set("incidentLocation")(e.target.value)} />
           </Field>
+          {/* Worked out from the story at onboarding; whose rules apply follows from these, so the user can correct them here. */}
+          <div className="grid grid-cols-2 gap-x-5 gap-y-5">
+            <Field label="Country">
+              <input className={input} autoComplete="off" value={text("country")} onChange={(e) => set("country")(e.target.value)} />
+            </Field>
+            <Field label="Region or state (if it matters)">
+              <input className={input} autoComplete="off" value={text("region")} onChange={(e) => set("region")(e.target.value)} />
+            </Field>
+          </div>
           <Field label="In your words">
             <textarea rows={4} className={input} value={text("incidentSummary")} onChange={(e) => set("incidentSummary")(e.target.value)} />
           </Field>

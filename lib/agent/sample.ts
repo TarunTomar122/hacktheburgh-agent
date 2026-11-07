@@ -15,6 +15,8 @@ export const SAMPLE_FACTS: CaseFacts = {
   phone: "07700 900123",
   email: "ailsa.reid@example.com",
   preferredContact: "Email",
+  country: "United Kingdom",
+  region: "Scotland",
   incidentLocation: "Royal Infirmary of Edinburgh, Accident & Emergency department",
   incidentSummary: "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. The pain did not go away.",
   events: [
@@ -71,6 +73,8 @@ const CALLUM: CaseFacts = {
   phone: "07700 900456",
   email: "callum.fraser@example.com",
   preferredContact: "Letter",
+  country: "United Kingdom",
+  region: "Scotland",
   incidentLocation: "Western General Hospital, day surgery unit",
   incidentSummary:
     "After a minor operation in day surgery I was given twice the right dose of an anti-sickness medicine. I was dizzy and very sick for the rest of the day and was kept in overnight. I was back to normal two days later, but nobody explained what had happened.",

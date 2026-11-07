@@ -3,7 +3,7 @@
 // The order and the wording of the questions live here, in code, so they are predictable and
 // testable. The model is only used to read free text (the story, or anything typed in the
 // interview script) and to add one short acknowledgement. See D28.
-import type { CaseFacts } from "./facts";
+import { placeIsUK, type CaseFacts } from "./facts";
 
 export type Target = "name" | "story" | "details" | "who" | "contact" | "contactMethod" | "emailRisk" | "outcome" | "done";
 
@@ -13,16 +13,6 @@ export const EMAIL_DISCLAIMER =
 export const TITLES = ["Mr", "Mrs", "Miss", "Ms", "Mx", "Dr", "Prof"] as const;
 
 export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
-
-/** Suggestions only (the field still takes anything typed). These are the main NHS Lothian hospitals. */
-export const PLACE_SUGGESTIONS = [
-  "Royal Infirmary of Edinburgh",
-  "Western General Hospital",
-  "St John's Hospital, Livingston",
-  "Royal Hospital for Children and Young People",
-  "Royal Edinburgh Hospital",
-  "GP surgery",
-];
 
 export const OUTCOME_CHOICES = [
   "An explanation of what went wrong",
@@ -38,15 +28,16 @@ const blank = (v: string | null | undefined) => v === null || v === undefined ||
 
 /**
  * The first thing still unanswered. Pure function of the facts, so the same facts always give the same question.
- * Scope "onboarding" leaves out what only the NHS complaint needs (how NHS Lothian should reply, the email-risk consent):
- * those are asked on the complaint step, and only if the user takes that track (D42). Scope "nhs" includes them.
+ * Scope "onboarding" leaves out what only one place's complaint form needs (how the reply should come, NHS Lothian's email-risk
+ * consent): those are asked on the complaint step, and only if the user takes that track (D42). Scope "nhs" includes them.
+ * A postcode is only required once the place is known to be in the UK: not every country has postcodes.
  */
 export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboarding"): Target {
   if (blank(f.firstName)) return "name";
   if (blank(f.incidentSummary)) return "story";
   if (f.events.length === 0 || f.events.some((e) => blank(e.date)) || blank(f.incidentLocation)) return "details";
   if (f.complainingFor === null) return "who";
-  if (blank(f.lastName) || blank(f.address) || blank(f.postcode) || blank(f.phone) || blank(f.email)) return "contact";
+  if (blank(f.lastName) || blank(f.address) || (blank(f.postcode) && placeIsUK(f) === true) || blank(f.phone) || blank(f.email)) return "contact";
   if (scope === "nhs" && f.preferredContact === null) return "contactMethod";
   if (scope === "nhs" && f.preferredContact === "Email" && f.emailRiskAccepted === null) return "emailRisk";
   if (f.desiredOutcome === null) return "outcome";
@@ -60,14 +51,16 @@ export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboardi
  */
 export function normaliseFacts(f: CaseFacts): CaseFacts {
   const out = { ...f };
-  if (out.address && blank(out.postcode)) {
+  // UK postcode tidying only where the place may be in the UK; elsewhere the postal code is kept as typed.
+  const ukRules = placeIsUK(out) !== false;
+  if (ukRules && out.address && blank(out.postcode)) {
     const s = splitPostcode(out.address);
     if (s) {
       out.address = s.address;
       out.postcode = s.postcode;
     }
   }
-  if (out.postcode !== null) out.postcode = formatPostcode(out.postcode);
+  if (out.postcode !== null) out.postcode = ukRules ? formatPostcode(out.postcode) : out.postcode.trim();
   if (out.preferredContact === "Email" && out.emailRiskAccepted === false) {
     out.preferredContact = null;
     out.emailRiskAccepted = null;
@@ -113,7 +106,37 @@ export function formatPostcode(v: string): string {
   const t = v.replace(/\s+/g, "").toUpperCase();
   return POSTCODE.test(t) ? `${t.slice(0, -3)} ${t.slice(-3)}` : v.trim();
 }
+/** A UK postcode. */
 export const isPostcode = (v: string) => POSTCODE.test(v.trim());
+
+/** Any country's postal code: 2 to 12 letters, digits, spaces or hyphens, with at least one digit. */
+const POSTAL_CODE = /^(?=.*\d)[A-Za-z0-9][A-Za-z0-9 -]{0,10}[A-Za-z0-9]$/;
+export const UK_POSTCODE_EXAMPLE = "SW1A 1AA";
+export const UK_PHONE_EXAMPLE = "07700 900123";
+
+/**
+ * Why a postcode is not acceptable, or null. `uk` comes from the place (placeIsUK): true = the UK check, false = any country's
+ * postal code, null (place not known yet) = a valid UK postcode or any reasonable postal code.
+ */
+export function postcodeProblem(v: string, uk: boolean | null): string | null {
+  const t = v.trim();
+  if (uk === true) return isPostcode(t) ? null : `That postcode does not look right. It should look like ${UK_POSTCODE_EXAMPLE}.`;
+  return isPostcode(t) || POSTAL_CODE.test(t) ? null : "That postcode does not look right. Please check it.";
+}
+
+/**
+ * Why a telephone number is not acceptable, or null. A UK place or a +44 number gets the UK check (10 to 13 digits);
+ * anything else is any country's number: 6 to 15 digits, or 7 to 15 after a + and the country code (the international limit).
+ */
+export function phoneProblem(v: string, uk: boolean | null): string | null {
+  const t = v.trim();
+  const digits = t.replace(/\D/g, "").length;
+  const intl = t.startsWith("+") || t.startsWith("00");
+  const ukNumber = /^(\+|00)\s*44/.test(t) || (uk === true && !intl);
+  if (!/^\+?[\d\s().-]+$/.test(t)) return "That telephone number does not look right. Use digits, spaces and a + for the country code.";
+  if (ukNumber) return digits >= 10 && digits <= 13 ? null : `That telephone number does not look right. Use digits only, for example ${UK_PHONE_EXAMPLE}.`;
+  return digits >= (intl ? 7 : 6) && digits <= 15 ? null : "That telephone number does not look right. Please check the digits.";
+}
 export const isEmail = (v: string) => emailProblem(v) === null;
 
 const POSTCODE_IN_TEXT = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/gi;
@@ -128,11 +151,8 @@ export function splitPostcode(address: string): { address: string; postcode: str
   const rest = (address.slice(0, hit.index) + " " + address.slice(hit.index + hit[0].length)).replace(/\s+/g, " ").trim().replace(/[\s,;.-]+$/, "").replace(/^[\s,;.-]+/, "");
   return rest ? { address: rest, postcode: formatPostcode(hit[0]) } : null;
 }
-/** Digits, spaces, brackets, hyphens and a leading +, with 10 to 13 digits. */
-export function isPhone(v: string): boolean {
-  const t = v.trim();
-  return /^\+?[\d\s()-]+$/.test(t) && t.replace(/\D/g, "").length >= 10 && t.replace(/\D/g, "").length <= 13;
-}
+/** A phone number that passes the UK check (digits, spaces, brackets, hyphens and a leading +, with 10 to 13 digits). */
+export const isPhone = (v: string) => phoneProblem(v, true) === null;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_YEAR = new RegExp(`^(${MONTHS.join("|")}) \\d{4}$`);
@@ -143,10 +163,20 @@ export function dateMode(v: string): DateMode {
   return "words";
 }
 
-/** A plain-words message for the first problem found in a set of widget answers, or null if all is well. */
-export function validatePatch(p: Partial<CaseFacts>): string | null {
-  if (p.postcode != null && !isPostcode(p.postcode)) return "That postcode does not look right. It should look like EH1 1AA.";
-  if (p.phone != null && !isPhone(p.phone)) return "That telephone number does not look right. Use digits only, for example 07700 900123.";
+/**
+ * A plain-words message for the first problem found in a set of widget answers, or null if all is well.
+ * `place` (the facts, or anything with a country) decides whether the UK postcode and phone checks apply.
+ */
+export function validatePatch(p: Partial<CaseFacts>, place: Pick<CaseFacts, "country"> = { country: null }): string | null {
+  const uk = placeIsUK(place);
+  if (p.postcode != null) {
+    const problem = postcodeProblem(p.postcode, uk);
+    if (problem) return problem;
+  }
+  if (p.phone != null) {
+    const problem = phoneProblem(p.phone, uk);
+    if (problem) return problem;
+  }
   if (p.email != null) {
     const problem = emailProblem(p.email);
     if (problem) return problem;
@@ -185,6 +215,9 @@ export type FormField = {
   suggestions?: readonly string[];
   autoComplete?: string;
   hint?: string;
+  placeholder?: string;
+  /** Postcode and telephone only: whether the UK rules apply (from the place; null = not known yet). */
+  uk?: boolean | null;
 };
 
 export type InputSpec =
@@ -210,7 +243,7 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         fields.push({ key: "eventWhat", label: "In a few words, what happened then?", kind: "text", required: true });
       }
       if (blank(f.incidentLocation)) {
-        fields.push({ key: "incidentLocation", label: "Where did you receive the medical care you're concerned about?", kind: "text", required: true, suggestions: PLACE_SUGGESTIONS, hint: "Name the hospital, ward, clinic or GP surgery. If you had an accident, tell us where you were treated, rather than where the accident happened." });
+        fields.push({ key: "incidentLocation", label: "Where did you receive the medical care you're concerned about?", kind: "text", required: true, hint: "Name the hospital, ward, clinic or GP surgery. If you had an accident, tell us where you were treated, rather than where the accident happened." });
       }
       return { kind: "form", target, fields, submit: "Continue" };
     }
@@ -228,8 +261,16 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
       const fields: FormField[] = blank(f.title) ? [{ key: "title", label: "Title (optional)", kind: "select", required: false, options: TITLES, autoComplete: "honorific-prefix" }] : [];
       if (blank(f.lastName)) fields.push({ key: "lastName", label: "Last name", kind: "text", required: true, autoComplete: "family-name" });
       if (blank(f.address)) fields.push({ key: "address", label: "Address", kind: "text", required: true, autoComplete: "street-address" });
-      if (blank(f.postcode)) fields.push({ key: "postcode", label: "Postcode", kind: "postcode", required: true, autoComplete: "postal-code" });
-      if (blank(f.phone)) fields.push({ key: "phone", label: "Telephone", kind: "tel", required: true, autoComplete: "tel" });
+      // UK rules only for a UK place; elsewhere any postal code (or none: not every country has them) and any country's phone number.
+      const uk = placeIsUK(f);
+      if (blank(f.postcode)) {
+        fields.push(
+          uk === true
+            ? { key: "postcode", label: "Postcode", kind: "postcode", required: true, autoComplete: "postal-code", placeholder: UK_POSTCODE_EXAMPLE, uk }
+            : { key: "postcode", label: "Postcode (if you have one)", kind: "postcode", required: false, autoComplete: "postal-code", uk },
+        );
+      }
+      if (blank(f.phone)) fields.push({ key: "phone", label: "Telephone", kind: "tel", required: true, autoComplete: "tel", placeholder: uk === true ? UK_PHONE_EXAMPLE : "+ country code, then your number", uk });
       if (blank(f.email)) fields.push({ key: "email", label: "Email", kind: "email", required: true, autoComplete: "email" });
       return { kind: "form", target, fields, submit: "Continue" };
     }
@@ -278,14 +319,29 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
     case "contact":
       return "Now a few practical details, so that we can fill in forms for you.";
     case "contactMethod":
-      return opts.emailDeclined ? "That is fine. Would you prefer a letter or a phone call?" : "How should NHS Lothian reply to your complaint?";
+      return opts.emailDeclined ? "That is fine. Would you prefer a letter or a phone call?" : "How would you like the reply to your complaint to reach you?";
     case "emailRisk":
       return "Email is quick, but it is not completely private. A message could, rarely, reach the wrong person or go missing, and NHS Lothian cannot take responsibility if that happens. Are you happy to be contacted by email on that basis?";
     case "outcome":
       return "Last question. What would you most like to come out of this? Tick all that apply.";
     case "done":
-      return `Thank you${name ? `, ${name}` : ""}. I have what I need. Please check everything below. You can change any of it later in your profile. Nothing has been sent to the NHS yet.`;
+      return `Thank you${name ? `, ${name}` : ""}. I have what I need. Please check everything below. You can change any of it later in your profile. Nothing has been sent to anyone yet.`;
   }
+}
+
+/**
+ * The one confirmation line about the place: "Your care was in Cardiff, Wales. The rules for Wales apply."
+ * Built from whatever the place says, with no names in code. Null if the country is not known.
+ */
+export function placeLine(p: { city?: string | null; region?: string | null; country?: string | null }): string | null {
+  const city = p.city?.trim() ?? "";
+  const region = p.region?.trim() ?? "";
+  const country = p.country?.trim() ?? "";
+  if (!country) return null;
+  // A "region" that is only the city is not a separate system: name the country instead.
+  const area = region && region.toLowerCase() !== city.toLowerCase() ? region : country;
+  const where = city && city.toLowerCase() !== area.toLowerCase() ? `${city}, ${area}` : area;
+  return `Your care was in ${where}. The rules for ${area} apply.`;
 }
 
 /**

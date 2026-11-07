@@ -7,10 +7,18 @@ export const CaseFacts = z.object({
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
   address: z.string().nullable(),
-  postcode: z.string().nullable(),
+  postcode: z.string().nullable().describe("Postcode or postal code, if the country has one."),
   phone: z.string().nullable(),
   email: z.string().nullable(),
   preferredContact: z.enum(["Letter", "Email", "Phone Call"]).nullable(),
+  country: z
+    .string()
+    .nullable()
+    .describe("Country where the care happened, in English, e.g. 'United Kingdom', 'New Zealand'. Worked out by the program from the story and address and confirmed by the user; null until then."),
+  region: z
+    .string()
+    .nullable()
+    .describe("The part of the country whose health and legal system applies, if the country has several (e.g. 'Wales', 'Scotland', a US state). null if none applies or not known yet."),
   incidentLocation: z.string().nullable().describe("Where the medical care being questioned took place: hospital, ward, clinic or GP surgery. This is the treatment location, not the location of the original accident or injury."),
   incidentSummary: z.string().nullable().describe("What went wrong, in the user's own words"),
   events: z
@@ -46,6 +54,8 @@ export const emptyFacts = (): CaseFacts => ({
   phone: null,
   email: null,
   preferredContact: null,
+  country: null,
+  region: null,
   incidentLocation: null,
   incidentSummary: null,
   events: [],
@@ -54,7 +64,7 @@ export const emptyFacts = (): CaseFacts => ({
   medicalRecords: null,
 });
 
-/** Fields the NHS Lothian form (and later steps) cannot proceed without. Checked in code, not by the model. */
+/** Fields the complaint form (and later steps) cannot proceed without. Checked in code, not by the model. */
 const REQUIRED: (keyof CaseFacts)[] = [
   "complainingFor",
   "firstName",
@@ -73,8 +83,20 @@ const REQUIRED: (keyof CaseFacts)[] = [
 export const NHS_ONLY: (keyof CaseFacts)[] = ["preferredContact", "emailRiskAccepted"];
 export const missingForOnboarding = (f: CaseFacts) => missingRequired(f).filter((k) => !NHS_ONLY.includes(k));
 
+/**
+ * Is the care in the United Kingdom? true / false once the place is known, null before. Read from the facts (the country the
+ * program worked out and the user confirmed), never from a table of countries: only the UK's own postcode and phone rules are in code.
+ */
+export function placeIsUK(f: Pick<CaseFacts, "country">): boolean | null {
+  const c = (f.country ?? "").trim();
+  if (!c) return null;
+  return /^(the\s+)?(united\s+kingdom|uk|u\.k\.|great\s+britain|britain|england|scotland|wales|northern\s+ireland)$/i.test(c);
+}
+
 export function missingRequired(f: CaseFacts): (keyof CaseFacts)[] {
-  const required = f.preferredContact === "Email" ? [...REQUIRED, "emailRiskAccepted" as const] : REQUIRED;
+  let required = f.preferredContact === "Email" ? [...REQUIRED, "emailRiskAccepted" as const] : REQUIRED;
+  // Not every country has postcodes: only a UK place must have one (before the place is known it is optional too).
+  if (placeIsUK(f) !== true) required = required.filter((k) => k !== "postcode");
   return required.filter((k) => {
     const v = f[k];
     return Array.isArray(v) ? v.length === 0 : v === null || String(v).trim() === "";

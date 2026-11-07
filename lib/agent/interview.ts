@@ -17,7 +17,7 @@ const Extract = z.object({
 });
 
 // The order of the questions and their wording are fixed in code (inputs.ts, D28). The model only reads free text.
-const INSTRUCTIONS = `You read what a person tells you about care they received from the NHS in Scotland, and record it as facts for an NHS Lothian complaint form. You do not choose the next question: the program does that.
+const INSTRUCTIONS = `You read what a person tells you about health care they received, wherever in the world that was, and record it as facts for their case. You do not choose the next question: the program does that.
 
 Recording facts
 - Only record what the user actually said. Never guess or invent a fact. If unsure, leave it null.
@@ -25,7 +25,8 @@ Recording facts
 - The user may give several facts in one answer: capture all of them.
 - incidentSummary is what went wrong, in the user's own words. If they add more later, extend it rather than replacing it.
 - Build the timeline in "events" (oldest first). Use YYYY-MM-DD only for a full date. Otherwise copy their wording, such as "early July 2026". Do not turn a rough date into an exact one.
-- Never suggest or fill in a date, a name or a place the user has not given.
+- Never suggest or fill in a date, a name or a place the user has not given. Never assume a country, a region or a health service (such as the NHS) the user has not named.
+- country and region: leave them exactly as they are in the known facts. The program works out the place and the user confirms it.
 - desiredOutcome: set it only if the question being answered is the one about what they would like to happen. If they say they have nothing to add, set it to an empty string.
 - emailRiskAccepted: set it only if the question being answered is the email question. true only for an explicit yes, false for an explicit no.
 - preferredContact is one of Letter, Email, Phone Call. Set it only if they clearly chose.
@@ -61,10 +62,20 @@ export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = 
   const asked = nextTarget(known, scope);
   let merged: CaseFacts;
   let acknowledgement = "";
+  let retry: string | null = null;
 
   if (answer) {
     const patch = patchFromAnswer(asked, known, answer);
-    const problem = validatePatch(patch);
+    // The form may have been shown before the place was known. A postcode or phone number that fails the place's own rules is
+    // dropped and asked again, with the reason as the question, rather than blocking everything else that was typed.
+    for (const k of ["postcode", "phone"] as const) {
+      const bad = patch[k] != null ? validatePatch({ [k]: patch[k] }, known) : null;
+      if (bad) {
+        delete patch[k];
+        retry ??= bad;
+      }
+    }
+    const problem = validatePatch(patch, known);
     if (problem) throw new InputError(problem);
     merged = { ...known, ...patch };
   } else {
@@ -87,18 +98,21 @@ export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = 
       // Consent and the outcome are only ever taken from their own question, whatever else the user said.
       if (asked !== "emailRisk") merged.emailRiskAccepted = known.emailRiskAccepted;
       if (asked !== "outcome") merged.desiredOutcome = known.desiredOutcome;
+      // The place comes from detectPlace and the user's confirmation, never from this extraction.
+      merged.country = known.country;
+      merged.region = known.region;
       acknowledgement = turn.acknowledgement.trim();
     }
     // Typed text can hold a mistake the model passed on; drop a bad value so the form asks for it again.
-    if (merged.postcode && validatePatch({ postcode: merged.postcode })) merged.postcode = known.postcode;
-    if (merged.phone && validatePatch({ phone: merged.phone })) merged.phone = known.phone;
+    if (merged.postcode && validatePatch({ postcode: merged.postcode }, merged)) merged.postcode = known.postcode;
+    if (merged.phone && validatePatch({ phone: merged.phone }, merged)) merged.phone = known.phone;
     if (merged.email && validatePatch({ email: merged.email })) merged.email = known.email;
   }
 
   const emailDeclined = asked === "emailRisk" && merged.emailRiskAccepted === false;
   const facts = normaliseFacts(merged);
   const target = nextTarget(facts, scope);
-  const reply = joinReply(acknowledgement, questionFor(target, facts, { emailDeclined }));
+  const reply = retry && target === "contact" ? retry : joinReply(acknowledgement, questionFor(target, facts, { emailDeclined }));
 
   return {
     facts,

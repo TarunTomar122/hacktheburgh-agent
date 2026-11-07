@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
-import { echoFor, inputFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
+import { echoFor, inputFor, patchFromAnswer, placeLine, type InputSpec, type Target } from "../lib/agent/inputs";
+import type { Place } from "../lib/agent/routeTypes";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, type DemoPersona } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
@@ -17,6 +18,9 @@ import { LogoLink } from "./ui";
 // The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
 const STEPS: Target[] = ["name", "story", "details", "who", "contact", "outcome", "done"];
 
+/** Where the care was, as far as onboarding knows it. Detected by the model, or typed by the user to correct it. */
+type Where = { city: string; country: string; region: string; fixed: boolean };
+
 const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
 
 export default function Onboarding() {
@@ -28,12 +32,21 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [spec, setSpec] = useState<InputSpec>(() => inputFor("name", emptyFacts()));
   const [nameDraft, setNameDraft] = useState("");
+  // The place lives here, not in `facts`, so a reply that was on its way while it was found cannot wipe it.
+  const [where, setWhere] = useState<Where | null>(null);
+  const [placeBusy, setPlaceBusy] = useState(false);
+  const whereRef = useRef<Where | null>(null);
+  const detected = useRef(new Set<string>());
+  const withPlace = (f: CaseFacts): CaseFacts => (where ? { ...f, country: where.country || null, region: where.region || null } : f);
+  const full = withPlace(facts);
   // It stays up while the first reply is on its way, so the opening question never flashes back as a second name question.
   const naming = !done && (messages.length === 1 || (thinking && spec.target === "name" && messages.length === 2));
 
   // The screen shows the latest question; while the next one loads, the old one stays up with the OK button busy.
   const question = [...messages].reverse().find((m) => m.role === "agent")?.content ?? OPENER.content;
   const agentCount = messages.filter((m) => m.role === "agent").length;
+  // The contact form follows the place even if it was found after the form arrived (UK postcode and phone rules only for the UK).
+  const view = spec.kind === "form" && spec.target === "contact" ? inputFor("contact", full) : spec;
   const pct = Math.round(((STEPS.indexOf(spec.target) + 1) / STEPS.length) * 100);
 
   /** Sends the conversation (and, for a form or button, the widget's answer). Returns false if it failed, so the panel keeps what was typed. */
@@ -46,11 +59,12 @@ export default function Onboarding() {
       const res = await fetch("/api/agent/interview", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: next, facts, answer }),
+        body: JSON.stringify({ messages: next, facts: full, answer }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
       setFacts(data.facts);
+      detectPlace(data.facts);
       setSpec(data.input);
       setMessages([...next, { role: "agent", content: data.reply }]);
       setDone(data.done);
@@ -62,6 +76,31 @@ export default function Onboarding() {
     } finally {
       setThinking(false);
     }
+  }
+
+  /**
+   * Works out the place in the background (no waiting on screen): once from the story and where the care was, so the contact
+   * questions know whether UK postcode and phone rules apply, and again once the address is known. A place the user corrected is kept.
+   */
+  function detectPlace(f: CaseFacts) {
+    const key = f.address ? "address" : f.incidentSummary && f.incidentLocation ? "story" : null;
+    if (!key || detected.current.has(key) || whereRef.current?.fixed) return;
+    detected.current.add(key);
+    setPlaceBusy(true);
+    fetch("/api/agent/place", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts: f }) })
+      .then(async (r) => {
+        const p = (await r.json()) as Place & { error?: string };
+        if (!r.ok || whereRef.current?.fixed) return;
+        // An empty answer never replaces one we already have.
+        if (p.country || !whereRef.current) savePlace({ city: p.city, country: p.country, region: p.region, fixed: false });
+      })
+      .catch(() => {})
+      .finally(() => setPlaceBusy(false));
+  }
+
+  function savePlace(w: Where) {
+    whereRef.current = w;
+    setWhere(w);
   }
 
   /** Free text: the story, or a name typed as a sentence. The model reads it. */
@@ -82,7 +121,7 @@ export default function Onboarding() {
   }
 
   function start() {
-    createProfile(facts, messages);
+    createProfile(full, messages);
     router.push("/case");
   }
 
@@ -133,6 +172,7 @@ export default function Onboarding() {
               <h1 className="display text-[34px] sm:text-[42px]">
                 Here is what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
               </h1>
+              <PlaceConfirm where={where} busy={placeBusy} onSave={savePlace} />
               <div className="space-y-4 rounded-card border border-line bg-paper p-6 text-sm">
                 <Row label="Name" value={[facts.title, facts.firstName, facts.lastName].filter(Boolean).join(" ")} />
                 <Row label="Where it happened" value={facts.incidentLocation} />
@@ -153,14 +193,14 @@ export default function Onboarding() {
                 <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
                 <Row label="Prefer to be contacted by" value={facts.preferredContact} />
               </div>
-              <button onClick={start} className="btn-primary !px-7 !py-3 !text-[15px]">
-                Looks right, start my case
+              <button onClick={start} disabled={placeBusy} className="btn-primary !px-7 !py-3 !text-[15px]">
+                {placeBusy ? "One moment…" : "Looks right, start my case"}
               </button>
             </div>
           ) : (
             <div key={`${spec.target}-${agentCount}`} className="fade-up my-auto py-10">
               <h1 className={"display mb-8 whitespace-pre-wrap " + (question.length > 110 ? "text-[26px] sm:text-[30px]" : "text-[32px] sm:text-[40px]")}>{question}</h1>
-              <StageInput spec={spec} busy={thinking} error={error} onFree={onFree} onAnswer={onAnswer} />
+              <StageInput spec={view} busy={thinking} error={error} onFree={onFree} onAnswer={onAnswer} />
             </div>
           )}
         </div>
@@ -176,5 +216,66 @@ function Row({ label, value }: { label: string; value: string | null }) {
       <div className="eyebrow">{label}</div>
       <div className="whitespace-pre-wrap">{value}</div>
     </div>
+  );
+}
+
+/** One calm line saying where the care was and whose rules apply, with a way to correct it (country and region, both free text). */
+function PlaceConfirm({ where, busy, onSave }: { where: Where | null; busy: boolean; onSave: (w: Where) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [country, setCountry] = useState("");
+  const [region, setRegion] = useState("");
+  const line = where ? placeLine(where) : null;
+
+  if (busy && !editing) return <p className="text-[15px] text-muted">Working out where your care was…</p>;
+  if (!editing) {
+    return (
+      <p className="text-[15px] leading-6 text-ink-2">
+        {line ?? "I could not tell which country your care was in."}{" "}
+        <button
+          type="button"
+          className="font-medium text-brand hover:underline"
+          onClick={() => {
+            setCountry(where?.country ?? "");
+            setRegion(where?.region ?? "");
+            setEditing(true);
+          }}
+        >
+          {line ? "Not right?" : "Add it"}
+        </button>
+      </p>
+    );
+  }
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!country.trim()) return;
+        const sameCountry = country.trim().toLowerCase() === (where?.country ?? "").toLowerCase();
+        // A different country makes the detected city meaningless, so it is dropped.
+        onSave({ city: sameCountry ? (where?.city ?? "") : "", country: country.trim(), region: region.trim(), fixed: true });
+        setEditing(false);
+      }}
+    >
+      <p className="text-[15px] text-ink-2">Where was your care?</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="space-y-1">
+          <span className="eyebrow block">Country</span>
+          <input autoFocus className="field" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="For example, Ireland" />
+        </label>
+        <label className="space-y-1">
+          <span className="eyebrow block">Region or state (if it matters)</span>
+          <input className="field" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="For example, Wales" />
+        </label>
+      </div>
+      <div className="flex items-center gap-4">
+        <button type="submit" disabled={!country.trim()} className="btn-primary">
+          Save
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-[13px] font-medium text-brand hover:underline">
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
