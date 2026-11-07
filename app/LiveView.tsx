@@ -391,7 +391,7 @@ export default function LiveView() {
       )}
 
       {grid ? (
-        <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
+        <div className={cx("grid min-h-0 flex-1 content-start gap-2 overflow-y-auto", width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
           {pages.map((p) => (
             <Tile
               key={p.pageId}
@@ -481,36 +481,26 @@ export default function LiveView() {
   );
 }
 
-const STATE: Record<LivePage["state"], { text: string; cls: string }> = {
-  starting: { text: "Starting", cls: "bg-subtle text-muted" },
-  working: { text: "Working", cls: "bg-brand-soft text-brand" },
-  done: { text: "Done", cls: "bg-teal-soft text-teal" },
-  failed: { text: "Failed", cls: "bg-danger-soft text-danger" },
-};
-
-/** One agent's tab in the grid: its colour, label and state on top, the page, then what it is doing and where. */
+/**
+ * One agent's tab in the grid: only the live picture (Tarun, 2026-11-07). The agent's name and colour are already
+ * drawn inside the page by its cursor pill, so there is no header, border or label here. A failed agent gets a thin red wash with its note.
+ */
 function Tile({ page, ended, onImg, onOpen }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void }) {
+  const failed = page.state === "failed";
   return (
     <button
       onClick={onOpen}
-      className="group flex flex-col overflow-hidden rounded-card border border-line bg-white text-left transition-colors hover:border-brand/50"
-      style={{ borderTopColor: page.color, borderTopWidth: 3 }}
+      aria-label={`${page.label}: ${page.note || page.state}. Watch up close`}
       title={`Watch ${page.label} up close`}
+      className="relative block aspect-[16/10] w-full overflow-hidden rounded-card bg-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand"
     >
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
-        <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: page.color }} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{page.label}</span>
-        <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", STATE[page.state].cls)}>{STATE[page.state].text}</span>
-      </div>
-      <div className="relative aspect-[16/10] w-full overflow-hidden border-y border-line-soft bg-subtle">
-        <span className="absolute inset-0 flex items-center justify-center text-[12px] text-muted">Opening…</span>
-        {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
-        <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", (ended || page.state === "failed") && "opacity-50")} />
-      </div>
-      <div className="space-y-0.5 px-3 py-2">
-        <div className="truncate text-[12px] text-ink-2">{page.note || "\u00a0"}</div>
-        <div className="truncate text-[11px] text-muted">{page.url.replace(/^https?:\/\/(www\.)?/, "")}</div>
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
+      <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", ended && "opacity-50")} />
+      {failed && (
+        <span className="absolute inset-0 flex items-end bg-danger/10 ring-1 ring-inset ring-danger/40">
+          <span className="w-full truncate bg-danger/85 px-2 py-1 text-left text-[11px] text-white">{page.note || "Failed"}</span>
+        </span>
+      )}
     </button>
   );
 }
