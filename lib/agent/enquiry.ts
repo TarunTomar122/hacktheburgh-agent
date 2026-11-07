@@ -82,7 +82,7 @@ export function approvalTabs(context: BrowserContext): Page[] {
   return [...REG.tabs.values()].map((o) => o.page).filter((p) => !p.isClosed() && p.context() === context);
 }
 
-/** A form that has been sent (or refused) is finished with: close its tab. The browser closes itself with its last tab (D56). */
+/** A form that has been sent (or refused) is finished with: close its tab. The browser closes itself with its last tab (D57). */
 async function releaseTab(firmId: string) {
   const open = REG.tabs.get(firmId);
   REG.tabs.delete(firmId);
@@ -368,7 +368,7 @@ export async function runEnquiries(
     send4({ type: "result", result });
     const waiting4Ok = approvalTabs(context);
     if (opts.keepOpen && waiting4Ok.length > 0) {
-      keep = true; // only the filled forms stay open for the approvals; the rest close now (D56). All close after 15 minutes.
+      keep = true; // only the filled forms stay open for the approvals; the rest close now (D57). All close after 15 minutes.
       await keepOnlyTabs(context, waiting4Ok);
     }
     return result;

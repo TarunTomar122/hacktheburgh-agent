@@ -47,7 +47,7 @@ export async function streamAgent(url: string, body: unknown, onProgress: (line:
   return done;
 }
 
-/** Close the agent's browser (and so its live panel). Used when the user says they are done with a form (D56). */
+/** Close the agent's browser (and so its live panel). Used when the user says they are done with a form (D57). */
 export function closeAgentBrowser() {
   return fetch("/api/live", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "close" }) }).catch(() => {});
 }

@@ -673,7 +673,7 @@ export async function runStep3(funding: Funding, opts: { onEvent?: Emit } = {}):
     tracer.add({ agent: "Shortlist", color: "#181818", kind: "result", text: `Scored ${firms.length} firms; shortlisted ${shortlist.length}`, firms: shortlist, detail: firms.slice(0, 8).map((f) => `${shortlist.includes(f.id) ? "★" : " "} ${f.fit}% ${f.name}`).join("\n") });
     const result: Step3Result = { verdict, route, calculatorText: quote, firms, shortlist, stats: track.stats, runDir, runId, trace: tracer.steps };
     emit({ type: "result", result });
-    return result; // the crawl is over, so the browser closes now (D56)
+    return result; // the crawl is over, so the browser closes now (D57)
   } finally {
     await browser.close().catch(() => {});
   }

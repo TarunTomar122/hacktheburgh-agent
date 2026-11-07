@@ -62,7 +62,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={() => start(profile.facts, profile.legalAid?.funding)} />;
-  // Demo (D57): skip the research and go on to step 4 with the three sample firms, as if the crew had found them.
+  // Demo (D58): skip the research and go on to step 4 with the three sample firms, as if the crew had found them.
   const skipToStepFour = () => {
     setLegalAid({ result: FIXTURE_RESULT, sample: true, selected: FIXTURE_RESULT.shortlist.slice(0, 3) });
     onReviewEnquiries();

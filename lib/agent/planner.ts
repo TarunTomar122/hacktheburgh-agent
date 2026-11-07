@@ -661,7 +661,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     };
     emit({ type: "result", result });
     emit({ type: "planner_result", result });
-    // The research is over: close every tab. Only filled enquiry forms waiting for the user's OK stay up (D56).
+    // The research is over: close every tab. Only filled enquiry forms waiting for the user's OK stay up (D57).
     const waiting4Ok = approvalTabs(context);
     if (opts.keepOpen && waiting4Ok.length > 0) {
       reviewing = true;

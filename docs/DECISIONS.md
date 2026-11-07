@@ -275,11 +275,8 @@ User authorized straightforward bug fixes and pushing them. Failed answers and t
 **D56 - 2026-11-07 - Luigi + Codex - decided**
 User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's existing three-fill-attempt budget in code and permit filling only shortlisted, non-excluded firms. Report failed work as Needs attention, offer drafting retries, and describe proximity only with a verified approved location. Item 1 is unchanged. Real sending and browser engines are untouched.
 
-<!-- Add new entries above this line. Next number: D57 -->
 
-**D55 · 2026-11-07 · Om (asked), Claude (built) · decided**
-
-**D56 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**D57 · 2026-11-07 · Om (asked), Claude (built) · decided**
 **The agent's browser closes by itself when its job is done**, so the live panel never sits on a stale page.
 - **Legal aid crawl (step 3):** closes the moment the result is emitted. `runStep3` no longer has `keepOpen`.
 - **Research plan (`runPlanner`):** closes every tab when the research ends. Only filled enquiry forms waiting for the user's OK stay (`keepOnlyTabs` in `lib/browser.ts`); the browser closes with its last tab, or after 15 minutes.
@@ -288,10 +285,10 @@ User requested fixes for review items 2, 3, 4 and 5. Enforce the planner's exist
 - **Not verified:** the confirmation-text check on the real NHS Lothian and SPSO sites (we never submit there). If it misses, the browser still closes on any of the other signals above.
 - **Tested** with a local fixture form (submit closes it; closing the tab closes it; only the approval tab survives and closes the browser with it).
 
-**D57 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**D58 · 2026-11-07 · Om (asked), Claude (built) · decided**
 **Demo skip on step 3 ("Preparing your case").** The intro screen has "Skip and continue to step 4 (demo)" beside the start button (`app/case/CaseRun.tsx`). It saves the step 3 sample result (`FIXTURE_RESULT`: three sample firms) as the profile's legal aid result, marks it as sample data and selects the three shortlisted firms, then opens step 4. No research runs. Step 4 then works on those firms' real websites (fills forms; the send gate stays closed). Same idea as D49.
 
-**D58 · 2026-11-07 · Om (asked), Claude (built) · decided**
-**Demo skip on step 4 ("Contact lawyers").** "Skip and mark as sent (demo)" sits beside "Fill their enquiry forms" and above the firm cards (`app/case/ContactLawyersStep.tsx`). It closes the agent's browser, marks every firm that has a form (or every picked firm, if nothing was filled yet) as sent with the note "Skipped in the demo: nothing was actually sent", and starts the three-day follow-up clock, so the demo can go on to "A firm replied". Nothing is sent. The button hides once every firm is marked. Same idea as D49 and D57.
+**D59 · 2026-11-07 · Om (asked), Claude (built) · decided**
+**Demo skip on step 4 ("Contact lawyers").** "Skip and mark as sent (demo)" sits beside "Fill their enquiry forms" and above the firm cards (`app/case/ContactLawyersStep.tsx`). It closes the agent's browser, marks every firm that has a form (or every picked firm, if nothing was filled yet) as sent with the note "Skipped in the demo: nothing was actually sent", and starts the three-day follow-up clock, so the demo can go on to "A firm replied". Nothing is sent. The button hides once every firm is marked. Same idea as D49 and D58.
 
-<!-- Add new entries above this line. Next number: D59 -->
+<!-- Add new entries above this line. Next number: D60 -->

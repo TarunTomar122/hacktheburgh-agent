@@ -77,7 +77,7 @@ const SUBMITTED_TEXT = /thank you for (your (complaint|feedback|enquiry|submissi
 /**
  * A filled form is left open so the user can check it and press Submit themselves. Close the browser once that
  * has happened: the page made a POST and now shows a confirmation that it did not show before. Also closes it when
- * the user closes the tab, or after maxMs, so a forgotten window never lingers. The agent never presses Submit (D56).
+ * the user closes the tab, or after maxMs, so a forgotten window never lingers. The agent never presses Submit (D57).
  */
 export function closeWhenSubmitted(page: Page, browser: Browser, opts: { maxMs?: number; lingerMs?: number } = {}) {
   const lingerMs = opts.lingerMs ?? 5000;

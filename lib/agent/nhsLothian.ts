@@ -60,7 +60,7 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
     if (opts.keepOpen && process.env.HEADLESS !== "1") {
       reviewing = true;
-      // Return the result at once; the form stays up for the user to check and submit, and the browser closes after that (D56).
+      // Return the result at once; the form stays up for the user to check and submit, and the browser closes after that (D57).
       closeWhenSubmitted(page, browser);
     } else if (process.env.HEADLESS !== "1") await page.waitForTimeout(4000);
     return { ...run, screenshot, runDir };
