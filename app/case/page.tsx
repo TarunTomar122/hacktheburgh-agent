@@ -73,12 +73,7 @@ export default function CasePage() {
             {!profile.route ? (
               // Night plan ("Elliot anywhere"): first the crew works out how the system works where the care happened.
               <div className="px-8 py-8">
-                <DiscoveryRun profile={profile} onDone={(map, sample) => setRoute({ map, sample })} />
-                <p className="mt-6 text-center text-[13px]">
-                  <button className="text-muted hover:text-brand hover:underline" onClick={() => setRoute({ skipped: true })}>
-                    Skip for now
-                  </button>
-                </p>
+                <DiscoveryRun profile={profile} onDone={(map, sample) => setRoute({ map, sample })} onSkip={() => setRoute({ skipped: true })} />
               </div>
             ) : !chosen ? (
               <div className="mx-auto max-w-4xl space-y-10 px-8 py-12">

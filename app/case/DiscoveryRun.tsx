@@ -26,7 +26,7 @@ const STEPS: Step[] = [
   { crew: ["kit"], title: "Find the forms", line: "The real online forms you will need" },
 ];
 
-export default function DiscoveryRun({ profile, saved, onDone }: { profile: Profile; saved?: RouteMap; onDone: (route: RouteMap, sample: boolean) => void }) {
+export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profile: Profile; saved?: RouteMap; onDone: (route: RouteMap, sample: boolean) => void; onSkip?: () => void }) {
   const { state, start, answer, replay, skip } = usePlannerRun();
   const done = useRef<string | null>(null);
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function DiscoveryRun({ profile, saved, onDone }: { profile: Prof
     );
   if (saved && state.status !== "error") return <RouteMapCard route={saved} />;
   const f = profile.facts;
-  const where = [f.incidentLocation, (f as { region?: string | null }).region, (f as { country?: string | null }).country].filter(Boolean).join(", ");
+  const where = [(f as { region?: string | null }).region, (f as { country?: string | null }).country].filter(Boolean).join(", ");
   return (
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">How it works where you live</h1>
@@ -74,6 +74,13 @@ export default function DiscoveryRun({ profile, saved, onDone }: { profile: Prof
         </p>
         {state.status === "error" && <p className="text-sm text-danger">{state.error}</p>}
       </div>
+      {onSkip && (
+        <p className="mt-10 text-center text-[13px]">
+          <button className="text-muted hover:text-brand hover:underline" onClick={onSkip}>
+            Skip for now
+          </button>
+        </p>
+      )}
       {hasDemo && (
         <DemoBar>
           <DemoButton onClick={() => replay({ flow: "discovery" })}>Play a recorded run, fast</DemoButton>

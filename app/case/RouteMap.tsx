@@ -69,6 +69,7 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
             <span className="text-[15px] font-medium text-ink">{step.body}</span>
           </div>
           {!compact && <p className="mt-1 text-[14px] leading-6 text-ink-2 md:pl-39">{step.what}</p>}
+          {!compact && step.deadline && step.deadline.length > 40 && <p className="mt-1 text-[13px] leading-5 text-ink-2 md:pl-39">Time limit: {step.deadline}</p>}
           {!compact && step.points?.length ? (
             <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[13px] leading-5 text-ink-2 md:ml-39">
               {step.points.map((pt) => (
@@ -83,7 +84,7 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] md:pl-39">
             {HOW[step.how] && <Chip tone={step.how === "online_form" ? "ok" : step.how === "login_required" ? "warn" : "plain"}>{HOW[step.how]}</Chip>}
-            {step.deadline && <Chip tone="plain">{step.deadline}</Chip>}
+            {step.deadline && step.deadline.length <= 40 && <Chip tone="plain">{step.deadline}</Chip>}
             {step.wall && <Chip tone="warn">{step.wall}</Chip>}
             <button className="text-muted hover:text-brand hover:underline" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
               {step.confidence === "confirmed" ? "Confirmed" : step.confidence === "likely" ? "One official source" : "Not confirmed"} · {checked} of {step.sources.length} quote{step.sources.length === 1 ? "" : "s"} checked
