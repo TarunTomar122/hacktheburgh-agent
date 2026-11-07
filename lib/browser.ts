@@ -15,6 +15,8 @@ export async function openSession(): Promise<Session> {
     viewport: { width: 1300, height: 900 },
     userAgent: USER_AGENT,
   });
+  // tsx/esbuild wraps named functions in a __name() helper that doesn't exist inside the page.
+  await context.addInitScript("window.__name = (f) => f;");
   const page = await context.newPage();
   return { browser, context, page };
 }

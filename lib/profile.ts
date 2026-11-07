@@ -1,17 +1,20 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import type { ChatMessage } from "./agent/chat";
+import type { Draft } from "./agent/draft";
+import type { CaseFacts } from "./agent/facts";
 
-export type Answer = { id: string; label: string; question: string; answer: string };
-
+/** Everything we keep about the user's case. Stored in this browser only (localStorage). */
 export type Profile = {
-  name: string;
-  story: string;
-  followUps: Answer[];
+  facts: CaseFacts;
+  messages: ChatMessage[]; // the intake conversation
+  draft: Draft | null; // complaint text for step 1, once written
   createdAt: string;
+  updatedAt: string;
 };
 
-const KEY = "case-profile-v1";
+const KEY = "case-profile-v2";
 const EVENT = "case-profile-change";
 
 function subscribe(cb: () => void) {
@@ -23,9 +26,33 @@ function subscribe(cb: () => void) {
   };
 }
 
-export function saveProfile(profile: Profile) {
-  localStorage.setItem(KEY, JSON.stringify(profile));
+function read(): Profile | null {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as Profile) : null;
+  } catch {
+    return null;
+  }
+}
+
+function write(p: Profile) {
+  localStorage.setItem(KEY, JSON.stringify({ ...p, updatedAt: new Date().toISOString() }));
   window.dispatchEvent(new Event(EVENT));
+}
+
+export function createProfile(facts: CaseFacts, messages: ChatMessage[]) {
+  const now = new Date().toISOString();
+  write({ facts, messages, draft: null, createdAt: now, updatedAt: now });
+}
+
+export function updateFacts(patch: Partial<CaseFacts>) {
+  const p = read();
+  if (p) write({ ...p, facts: { ...p.facts, ...patch } });
+}
+
+export function setDraft(draft: Draft | null) {
+  const p = read();
+  if (p) write({ ...p, draft });
 }
 
 export function clearProfile() {
@@ -33,7 +60,7 @@ export function clearProfile() {
   window.dispatchEvent(new Event(EVENT));
 }
 
-/** undefined while loading (server render), null when no profile saved, else the profile. */
+/** undefined while loading (server render), null when nothing saved, else the profile. */
 export function useProfile(): Profile | null | undefined {
   const raw = useSyncExternalStore(
     subscribe,
@@ -49,23 +76,4 @@ export function useProfile(): Profile | null | undefined {
       return null;
     }
   }, [raw]);
-}
-
-/** First draft of the complaint text, built from onboarding answers. The user edits it. */
-export function buildComplaintDraft(p: Profile): string {
-  const details = p.followUps.map((a) => `- ${a.label}: ${a.answer}`).join("\n");
-  return [
-    "Dear Patient Experience Team,",
-    "",
-    `My name is ${p.name} and I am writing to make a complaint about the care I received.`,
-    "",
-    p.story.trim(),
-    "",
-    "Further details:",
-    details,
-    "",
-    "I would like this complaint to be looked into and for you to reply to me in writing.",
-    "",
-    `Yours sincerely,\n${p.name}`,
-  ].join("\n");
 }

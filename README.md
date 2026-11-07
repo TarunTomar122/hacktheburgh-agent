@@ -4,6 +4,8 @@ A browser-use agent that runs a multi-site workflow in a **visible Chromium wind
 
 Current state: one button. It opens the Law Society of Scotland "Find a Solicitor" directory, searches for Edinburgh firms under "Accident and injury", and lists the results. Nothing is submitted anywhere.
 
+See [AGENT.md](AGENT.md) for how the agent works.
+
 ## Run
 
 ```bash
