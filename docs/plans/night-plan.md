@@ -17,6 +17,12 @@ Why this is real browser work, not more of the same: the *shape* of the process 
 - **UK.** England: NHS complaint, then the Parliamentary and Health Service Ombudsman; claims under a pre-action protocol. Wales: "Putting Things Right", with NHS redress up to about £25k without court. Northern Ireland: HSC complaints, then NIPSO. Scotland: what we have.
 - **Elsewhere.** No-fault schemes (New Zealand ACC, Sweden patient insurance), conciliation commissions (France), doctors' chamber arbitration boards (Germany), state-by-state rules (US). All unverified until researched; see Phase 0.
 
+## Ambition (Tarun, 2026-11-07, before sleeping)
+"We can do more." Go for browser workflows that would be impossible without a very smart browser agent. Research a lot; implement the more complicated workflows where the agent really shines. Tarun trusts the night run with real power: use it.
+
+## Heartbeat
+A heartbeat fires every 30 minutes (session cron, :13 and :43) and checks: on track with this plan, very high-quality UI with no clutter, everything fully integrated end to end, Codex and Cursor scores at 9/10, ambition, safety, notes pushed. A one-shot wrap-up fires at 06:47 to make the morning summary current.
+
 ## Definition of done (Tarun, 2026-11-07)
 Nothing stops at a prototype or a script. Every item is **fully integrated end to end in the app UI**, works from onboarding to the last step, and is **reviewed and approved by Codex and Cursor (9/10)** on quality and on the benchmarks we keep. An item that is not done that way is reported as not done.
 
@@ -75,6 +81,9 @@ Tarun wants to see real runs in the morning: **at least 3 or 4, successes and fa
 - a short line in the "Night runs" table below: place, persona, what worked, where it failed, and how to rerun it (one command).
 
 **Open for Tarun (morning):** which pair to show next to Scotland in the demo. Claude's suggestion: England (close but different) and New Zealand (no-fault, completely different).
+
+### Phase 6 (only if everything above is done before 07:00): UI hill-climb, end to end
+Improve the UI at every step, in loops. Each loop: research the best UI patterns and example UIs on the internet; ask Codex and Cursor for feedback against them; fix; re-score. Target 10/10 on every factor: spacing, layout, amount of text (no walls), readability, visuals, ease of access and navigation, and showing clearly what the agent is doing. Log each loop's scores below.
 
 ## Results
 
