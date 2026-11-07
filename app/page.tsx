@@ -8,7 +8,9 @@ import { echoFor, inputFor, patchFromAnswer, type InputSpec } from "../lib/agent
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_MESSAGES } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
+import { Stripes } from "./case/Header";
 import InputPanel from "./InputPanel";
+import NameStep from "./NameStep";
 import { Logo } from "./ui";
 
 // Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
@@ -22,7 +24,10 @@ export default function Onboarding() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [spec, setSpec] = useState<InputSpec>(() => inputFor("name", emptyFacts()));
+  const [nameDraft, setNameDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  // Only the opening line so far: show the big one-question screen instead of the chat.
+  const naming = messages.length === 1 && !done;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,89 +83,103 @@ export default function Onboarding() {
   }
 
   return (
-    <main className="mx-auto flex h-screen max-w-2xl flex-col">
-      <header className="flex items-start justify-between gap-4 px-6 pt-8 pb-4">
-        <div>
-          <Logo className="mb-4" />
-          <h1 className="display text-4xl">
-            Let&apos;s start with <span className="hl-blue">you</span>
-          </h1>
-          <p className="mt-3 text-sm text-muted">A few questions so we can prepare your case. Nothing is sent to the NHS yet.</p>
-        </div>
-        {SHOW_SKIP && (
-          <button
-            onClick={skipWithDemoPatient}
-            title="Dev shortcut: skips the interview and loads a fictional patient with a ready-made draft"
-            className="btn-ghost shrink-0 border-dashed !px-3 !py-1.5 !text-xs"
-          >
-            Skip: use demo patient
-          </button>
-        )}
-      </header>
-
-      <div className="flex-1 space-y-3 overflow-y-auto px-6 py-2">
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div
-              className={
-                "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-sm " +
-                (m.role === "user" ? "bg-brand text-white" : "bg-mist text-body")
-              }
-            >
-              {m.content}
+    <div className="flex h-dvh flex-col">
+      <div className="shrink-0">
+        <header className="flex h-16 items-center justify-between bg-brand px-6 text-white sm:px-8">
+          <div className="flex items-center gap-6">
+            <Logo />
+            <span className="hidden h-7 w-px bg-white/30 sm:block" aria-hidden />
+            <div className="hidden leading-tight sm:block">
+              <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/70">{facts.firstName ? "Case for" : "Getting started"}</div>
+              <div className="text-sm font-medium">{facts.firstName ?? "Preparing your case"}</div>
             </div>
           </div>
-        ))}
-
-        {thinking && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl bg-mist px-4 py-2 text-sm text-muted">Thinking…</div>
-          </div>
-        )}
-        {error && spec.kind !== "form" && <p className="text-sm text-danger">{error}</p>}
-
-        {done && (
-          <div className="space-y-3 rounded-2xl border border-hairline bg-cream p-5 text-sm">
-            <p className="display text-xl">
-              Here&apos;s what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
-            </p>
-            <Row label="Name" value={[facts.title, facts.firstName, facts.lastName].filter(Boolean).join(" ")} />
-            <Row label="Where it happened" value={facts.incidentLocation} />
-            <Row label="What happened" value={facts.incidentSummary} />
-            {facts.events.length > 0 && (
-              <div>
-                <div className="eyebrow">Timeline</div>
-                <ul className="list-disc pl-5">
-                  {facts.events.map((e, i) => (
-                    <li key={i}>
-                      <span className="font-medium text-ink">{e.date}:</span> {e.what}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <Row label="What you'd like" value={facts.desiredOutcome} />
-            <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
-            <Row label="Prefer to be contacted by" value={facts.preferredContact} />
-            <button onClick={start} className="btn-primary mt-2">
-              Looks right, start my case
+          {SHOW_SKIP && (
+            <button
+              onClick={skipWithDemoPatient}
+              title="Dev shortcut: skips the interview and loads a fictional patient with a ready-made draft"
+              className="shrink-0 rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
+            >
+              Skip: use demo patient
             </button>
-          </div>
-        )}
-        <div ref={endRef} />
+          )}
+        </header>
+        <Stripes />
       </div>
 
-      {!done && (
-        <InputPanel
-          key={`${spec.target}-${messages.filter((m) => m.role === "agent").length}`}
-          spec={spec}
-          busy={thinking}
-          error={error}
-          onFree={onFree}
-          onAnswer={onAnswer}
-        />
-      )}
-    </main>
+      <main className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col">
+        {naming ? (
+          <div className="flex flex-1 flex-col px-6">
+            <NameStep value={nameDraft} onChange={setNameDraft} busy={thinking} error={error} onSubmit={onFree} />
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 space-y-3 overflow-y-auto px-6 pb-2 pt-6">
+              {messages.map((m, i) => (
+                <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+                  <div
+                    className={
+                      "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-sm " +
+                      (m.role === "user" ? "bg-brand text-white" : "bg-mist text-body")
+                    }
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+
+              {thinking && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl bg-mist px-4 py-2 text-sm text-muted">Thinking…</div>
+                </div>
+              )}
+              {error && spec.kind !== "form" && <p className="text-sm text-danger">{error}</p>}
+
+              {done && (
+                <div className="space-y-3 rounded-2xl border border-hairline bg-cream p-5 text-sm">
+                  <p className="display text-xl">
+                    Here&apos;s what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
+                  </p>
+                  <Row label="Name" value={[facts.title, facts.firstName, facts.lastName].filter(Boolean).join(" ")} />
+                  <Row label="Where it happened" value={facts.incidentLocation} />
+                  <Row label="What happened" value={facts.incidentSummary} />
+                  {facts.events.length > 0 && (
+                    <div>
+                      <div className="eyebrow">Timeline</div>
+                      <ul className="list-disc pl-5">
+                        {facts.events.map((e, i) => (
+                          <li key={i}>
+                            <span className="font-medium text-ink">{e.date}:</span> {e.what}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <Row label="What you'd like" value={facts.desiredOutcome} />
+                  <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
+                  <Row label="Prefer to be contacted by" value={facts.preferredContact} />
+                  <button onClick={start} className="btn-primary mt-2">
+                    Looks right, start my case
+                  </button>
+                </div>
+              )}
+              <div ref={endRef} />
+            </div>
+
+            {!done && (
+              <InputPanel
+                key={`${spec.target}-${messages.filter((m) => m.role === "agent").length}`}
+                spec={spec}
+                busy={thinking}
+                error={error}
+                onFree={onFree}
+                onAnswer={onAnswer}
+              />
+            )}
+          </>
+        )}
+      </main>
+    </div>
   );
 }
 

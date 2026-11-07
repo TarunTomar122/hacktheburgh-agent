@@ -101,6 +101,17 @@ body {
  * Class versions of the same components, used by the onboarding widgets (app/page.tsx, InputPanel, DateField, /dev).
  * They follow the same specs as app/ui.tsx so both look identical. New screens: prefer app/ui.tsx.
  */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer components {
   /* Headline voice: light serif, tight tracking (Wordsmith H1 is weight 300, -1.2px at 40px). */
   .display {
@@ -204,6 +215,16 @@ body {
     background-repeat: no-repeat;
     background-position: right 12px center;
     background-size: 12px;
+  }
+
+  /* Content that arrives (the name screen): rises 8px while fading in. Off for people who ask for reduced motion. */
+  .fade-up {
+    animation: fade-up 450ms ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fade-up {
+      animation: none;
+    }
   }
 
   /* = `Card` in app/ui.tsx */

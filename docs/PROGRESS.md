@@ -8,6 +8,11 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Landing page: big one-question name screen, shared blue header (D40)
+Om asked for a more professional landing page, with the name as a big field to type into, like Typeform. New `app/NameStep.tsx` (large serif question, borderless 34/40px field with an underline, `OK` and Enter); `app/page.tsx` now has the blue header with stripes and the logo above both the name screen and the chat, shows the name screen while only the opening line exists, and keeps the typed name if the request fails. Chat area gets top padding; below the `sm` breakpoint the header shows only the logo and the dev skip button. `.fade-up` added to `app/globals.css`; `docs/DESIGN.md` has a "Landing screen" section.
+**Checked:** `tsc --noEmit` and `eslint` pass. Playwright in Chrome on `next dev`, with the interview API mocked: the field is focused on load; `OK` is disabled while empty and enabled after typing; Enter sends; a 500 returns to the name screen with "Om Prabhu" still in the field and the error shown; a good reply switches to the chat with the header "Case for Om", the user's bubble and the story box; no horizontal overflow at 390px wide; screenshots at 1280 and 390 px looked right.
+**Not checked (do not claim otherwise):** `next build` on this change; the real model reply (mocked); Safari; keyboard-only use beyond Enter; screen readers (the field has a label and `aria-describedby` for the error, not tested with one); a very long name; how the later questions look next to the new header on a phone.
+
 ### 2026-11-07 · Tarun + Claude · DONE (backend) · Step 3 runner, traces and score breakdown (D36, D39)
 `lib/agent/legalAid.ts` + `POST /api/agent/step3` run 6–7 browser agents in tabs of one browser, each with its own cursor and grid tile:
 - **SLAB calculator:** the Decisions engine fills it. If it stops early, the remaining fields are filled directly.

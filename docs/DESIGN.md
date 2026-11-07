@@ -65,6 +65,13 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 - **Live grid (D36):** with several agent tabs, the right-hand live panel shows one tile per agent (2 columns, 3 when the panel is wide). **A tile is only the live picture** (no border, header or label; the agent's name and colour are in its cursor pill inside the page); a failed agent gets a thin red wash with its note; the counter "N agents · N sites · N pages · N actions" sits under the panel header. Clicking a tile focuses it (full size, take control); "Back to grid" returns.
 - **Progress:** big serif percentage, thin bar, "N of M milestones", and "Next: ...". Milestones are defined in `app/case/progress.ts`. Honest rules: only things we can know (profile data, the agent reaching the review page) plus self-reported "I've pressed Send". Steps not built count as milestones that cannot be done yet, so the percentage cannot reach 100% early.
 
+## Landing screen (D40)
+
+- **Shell:** the same blue 64px header and stripes as the case page (`Stripes` from `app/case/Header.tsx`), with the logo left and, from the `sm` breakpoint up, "Getting started / Preparing your case" (becomes "Case for / <first name>" once the name is known). Below `sm` only the logo shows. The dev-only "Skip: use demo patient" button sits on the right as a dashed white outline.
+- **Name screen (`app/NameStep.tsx`), in the manner of Typeform:** one question in the display serif ("First, what should I *call you*?", with the `hl-blue` highlight), one lede in `ink-2`, then a large field: borderless, serif 34/40px light, underlined with `line`, the underline turns `brand` on focus. Big `OK` button and an "or press Enter" hint. The field is focused on load, Enter submits, `OK` is disabled while empty. The typed text lives in the page, so a failed request returns here with the text kept and the error shown under the field. Footer line: "Nothing is sent to the NHS yet."
+- **After the name** the page becomes the chat (`app/page.tsx`) under the same header.
+- **Motion:** `.fade-up` (450 ms, 8px rise) in `app/globals.css`; off under `prefers-reduced-motion`.
+
 ## Steps (D33)
 
 - **No forms in our app.** A step is a title, one sentence about what will happen, and one primary button. The agent prepares everything from onboarding and earlier steps.
@@ -97,7 +104,7 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 
 ## Not done yet
 
-- The onboarding page (`app/page.tsx`, Om's widgets) uses the class versions and aliases; it has not been redesigned to the D31 shell (no blue header there yet).
+- The onboarding chat after the name (`app/page.tsx`, Om's widgets, `InputPanel`) still uses the class versions and aliases and plain chat bubbles; only the landing screen and the header were brought to the D31 look (D40).
 - Two component systems (classes and `app/ui.tsx`) with the same specs. Consolidate into one when there is time.
 - The logo and the favicon (`app/favicon.ico`, `app/icon.png`, `app/apple-icon.png`) come from Om's Elliot monogram (D37). Not done: the page title still says "Case helper"; no web manifest or social-share image.
 - Wordsmith's licensed fonts are not used.
