@@ -151,7 +151,7 @@ export function Logo({ className }: { className?: string }) {
 }
 
 /**
- * The logo as a link (D43, D49), by stage: no case yet -> the landing page; a case but no path chosen -> the suggestion page;
+ * The logo as a link (D43, D50), by stage: no case yet -> the landing page; a case but no path chosen -> the suggestion page;
  * a path chosen -> the profile. On the case page, pass `onGo` to do it in place instead of reloading the page.
  */
 export function LogoLink({ onGo }: { onGo?: (to: "home" | "profile") => void }) {

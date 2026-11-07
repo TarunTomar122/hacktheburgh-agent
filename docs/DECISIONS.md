@@ -214,19 +214,19 @@ Why: Tarun wants the agent to do the sending, but never without the user seeing 
 
 Why: Tarun found the old screen confusing (three buttons per firm, a duplicate replies list, a dead-end email draft, a failure with no way out) and the auto-opening panel unhelpful.
 
-**D48 · 2026-11-07 · Om (requested), built by Claude · decided**
+**D49 · 2026-11-07 · Om (requested), built by Claude · decided**
 **Step 1 has a "Skip and continue to step 2 (demo)" button.** It sits next to "Fill in NHS Lothian's form" in `app/case/page.tsx`, is always shown (not hidden in production builds, unlike the other demo shortcuts), and is disabled while the browser agent is filling the form. It sets `ombudsman.unlocked` (as if NHS Lothian had replied) and opens step 2.
 Why: the demo does not file a real complaint, so the demo needs a way past step 1 without the agent run, and without waiting for a reply that will never come.
 **Limits:** it does NOT mark "NHS form filled in" or "Complaint sent to NHS Lothian" as done, because neither happened; the checklist and the progress figure stay honest. The button should be removed or gated behind `NEXT_PUBLIC_DEMO_SKIP` before any real use.
 
-**D49 · 2026-11-07 · Om (requested), built by Claude · decided**
+**D50 · 2026-11-07 · Om (requested), built by Claude · decided**
 **The suggestion page comes first; how NHS Lothian should reply is asked only on the complaint path.** The profile page no longer says "Still needed for the NHS form: How to contact you" before the user has chosen the complaint path: `ProfileTab` checks `missingForOnboarding` until `track.chosen` is "complaint", then `missingRequired`. The logo (`LogoLink`, refines D43) now goes by stage: no case -> `/`; a case but no path chosen -> `/case`, the suggestion page; a path chosen -> the profile. `/case#profile` is cleared from the address once it has opened the profile, so a reload or Back does not reopen it.
 Why: Om saw the profile page with a missing contact method, with no path chosen; after the interview the user should see the suggestion, and only someone who takes the complaint path is asked how NHS Lothian should reply (that question was already moved to step 1 in D42).
 **Limits:** the profile page itself still has the contact-method field; it is reachable from the header's profile button at any time and is not asked for until step 1. `progress.ts` still counts "Your details are complete" with `missingRequired`, so that checklist line on the compensation path waits for a contact method it does not need (not changed here).
 
-**D50 · 2026-11-07 · Om (requested), built by Claude · decided**
+**D51 · 2026-11-07 · Om (requested), built by Claude · decided**
 **"Why we suggest it" shows tick boxes, not points.** On the suggestion page (`app/case/TrackChoice.tsx`) each reason is a plain row, ticked (teal) when it fits what the user told us and an empty box when it does not (`CheckRow` in `app/case/scoreParts.tsx`). No "15/15", no bar. A reason the AI could not judge is an empty box with "Not clear from your story." The sentence that used to open on click is now the tooltip. The fit % ring stays.
 Why: Om: the points looked exact and told the user nothing more than a tick; four of the six rows were already yes or no (a ticked outcome box gets full points, an unticked one gets zero), and the other two come from an AI estimate, so a "16/20" suggested more precision than there is.
 **Not changed:** the scoring in `lib/agent/track.ts` (the points still make the fit %, and the recommendation still goes to the higher fit), and the step 3 firm score rows (`ScoreRow`), which still show points and bars. The fit % can no longer be added up from what is on screen; if that is a problem, the next step is to drop the % as well.
 
-<!-- Add new entries above this line. Next number: D51 -->
+<!-- Add new entries above this line. Next number: D52 -->

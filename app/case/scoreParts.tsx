@@ -80,7 +80,7 @@ export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "m
 }
 
 /**
- * One reason for the suggested track as a plain tick box (D50): ticked if it fits what they told us, empty if not.
+ * One reason for the suggested track as a plain tick box (D51): ticked if it fits what they told us, empty if not.
  * No points and no bar: the numbers only fed the fit % and read as more exact than they are. A reason we could not
  * judge ("unknown") is an empty box with a short note. The full sentence is in the tooltip.
  */
