@@ -23,6 +23,9 @@ Read this before proposing something. Each row says what it was, why we dropped 
 | **Headless as the demo default** | Audience cannot watch; no human handoff for a CAPTCHA. Kept as `HEADLESS=1` for tests. | n/a |
 | **Exa (search API) to find law firms** (D11) | It would replace the browser work the track scores. Allowed only for non-browser lookups, e.g. a guidance document. | The directory proves unusable |
 | **Hand-built OAuth for email** (D13) | A managed connector (Composio, Arcade, Nango, Pipedream style) avoids OAuth setup. Email is lower priority than the browser flows. | No connector works within 30 minutes |
+| **Konfuzio for reading email** (2026-11-07, Lea + Claude) | A document-AI API that extracts fields from emails and attachments. It would do the reading for us, which removes the browser work, and it sends case data to a third party. It is not an inbox. | We need document extraction where no browser step is involved |
+| **Mailpit (local mail catcher) for real users** (2026-11-07) | Fine as a demo inbox (`docs/plans/browser-complexity-plan.md`, X1), but a customer would never run it. Real email stays with D13's connector. | n/a |
+| **Search-only "extra sites"** (FCA register, Wayback Machine, court judgments, Care Opinion) (2026-11-07) | They read pages but do not act; that adds little browser complexity. The register is kept only as the first link of a chain that ends in filling a form. | One of them feeds a field on another site |
 | **Auto-submitting forms** (D14) | A real submit sends a real complaint. Needs an approval path and a test-data rule first. | Team agrees a safe target |
 | **Storing the profile on a server** (D9) | Simplest to keep it in localStorage for now. | Scripts or other devices need it |
 | **Claiming deadlines, SPSO rules, NHS timeframes as fact** | Unverified. See the unverified list in `docs/PROJECT.md`. | Someone checks the official sources and logs them |

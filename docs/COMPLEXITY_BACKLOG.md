@@ -2,6 +2,8 @@
 
 **Last updated: 2026-11-07** (refresh this date whenever you touch the file; see the rules in `AGENTS.md`).
 
+Session verification (2026-11-07, Lea + Claude): probed the Law Society **individual** search and four firm sites (Balfour + Manson, Drummond Miller, Irwin Mitchell, Anderson Strathern) in the in-app browser, searches and reads only, nothing submitted. Results and a **proposed** plan (follow the accredited specialist to their firm's form; Drummond Miller's clinical negligence intake form; demo-only inbox) are in `docs/plans/browser-complexity-plan.md`. Item 1: "View details" now read for individuals; a "Medical Negligence (Defender Only)" specialism exists on the register (0 in Edinburgh). The firm search's sub-filter is still `untested`. Statuses below are unchanged.
+
 Session verification (2026-11-07, Claude): step 2 now fills the SPSO online complaint form (14 pages) on the Decisions engine; obstacles added to item 5 below. Item 3 (searching published SPSO decisions) is still `untested`.
 
 Session verification (2026-11-07, Codex): NHS form filling now runs from the app's Step 1 button. The fictional patient completed the live form with no missing required fields and stopped before submission. The email consent conditional field was handled. Evidence is recorded in `PROGRESS.md`; the six backlog statuses below are unchanged by this app integration.

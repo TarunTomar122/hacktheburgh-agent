@@ -8,6 +8,23 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Lea + Claude · PROPOSED · Extra browser work: follow the specialist, intake form, demo inbox
+Docs only, no code. Wrote `docs/plans/browser-complexity-plan.md` (proposed, not decided).
+- **Probed (in-app browser, searches and reads only, nothing submitted):**
+  - the Law Society individual search and its `Specialism` filter
+  - four firms' people pages and forms
+  - PASS and the Citizens Advice bureau finder
+- **Strongest find:** Drummond Miller's clinical negligence intake form. Its Yes/No questions are answered by our own steps 1 and 2, it has a someone-else branch, and it has 8 narrative questions the agent must ask the user about rather than invent.
+- Two firms list the specialist under a nickname, and Irwin Mitchell's search found neither register specialist. Name matching and fallbacks are therefore real requirements.
+- **Considered and dropped:**
+  - search-only ideas (FCA register, Wayback Machine, court judgments), because they are reading, not acting
+  - Konfuzio for email (an API, see `NOT_DOING.md`)
+  - Mailpit for real users (fine for a demo inbox only)
+- **Tried and failed:**
+  - `node` is not on the PATH in this Windows shell, so the Playwright probe script could not run; used the in-app browser instead.
+  - A guessed Irwin Mitchell profile URL returned 404.
+- **Not checked:** `tsc` and `eslint` (no code changed; `node` unavailable here).
+
 ### 2026-11-07 - Luigi + Codex - Upstream sync
 Pulled 3d3072b. Code merged cleanly. Both branches assigned D53 to different decisions; preserved upstream D53 and renumbered patient location to D54. Documentation conflict resolved by keeping both entries. The user subsequently authorized pushing small conflict resolutions.
 
@@ -262,6 +279,7 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 
 | # | Date | Found by | What disagrees | Status |
 |---|---|---|---|---|
+| 10 | 2026-11-07 | Lea + Claude | The step 4 run (Tarun + Claude, D46 entry above) reports "Balfour + Manson had no online form". A manual probe the same day found a general enquiry form at `https://www.balfour-manson.co.uk/contact-us/` (name, phone, email, "Nature of Enquiry", location, consent checkbox, invisible reCAPTCHA v3), linked from its medical negligence page as "Fill in our enquiry form". Possibly the agent's harder look did not reach it, or the fixture's website URL differs. Not investigated. | open |
 | 9 | 2026-11-07 | Claude | `PROGRESS.md` earlier said step 2 was "records request"; step 2 is now the ombudsman form (D29, D30). | **resolved** 2026-11-07 |
 | 8 | 2026-11-07 | Claude | `PROJECT.md` said the SPSO checker's verdict screen was unseen. It was seen and links to the online form. | **resolved** 2026-11-07 |
 | 7 | 2026-11-07 | Claude | Luigi's decision and mine were both numbered D25. | **resolved** 2026-11-07: mine is D29 (Om's D26-D28 landed first); next free is D33 |
@@ -278,4 +296,4 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 - How exactly do the Wordsmith judges weigh "complicated"? We use Tarun's reading: steps, sites, branching, failure recovery.
 - Does the invisible reCAPTCHA on the law-firm forms block an automated real submit? Never tested (and we do not submit).
 - Does a clinical guidance page exist that fits Ailsa's case? Not checked.
-- Which firms in the Law Society results act for patients rather than for the NHS/insurers? Not checked.
+- Which firms in the Law Society results act for patients rather than for the NHS/insurers? Partly answered 2026-11-07: the register's individual search has a "Medical Negligence (Defender Only)" specialism, with 0 results in Edinburgh. Firm-level sides are still not checked.
