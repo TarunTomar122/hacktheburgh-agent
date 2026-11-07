@@ -7,7 +7,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
 | Case continuity fixes | Luigi + Codex | Done, idle | Funding stream, enquiry selection and tracker | User requested three state bug fixes |
-| Complaint crew (step 1) | Tarun + Claude | **Done, idle (D65).** | `lib/agent/complaintPlanner.ts`, `complaintAgents.ts`, `app/case/ComplaintRun.tsx`, `app/case/page.tsx` | Same run screen as step 3; demo run in `demo/complaint-*` |
+| Complaint crew (step 1) | Tarun + Claude | **Built (D65) but not shown: step 1 is the earlier page again (D69).** | `lib/agent/complaintPlanner.ts`, `complaintAgents.ts`, `app/case/ComplaintRun.tsx`, `app/case/page.tsx` | Same run screen as step 3; demo run in `demo/complaint-*` |
 | Review follow-up: bugs 2, 3, 4, 5 | Luigi + Codex | Done, idle | Planner guard, enquiry drafting, progress strip, search summary | User authorized fixes and push absent major conflicts |
 | Patient location permission | Luigi + Codex | Done, idle | Planner, finder, location helpers | Explicit permission and patient postcode in latest crew flow |
 | Bug review and straightforward fixes | Luigi + Codex | Done, idle | Whole-repo review; targeted UI and validation fixes | User authorized review and push of clear fixes |

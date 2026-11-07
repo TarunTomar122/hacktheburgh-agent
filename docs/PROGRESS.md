@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Step 1 back to the earlier page (D69)
+Om asked for the previous version of the step 1 screen. `app/case/page.tsx` restored to its version before D65, so step 1 is the old fill-in-the-form page again and the complaint crew is not shown. Its files stay in the tree unused (list in D69). Not run in a browser; tsc and eslint clean. To bring the crew back, restore `app/case/page.tsx` from `bbe5df3`.
+
 ### 2026-11-07 · Om + Claude · DONE · Step 2 back to the version before D66 (D68)
 Om asked for the previous version of the complaint route and to keep the story-box change. Restored the pre-D66 files and removed the four files D66 added (list in D68). A new commit, not a rewrite: `79db341` stays in history. `app/StageInputs.tsx` (D67) is untouched. The failed-text retry loop that D66 fixed is back with the old version.
 
