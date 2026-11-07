@@ -69,7 +69,12 @@ async function observeOnce(page: Page): Promise<Observation> {
       if (e.labels && e.labels.length) return text(e.labels[0]);
       const by = e.getAttribute("aria-labelledby");
       if (by) return by.split(" ").map((i) => text(document.getElementById(i))).join(" ").trim();
-      return e.getAttribute("aria-label") || e.placeholder || "";
+      const own = e.getAttribute("aria-label") || e.placeholder;
+      if (own) return own;
+      // No linked label: use the text of the row the field sits in (e.g. "* Confirm email:"), else its name.
+      const row = e.closest("tr, li, p, .form-row, .row, div");
+      const near = text(row).slice(0, 60);
+      return near || e.name || "";
     };
     const groupOf = (e: Element) => {
       const lg = e.closest("fieldset")?.querySelector("legend");
@@ -116,7 +121,7 @@ async function observeOnce(page: Page): Promise<Observation> {
         name,
         label: label.slice(0, kind === "checkbox" ? 500 : 140),
         group: kind === "radio" || kind === "checkbox" ? groupOf(e).slice(0, 140) : "",
-        required: el.required || e.getAttribute("aria-required") === "true" || /\*\s*$/.test(label),
+        required: el.required || e.getAttribute("aria-required") === "true" || /(^\s*\*|\*\s*$)/.test(label),
         value: kind === "select" ? text(el.selectedOptions?.[0]) : kind === "radio" || kind === "checkbox" ? "" : el.value ?? "",
         checked: !!el.checked,
         options: kind === "select" ? Array.from(el.options).map((o) => text(o)) : [],
@@ -137,7 +142,8 @@ async function observeOnce(page: Page): Promise<Observation> {
   });
 }
 
-const PLACEHOLDER = /^(please\s+choose|please\s+select|select|choose)\b/i;
+/** Dropdown text that means "nothing chosen": "Please select...", "Choose", or just dashes ("--"). */
+export const PLACEHOLDER = /^(?:[-–—]+|(?:please\s+choose|please\s+select|select|choose)\b)/i;
 
 /** Required fields that are still empty. Done in code from the DOM so we never trust the model's "I filled it all". */
 export function unfilledRequired(o: Observation): string[] {

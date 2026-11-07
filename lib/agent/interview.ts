@@ -29,6 +29,7 @@ Recording facts
 - desiredOutcome: set it only if the question being answered is the one about what they would like to happen. If they say they have nothing to add, set it to an empty string.
 - emailRiskAccepted: set it only if the question being answered is the email question. true only for an explicit yes, false for an explicit no.
 - preferredContact is one of Letter, Email, Phone Call. Set it only if they clearly chose.
+- medicalRecords: never ask about it and leave it null unless the user volunteers it; a later step handles it (D29).
 
 The acknowledgement
 - Say it the way a good GP or a careful solicitor would, but only in everyday words. Unhurried and calm, never theatrical.

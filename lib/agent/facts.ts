@@ -29,6 +29,10 @@ export const CaseFacts = z.object({
     .boolean()
     .nullable()
     .describe("Only relevant if preferredContact is Email: did the user explicitly agree to the NHS email-risk disclaimer? null until asked."),
+  medicalRecords: z
+    .enum(["not_requested", "requested", "have_copy"])
+    .nullable()
+    .describe("Optional. Has the user asked for / received a copy of their medical records? Do NOT ask about this in the intake chat; leave null unless they volunteer it. A later step asks if it needs it."),
 });
 export type CaseFacts = z.infer<typeof CaseFacts>;
 
@@ -47,6 +51,7 @@ export const emptyFacts = (): CaseFacts => ({
   events: [],
   desiredOutcome: null,
   emailRiskAccepted: null,
+  medicalRecords: null,
 });
 
 /** Fields the NHS Lothian form (and later steps) cannot proceed without. Checked in code, not by the model. */

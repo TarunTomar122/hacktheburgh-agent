@@ -23,6 +23,7 @@ export const SAMPLE_FACTS: CaseFacts = {
   ],
   desiredOutcome: "An explanation of why the fracture was missed, and an apology.",
   emailRiskAccepted: true,
+  medicalRecords: null,
 };
 
 /** A ready-written draft so step 1 shows text immediately (no model call). "Write it again" still works. */
@@ -36,3 +37,18 @@ export const SAMPLE_DRAFT: Draft = {
 export const SAMPLE_MESSAGES: ChatMessage[] = [
   { role: "agent", content: "Demo patient loaded (Ailsa Reid, fictional). No interview took place, so there is no conversation to show." },
 ];
+
+/** Demo answers for the ombudsman step (things only known after the NHS replies). Fictional. */
+export const SAMPLE_SPSO = {
+  readConfirmed: true,
+  finalReplyDate: "2026-10-20",
+  nhsReference: "DEMO-0001",
+  childAffected: false,
+  courtAction: false,
+  letterMentionsSpso: true,
+  documents: { finalResponse: "post" as const, stage1Response: "none" as const, ownComplaint: "post" as const, other: "none" as const },
+  otherReviews: false,
+  reportedToRegulator: false,
+  impact: "The fracture has not healed and I am in pain every day. I now need surgery, I have missed lectures and shifts at my part-time job, and I am worried about whether I will get full use of my wrist back.",
+  outcome: "I would like NHS Lothian to explain in writing why the fracture was missed at A&E, to apologise to me, and to review how wrist X-rays are checked so the same mistake does not happen to other patients.",
+};

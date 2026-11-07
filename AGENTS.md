@@ -58,6 +58,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **Fictional data only** in tests, scripts and screenshots. The repo is public.
 - **No secrets in git.** The OpenAI key lives in `.env.local` (git-ignored). Copy `.env.example`. Never paste a key in chat or a doc.
 - The agent must not tick consent boxes the user has not agreed to, and must not invent personal data. See `AGENT.md`.
+- **UI uses the design system** (`docs/DESIGN.md`): tokens from `app/globals.css` and components from `app/ui.tsx`. No raw hex, no `zinc-*`, no `dark:` classes.
 - Playwright needs a normal Chrome user-agent (SLAB returns 403 otherwise). Use `openSession()` in `lib/browser.ts`.
 
 ## Map
@@ -67,6 +68,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | `AGENT.md` | How the agent works: interview, draft, browser loop, safety rules, entry points |
 | `docs/PROGRESS.md` | Living log of what was done, tried and learned; open discrepancies; open questions |
 | `docs/DECISIONS.md` | Append-only decision log |
+| `docs/DESIGN.md` | **The design system** (Wordsmith colours, type, spacing, components). Read before touching UI. Tokens in `app/globals.css`, components in `app/ui.tsx` |
 | `docs/COMPLEXITY_BACKLOG.md` | The six items that make the workflow genuinely complex in the browser, with honest status and owners |
 | `docs/NOT_DOING.md` | Ideas considered and rejected, with reasons |
 | `docs/PROJECT.md` | Status, verified site facts, gotchas, unverified claims |

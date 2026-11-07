@@ -8,6 +8,8 @@ import { runDecisionAgent } from "../lib/agent/decisionAgent";
 import { observe, unfilledRequired, type El } from "../lib/agent/observe";
 import { nhsValues } from "../lib/agent/nhsLothian";
 import { SAMPLE } from "./agent-nhs";
+import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_SPSO } from "../lib/agent/sample";
+import { SPSO_AGENT_OPTIONS, SPSO_FORM, spsoValues } from "../lib/agent/spso";
 import type { AgentEvent } from "../lib/agent/events";
 
 const v = (key: string, description: string, value: string): Value => ({ key, description, value });
@@ -25,6 +27,8 @@ type Check = { pass: boolean; why: string };
 type Task = {
   id: string; url: string; goal: string; values: Value[];
   allowSubmit?: boolean; allowCheckboxes?: boolean; maxSteps?: number;
+  /** Multi-page forms (advance / stopAtUrl / ignore) only exist in the Decisions engine. */
+  decisionsOnly?: boolean; advance?: RegExp; stopAtUrl?: RegExp; ignore?: (el: { label: string; name: string; kind: string }, url: string) => boolean;
   check: (page: Page, run: BrowserRun, startUrl: string) => Promise<Check>;
 };
 
@@ -89,12 +93,16 @@ const TASKS: Task[] = [
   { id: "spso-no", url: "https://www.spso.org.uk/form/complaint-checker", goal: "Answer the complaint checker questions using the saved values, clicking Next each time, until it gives a result or you run out of saved answers.", allowSubmit: true, maxSteps: 8,
     values: [v("scottish_service", "Is the complaint about a Scottish public service?", "Yes"), v("final_response", "Has the user completed the organisation's complaints process and received a final written response?", "No")],
     check: async (page) => { const t = await pageText(page); return /only consider a complaint once you have completed/i.test(t) ? { pass: true, why: "ok" } : { pass: false, why: `wrong end state: ${t.slice(0, 140)}` }; } },
+  { id: "spso-form", url: SPSO_FORM, decisionsOnly: true, goal: "Complete the SPSO online complaint form page by page using the saved values, clicking Next to move on. Never click Save for later and never submit the complaint.",
+    values: spsoValues(SAMPLE_FACTS, SAMPLE_DRAFT, SAMPLE_SPSO), allowCheckboxes: true, ...SPSO_AGENT_OPTIONS,
+    check: async (page) => { const t = await pageText(page); const missing = ["Review and send your complaint", "Ailsa", "Reid", "14 Example Street", "July 2026", "DEMO-0001"].filter((x) => !t.includes(x)); return /\/form\/review\/?$/.test(page.url()) && missing.length === 0 ? { pass: true, why: "reached the review page with the right details; nothing sent" } : { pass: false, why: `url ${page.url()} missing ${missing.join(", ") || "-"}` }; } },
   { id: "lawsoc", url: "https://www.lawscot.org.uk/find-a-solicitor/", goal: "Search the directory for firms: set the location and area of law from the saved values, then run the search.", allowSubmit: true, maxSteps: 8,
     values: [v("search_location", "City or postcode to search in", "Edinburgh"), v("area_of_law", "Area of law needed", "Accident and injury")],
     check: async (page) => { const t = await pageText(page); const m = t.match(/(\d+)\s+results? found/i); return m && Number(m[1]) > 0 ? { pass: true, why: `${m[1]} results` } : { pass: false, why: "no results shown" }; } },
 ];
 
 async function runOne(task: Task, engine: "decisions" | "tools") {
+  if (task.decisionsOnly && engine === "tools") return { task: task.id, engine, pass: true, why: "skipped (Decisions engine only)", status: "skipped", steps: 0, calls: 0, modelMs: 0, wallMs: 0, tokens: 0, blocked: 0 };
   const { browser, page } = await openSession();
   const events: AgentEvent[] = [];
   const t0 = Date.now();
@@ -102,7 +110,7 @@ async function runOne(task: Task, engine: "decisions" | "tools") {
     await page.goto(task.url, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(1500);
     await dismissCookies(page, 3000);
-    const run = engine === "decisions" ? await runDecisionAgent({ page, goal: task.goal, values: task.values, allowSubmit: task.allowSubmit, allowCheckboxes: task.allowCheckboxes, maxSteps: task.maxSteps, onEvent: (e) => events.push(e) })
+    const run = engine === "decisions" ? await runDecisionAgent({ page, goal: task.goal, values: task.values, allowSubmit: task.allowSubmit, allowCheckboxes: task.allowCheckboxes, maxSteps: task.maxSteps, advance: task.advance, stopAtUrl: task.stopAtUrl, ignore: task.ignore, onEvent: (e) => events.push(e) })
       : await runBrowserAgent({ page, goal: task.goal, values: task.values, allowSubmit: task.allowSubmit, allowCheckboxes: task.allowCheckboxes, maxSteps: task.maxSteps, onEvent: (e) => events.push(e) });
     const chk = await task.check(page, run, task.url);
     return { task: task.id, engine, pass: chk.pass, why: chk.why, status: run.status, steps: run.steps, calls: run.stats?.calls ?? 0, modelMs: run.stats?.ms ?? 0, wallMs: Date.now() - t0, tokens: run.stats?.inputTokens ?? 0, blocked: events.filter((e) => e.type === "blocked").length };

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode is off on purpose: Wordsmith's look is light (see docs/DESIGN.md). `dark:` classes never apply. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Self-hosted fonts, served from /public/fonts (no network needed at the venue).
  * Both are SIL Open Font Licence; licence texts sit next to the files.
@@ -32,64 +35,74 @@
 }
 
 /*
- * Wordsmith palette, read from the computed styles and stylesheet of wordsmith.ai (7 Nov 2026).
- * Measured: white page, #181818 body text, #0A0A0A headings, #737373 secondary text, #0060DF primary,
- * #9333EA accent, #FCF7EE cream sections, #F5F5F5 / #E5E5E5 neutrals, #0B1221 dark navy.
- * Derived by us (not read from the site): --color-violet-50 tint and the hover darkening on buttons.
+ * Design tokens. Values come from wordsmith.ai's own CSS (read 2026-11-07, by Om's and Tarun's agents separately,
+ * with the same results); see docs/DESIGN.md for the source of each.
+ * Use these names (bg-brand, text-ink ...). Do not write raw hex values or zinc-* in components.
  */
 @theme {
-  /* surfaces */
-  --color-paper: #ffffff;
+  --color-brand: #0060df;        /* Wordsmith --color-brand-ink-500: primary buttons, links, header */
+  --color-brand-soft: #e8f0ff;   /* --color-brand-ink-100: selected rows, focus ring */
+  --color-ink: #181818;          /* --color-foreground: body text, headings */
+  --color-ink-2: #525252;        /* neutral-600: secondary text */
+  --color-muted: #737373;        /* neutral-500: captions, labels */
+  --color-faint: #a1a1a1;        /* neutral-400: placeholders, disabled text */
+  --color-fade: #d3d5d9;         /* home-phase-mute: inactive list items */
+  --color-line: #e5e5e5;         /* neutral-300 / border-subtle: hairlines, input borders */
+  --color-line-soft: #ededed;    /* neutral-200: dividers inside cards */
+  --color-rail: #d8d3c7;         /* home-rail: the timeline rail */
+  --color-paper: #fcf7ee;        /* paper-cream: document panels, warm sections */
+  --color-subtle: #fafaf9;       /* neutral-50: quiet backgrounds */
+  --color-night: #1a1d21;        /* home-card-dark: dark panels (activity log) */
+  --color-night-text: #ededef;   /* home-card-text */
+  --color-night-meta: #969698;   /* home-card-meta */
+  --color-amber: #e64d00;        /* brand-amber-500: warnings */
+  --color-amber-soft: #fff0e8;   /* brand-amber-100 */
+  --color-teal: #009587;         /* brand-teal-500: success */
+  --color-teal-soft: #ecfdfb;    /* brand-teal-100 */
+  --color-danger: #dc2626;       /* home-danger */
+  --color-danger-soft: #fef2f2;  /* red-50 */
+
+  /* Aliases kept for the onboarding widgets (Om, D26). Same values as above where they overlap. New code: use the names above. */
+  --color-body: #181818;
   --color-cream: #fcf7ee;
   --color-stone: #fafaf9;
   --color-mist: #f5f5f5;
   --color-navy: #0b1221;
-
-  /* text */
-  --color-ink: #0a0a0a;
-  --color-body: #181818;
-  --color-muted: #737373;
-  --color-faint: #999999;
-
-  /* lines */
-  --color-line: #e5e5e5;
   --color-hairline: rgb(16 24 40 / 0.08);
-
-  /* brand */
-  --color-brand: #0060df;
   --color-brand-50: #e8f2ff;
   --color-violet: #9333ea;
   --color-violet-50: rgb(147 51 234 / 0.1);
-
-  /* status */
-  --color-teal: #009587;
   --color-teal-50: #ecfdfb;
   --color-orange: #e64d00;
   --color-orange-50: #ffeee5;
-  --color-danger: #dc2626;
 
+  /* Self-hosted stand-ins for Wordsmith's licensed Basel Grotesk and GT Ultra Median (public/fonts, no network needed). */
   --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Newsreader Variable", "Playfair Display", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-ctl: 5px; /* Wordsmith buttons are 4-5px */
+  --radius-card: 8px;
 }
 
-:root {
+html {
   color-scheme: light;
 }
 
 body {
-  background: var(--color-paper);
-  color: var(--color-body);
-  font-family: var(--font-sans);
-}
-
-h1,
-h2,
-h3 {
+  background: #fff;
   color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
 }
 
+/*
+ * Class versions of the same components, used by the onboarding widgets (app/page.tsx, InputPanel, DateField, /dev).
+ * They follow the same specs as app/ui.tsx so both look identical. New screens: prefer app/ui.tsx.
+ */
 @layer components {
-  /* Headline style from the site: light serif, tight tracking. */
+  /* Headline voice: light serif, tight tracking (Wordsmith H1 is weight 300, -1.2px at 40px). */
   .display {
     font-family: var(--font-serif);
     font-weight: 300;
@@ -99,14 +112,14 @@ h3 {
   }
 
   .eyebrow {
-    font-size: 0.75rem;
+    font-size: 11px;
     font-weight: 500;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-muted);
   }
 
-  /* Tinted highlight behind words, as in the site's hero headline. */
+  /* Tinted highlight behind words, as in Wordsmith's hero headline. */
   .hl-blue,
   .hl-violet {
     padding: 0 0.18em;
@@ -123,59 +136,80 @@ h3 {
     color: var(--color-violet);
   }
 
+  /* = Button size "sm" in app/ui.tsx */
   .btn-primary,
   .btn-ghost {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
+    border-radius: var(--radius-ctl);
     padding: 0.5rem 1.25rem;
     font-size: 0.8125rem;
     font-weight: 500;
-    transition: filter 120ms, background-color 120ms;
+    transition: background-color 120ms, border-color 120ms;
   }
   .btn-primary {
     background: var(--color-brand);
     color: #fff;
   }
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(0.92);
+    background: color-mix(in oklab, var(--color-brand) 90%, white);
   }
   .btn-ghost {
     border: 1px solid var(--color-line);
-    background: var(--color-paper);
+    background: #fff;
     color: var(--color-ink);
   }
   .btn-ghost:hover:not(:disabled) {
-    background: var(--color-mist);
+    border-color: var(--color-faint);
   }
-  .btn-primary:disabled,
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    background: var(--color-fade);
+  }
   .btn-ghost:disabled {
     cursor: not-allowed;
-    opacity: 0.4;
+    color: var(--color-faint);
   }
 
+  /* = `control` in app/ui.tsx */
   .field {
     width: 100%;
-    border-radius: 6px;
+    border-radius: var(--radius-ctl);
     border: 1px solid var(--color-line);
-    background: var(--color-paper);
-    padding: 0.5rem 0.75rem;
+    background: #fff;
+    padding: 0.625rem 0.75rem;
     font-size: 0.875rem;
-    color: var(--color-body);
+    color: var(--color-ink);
     outline: none;
+    transition: box-shadow 120ms;
   }
   .field::placeholder {
     color: var(--color-faint);
   }
+  .field:hover {
+    border-color: var(--color-faint);
+  }
   .field:focus {
     border-color: var(--color-brand);
-    box-shadow: 0 0 0 3px rgb(0 96 223 / 0.15);
+    box-shadow: 0 0 0 4px var(--color-brand-soft);
   }
 
+  /* Dropdowns: one chevron for both systems (`selectControl` in app/ui.tsx and `select.field`). */
+  .select,
+  select.field {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5l4 4 4-4' fill='none' stroke='%23737373' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+  }
+
+  /* = `Card` in app/ui.tsx */
   .card {
-    border-radius: 10px;
-    border: 1px solid var(--color-hairline);
-    background: var(--color-paper);
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-line);
+    background: #fff;
   }
 }

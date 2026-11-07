@@ -29,6 +29,10 @@ Read this before proposing something. Each row says what it was, why we dropped 
 | **Making the tool-calling loop the main engine** (D21) | Kept as fallback only. The Decisions engine is faster and safer by construction (the model never writes text). | A head-to-head shows the tool loop is clearly more reliable |
 | **Letting the decision model write form text** | It cannot: the API returns choices only. Text comes from the saved values and the reviewed draft. | n/a |
 | **Pitching "no one else could build this"** | A general coding agent with a browser could run this once. The defensible claims are reliability, speed, safety gates and recovery. | n/a |
+| **Automating NHS Lothian's records portal** (D29) | It needs a real account on a supplier's site; not testable with fake data. Records are an optional profile field instead. | Tarun wants it and we have a safe way to test |
+| **Uploading documents to the SPSO form** (D30) | Needs a real file from the user; the demo has none. The step offers "post" or "don't have it". | We have a sample file and a decision on file handling |
+| **Dark mode** (D31) | Wordsmith's look is light; two themes double the design work. `dark:` never applies. | Someone designs it |
+| **Pressing "Send complaint" or "Save for later" on any real form** | Hard rule: never submit real forms; "Save for later" may create a saved record. Only "Next" is allowed on the SPSO form. | n/a |
 
 ## What we dropped from the original 10-step plan, and why
 

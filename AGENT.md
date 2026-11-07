@@ -35,7 +35,8 @@ interview (chat)  ->  CaseFacts  ->  draft (text)  ->  user edits  ->  browser a
 | Interview turn | `POST /api/agent/interview` `{ messages, facts? }` -> `{ facts, reply, done, missing }` |
 | Draft | `POST /api/agent/draft` `{ facts }` -> `{ details, location, outcome }` |
 | Fill NHS form | `POST /api/agent/step1` `{ facts, draft }` -> streamed NDJSON events; last is `done` |
-| CLI | `npm run agent:interview -- --sim` (an LLM plays the user), `npm run agent:nhs` |
+| Fill SPSO form | `POST /api/agent/step2` `{ facts, draft, answers }` (`SpsoAnswers` in `lib/agent/spsoAnswers.ts`) -> streamed NDJSON events; stops on "Review and send" |
+| CLI | `npm run agent:interview -- --sim` (an LLM plays the user), `npm run agent:nhs`, `npm run agent:spso` (add `DEBUG_OBS=1` to print what the agent sees at the end) |
 
 Models are set by env var: `INTERVIEW_MODEL`, `DRAFT_MODEL` (defaults `gpt-5.4-mini`, `gpt-5.4`), `DECISION_MODEL` (default `gpt-6-luna`), and `*_EFFORT`. `BROWSER_MODEL` is used only by the fallback tool loop. Key goes in `.env.local`.
 
@@ -44,7 +45,7 @@ Models are set by env var: `INTERVIEW_MODEL`, `DRAFT_MODEL` (defaults `gpt-5.4-m
 1. Use `runDecisionAgent` (see `lib/agent/nhsLothian.ts` for the pattern: open session, go to the URL, `dismissCookies`, build `Value[]` from the facts, run, check). Do **not** write a new loop.
 2. Give the agent a clear `goal` and a `Value[]` list with a plain-English `description` for every value. The descriptions are what the model matches against labels.
 3. Add a task for your site to `scripts/bench.ts` with a code check that reads the live page, then run `npm run bench -- --only <id>`. Run the whole suite before and after touching `observe.ts` or the engine.
-4. Set `allowCheckboxes` only when the user has actually agreed to the boxes. Set `allowSubmit` only for read-only pages.
+4. Multi-page forms: pass `advance` (e.g. `/^next/i`) so only those buttons may be clicked, `stopAtUrl` for the final review page, and `ignore` for traps such as a login box (see `SPSO_AGENT_OPTIONS` in `lib/agent/spso.ts`). Set `allowCheckboxes` only when the user has actually agreed to the boxes. Set `allowSubmit` only for read-only pages.
 5. Log what you did in `docs/PROGRESS.md` and anything you chose in `docs/DECISIONS.md`.
 
 **Benchmark** (`npm run bench`, headless, never submits): 10/10 on the last full run. Details and limits in `docs/PROGRESS.md`.
@@ -53,7 +54,7 @@ Models are set by env var: `INTERVIEW_MODEL`, `DRAFT_MODEL` (defaults `gpt-5.4-m
 
 - **Submitting.** Needs a human approval path, a decision about test data (a real submit sends a real complaint to the NHS), and handling of the invisible reCAPTCHA.
 - **Head-to-head of the two engines** (only the Decisions engine was benchmarked).
-- **Steps 2-6** (records request, ombudsman, legal aid, solicitors, case file).
+- **Steps 3-5** (legal aid, solicitors, case file), **document upload** for the SPSO form, and a real unlock for step 2 (needs reading the NHS reply, D13).
 - **Reading replies** (email) to detect the acknowledgement and final response.
 - **Recovery from validation errors after a submit attempt**, because we have never submitted.
 - Facts live only in the caller. There is no server-side storage.

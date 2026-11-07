@@ -4,6 +4,8 @@ import { missingRequired, type CaseFacts } from "../../lib/agent/facts";
 import { EMAIL_DISCLAIMER, formatPostcode, isEmail, isPhone, isPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
 import { clearProfile, updateFacts, type Profile } from "../../lib/profile";
+import { ArrowLeftIcon, Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
+import { Stripes } from "./Header";
 
 export const FIELD_LABELS: Record<string, string> = {
   complainingFor: "Who the complaint is about",
@@ -20,19 +22,10 @@ export const FIELD_LABELS: Record<string, string> = {
   emailRiskAccepted: "Email disclaimer answer",
 };
 
-const input = "field";
+const input = control;
 
-function Field({ label, children, wide, problem }: { label: string; children: React.ReactNode; wide?: boolean; problem?: string | null }) {
-  return (
-    <label className={"block space-y-1 " + (wide ? "col-span-2" : "")}>
-      <span className="eyebrow">{label}</span>
-      {children}
-      {problem && <span className="block text-xs text-danger">{problem}</span>}
-    </label>
-  );
-}
 
-export default function ProfileTab({ profile, onDeleted }: { profile: Profile; onDeleted: () => void }) {
+export default function ProfileTab({ profile, onClose, onDeleted }: { profile: Profile; onClose: () => void; onDeleted: () => void }) {
   const f = profile.facts;
   const missing = missingRequired(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
@@ -42,186 +35,181 @@ export default function ProfileTab({ profile, onDeleted }: { profile: Profile; o
     updateFacts({ events: f.events.map((e, j) => (j === i ? { ...e, ...patch } : e)) });
   }
 
+  const set2 = <K extends keyof CaseFacts>(k: K, v: CaseFacts[K]) => updateFacts({ [k]: v } as Partial<CaseFacts>);
+
   return (
-    <div className="mx-auto max-w-2xl space-y-8 p-8">
-      <header>
-        <h1 className="display text-4xl">Your <span className="hl-blue">profile</span></h1>
-        <p className="mt-3 text-sm text-muted">
-          This is what the agent uses to fill in forms for you. Changes save as you type, on this device only.
-        </p>
-      </header>
-
-      {missing.length > 0 ? (
-        <div className="rounded-lg border border-orange/40 bg-orange-50 p-3 text-sm text-body">
-          Still needed for the NHS form: {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.
-        </div>
-      ) : (
-        <div className="rounded-lg border border-teal/40 bg-teal-50 p-3 text-sm text-body">
-          Everything the NHS form needs is here.
-        </div>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium">About you</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Title">
-            <select className={input} autoComplete="honorific-prefix" value={text("title")} onChange={(e) => set("title")(e.target.value)}>
-              <option value="">Not given</option>
-              {/* keep a title that was typed earlier or came from the interview, even if it is not in the list */}
-              {text("title") && !(TITLES as readonly string[]).includes(text("title")) && <option value={text("title")}>{text("title")}</option>}
-              {TITLES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div />
-          <Field label="First name">
-            <input className={input} value={text("firstName")} onChange={(e) => set("firstName")(e.target.value)} />
-          </Field>
-          <Field label="Last name">
-            <input className={input} value={text("lastName")} onChange={(e) => set("lastName")(e.target.value)} />
-          </Field>
-          <Field label="Address" wide>
-            <input className={input} value={text("address")} onChange={(e) => set("address")(e.target.value)} />
-          </Field>
-          <Field label="Postcode" problem={f.postcode && !isPostcode(f.postcode) ? "This does not look like a UK postcode, for example EH1 1AA." : null}>
-            <input
-              className={input}
-              autoComplete="postal-code"
-              autoCapitalize="characters"
-              maxLength={8}
-              value={text("postcode")}
-              onChange={(e) => set("postcode")(e.target.value)}
-              onBlur={(e) => e.target.value && set("postcode")(formatPostcode(e.target.value))}
-            />
-          </Field>
-          <Field label="Telephone" problem={f.phone && !isPhone(f.phone) ? "Use digits only, for example 07700 900123." : null}>
-            <input type="tel" inputMode="tel" autoComplete="tel" className={input} value={text("phone")} onChange={(e) => set("phone")(e.target.value)} />
-          </Field>
-          <Field label="Email" wide problem={f.email && !isEmail(f.email) ? "This does not look like an email address." : null}>
-            <input type="email" inputMode="email" autoComplete="email" className={input} value={text("email")} onChange={(e) => set("email")(e.target.value)} />
-          </Field>
-          <Field label="Complaint is about">
-            <select
-              className={input}
-              value={f.complainingFor ?? ""}
-              onChange={(e) => updateFacts({ complainingFor: (e.target.value || null) as CaseFacts["complainingFor"] })}
-            >
-              <option value="">Not answered</option>
-              <option value="me">Me</option>
-              <option value="someone_else">Someone else</option>
-            </select>
-          </Field>
-          <Field label="Contact me by">
-            <select
-              className={input}
-              value={f.preferredContact ?? ""}
-              onChange={(e) => updateFacts({ preferredContact: (e.target.value || null) as CaseFacts["preferredContact"] })}
-            >
-              <option value="">Not answered</option>
-              <option value="Letter">Letter</option>
-              <option value="Email">Email</option>
-              <option value="Phone Call">Phone call</option>
-            </select>
-          </Field>
-        </div>
-
-        {f.preferredContact === "Email" && (
-          <label className="flex items-start gap-3 rounded-md border border-line bg-cream p-3 text-xs">
-            <input
-              type="checkbox"
-              className="mt-0.5 accent-brand"
-              checked={f.emailRiskAccepted === true}
-              onChange={(e) => updateFacts({ emailRiskAccepted: e.target.checked })}
-            />
-            <span>
-              <span className="block font-medium text-ink">
-                Email disclaimer {f.emailRiskAccepted === null ? "(not answered yet)" : f.emailRiskAccepted ? "(you agreed)" : "(you declined)"}
-              </span>
-              {EMAIL_DISCLAIMER}
-            </span>
-          </label>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium">What happened</h2>
-        <Field label="Where it happened">
-          <input
-            className={input}
-            list="place-suggestions"
-            value={text("incidentLocation")}
-            onChange={(e) => set("incidentLocation")(e.target.value)}
-          />
-          <datalist id="place-suggestions">
-            {PLACE_SUGGESTIONS.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
-        </Field>
-        <Field label="In your words">
-          <textarea rows={4} className={input} value={text("incidentSummary")} onChange={(e) => set("incidentSummary")(e.target.value)} />
-        </Field>
-        <Field label="What you would like to happen">
-          <textarea rows={2} className={input} value={text("desiredOutcome")} onChange={(e) => set("desiredOutcome")(e.target.value)} />
-        </Field>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Timeline</h2>
-          <button
-            onClick={() => updateFacts({ events: [...f.events, { date: "", what: "" }] })}
-            className="text-xs text-brand underline"
-          >
-            Add event
+    <div>
+      {/* The header's blue carries on into the page title, then stops with the stepped lines. */}
+      <div className="bg-brand text-white">
+        <div className="mx-auto max-w-3xl px-12 pb-14 pt-6">
+          <button onClick={onClose} className="mb-8 inline-flex items-center gap-2 text-sm text-white/80 hover:text-white">
+            <ArrowLeftIcon /> Back to your case
           </button>
+          <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/70">Profile</div>
+          <h1 className="display mt-3 text-[48px] text-white">Your profile</h1>
+          <p className="mt-3 max-w-[52ch] text-[15px] leading-6 text-white/85">
+            This is what the agent uses to fill in forms for you. Changes save as you type, on this device only.
+          </p>
         </div>
-        {f.events.length === 0 && <p className="text-sm text-muted">No events yet.</p>}
-        {f.events.map((e, i) => (
-          <div key={i} className="grid grid-cols-[13rem_1fr_auto] items-start gap-2">
-            <DateField label={`Event ${i + 1} date`} value={e.date} onChange={(v) => setEvent(i, { date: v })} />
-            <textarea rows={2} className={input} placeholder="What happened" value={e.what} onChange={(ev) => setEvent(i, { what: ev.target.value })} />
-            <button
-              onClick={() => updateFacts({ events: f.events.filter((_, j) => j !== i) })}
-              className="px-2 py-2 text-xs text-muted underline"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-      </section>
+      </div>
+      <Stripes />
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Your conversation</h2>
-        <details className="card p-3 text-sm">
-          <summary className="cursor-pointer text-muted">Show what you told us ({profile.messages.length} messages)</summary>
-          <div className="mt-3 space-y-2">
-            {profile.messages.map((m, i) => (
-              <p key={i}>
-                <span className="font-medium">{m.role === "agent" ? "Assistant" : "You"}:</span> {m.content}
-              </p>
-            ))}
-          </div>
-        </details>
-      </section>
+      <div className="mx-auto max-w-3xl space-y-12 px-12 py-12">
+        {missing.length > 0 ? (
+          <Callout tone="warn" title="Still needed for the NHS form">
+            {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.
+          </Callout>
+        ) : (
+          <Callout tone="ok" title="Everything the NHS form needs is here." />
+        )}
 
-      <section className="border-t border-hairline pt-4">
-        <button
-          onClick={() => {
-            if (window.confirm("Delete everything saved about your case on this device?")) {
-              clearProfile();
-              onDeleted();
-            }
-          }}
-          className="text-sm text-danger underline"
-        >
-          Delete all my data
-        </button>
-        <p className="mt-1 text-xs text-muted">Saved in this browser only. Nothing is stored on a server.</p>
-      </section>
+        <section className="space-y-5">
+          <SectionTitle>About you</SectionTitle>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-5">
+            <Field label="Title">
+              <select className={selectControl} autoComplete="honorific-prefix" value={text("title")} onChange={(e) => set("title")(e.target.value)}>
+                <option value="">Not given</option>
+                {/* keep a title that was typed earlier or came from the interview, even if it is not in the list */}
+                {text("title") && !(TITLES as readonly string[]).includes(text("title")) && <option value={text("title")}>{text("title")}</option>}
+                {TITLES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div />
+            <Field label="First name">
+              <input className={input} value={text("firstName")} onChange={(e) => set("firstName")(e.target.value)} />
+            </Field>
+            <Field label="Last name">
+              <input className={input} value={text("lastName")} onChange={(e) => set("lastName")(e.target.value)} />
+            </Field>
+            <Field label="Address" className="col-span-2">
+              <input className={input} value={text("address")} onChange={(e) => set("address")(e.target.value)} />
+            </Field>
+            <Field label="Postcode" problem={f.postcode && !isPostcode(f.postcode) ? "This does not look like a UK postcode, for example EH1 1AA." : null}>
+              <input
+                className={input}
+                autoComplete="postal-code"
+                autoCapitalize="characters"
+                maxLength={8}
+                value={text("postcode")}
+                onChange={(e) => set("postcode")(e.target.value)}
+                onBlur={(e) => e.target.value && set("postcode")(formatPostcode(e.target.value))}
+              />
+            </Field>
+            <Field label="Telephone" problem={f.phone && !isPhone(f.phone) ? "Use digits only, for example 07700 900123." : null}>
+              <input type="tel" inputMode="tel" autoComplete="tel" className={input} value={text("phone")} onChange={(e) => set("phone")(e.target.value)} />
+            </Field>
+            <Field label="Email" className="col-span-2" problem={f.email && !isEmail(f.email) ? "This does not look like an email address." : null}>
+              <input type="email" inputMode="email" autoComplete="email" className={input} value={text("email")} onChange={(e) => set("email")(e.target.value)} />
+            </Field>
+            <Field label="Complaint is about">
+              <select className={selectControl} value={f.complainingFor ?? ""} onChange={(e) => set2("complainingFor", (e.target.value || null) as CaseFacts["complainingFor"])}>
+                <option value="">Not answered</option>
+                <option value="me">Me</option>
+                <option value="someone_else">Someone else</option>
+              </select>
+            </Field>
+            <Field label="Contact me by">
+              <select className={selectControl} value={f.preferredContact ?? ""} onChange={(e) => set2("preferredContact", (e.target.value || null) as CaseFacts["preferredContact"])}>
+                <option value="">Not answered</option>
+                <option value="Letter">Letter</option>
+                <option value="Email">Email</option>
+                <option value="Phone Call">Phone call</option>
+              </select>
+            </Field>
+          </div>
+
+          {f.preferredContact === "Email" && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-card border border-line bg-subtle p-4 text-xs leading-5 text-ink-2">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-brand" checked={f.emailRiskAccepted === true} onChange={(e) => updateFacts({ emailRiskAccepted: e.target.checked })} />
+              <span>
+                <span className="block text-sm font-medium text-ink">
+                  Email disclaimer {f.emailRiskAccepted === null ? "(not answered yet)" : f.emailRiskAccepted ? "(you agreed)" : "(you declined)"}
+                </span>
+                {EMAIL_DISCLAIMER}
+              </span>
+            </label>
+          )}
+        </section>
+
+        <section className="space-y-5">
+          <SectionTitle>What happened</SectionTitle>
+          <Field label="Where it happened">
+            <input className={input} list="place-suggestions" value={text("incidentLocation")} onChange={(e) => set("incidentLocation")(e.target.value)} />
+            <datalist id="place-suggestions">
+              {PLACE_SUGGESTIONS.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="In your words">
+            <textarea rows={4} className={input} value={text("incidentSummary")} onChange={(e) => set("incidentSummary")(e.target.value)} />
+          </Field>
+          <Field label="What you would like to happen">
+            <textarea rows={2} className={input} value={text("desiredOutcome")} onChange={(e) => set("desiredOutcome")(e.target.value)} />
+          </Field>
+        </section>
+
+        <section className="space-y-5">
+          <SectionTitle aside={<Button variant="ghost" size="sm" onClick={() => updateFacts({ events: [...f.events, { date: "", what: "" }] })}>Add event</Button>}>
+            Timeline
+          </SectionTitle>
+          {f.events.length === 0 && <p className="text-sm text-muted">No events yet.</p>}
+          {f.events.map((e, i) => (
+            <div key={i} className="grid grid-cols-[13rem_1fr_auto] items-start gap-3">
+              <DateField label={`Event ${i + 1} date`} value={e.date} onChange={(v) => setEvent(i, { date: v })} />
+              <textarea rows={2} className={input} placeholder="What happened" value={e.what} onChange={(ev) => setEvent(i, { what: ev.target.value })} />
+              <Button variant="ghost" size="sm" onClick={() => updateFacts({ events: f.events.filter((_, j) => j !== i) })}>
+                Remove
+              </Button>
+            </div>
+          ))}
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle>Medical records (optional)</SectionTitle>
+          <p className="text-sm text-ink-2">Nothing to do now. We only ask about this at the step that needs it (finding a solicitor), so you can leave it.</p>
+          <select className={selectControl} value={f.medicalRecords ?? ""} onChange={(e) => set2("medicalRecords", (e.target.value || null) as CaseFacts["medicalRecords"])}>
+            <option value="">Not decided yet</option>
+            <option value="not_requested">I have not asked for them</option>
+            <option value="requested">I have asked and am waiting</option>
+            <option value="have_copy">I have a copy</option>
+          </select>
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle>Your conversation</SectionTitle>
+          <details className="rounded-card border border-line p-4 text-sm">
+            <summary className="cursor-pointer text-ink-2">Show what you told us ({profile.messages.length} messages)</summary>
+            <div className="mt-3 space-y-2 text-ink-2">
+              {profile.messages.map((m, i) => (
+                <p key={i}>
+                  <span className="font-medium text-ink">{m.role === "agent" ? "Assistant" : "You"}:</span> {m.content}
+                </p>
+              ))}
+            </div>
+          </details>
+        </section>
+
+        <section className="space-y-2 border-t border-line pt-6">
+          <Eyebrow>Your data</Eyebrow>
+          <button
+            onClick={() => {
+              if (window.confirm("Delete everything saved about your case on this device?")) {
+                clearProfile();
+                onDeleted();
+              }
+            }}
+            className="text-sm font-medium text-danger underline underline-offset-2"
+          >
+            Delete all my data
+          </button>
+          <p className="text-xs text-muted">Saved in this browser only. Nothing is stored on a server.</p>
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 import { decide, probOf, type DAnswer, type DQuestion } from "./decisions";
-import { formatObservation, observe, unfilledRequired, type El, type Observation } from "./observe";
+import { formatObservation, observe, PLACEHOLDER, unfilledRequired, type El, type Observation } from "./observe";
 import type { OnEvent } from "./events";
 import type { BrowserRun, Value } from "./browserAgent";
 
@@ -26,6 +26,12 @@ export async function runDecisionAgent(opts: {
   onEvent?: OnEvent;
   allowCheckboxes?: boolean;
   allowSubmit?: boolean;
+  /** Multi-page forms: submit buttons whose label matches (e.g. /^next/i) may be clicked to move between pages. Anything else that submits stays blocked. */
+  advance?: RegExp;
+  /** Stop as soon as the page URL matches (e.g. a final review page). The agent touches nothing there and reports ready. */
+  stopAtUrl?: RegExp;
+  /** Elements the agent must leave alone, e.g. a 'resume saved complaint' login box. Called with each element and the page URL. */
+  ignore?: (el: { label: string; name: string; kind: string }, url: string) => boolean;
 }): Promise<DecisionRun> {
   const { page, goal, values } = opts;
   const emit: OnEvent = opts.onEvent ?? (() => {});
@@ -42,9 +48,11 @@ export async function runDecisionAgent(opts: {
 
   for (let step = 1; step <= maxSteps; step++) {
     const obs = await observe(page);
+    if (opts.ignore) obs.elements = obs.elements.filter((e) => !opts.ignore!(e, obs.url));
     emit({ type: "observe", step, url: obs.url, fields: obs.elements.length });
+    if (opts.stopAtUrl?.test(obs.url)) return result("ready_to_submit", "Reached the final review page. Nothing was sent.", step);
 
-    const plan = buildQuestions(obs, byKey, goal, !!opts.allowSubmit, attempted);
+    const plan = buildQuestions(obs, byKey, goal, !!opts.allowSubmit, attempted, opts.advance);
     if (plan.questions.length === 0) {
       // Nothing to decide on this page.
       return finish(page, opts, stats, step, unsure);
@@ -62,7 +70,7 @@ export async function runDecisionAgent(opts: {
       attempted.add(f.sig);
       if (!a || a.type !== "choice") { if (f.required) unsure.push(`${f.el.label} (no answer)`); continue; }
       if (a.choice === NONE) { if (f.required) unsure.push(`${f.el.label} (no saved value fits)`); continue; }
-      if (a.confidence < MIN_CONFIDENCE) { unsure.push(`${f.el.label} (unsure, confidence ${a.confidence.toFixed(2)})`); continue; }
+      if (a.confidence < MIN_CONFIDENCE) { if (f.required) unsure.push(`${f.el.label} (unsure, confidence ${a.confidence.toFixed(2)})`); continue; }
       const res = await applyChoice(page, f.el, a.choice, byKey);
       emit({ type: "action", step, tool: f.el.kind === "text" || f.el.kind === "textarea" ? "fill" : f.el.kind === "select" ? "select" : "check", args: { id: f.el.id, label: f.el.label.slice(0, 40), choice: a.choice, confidence: +a.confidence.toFixed(2) }, result: res });
       if (res === "ok") acted++;
@@ -106,7 +114,12 @@ export async function runDecisionAgent(opts: {
     }
     const id = Number(nav.choice.replace("click:", ""));
     const el = obs.elements.find((e) => e.id === id);
-    if (!el || (el.kind === "submit" && !opts.allowSubmit)) return finish(page, opts, stats, step, unsure);
+    // Never move on to the next page while something on this one is unresolved: the site would just show an error, or worse, accept a half-filled page.
+    if (el?.kind === "submit" && unsure.length > 0) {
+      emit({ type: "status", message: `Not advancing: ${unsure.join("; ")}` });
+      return result("needs_input", "Some fields on this page could not be filled from the saved values.", step, { unfilled: unsure, question: `I could not fill: ${unsure.join("; ")}. Can you help with these?` });
+    }
+    if (!el || (el.kind === "submit" && !opts.allowSubmit && !opts.advance?.test(el.label.trim()))) return finish(page, opts, stats, step, unsure);
     try {
       await page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 });
       await page.waitForTimeout(700);
@@ -140,12 +153,15 @@ type Plan = {
   checks: { q: string; el: El; sig: string }[];
 };
 
-function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: string, allowSubmit: boolean, attempted: Set<string>): Plan {
+/** The Decisions API rejects duplicate choice values (e.g. two options both called "Prefer not to say"). */
+const uniq = (xs: string[]) => [...new Set(xs)];
+
+function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: string, allowSubmit: boolean, attempted: Set<string>, advance?: RegExp): Plan {
   const questions: DQuestion[] = [];
   const plan: Plan = { questions, fields: [], groups: [], checks: [] };
   const valueChoices = [...byKey.values()].map((v) => ({ value: v.key, description: v.description }));
   const sig = (kind: string, e: El) => `${kind}:${e.name}:${e.label}`;
-  const isEmpty = (e: El) => e.value.trim() === "" || /^(please\s+(choose|select)|select|choose|open this select)/i.test(e.value.trim());
+  const isEmpty = (e: El) => e.value.trim() === "" || PLACEHOLDER.test(e.value.trim()) || /^open this select/i.test(e.value.trim());
 
   for (const e of obs.elements) {
     if (e.disabled) continue;
@@ -159,12 +175,12 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
       plan.fields.push({ q, el: e, sig: sig("f", e), required: e.required });
     } else if (e.kind === "select" && isEmpty(e) && !attempted.has(sig("s", e))) {
       const q = `s${e.id}`;
-      const options = e.options.filter((o) => o.trim() && !/^(please\s+(choose|select)|select|choose|open this select)/i.test(o.trim()));
+      const options = e.options.filter((o) => o.trim() && !PLACEHOLDER.test(o.trim()) && !/^open this select/i.test(o.trim()));
       if (options.length === 0) continue;
       questions.push({
         type: "choice", name: q,
         instructions: `Which option of the dropdown [${e.id}] "${e.label}" should be selected, based on the saved values? Answer "${NONE}" if the saved values do not say.`,
-        choices: [...options.map((o) => ({ value: o })), { value: NONE, description: "The saved values do not say" }],
+        choices: [...uniq(options).map((o) => ({ value: o })), { value: NONE, description: "The saved values do not say" }],
       });
       plan.fields.push({ q, el: e, sig: sig("s", e), required: e.required });
     } else if (e.kind === "checkbox" && !e.checked && !attempted.has(sig("c", e))) {
@@ -190,13 +206,13 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
     questions.push({
       type: "choice", name: q,
       instructions: `Which option should be selected for the question "${label}"? Use the saved values and the question text on the page. Answer "${NONE}" if the saved values do not answer it.`,
-      choices: [...radios.map((r) => ({ value: r.label })), { value: NONE, description: "The saved values do not answer this" }],
+      choices: [...uniq(radios.map((r) => r.label)).map((l) => ({ value: l })), { value: NONE, description: "The saved values do not answer this" }],
     });
     plan.groups.push({ q, label, radios, sig: gsig, required: radios.some((r) => r.required) });
   }
 
   // What to do once the fields are handled.
-  const navTargets = obs.elements.filter((e) => (e.kind === "button" || e.kind === "link" || (e.kind === "submit" && allowSubmit)) && !e.disabled && e.label.trim()).slice(0, MAX_NAV_CHOICES);
+  const navTargets = obs.elements.filter((e) => (e.kind === "button" || e.kind === "link" || (e.kind === "submit" && (allowSubmit || !!advance?.test(e.label.trim())))) && !e.disabled && e.label.trim()).slice(0, MAX_NAV_CHOICES);
   if (questions.length > 0 || navTargets.length > 0) {
     questions.push({
       type: "choice", name: "nav",

@@ -3,25 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { missingRequired } from "../../lib/agent/facts";
-import type { AgentEvent } from "../../lib/agent/events";
-import { setDraft, useProfile, type Profile } from "../../lib/profile";
+import { setDraft, setProgress, useProfile, type Profile } from "../../lib/profile";
+import { ActionCard, Button, Callout, Console, control, Eyebrow, PageTitle, Paper, SectionTitle } from "../ui";
+import Header from "./Header";
+import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab, { FIELD_LABELS } from "./ProfileTab";
-
-const STEPS = [
-  { n: 1, title: "Complain to NHS Lothian", ready: true },
-  { n: 2, title: "Request your medical records", ready: false },
-  { n: 3, title: "Ombudsman check", ready: false },
-  { n: 4, title: "Legal aid check", ready: false },
-  { n: 5, title: "Find a solicitor", ready: false },
-  { n: 6, title: "Your case file", ready: false },
-];
-
-type Tab = "profile" | number;
+import { streamAgent, type DoneEvent } from "./streamAgent";
+import Timeline from "./Timeline";
 
 export default function CasePage() {
   const router = useRouter();
   const profile = useProfile();
-  const [active, setActive] = useState<Tab>(1);
+  const [active, setActive] = useState(1);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     if (profile === null) router.replace("/");
@@ -33,61 +27,47 @@ export default function CasePage() {
   const incomplete = missingRequired(f).length > 0;
 
   return (
-    <div className="flex h-screen">
-      <aside className="flex w-72 shrink-0 flex-col border-r border-hairline bg-cream">
-        <div className="p-5">
-          <div className="eyebrow">Case for</div>
-          <div className="display mt-1 text-2xl">{name}</div>
+    <div className="flex h-screen flex-col">
+      <Header name={name} profileOpen={profileOpen} incomplete={incomplete} stripes={!profileOpen} onProfile={() => setProfileOpen((o) => !o)} />
+      {profileOpen ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ProfileTab profile={profile} onClose={() => setProfileOpen(false)} onDeleted={() => router.replace("/")} />
         </div>
-        <nav className="flex-1 space-y-1 px-3">
-          <button
-            onClick={() => setActive("profile")}
-            className={
-              "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-ink " +
-              (active === "profile" ? "border border-hairline bg-paper shadow-sm" : "border border-transparent hover:bg-paper/60")
-            }
-          >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-xs font-medium text-brand">
-              {(f.firstName ?? "?").charAt(0).toUpperCase()}
-            </span>
-            <span className="flex-1">Profile</span>
-            {incomplete && <span className="h-2 w-2 rounded-full bg-orange" title="Some details are missing" />}
-          </button>
-          <div className="eyebrow px-3 pt-5 pb-1">Steps</div>
-          {STEPS.map((s) => (
-            <button
-              key={s.n}
-              disabled={!s.ready}
-              onClick={() => setActive(s.n)}
-              className={
-                "flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm " +
-                (active === s.n ? "border-hairline bg-paper text-ink shadow-sm " : "border-transparent ") +
-                (s.ready ? (active === s.n ? "" : "text-ink hover:bg-paper/60") : "cursor-not-allowed text-faint")
-              }
-            >
-              <span
-                className={
-                  "flex h-6 w-6 items-center justify-center rounded-full text-xs " +
-                  (active === s.n && s.ready ? "bg-brand text-white" : "border border-current")
-                }
-              >
-                {s.n}
-              </span>
-              <span className="flex-1">{s.title}</span>
-              {!s.ready && <span className="text-xs">Soon</span>}
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        {active === "profile" ? (
-          <ProfileTab profile={profile} onDeleted={() => router.replace("/")} />
-        ) : (
-          <StepOne profile={profile} openProfile={() => setActive("profile")} />
-        )}
-      </main>
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <Timeline profile={profile} active={active} onSelect={setActive} />
+          <main className="min-w-0 flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-12 py-12">
+              {active === 2 ? (
+                <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
+              ) : (
+                <StepOne profile={profile} openProfile={() => setProfileOpen(true)} />
+              )}
+            </div>
+          </main>
+        </div>
+      )}
     </div>
+  );
+}
+
+/** One part of the draft: reads like a document, edits in place. */
+function DraftBlock({ label, value, rows, disabled, onChange }: { label: string; value: string; rows: number; disabled: boolean; onChange: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  return (
+    <section className="py-5 first:pt-0 last:pb-0 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-rail/70">
+      <div className="mb-2 flex items-center justify-between">
+        <Eyebrow>{label}</Eyebrow>
+        <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setEditing((e) => !e)}>
+          {editing ? "Done" : "Edit"}
+        </Button>
+      </div>
+      {editing ? (
+        <textarea autoFocus rows={rows} className={control + " font-serif text-[17px] leading-7"} value={value} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <p className="whitespace-pre-wrap font-serif text-[17px] leading-7 text-ink">{value || <span className="text-faint">Nothing here yet.</span>}</p>
+      )}
+    </section>
   );
 }
 
@@ -95,8 +75,8 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filling, setFilling] = useState(false);
-  const [progress, setProgress] = useState<string[]>([]);
-  const [result, setResult] = useState<Extract<AgentEvent, { type: "done" }> | null>(null);
+  const [log, setLog] = useState<string[]>([]);
+  const [result, setResult] = useState<DoneEvent | null>(null);
   const missing = missingRequired(profile.facts);
   const draft = profile.draft;
 
@@ -105,52 +85,11 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
     setFilling(true);
     setError(null);
     setResult(null);
-    setProgress(["Starting the browser agent…"]);
+    setLog(["Starting the browser agent…"]);
     try {
-      const res = await fetch("/api/agent/step1", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ facts: profile.facts, draft }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Could not start the browser agent");
-      }
-      if (!res.body) throw new Error("The browser agent returned no progress stream");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let pending = "";
-      let completed = false;
-      function receive(line: string) {
-        if (!line.trim()) return;
-        const event = JSON.parse(line) as AgentEvent | { type: "error"; message: string };
-        if (event.type === "error") throw new Error(event.message);
-        if (event.type === "done") {
-          completed = true;
-          setResult(event);
-        } else {
-          const message = event.type === "status" ? event.message
-            : event.type === "observe" ? `Step ${event.step}: inspecting ${event.fields} page elements`
-            : event.type === "blocked" ? event.reason
-            : `Step ${event.step}: ${event.tool} — ${event.result}`;
-          setProgress((previous) => [...previous.slice(-19), message]);
-        }
-      }
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          pending += decoder.decode(value, { stream: !done });
-          const lines = pending.split("\n");
-          pending = lines.pop() ?? "";
-          lines.forEach(receive);
-          if (done) break;
-        }
-        receive(pending);
-        if (!completed) throw new Error("The browser connection ended before a result. You can retry.");
-      } finally {
-        await reader.cancel().catch(() => {});
-        reader.releaseLock();
-      }
+      const done = await streamAgent("/api/agent/step1", { facts: profile.facts, draft }, (line) => setLog((p) => [...p.slice(-19), line]));
+      setResult(done);
+      if (done.status === "ready_to_submit") setProgress({ nhsFilled: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -177,81 +116,93 @@ function StepOne({ profile, openProfile }: { profile: Profile; openProfile: () =
     }
   }
 
+  const canFill = !busy && !filling && missing.length === 0 && !!draft?.details.trim() && !!draft?.location.trim();
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-8">
-      <header>
-        <div className="eyebrow">Step 1</div>
-        <h1 className="display mt-2 text-4xl">
-          Complain to <span className="hl-blue">NHS Lothian</span>
-        </h1>
-        <p className="mt-3 text-sm text-muted">
-          We prepare the complaint. You review and edit it, and nothing is sent until you approve.
-        </p>
-      </header>
+    <div className="space-y-10">
+      <PageTitle
+        eyebrow="Step 1"
+        title="Complain to NHS Lothian"
+        lede="We write the complaint from what you told us. You read it, change anything you like, and nothing is sent until you approve."
+      />
 
       {missing.length > 0 && (
-        <div className="rounded-lg border border-orange/40 bg-orange-50 p-3 text-sm text-body">
-          Before we can fill in the form we still need: {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.{" "}
-          <button onClick={openProfile} className="underline">
+        <Callout tone="warn" title="We still need a few details">
+          {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.{" "}
+          <button onClick={openProfile} className="font-medium text-brand underline underline-offset-2">
             Open your profile
           </button>
-        </div>
+        </Callout>
       )}
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Draft complaint</h2>
-          <button
-            onClick={write}
-            disabled={busy || filling || missing.length > 0}
-            className="btn-ghost !px-3 !py-1 !text-xs"
-          >
-            {busy ? "Writing…" : draft ? "Write it again" : "Write my draft"}
-          </button>
-        </div>
+      <section className="space-y-4">
+        <SectionTitle
+          aside={
+            <Button variant="secondary" size="sm" onClick={write} disabled={busy || filling || missing.length > 0}>
+              {busy ? "Writing…" : draft ? "Write it again" : "Write my draft"}
+            </Button>
+          }
+        >
+          Your complaint
+        </SectionTitle>
         {error && <p className="text-sm text-danger">{error}</p>}
-        {!draft && !busy && <p className="text-sm text-muted">We write this from your profile. You can edit every word.</p>}
-        {draft && (
-          <fieldset disabled={filling} className="space-y-3">
-            <label className="block space-y-1">
-              <span className="eyebrow">Details of your complaint</span>
-              <textarea rows={12} className="field" value={draft.details} onChange={(e) => setDraft({ ...draft, details: e.target.value })} />
-            </label>
-            <label className="block space-y-1">
-              <span className="eyebrow">Where it happened</span>
-              <textarea rows={2} className="field" value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />
-            </label>
-            <label className="block space-y-1">
-              <span className="eyebrow">What you would like to happen</span>
-              <textarea rows={2} className="field" value={draft.outcome} onChange={(e) => setDraft({ ...draft, outcome: e.target.value })} />
-            </label>
-          </fieldset>
+        {!draft ? (
+          <Paper>
+            <p className="font-serif text-[17px] leading-7 text-ink-2">
+              {busy ? "Writing your complaint…" : "We write this from your profile. Press “Write my draft” and you can edit every word."}
+            </p>
+          </Paper>
+        ) : (
+          <Paper>
+            <DraftBlock label="What happened" value={draft.details} rows={12} disabled={filling} onChange={(v) => setDraft({ ...draft, details: v })} />
+            <DraftBlock label="Where it happened" value={draft.location} rows={2} disabled={filling} onChange={(v) => setDraft({ ...draft, location: v })} />
+            <DraftBlock label="What you would like to happen" value={draft.outcome} rows={3} disabled={filling} onChange={(v) => setDraft({ ...draft, outcome: v })} />
+          </Paper>
         )}
       </section>
 
-      <section className="flex items-center gap-4 rounded-lg border border-dashed border-line bg-mist p-4">
-        <div className="flex-1 text-sm text-muted">
-          Review the draft above, then open the NHS form with your saved details. The browser stays open for review for up to 10 minutes. Demo data is for review only.
-        </div>
-        <button onClick={fill} disabled={busy || filling || missing.length > 0 || !draft?.details.trim() || !draft?.location.trim()} className="btn-primary">
-          {filling ? "Filling the form…" : "Approve draft and fill NHS form"}
-        </button>
-      </section>
-      {progress.length > 0 && (
-        <section aria-label="Browser agent progress" className="space-y-2 text-sm text-muted">
-          <h2 className="font-medium">Browser activity</h2>
-          <ol>{progress.map((message, i) => <li key={i}>{message}</li>)}</ol>
+      <ActionCard
+        title="Happy with it?"
+        action={
+          <Button onClick={fill} disabled={!canFill}>
+            {filling ? "Filling the form…" : "Approve and fill the form"}
+          </Button>
+        }
+      >
+        We open the NHS Lothian form in a separate browser window and fill it in. The window stays open for up to 10 minutes so you can check it. Demo
+        data is for review only.
+      </ActionCard>
+
+      {log.length > 0 && (
+        <section className="space-y-3">
+          <Eyebrow>Browser activity</Eyebrow>
+          <Console label="Browser agent progress" lines={log} />
         </section>
       )}
+
       {result && (
-        <section role="status" className="card space-y-2 text-sm">
-          <h2 className="font-medium">{result.status === "ready_to_submit" ? "Form filled and ready for review" : "The form needs your attention"}</h2>
+        <Callout tone={result.status === "ready_to_submit" ? "ok" : "warn"} title={result.status === "ready_to_submit" ? "Form filled and ready for review" : "The form needs your attention"}>
           <p>{result.summary}</p>
-          {result.question && <p>{result.question}</p>}
-          {result.unfilled.length > 0 && <p>Still needed — {result.unfilled.join(", ")}</p>}
-          <p>Nothing has been submitted. Review the separate browser window.</p>
-          {result.status !== "ready_to_submit" && <button onClick={openProfile} className="underline">Review your profile before retrying</button>}
-        </section>
+          {result.question && <p className="mt-1">{result.question}</p>}
+          {result.unfilled.length > 0 && <p className="mt-1">Still needed: {result.unfilled.join(", ")}</p>}
+          <p className="mt-2">Nothing has been submitted. Review the separate browser window.</p>
+          {result.status === "ready_to_submit" && (
+            <div className="mt-3">
+              {profile.progress?.nhsSent ? (
+                <span className="font-medium text-teal">Marked as sent. Nice work.</span>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={() => setProgress({ nhsSent: true })}>
+                  I&apos;ve pressed Send
+                </Button>
+              )}
+            </div>
+          )}
+          {result.status !== "ready_to_submit" && (
+            <button onClick={openProfile} className="mt-2 font-medium text-brand underline underline-offset-2">
+              Review your profile before retrying
+            </button>
+          )}
+        </Callout>
       )}
     </div>
   );
