@@ -102,9 +102,10 @@ export async function agent<T>(
   work: (page: Page, note: Note) => Promise<T>,
   timeoutMs = 120_000,
   firms?: string[], // every step of this agent is about these firms (a firm's own website)
+  look?: { color?: string; cursor?: string }, // the planner's crew colour and cursor name (D48)
 ): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
   const n = ++ctx.track.agents;
-  const color = AGENT_COLORS[(n - 1) % AGENT_COLORS.length];
+  const color = look?.color ?? AGENT_COLORS[(n - 1) % AGENT_COLORS.length];
   const page = ctx.first && ctx.first.url() === "about:blank" && !(ctx.first as Page & { __used?: boolean }).__used ? ctx.first : await ctx.context.newPage();
   (page as Page & { __used?: boolean }).__used = true;
   const tile: AgentTile = { id: "", label, color, url: page.url(), state: "starting", note: "Opening" };
@@ -119,7 +120,7 @@ export async function agent<T>(
       update({});
     }
   });
-  await setCursor(page, { color, label: `Agent ${n} · ${label}` });
+  await setCursor(page, { color, label: look?.cursor ?? `Agent ${n} · ${label}` });
   update({});
   const note = Object.assign((s: string) => update({ state: "working", note: s }), {
     log: async (kind: TraceStep["kind"], text: string, extra: LogExtra = {}) => {

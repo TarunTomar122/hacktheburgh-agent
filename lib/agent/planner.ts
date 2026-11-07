@@ -25,7 +25,10 @@ import {
   type Note,
 } from "./legalAid";
 import type { FirmFinding, Funding, Route, Verdict } from "./legalAidTypes";
-import type { AskSpec, PlannerEvent, PlannerResult, PlanStep, Thought } from "./plannerTypes";
+import { CREW, TOOL_CREW, type AskSpec, type CrewId, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say, type Thought } from "./plannerTypes";
+import { compareCare, readGuideline, readJudgment, searchCaseLaw, type GuidelineReading } from "./evidence";
+import { draftEnquiry, fillOne, keepForApproval } from "./enquiry";
+import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 
 /**
  * The planner agent (D47). A reasoning model plans its own route through the compensation research, calling
@@ -34,7 +37,7 @@ import type { AskSpec, PlannerEvent, PlannerResult, PlanStep, Thought } from "./
  * those the site actually shows). Nothing is ever submitted.
  */
 
-const MAX_TURNS = 14;
+const MAX_TURNS = 18;
 const MAX_TABS = 4;
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
 const SEARCH = "https://search.brave.com/search?q=";
@@ -85,6 +88,7 @@ const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" 
 /* ------------------------------------------------------------------ the calculator, asking as it goes */
 
 type Ask = (spec: Omit<AskSpec, "id">) => Promise<string | null>;
+const crewOf = (agentName: string): CrewId => (agentName === "SLAB calculator" ? "nell" : "elliot");
 
 export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, note: Note, track: Tracker) {
   note("Opening SLAB's calculator");
@@ -249,6 +253,11 @@ const TOOLS: FunctionTool[] = [
   tool("visit", "Open any web page in a browser tab and answer a question from it. Use for sites we have no special tool for.", { url: { type: "string" }, question: { type: "string" } }, ["url", "question"]),
   tool("check_firm", "Open a firm's website in a browser tab: find its medical negligence page, read whether it acts for patients and offers no win no fee, and look for its enquiry form. Give firm_id for a known firm, or name + website for a new one.", { firm_id: { type: "string" }, name: { type: "string" }, website: { type: "string" } }, []),
   tool("law_society_check", "Check firms by name on the Law Society of Scotland register, in one browser tab.", { firm_ids: { type: "array", items: { type: "string" } } }, ["firm_ids"]),
+  tool("read_guideline", "Iona: open the clinical guideline (NICE NG38 Fractures) and quote its recommendations about the patient's condition.", { topic: { type: "string", description: "e.g. 'suspected scaphoid fracture'" } }, ["topic"]),
+  tool("compare_care", "Iona: compare the guideline you read with the patient's own timeline and list POSSIBLE gaps as questions for a solicitor. Call after read_guideline.", {}, []),
+  tool("search_case_law", "Iona: search BAILII for Scottish court judgments, e.g. about a missed scaphoid fracture or wrist injury damages.", { query: { type: "string" } }, ["query"]),
+  tool("read_judgment", "Iona: open one judgment from search_case_law and say how it relates (medical negligence, or only a similar injury) and any award.", { url: { type: "string" } }, ["url"]),
+  tool("fill_enquiry", "Kit: fill a shortlisted firm's online enquiry form with the patient's message, stopping before Send (the user approves sending later).", { firm_id: { type: "string" } }, ["firm_id"]),
   tool("ask_user", "Ask the user one question when you need something no site and no tool can tell you. Do not ask for money details (the calculator does that).", {
     question: { type: "string" },
     kind: { type: "string", enum: ["yes_no", "choice", "text", "money", "number"] },
@@ -260,15 +269,18 @@ const TOOLS: FunctionTool[] = [
 
 const SYSTEM = `You are the research planner for a patient in Scotland who may want compensation after poor medical care.
 You plan your own route and drive browser agents through tools. Each browser tool opens its own tab; tools you call in the same turn run at the same time, so batch independent work.
+You lead a crew: Nell (funding: the legal aid calculator), Robin (finds solicitors and sources), Vera (checks firms), Iona (clinical evidence) and Kit (enquiry forms). Each tool belongs to one of them.
 Goal:
 1. Find out how a claim could be paid for: civil legal aid (SLAB's calculator) or, if that looks unlikely or the user skips the money questions, no win no fee.
 2. Find solicitors near the patient who act for PATIENTS in medical negligence. SLAB's list gives legal aid firms; web_search can find others (needed especially for no win no fee).
 3. Check the most promising firms on their own websites and on the Law Society register.
-4. Shortlist up to 3 firms with the right route, then finish.
+4. Gather evidence in parallel with the firm work: read the clinical guideline for the patient's condition, compare it with their timeline (possible gaps only), and look for relevant Scottish judgments (read at most 2).
+5. Shortlist up to 3 firms with the right route, then have Kit fill the shortlisted firms' enquiry forms (never sent), then finish.
 Rules:
 - Start with update_plan. Update the plan whenever you learn something that changes it (mark steps done or dropped, add new ones) and say why.
 - Every tool call needs a short "why" in plain words. No jargon.
-- Budget: at most 4 check_firm calls, 2 web_search calls, 3 visit calls. Stop early when you have enough.
+- Budget: at most 4 check_firm, 2 web_search, 2 visit, 1 read_guideline, 1 search_case_law, 2 read_judgment, 3 fill_enquiry calls. Stop early when you have enough.
+- The "why" is shown as your message to the crew member, so write it like a short instruction to them in plain words, e.g. "Find legal aid firms near EH8 that do medical negligence".
 - Exclude firms that defend the NHS, health boards or insurers, and firms whose site redirects to a claims company.
 - Only ask_user when you truly need something (e.g. whether they would travel further); never ask for money details or consent.
 - Never say anyone was negligent. Never submit forms.`;
@@ -301,17 +313,35 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   let shortlistIds: string[] = [];
   let plan: PlanStep[] = [];
   const thoughts: Thought[] = [];
+  const says: Say[] = [];
+  const proof: EvidenceResult = {}; // Iona's findings (D48); `evidence` below is per-firm scoring evidence
+  let guideline: GuidelineReading | null = null;
+  let message: EnquiryMessage | null = null;
+  const enquiries = new Map<string, EnquiryOutcome>();
   const t0 = Date.now();
   let asks = 0;
+  const say = (s: Omit<Say, "i" | "t">) => {
+    const full: Say = { i: says.length, t: Date.now() - t0, ...s };
+    says.push(full);
+    emit({ type: "say", say: full });
+  };
+  const crewState = (id: CrewId, state: "idle" | "working" | "waiting" | "done", note: string) => emit({ type: "crew", id, state, note });
+  /** A worker in its own tab, wearing its crew colour and name. */
+  const crewAgent = <T,>(id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number, firms?: string[]) =>
+    agent(ctx, `${CREW[id].name} · ${task}`, work, timeoutMs, firms, { color: CREW[id].color, cursor: `${CREW[id].name} · ${task}` });
 
   const ask: Ask = (spec) => {
     const id = `q${++asks}`;
-    const full: AskSpec = { id, ...spec };
+    const crew = spec.crew ?? crewOf(spec.agent);
+    const full: AskSpec = { id, ...spec, crew };
     emit({ type: "ask", ask: full });
+    say({ from: crew, to: "you", kind: "ask", text: spec.question, detail: spec.why });
+    crewState(crew, "waiting", "Waiting for your answer");
     return new Promise((resolve) => {
       const done = (a: string | null) => {
         clearTimeout(timer);
         emit({ type: "answered", id, answer: a });
+        crewState(crew, "working", a === null ? "Carrying on without it" : "Got your answer");
         resolve(a);
       };
       const timer = setTimeout(() => {
@@ -321,9 +351,58 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       waiting.get(runId)!.set(id, done);
     });
   };
-  const finding = (text: string, source?: string) => emit({ type: "finding", text, source });
+  const finding = (text: string, source?: string, crew?: CrewId) => emit({ type: "finding", text, source, crew });
   const firmLine = (f: FirmFinding) =>
     `${f.id}: ${f.name}, ${f.town}${f.distanceMiles !== null ? ` (${f.distanceMiles} mi)` : ""}${f.website ? `, ${f.website}` : ", no website"}${f.legalAid ? ", SLAB legal aid" : ""}${f.sources.includes("website") ? `, checked: patients=${f.actsForPatients}, no-win-no-fee=${f.noWinNoFee}, form=${f.enquiryUrl ? "yes" : "no"}${f.excluded ? `, EXCLUDED: ${f.excluded}` : ""}` : ""}`;
+
+  /** What a crew member says back after a tool: one plain sentence for the user, not the planner's raw notes. */
+  const describe = (tool: string, a: Record<string, unknown>, out: string): string => {
+    const tri = (t: string) => (t === "yes" ? "yes" : t === "no" ? "no" : "unclear");
+    switch (tool) {
+      case "slab_calculator":
+        return funding.skipped ? "You skipped the money questions, so legal aid stays unknown." : verdict === "likely" ? `SLAB's estimate: likely to qualify for legal aid. "${quote}"` : verdict === "unlikely" ? `SLAB's estimate: unlikely to qualify. "${quote}"` : "I could not read SLAB's estimate.";
+      case "slab_lawyer_list": {
+        const list = [...firms.values()].filter((f) => f.legalAid);
+        const near = list[0];
+        return list.length ? `Found ${list.length} firms that take legal aid for medical negligence. Nearest: ${near.name}, ${near.distanceMiles} miles.` : out;
+      }
+      case "web_search": {
+        const n = (out.match(/^\d+\./gm) ?? []).length;
+        return n ? `${n} results for "${String(a.query ?? "")}".` : "No useful results.";
+      }
+      case "check_firm": {
+        const f = firms.get(String(a.firm_id ?? "")) ?? [...firms.values()].find((x) => x.name === a.name);
+        if (!f) return out;
+        if (f.excluded) return `Ruled out ${f.name}: ${f.excluded}.`;
+        return `${f.name}: acts for patients ${tri(f.actsForPatients)}, no win no fee ${tri(f.noWinNoFee)}, enquiry form ${f.enquiryUrl ? "found" : "not found"}.`;
+      }
+      case "law_society_check": {
+        const on = (out.match(/on the register/g) ?? []).length;
+        const all = (out.match(/: /g) ?? []).length;
+        return `${on} of ${all} firms are on the Law Society of Scotland register.`;
+      }
+      case "read_guideline":
+        return proof.guideline?.points.length ? `${proof.guideline.name}, ${proof.guideline.points[0].id}: "${short(proof.guideline.points[0].text, 160)}"` : "The guideline says nothing about this.";
+      case "compare_care":
+        return proof.gaps?.length ? `${proof.gaps.length} possible gap${proof.gaps.length === 1 ? "" : "s"} for a solicitor to check: ${short(proof.gaps[0].question, 160)}` : "No gap between the guideline and your account.";
+      case "search_case_law": {
+        const n = (out.match(/^\d+\./gm) ?? []).length;
+        return n ? `${n} Scottish judgment${n === 1 ? "" : "s"} found. Top: ${short(out.split("\n")[0].replace(/^1\.\s*/, "").split(" — ")[0], 90)}.` : "No Scottish judgments found.";
+      }
+      case "read_judgment": {
+        const c = proof.cases?.at(-1);
+        if (!c) return out;
+        const kind = c.kind === "medical_negligence" ? "a medical negligence case" : c.kind === "similar_injury_other_cause" ? "a similar injury, but not medical negligence" : "not relevant";
+        return `${c.title} (${c.year}) is ${kind}.${c.award ? ` Award: ${short(c.award, 80)}.` : ""}`;
+      }
+      case "fill_enquiry": {
+        const e = enquiries.get(String(a.firm_id ?? ""));
+        return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry form filled. Waiting for your OK before anything is sent.` : `${e.firmName}: ${e.note}`) : out;
+      }
+      default:
+        return short(out.split("\n")[0], 180);
+    }
+  };
 
   /** Run one tool. Returns the text the planner sees. Errors are returned, not thrown, so the planner can recover. */
   async function run(call: ResponseFunctionToolCall, thought: Thought): Promise<string> {
@@ -337,7 +416,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       }
       case "slab_calculator": {
         if (funding.skipped) return "The user chose not to give money details. Treat legal aid as unknown and look at no win no fee.";
-        const r = await tabs(() => agent(ctx, "SLAB calculator", (p, note) => calculatorAsking(p, funding, ask, note, track), 8 * 60 * 1000));
+        const r = await tabs(() => crewAgent("nell", "SLAB calculator", (p, note) => calculatorAsking(p, funding, ask, note, track), 8 * 60 * 1000));
         if (!r.ok) return `The calculator failed: ${r.error}`;
         if (r.value.skipped) {
           funding.skipped = true;
@@ -350,7 +429,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return `SLAB estimate: ${verdict}. Its words: "${quote}"`;
       }
       case "slab_lawyer_list": {
-        const r = await tabs(() => agent(ctx, "SLAB lawyer list", (p, note) => runFinder(p, note, track), 120_000));
+        const r = await tabs(() => crewAgent("robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track), 120_000));
         if (!r.ok) return `SLAB's lawyer list failed: ${r.error}`;
         for (const f of mergeCards(r.value)) if (!firms.has(f.id)) firms.set(f.id, f);
         const list = [...firms.values()].filter((f) => f.legalAid);
@@ -358,7 +437,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return `Found ${list.length} firms (nearest first):\n${list.slice(0, 15).map(firmLine).join("\n")}`;
       }
       case "web_search": {
-        const r = await tabs(() => agent(ctx, "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
+        const r = await tabs(() => crewAgent("robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
         if (!r.ok) return `Search failed: ${r.error}`;
         if (r.value.length) finding(`Web search found ${r.value.length} results for "${short(s("query"), 50)}"`, "Brave Search");
         return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
@@ -366,7 +445,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "visit": {
         let url = s("url");
         if (!/^https?:\/\//.test(url)) url = `https://${url}`;
-        const r = await tabs(() => agent(ctx, short(new URL(url).hostname.replace(/^www\./, ""), 26), (p, note) => visit(p, url, s("question"), note), 60_000));
+        const r = await tabs(() => crewAgent("robin", short(new URL(url).hostname.replace(/^www\./, ""), 26), (p, note) => visit(p, url, s("question"), note), 60_000));
         if (!r.ok) return `Could not read ${url}: ${r.error}`;
         return `${r.value.answer}\nLinks: ${r.value.links.map((l) => `${l.text} -> ${l.url}`).join("; ")}`;
       }
@@ -381,7 +460,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         if (!f) return `Unknown firm. Use an id from slab_lawyer_list, or give name and website.`;
         const firm = f;
         const label = firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 28);
-        const r = await tabs(() => agent(ctx, label, (p, note) => vetFirm(p, firm, note, track), 90_000, [firm.id]));
+        const r = await tabs(() => crewAgent("vera", label, (p, note) => vetFirm(p, firm, note, track), 90_000, [firm.id]));
         if (!r.ok) {
           evidence.set(firm.id, { ...evidence.get(firm.id), checked: `Tried ${firm.website}: ${r.error}` });
           return `Could not check ${firm.name}: ${r.error}`;
@@ -397,7 +476,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "law_society_check": {
         const list = ((a.firm_ids as string[]) ?? []).map((id) => firms.get(id)).filter((x): x is FirmFinding => !!x).slice(0, 5);
         if (!list.length) return "No known firm ids given.";
-        const r = await tabs(() => agent(ctx, "Law Society register", (p, note) => lawSocietyCheck(p, list, note, track), 120_000));
+        const r = await tabs(() => crewAgent("vera", "Law Society register", (p, note) => lawSocietyCheck(p, list, note, track), 120_000));
         if (!r.ok) return `Law Society check failed: ${r.error}`;
         for (const f of list) {
           const on = r.value.has(f.id);
@@ -407,8 +486,59 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         finding(`Law Society register: ${r.value.size} of ${list.length} firms found`, "Law Society of Scotland");
         return list.map((f) => `${f.id}: ${r.value.has(f.id) ? "on the register" : "not found"}`).join("\n");
       }
+      case "read_guideline": {
+        const r = await tabs(() => crewAgent("iona", "Clinical guideline", (p, note) => readGuideline(p, s("topic") || "suspected scaphoid fracture", note, track), 90_000));
+        if (!r.ok) return `Could not read the guideline: ${r.error}`;
+        guideline = r.value;
+        proof.guideline = { name: r.value.guideline, url: r.value.url, points: r.value.points };
+        emit({ type: "evidence", evidence: { ...proof } });
+        if (r.value.points.length) finding(`${r.value.guideline} ${r.value.points.map((x) => x.id).join(", ")}: "${short(r.value.points[0].text, 120)}"`, r.value.url, "iona");
+        return r.value.points.length ? `${r.value.guideline}:\n${r.value.points.map((x) => `${x.id}: ${x.text}`).join("\n")}` : "No recommendation about this on the page.";
+      }
+      case "compare_care": {
+        if (!guideline) return "Read the guideline first (read_guideline).";
+        const c = await compareCare(facts, guideline);
+        proof.gaps = c.gaps;
+        proof.caveat = c.caveat;
+        emit({ type: "evidence", evidence: { ...proof } });
+        for (const gap of c.gaps) finding(`Possible gap to check: ${gap.question}`, guideline.url, "iona");
+        return c.gaps.length ? `${c.gaps.length} possible gap(s):\n${c.gaps.map((x) => `- ${x.question}`).join("\n")}\nCaveat: ${c.caveat}` : `No gap between the guideline and the account. ${c.caveat}`;
+      }
+      case "search_case_law": {
+        const r = await tabs(() => crewAgent("iona", "Court judgments", (p, note) => searchCaseLaw(p, s("query"), note, track), 90_000));
+        if (!r.ok) return `BAILII search failed: ${r.error}`;
+        return r.value.length ? r.value.map((h, i) => `${i + 1}. ${h.title} — ${h.url}`).join("\n") : "No judgments found.";
+      }
+      case "read_judgment": {
+        const r = await tabs(() => crewAgent("iona", "Reading a judgment", (p, note) => readJudgment(p, s("url"), "a missed scaphoid (wrist) fracture", note, track), 120_000));
+        if (!r.ok) return `Could not read the judgment: ${r.error}`;
+        const j = r.value;
+        proof.cases = [...(proof.cases ?? []), { title: j.title, url: j.url, year: j.year, court: j.court, kind: j.kind, summary: j.summary, award: j.award }];
+        emit({ type: "evidence", evidence: { ...proof } });
+        finding(`${j.title} (${j.year}): ${j.kind === "medical_negligence" ? "medical negligence" : j.kind === "similar_injury_other_cause" ? "similar injury, different cause" : "not relevant"}${j.award ? `, award ${j.award}` : ""}`, j.url, "iona");
+        return `${j.title} (${j.year}, ${j.court}): ${j.kind}. ${j.summary}${j.award ? ` Award: ${j.award}` : ""}`;
+      }
+      case "fill_enquiry": {
+        const firm = firms.get(s("firm_id"));
+        if (!firm) return "Unknown firm id.";
+        if (!firm.website && !firm.enquiryUrl) return `${firm.name} has no website to fill a form on.`;
+        message ??= await draftEnquiry(facts, { verdict: funding.skipped ? "skipped" : verdict, route });
+        const msg = message;
+        const r = await tabs(() =>
+          crewAgent("kit", firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 24), async (p, note) => {
+            const o = await fillOne(p, firm, { facts, message: msg }, note, track, (x) => emit({ type: "enquiry", enquiry: x }));
+            if (o.status === "ready_to_send") keepForApproval(firm.id, { page: p, firm, email: facts.email, runId, tracer, note });
+            return o;
+          }, 150_000, [firm.id]),
+        );
+        const o: EnquiryOutcome = r.ok ? r.value : { firmId: firm.id, firmName: firm.name, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: `Stopped: ${r.error}` };
+        enquiries.set(firm.id, o);
+        emit({ type: "enquiry", enquiry: o });
+        finding(`${firm.name}: ${o.status === "ready_to_send" ? "enquiry form filled, waiting for your OK" : o.note}`, o.formUrl ?? undefined, "kit");
+        return `${firm.name}: ${o.status}. ${o.note}`;
+      }
       case "ask_user": {
-        const answer = await ask({ agent: "Planner", question: s("question"), why: s("why"), kind: (s("kind") as AskSpec["kind"]) || "text", options: a.options as string[] | undefined });
+        const answer = await ask({ agent: "Planner", crew: "elliot", question: s("question"), why: s("why"), kind: (s("kind") as AskSpec["kind"]) || "text", options: a.options as string[] | undefined });
         return answer === null ? "The user did not answer. Carry on without it." : `The user answered: ${answer}`;
       }
       case "shortlist": {
@@ -458,6 +588,13 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
           const thought: Thought = { i: thoughts.length, t: Date.now() - t0, text: String(args.why ?? call.name), tool: call.name, detail: JSON.stringify(Object.fromEntries(Object.entries(args).filter(([k]) => k !== "why")), null, 1) };
           thoughts.push(thought);
           if (call.name !== "update_plan") emit({ type: "thought", thought });
+          const who = TOOL_CREW[call.name] ?? "elliot";
+          const why = String(args.why ?? "").trim();
+          if (call.name === "update_plan") say({ from: "elliot", kind: "plan", text: why || "Updated the plan", tool: call.name });
+          else if (who !== "elliot") {
+            say({ from: "elliot", to: who, kind: "assign", text: why || call.name, tool: call.name });
+            crewState(who, "working", why);
+          }
           let out: string;
           try {
             out = await run(call, thought);
@@ -468,6 +605,12 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
             thought.result = short(out, 600);
             emit({ type: "thought", thought: { ...thought } });
           }
+          if (who !== "elliot") {
+            const text = /^(Error|Could not|.*failed)/.test(out) ? `I hit a problem: ${short(out, 160)}` : describe(call.name, args, out);
+            say({ from: who, to: "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name });
+            crewState(who, "idle", short(text, 90));
+          } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: short(out.replace(/\n/g, "; "), 200), tool: call.name });
+          else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
           if (call.name === "finish") finished = true;
           return { type: "function_call_output" as const, call_id: call.call_id, output: out };
         }),
@@ -492,6 +635,11 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       plan,
       thoughts,
       turns: turns - 1,
+      says,
+      evidence: proof,
+      enquiries: [...enquiries.values()],
+      asks,
+      recoveries: tracer.steps.filter((x) => x.kind === "recover").length,
     };
     emit({ type: "result", result });
     emit({ type: "planner_result", result });

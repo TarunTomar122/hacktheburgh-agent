@@ -26,7 +26,7 @@ import { observe } from "./observe";
  * Nothing is ever sent without the user's approval of that firm, and never for a fictional (example.com) patient.
  */
 
-type LegalAidSummary = { verdict: Step3Result["verdict"]; route: Step3Result["route"] } | undefined;
+export type LegalAidSummary = { verdict: Step3Result["verdict"]; route: Step3Result["route"] } | undefined;
 
 /* ------------------------------------------------------------------ draft */
 
@@ -66,11 +66,16 @@ export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary): Promi
 
 /* ------------------------------------------------------------------ open tabs, kept for the send */
 
-type Open = { page: Page; firm: FirmFinding; email: string | null; runId: string; tracer: Tracer; note: Note };
+export type Open = { page: Page; firm: FirmFinding; email: string | null; runId: string; tracer: Tracer; note: Note };
 type Registry = { tabs: Map<string, Open>; browser?: Browser };
 const holder = globalThis as unknown as { __enquiryTabs?: Registry };
 // On globalThis: Next.js can load this module once per route bundle, and /send must see the tabs /step4 opened.
 const REG: Registry = (holder.__enquiryTabs ??= { tabs: new Map<string, Open>() });
+
+/** Keep a filled form's tab open so /api/agent/step4/send can press Send after the user approves (used by the planner, D47). */
+export function keepForApproval(firmId: string, open: Open) {
+  REG.tabs.set(firmId, open);
+}
 
 /* ------------------------------------------------------------------ finding the form */
 
