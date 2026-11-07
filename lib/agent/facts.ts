@@ -11,7 +11,7 @@ export const CaseFacts = z.object({
   phone: z.string().nullable(),
   email: z.string().nullable(),
   preferredContact: z.enum(["Letter", "Email", "Phone Call"]).nullable(),
-  incidentLocation: z.string().nullable().describe("Where the care happened: hospital, ward, clinic, GP surgery"),
+  incidentLocation: z.string().nullable().describe("Where the medical care being questioned took place: hospital, ward, clinic or GP surgery. This is the treatment location, not the location of the original accident or injury."),
   incidentSummary: z.string().nullable().describe("What went wrong, in the user's own words"),
   events: z
     .array(

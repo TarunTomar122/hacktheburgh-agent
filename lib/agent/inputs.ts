@@ -210,7 +210,7 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         fields.push({ key: "eventWhat", label: "In a few words, what happened then?", kind: "text", required: true });
       }
       if (blank(f.incidentLocation)) {
-        fields.push({ key: "incidentLocation", label: "Where did it happen?", kind: "text", required: true, suggestions: PLACE_SUGGESTIONS, hint: "A hospital, ward, clinic or GP surgery." });
+        fields.push({ key: "incidentLocation", label: "Where did you receive the medical care you're concerned about?", kind: "text", required: true, suggestions: PLACE_SUGGESTIONS, hint: "Name the hospital, ward, clinic or GP surgery. If you had an accident, tell us where you were treated, rather than where the accident happened." });
       }
       return { kind: "form", target, fields, submit: "Continue" };
     }
@@ -269,9 +269,9 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
     case "details": {
       const needDate = f.events.length === 0 || f.events.some((e) => blank(e.date));
       const needPlace = blank(f.incidentLocation);
-      if (needDate && needPlace) return "So that I can put things in order, roughly when did this happen, and where?";
+      if (needDate && needPlace) return "Roughly when did the events you described happen, and where did you receive the medical care you're concerned about?";
       if (needDate) return "So that I can put things in order, roughly when did this happen?";
-      return "And where did this happen? A hospital, ward, clinic or GP surgery is fine.";
+      return "Where did you receive the medical care you're concerned about? Please name the hospital, ward, clinic or GP surgery.";
     }
     case "who":
       return "Is this about your own care, or someone else's?";
