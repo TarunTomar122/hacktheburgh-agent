@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import UnsupportedComplaint from "./UnsupportedComplaint";
+import { supportsLothian } from "../../lib/agent/complaintScope";
 import { hasSupport } from "../../lib/agent/complaintSupport";
 import { missingRequired } from "../../lib/agent/facts";
 import { CREW, type ComplaintResult, type CrewId } from "../../lib/agent/plannerTypes";
@@ -56,6 +58,7 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
     onContinue();
   };
 
+  if (!supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
   if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />;
   if (saved && !again) return <ComplaintFile profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
   return <Intro profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;

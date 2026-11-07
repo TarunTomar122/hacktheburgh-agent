@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { supportsLothian, hasFractureContext, factualComplaint } from "./complaintScope";
 import type { CaseFacts } from "./facts";
 import { EFFORT, MODELS, structured } from "./llm";
 
@@ -25,6 +26,8 @@ const EVIDENCE_RULE = `
 - An "evidence" item may be given: a clinical guideline recommendation and a question it raises. Add ONE short paragraph near the end that quotes the recommendation exactly and politely asks NHS Lothian to explain how that was followed in the patient's care. Do not say it was not followed. Do not say anyone was at fault.`;
 
 export async function draftComplaint(facts: CaseFacts, evidence?: DraftEvidence): Promise<Draft> {
+  if (!supportsLothian(facts)) return factualComplaint(facts);
+  if (!hasFractureContext(facts)) evidence = undefined;
   return structured({
     model: MODELS.draft,
     effort: EFFORT.draft,

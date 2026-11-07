@@ -1,4 +1,5 @@
 import path from "node:path";
+import { supportsLothian, SCOPE_NOTE } from "./complaintScope";
 import type { Page } from "playwright";
 import type { CaseFacts } from "./facts";
 import type { Draft } from "./draft";
@@ -37,6 +38,7 @@ export type Step1Result = BrowserRun & { screenshot?: string; runDir: string };
  * loop as the backup (D21, D46).
  */
 export async function fillNhsForm(page: Page, facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; extra?: ExtraAnswers } = {}): Promise<BrowserRun> {
+  if (!supportsLothian(facts)) throw new Error(SCOPE_NOTE);
   const emit = opts.onEvent ?? (() => {});
   emit({ type: "status", message: "Opening the NHS Lothian form" });
   await page.goto(NHS_LOTHIAN_FORM, { waitUntil: "domcontentloaded" });
@@ -64,6 +66,7 @@ export async function fillNhsForm(page: Page, facts: CaseFacts, draft: Draft, op
  * Submitting is deliberately not implemented yet: it needs a human approval path and a decision on test data.
  */
 export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; keepOpen?: boolean; extra?: ExtraAnswers } = {}): Promise<Step1Result> {
+  if (!supportsLothian(facts)) throw new Error(SCOPE_NOTE);
   const runDir = path.join(process.cwd(), ".runs", new Date().toISOString().replace(/[:.]/g, "-"));
   const emit = makeLogger(runDir, opts.onEvent);
   const { browser, page } = await openSession();

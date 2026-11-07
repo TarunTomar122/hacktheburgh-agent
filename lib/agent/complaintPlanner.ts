@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { supportsLothian, hasFractureContext, factualComplaint, SCOPE_NOTE } from "./complaintScope";
 import type { Page } from "playwright";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
 import { closeWhenSubmitted, keepOnlyTabs, openSession } from "../browser";
@@ -93,6 +94,11 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
   emit({ type: "run", runId });
   const track = new Tracker(emit);
   const tracer = new Tracer(emit, runDir);
+  if (!supportsLothian(facts)) {
+    const result: ComplaintResult = { runId, runDir, plan: [], thoughts: [], turns: 0, says: [{ i: 0, t: 0, from: "elliot", kind: "done", text: SCOPE_NOTE }], trace: [], stats: track.stats, asks: 0, evidence: {}, draft: factualComplaint(facts), form: { status: "not_started", filled: [], unfilled: [], note: SCOPE_NOTE, url: "" } };
+    emit({ type: "complaint_result", result });
+    return result;
+  }
   const { browser, context, page } = await openSession();
   const ctx = { context, emit, track, tracer, first: page };
   const tabs = limiter(2);
@@ -220,6 +226,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
         return `Status: ${r.value.status}. ${r.value.limit}\n${r.value.explanation}`;
       }
       case "read_guideline": {
+        if (!hasFractureContext(facts)) return "Blocked: fracture guidance is not established as relevant to the saved story. Skip clinical comparison and draft from facts only.";
         const r = await tabs(() => crewFor(thought, "iona", "Clinical guideline", (p, note) => readGuideline(p, s("topic") || "suspected scaphoid fracture", note, track), 90_000));
         if (!r.ok) return `Could not read the guideline: ${r.error}`;
         guideline = r.value;

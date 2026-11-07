@@ -18,6 +18,8 @@ import TrackBar from "./TrackBar";
 import TrackChoice from "./TrackChoice";
 import ContactLawyersStep from "./ContactLawyersStep";
 import StepAside from "./StepAside";
+import UnsupportedComplaint from "./UnsupportedComplaint";
+import { supportsLothian } from "../../lib/agent/complaintScope";
 
 export default function CasePage() {
   const router = useRouter();
@@ -110,7 +112,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
   const draft = profile.draft;
 
   async function fill(extra?: ExtraAnswers) {
-    if (!draft || filling) return;
+    if (!draft || filling || !supportsLothian(profile.facts)) return;
     setFilling(true);
     window.dispatchEvent(new Event("live-open")); // show the agent's browser beside the page, as soon as it starts
     setError(null);
@@ -151,11 +153,13 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
   // Nothing to fill in here: once onboarding has everything, the agent writes the draft by itself (once).
   const autoWrote = useRef(false);
   useEffect(() => {
-    if (!draft && missing.length === 0 && !autoWrote.current) {
+    if (supportsLothian(profile.facts) && !draft && missing.length === 0 && !autoWrote.current) {
       autoWrote.current = true;
       void write();
     }
   });
+
+  if (!supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
 
   const preparing = busy || (!draft && missing.length === 0);
 

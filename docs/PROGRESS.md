@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 - Luigi + Codex - Unsupported complaint route (D71)
+Pulled a48cc49: D69 restored the old step 1 page, so the screenshot's crew flow was no longer the default. Fixed both screens and the server runners. Unconfirmed treatment locations now get a facts-only editable draft, copy/download, and explicit unverified recipient/deadlines/guidance; no retry or NHS/SPSO continuation is offered there. Server tests prove Mater Dei returns before browser/model work with no time-limit or guideline result. Added a fracture-context gate for the complaint evidence tool and draft evidence injection. The allowlist is intentionally limited, so unrecognised NHS clinics require manual checking. Existing saved summaries containing unsupported guidance are replaced in this view with saved-story/timeline text, without changing saved facts.
+Verification: scripts/test-complaint-scope.tsx passes (including both NHS entry points rejecting before page use, draft-only crew result and rendered export actions). TypeScript/lint passed; no real sites or submissions used. Production build passed. User authorized push after review; final pull was up to date with no conflicts, and the regression, TypeScript and lint checks passed again.
+
 ### 2026-11-07 · Om + Claude · DONE · Step 1 opens the split-screen browser panel again (D70)
 Om: the NHS complaint website no longer opened in a split-screen window. The panel only opens on a click since D46, and the restored step 1 page never asked for it. `LiveView` now has a `live-open` event; step 1 sends it when "Fill in NHS Lothian's form" starts, and an auto-opened panel closes again with the browser. Checked in headless Chrome with a control run (no event, no panel). Not seen with a real NHS form, because the cloud workspace cannot reach the site. tsc and eslint clean.
 

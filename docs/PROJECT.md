@@ -8,6 +8,8 @@ Ailsa (21, student, Edinburgh) fell on her hand. A&E said sprain; weeks later a 
 
 Case continuity update (2026-11-07, Codex): planner money answers persist during the run; enquiry actions follow selected firms; preparation preserves sent/replied tracking and other open approval forms. Offline regression checks, TypeScript, lint and production build verified; full live journey not rerun.
 
+Complaint scope (D71, 2026-11-07): unconfirmed treatment locations are draft-only with edit/copy/download. NHS form entry points reject them before navigation; local deadlines and guidance remain unverified. Offline regression verified. Routing uses a limited named-site allowlist, not a complete directory.
+
 ## Flow and status
 
 | # | Step | Status |
