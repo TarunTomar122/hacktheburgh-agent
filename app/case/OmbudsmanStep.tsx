@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { defaultAssumptions, spsoProblems, wordCount, type SpsoAnswers } from "../../lib/agent/spsoAnswers";
 import { setDraft, setOmbudsman, setProgress as markProgress, skipStep, type Profile } from "../../lib/profile";
-import { Button, Callout, control, cx, Console, Eyebrow, LockIcon, PageTitle } from "../ui";
+import { Button, Callout, control, cx, Eyebrow, LockIcon, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
@@ -66,7 +66,6 @@ function Unlocked({ profile }: { profile: Profile }) {
   const draft = profile.draft;
   const [writing, setWriting] = useState(false);
   const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState<string[]>([]);
   const [result, setResult] = useState<DoneEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [impactDraft, setImpactDraft] = useState("");
@@ -115,11 +114,11 @@ function Unlocked({ profile }: { profile: Profile }) {
     const approved = { ...answers, readConfirmed: true };
     set({ readConfirmed: true }); // the approval below includes "I have read the SPSO page"
     setRunning(true);
+    window.dispatchEvent(new Event("live-open"));
     setError(null);
     setResult(null);
-    setProgress(["Starting the browser agent…"]);
     try {
-      const done = await streamAgent("/api/agent/step2", { facts: profile.facts, draft, answers: approved, extra }, (line) => setProgress((p) => [...p.slice(-19), line]));
+      const done = await streamAgent("/api/agent/step2", { facts: profile.facts, draft, answers: approved, extra }, () => {});
       setResult(done);
       if (done.status === "ready_to_submit") markProgress({ spsoFilled: true });
     } catch (e) {
@@ -190,7 +189,6 @@ function Unlocked({ profile }: { profile: Profile }) {
         </p>
       </div>
 
-      {progress.length > 0 && <Console label="Browser agent progress" lines={progress} />}
       {result &&
         (result.status === "ready_to_submit" ? (
           <Callout tone="ok" title="Done. It is waiting for you in the other window.">

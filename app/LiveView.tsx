@@ -304,7 +304,7 @@ export default function LiveView() {
   }, [slot, focused, control, focus]);
 
   // A page that runs one browser the user is meant to watch (step 1, the NHS Lothian form) opens the panel by itself:
-  // window.dispatchEvent(new Event("live-open")). Every other flow still waits for the button (Tarun, 2026-11-07).
+  // window.dispatchEvent(new Event("live-open")). NHS and ombudsman form filling both request this panel.
   useEffect(() => {
     const onOpen = () => {
       setOpen((o) => {

@@ -6,6 +6,7 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
+| Complaint UI refinements | Luigi + Codex | Done, idle | NameStep, NHS/SPSO screens, LiveView | User requested spacing, console removal and auto-open on SPSO |
 | Onboarding clarity and review | Luigi + Codex | Done, idle | Questions, own-care default, extraction validation and summary editor | D72; reviewed and user authorized push |
 | Unsupported complaint location | Luigi + Codex | Done, idle | complaintScope, complaint screens, draft and NHS runners | D71; user requested the screenshot issues be fixed |
 | Case continuity fixes | Luigi + Codex | Done, idle | Funding stream, enquiry selection and tracker | User requested three state bug fixes |

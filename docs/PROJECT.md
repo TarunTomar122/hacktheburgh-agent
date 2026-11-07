@@ -12,6 +12,8 @@ Complaint scope (D71, 2026-11-07): unconfirmed treatment locations are draft-onl
 
 Onboarding update (D72, 2026-11-07): one visible question, date-specific event prompt, own-care default, retry for unintelligible stories and editable final review. Browser regression verified cancel, validation and persisted corrections; live extraction accepted short/misspelled meaningful answers and rejected the two random-letter examples.
 
+Complaint UI refinement (2026-11-07): NHS and ombudsman form screens omit technical console logs while retaining errors/results. Both request the live browser panel automatically. Welcome-screen spacing is tighter and was checked on desktop/mobile.
+
 ## Flow and status
 
 | # | Step | Status |

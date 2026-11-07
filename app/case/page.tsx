@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
 import { setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
-import { Button, Callout, Console, PageTitle } from "../ui";
+import { Button, Callout, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
@@ -106,7 +106,6 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filling, setFilling] = useState(false);
-  const [log, setLog] = useState<string[]>([]);
   const [result, setResult] = useState<DoneEvent | null>(null);
   const missing = missingRequired(profile.facts);
   const draft = profile.draft;
@@ -117,9 +116,8 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
     window.dispatchEvent(new Event("live-open")); // show the agent's browser beside the page, as soon as it starts
     setError(null);
     setResult(null);
-    setLog(["Starting the browser agent…"]);
     try {
-      const done = await streamAgent("/api/agent/step1", { facts: profile.facts, draft, extra }, (line) => setLog((p) => [...p.slice(-19), line]));
+      const done = await streamAgent("/api/agent/step1", { facts: profile.facts, draft, extra }, () => {});
       setResult(done);
       if (done.status === "ready_to_submit") setProgress({ nhsFilled: true });
     } catch (e) {
@@ -195,7 +193,6 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
         </Button>
       </div>
 
-      {log.length > 0 && <Console label="Browser agent progress" lines={log} />}
 
       {result &&
         (result.status === "ready_to_submit" ? (

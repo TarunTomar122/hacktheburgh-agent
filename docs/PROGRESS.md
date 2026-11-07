@@ -8,6 +8,21 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 - Luigi + Codex - UI refinements sync for push
+User authorized pushing the welcome spacing, removal of the NHS/SPSO debug consoles and automatic opening of the SPSO browser panel. Main was already up to date with no conflicts. Remote night updates were fetched but not merged into main. TypeScript, lint and diff checks passed; welcome desktop/mobile screenshots were inspected in the preceding turn.
+
+### 2026-11-07 - Luigi + Codex - Open the ombudsman live browser automatically
+The ombudsman fill action now dispatches the same live-open event as the NHS fill action. The existing live-view lifecycle opens the panel when a browser becomes available, with the same hide/close behaviour. No form filling or submission logic changed.
+
+### 2026-11-07 - Luigi + Codex - Remove the NHS debug console
+Removed the black technical activity log from the NHS Lothian step too, as requested. The live browser panel, filling indicator, errors, requests for missing information and completion message remain available. Server logging is unchanged.
+
+### 2026-11-07 - Luigi + Codex - Remove the ombudsman debug console
+Removed the black technical activity log from the ombudsman screen at the user's request. The filling indicator, errors, missing-information questions and final result remain. Other steps and server logging are unchanged.
+
+### 2026-11-07 - Luigi + Codex - Tighten welcome-screen spacing
+Reduced the gaps before the name input, submit button and reassurance text, and balanced the form's top/bottom padding. Retained existing typography and design tokens. Checked desktop (1280x800) and mobile (390x844) screenshots in an isolated browser; no mobile horizontal overflow. TypeScript and lint passed. Local change, not pushed.
+
 ### 2026-11-07 - Luigi + Codex - Edit the final onboarding summary
 Added Edit details before starting the case: names, treatment location, story, desired outcome, contact details and dated timeline events can be corrected, added or removed. Changes stay in a local editor until Save changes; Cancel discards them. Required fields, dates and contact formats are validated; the start button is hidden during editing. Verified in an isolated browser using a mocked interview and fictional data: cancel, rejected empty first name, corrected story/timeline, and persisted facts after starting the case. The first test found textarea accessible labels included content; explicit labels fixed this. A test selector also matched Next's route announcer and was narrowed. TypeScript and lint passed. No real model calls or submissions in the editor test. User subsequently authorized push; final fetch/pull found main up to date and no conflicts.
 

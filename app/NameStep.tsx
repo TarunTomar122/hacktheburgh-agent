@@ -30,12 +30,12 @@ export default function NameStep({
   };
 
   return (
-    <form onSubmit={submit} className="fade-up flex flex-1 flex-col justify-center pb-16" aria-labelledby="name-question">
-      <p className="eyebrow mb-5">Welcome</p>
+    <form onSubmit={submit} className="fade-up flex flex-1 flex-col justify-center py-8 sm:py-12" aria-labelledby="name-question">
+      <p className="eyebrow mb-3">Welcome</p>
       <h1 id="name-question" className="display text-[42px] sm:text-[52px]">
         First, what should I <span className="hl-blue">call you</span>?
       </h1>
-      <p className="mt-5 max-w-lg text-[17px] leading-7 text-ink-2">
+      <p className="mt-4 max-w-lg text-[17px] leading-7 text-ink-2">
         I am here to help you work out what went wrong with your care, and what to do next. A first name is fine.
       </p>
 
@@ -51,7 +51,7 @@ export default function NameStep({
         maxLength={80}
         placeholder="Type your name here"
         aria-describedby={error ? "name-error" : undefined}
-        className="mt-12 w-full border-0 border-b-2 border-line bg-transparent pb-3 font-serif text-[34px] font-light tracking-tight text-ink outline-none transition-colors placeholder:text-fade focus:border-brand sm:text-[40px]"
+        className="mt-7 w-full border-0 border-b-2 border-line bg-transparent pb-3 font-serif text-[34px] font-light tracking-tight text-ink outline-none transition-colors placeholder:text-fade focus:border-brand sm:mt-8 sm:text-[40px]"
       />
 
       {error && (
@@ -60,7 +60,7 @@ export default function NameStep({
         </p>
       )}
 
-      <div className="mt-8 flex items-center gap-4">
+      <div className="mt-5 flex items-center gap-4">
         <button type="submit" disabled={!text || busy} className="btn-primary !px-7 !py-3 !text-[15px]">
           {busy ? "One moment…" : "OK"}
         </button>
@@ -69,7 +69,7 @@ export default function NameStep({
         </span>
       </div>
 
-      <p className="mt-14 text-[13px] text-muted">A few questions so we can prepare your case. Nothing is sent to the NHS yet.</p>
+      <p className="mt-6 max-w-lg text-[13px] leading-5 text-muted">A few questions so we can prepare your case. Nothing is sent to the NHS yet.</p>
     </form>
   );
 }
