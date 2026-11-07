@@ -8,6 +8,12 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Tarun + Claude · DONE · The agent's browser shows inside the app (D32)
+Tarun asked whether the headed Chrome could appear inside the web app, e.g. as an iframe on the right. **Iframe ruled out first** (curl, 2026-11-07): NHS Lothian `frame-ancestors 'self' *.scot.nhs.uk ...`, SLAB and SPSO `X-Frame-Options: SAMEORIGIN`; and an iframe would be another copy of the page, not the agent's. Built a CDP screencast instead (`lib/liveview.ts`, `GET/POST /api/live`, `app/LiveView.tsx`, hook in `openSession`). Worked in a separate git worktree (branch `liveview`) because the main checkout had someone's uncommitted step-2 and case-page changes; the panel is mounted in `app/layout.tsx` so `app/case/*` was not touched.
+**Verified:** with `IN_APP_BROWSER=1` on a dev server, a curl subscriber received 150 frames (1300x900) across three URLs during the Law Society search, then `end` when the browser closed. Headless Playwright screenshots of `/dev`: the panel opened by itself, showed the agent typing "Edinburgh" and choosing "Accident and injury" live (45 fps while busy), a forwarded `wheel` scrolled the real page, and after the run the panel greyed out with "Browser closed". `tsc` and `eslint` clean.
+**Not verified:** clicking and typing in "Take control" through the UI (only the wheel was sent, via the API); a headed run (default mode) mirrored at the same time; the case page layout with the dock open (it was checked on `/dev` only); popups opening a new tab (code switches to the newest page, not run). Frames are ~90 KB each, fine on localhost; over a slow network lower `quality` in `lib/liveview.ts`.
+**First attempt failed:** a symlinked `node_modules` in the worktree; Turbopack refuses packages outside the project root. Fixed with a real `npm ci`.
+
 ### 2026-11-07 · Luigi + Codex · DONE · Connect NHS fill to the app
 Connected the disabled Step 1 button to the existing NDJSON API and Decisions agent. The UI handles split stream chunks, errors, missing information and completion, and blocks draft edits/repeated clicks while filling. The API rejects incomplete profiles/empty required draft text and tolerates disconnected stream readers. Added an optional browser review period with cleanup after window close or 10 minutes; CLI behavior is preserved.
 

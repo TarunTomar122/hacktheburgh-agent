@@ -1,4 +1,5 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { attachLiveView } from "./liveview";
 
 // Some sites (e.g. SLAB) return 403 to Playwright's default user-agent.
 const USER_AGENT =
@@ -6,10 +7,16 @@ const USER_AGENT =
 
 export type Session = { browser: Browser; context: BrowserContext; page: Page };
 
-/** Launch a visible Chromium window. Set HEADLESS=1 for fast test runs. */
+/**
+ * Launch a visible Chromium window. Set HEADLESS=1 for fast test runs.
+ * Set IN_APP_BROWSER=1 to hide the window but keep everything else as in a visible run (slow, human-watchable
+ * typing, browser kept open for review): the browser is then only seen through the in-app live view (D32).
+ * Every session streams to the live view unless LIVEVIEW=0.
+ */
 export async function openSession(): Promise<Session> {
-  const headless = process.env.HEADLESS === "1";
-  const browser = await chromium.launch({ headless, slowMo: headless ? 0 : 250 });
+  const fast = process.env.HEADLESS === "1";
+  const headless = fast || process.env.IN_APP_BROWSER === "1";
+  const browser = await chromium.launch({ headless, slowMo: fast ? 0 : 250 });
   const context = await browser.newContext({
     locale: "en-GB",
     viewport: { width: 1300, height: 900 },
@@ -17,6 +24,7 @@ export async function openSession(): Promise<Session> {
   });
   // tsx/esbuild wraps named functions in a __name() helper that doesn't exist inside the page.
   await context.addInitScript("window.__name = (f) => f;");
+  attachLiveView(context);
   const page = await context.newPage();
   return { browser, context, page };
 }
