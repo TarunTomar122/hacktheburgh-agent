@@ -11,7 +11,7 @@ import { CrewMark, StateMark } from "./Crew";
  * done), worked out only from what the crew actually reported.
  */
 
-type Step = { crew: CrewId[]; title: string; line: string };
+export type Step = { crew: CrewId[]; title: string; line: string };
 export const STEPS: Step[] = [
   { crew: ["nell"], title: "Check legal aid", line: "Nell runs SLAB's calculator" },
   { crew: ["robin"], title: "Find solicitors", line: "Robin finds and checks firms" },
@@ -22,8 +22,8 @@ export const STEPS: Step[] = [
 export type StepStatus = "pending" | "working" | "waiting" | "done" | "skipped" | "failed";
 
 /** Live status of each step from the crew's states and reports. `finished` = the whole run is over. */
-export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finished: boolean): StepStatus[] {
-  return STEPS.map((st) => {
+export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finished: boolean, steps: Step[] = STEPS): StepStatus[] {
+  return steps.map((st) => {
     if (st.crew.some((id) => crew[id]?.state === "waiting")) return "waiting";
     if (st.crew.some((id) => crew[id]?.state === "working")) return "working";
     const finisher = st.crew[st.crew.length - 1];
@@ -38,13 +38,13 @@ export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finis
   });
 }
 
-export default function StepStrip({ statuses, compact }: { statuses?: StepStatus[]; compact?: boolean }) {
+export default function StepStrip({ statuses, compact, steps = STEPS }: { statuses?: StepStatus[]; compact?: boolean; steps?: Step[] }) {
   const size = compact ? 40 : 76;
   return (
-    <ol className="relative grid grid-cols-4" aria-label="The four steps">
+    <ol className="relative grid grid-cols-4" aria-label={`The ${steps.length} steps`}>
       {/* the thin line joining the steps, behind the avatars */}
       <span aria-hidden className="absolute left-[12.5%] right-[12.5%] h-px bg-line" style={{ top: size / 2 }} />
-      {STEPS.map((st, i) => {
+      {steps.map((st, i) => {
         const s = statuses?.[i];
         const active = s === "working" || s === "waiting";
         return (

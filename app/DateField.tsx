@@ -93,7 +93,7 @@ export default function DateField({
       )}
 
       {mode === "month" && (
-        <div className={big ? "grid grid-cols-[1fr_9rem] gap-6" : "grid grid-cols-[1fr_7rem] gap-2"}>
+        <div className={big ? "grid grid-cols-[1fr_9rem] gap-6" : "grid grid-cols-[minmax(0,1fr)_5.5rem] gap-2"}>
           <select aria-label={`${label}: month`} className={input} value={month} onChange={(e) => changeMonthYear(e.target.value, year)}>
             <option value="">Month</option>
             {MONTHS.map((m) => (

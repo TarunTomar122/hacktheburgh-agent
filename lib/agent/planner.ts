@@ -47,13 +47,13 @@ const MAX_TABS = 4;
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
 const SEARCH = "https://search.brave.com/search?q=";
 
-type Emit = (e: PlannerEvent) => void;
+export type Emit = (e: PlannerEvent) => void;
 
 /* ------------------------------------------------------------------ answers from the user, by run */
 
 type Waiter = (answer: string | null) => void;
 const g = globalThis as typeof globalThis & { __plannerAnswers?: Map<string, Map<string, Waiter>> };
-const waiting = (g.__plannerAnswers ??= new Map());
+export const waiting = (g.__plannerAnswers ??= new Map());
 
 /** Called by POST /api/agent/plan/answer. Returns false if nothing is waiting for that question. */
 export function answerQuestion(runId: string, id: string, answer: string | null): boolean {
@@ -67,7 +67,7 @@ export function answerQuestion(runId: string, id: string, answer: string | null)
 /* ------------------------------------------------------------------ skips from the user (demo), by run */
 
 const gs = globalThis as typeof globalThis & { __plannerSkips?: Map<string, Set<CrewId | "all">> };
-const skips = (gs.__plannerSkips ??= new Map());
+export const skips = (gs.__plannerSkips ??= new Map());
 
 /** Called by POST /api/agent/plan/skip. From the next step on, that crew member's jobs (or all jobs: "all") are skipped. */
 export function skipCrew(runId: string, crew: CrewId | "all"): boolean {
@@ -80,7 +80,7 @@ export function skipCrew(runId: string, crew: CrewId | "all"): boolean {
 /* ------------------------------------------------------------------ small helpers */
 
 /** At most `n` browser tools at once; the rest wait their turn. */
-function limiter(n: number) {
+export function limiter(n: number) {
   let active = 0;
   const queue: (() => void)[] = [];
   return async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -108,7 +108,7 @@ const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" 
 
 /* ------------------------------------------------------------------ the calculator, asking as it goes */
 
-type Ask = (spec: Omit<AskSpec, "id">) => Promise<string | null>;
+export type Ask = (spec: Omit<AskSpec, "id">) => Promise<string | null>;
 const crewOf = (agentName: string): CrewId => (agentName === "SLAB calculator" ? "nell" : "elliot");
 
 export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, note: Note, track: Tracker, onFunding?: (funding: Funding) => void) {

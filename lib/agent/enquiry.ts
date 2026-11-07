@@ -194,7 +194,7 @@ function enquiryValues(facts: CaseFacts, m: EnquiryMessage): Value[] {
 const CONSENT_RE = /agree|consent|privacy|terms|accept|confirm|acknowledge|understand|legal aid/i;
 
 /** What is on their form now (for the review), the consent boxes still unticked, and required fields still empty. */
-async function readForm(page: Page, before?: Map<string, string>) {
+export async function readForm(page: Page, before?: Map<string, string>) {
   const o = await observe(page);
   const filled: { label: string; value: string }[] = [];
   const unfilled: string[] = [];
@@ -216,7 +216,7 @@ async function readForm(page: Page, before?: Map<string, string>) {
 }
 
 /** The form's values before the agent touches it (label -> value), to tell its defaults apart from what we typed. */
-async function snapshot(page: Page) {
+export async function snapshot(page: Page) {
   const o = await observe(page);
   return new Map(o.elements.filter((e) => e.kind === "text" || e.kind === "textarea" || e.kind === "select").map((e) => [(e.label || e.name || "").replace(/\s+/g, " ").trim(), e.value]));
 }

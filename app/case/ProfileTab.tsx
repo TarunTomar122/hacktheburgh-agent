@@ -174,12 +174,24 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
           </SectionTitle>
           {f.events.length === 0 && <p className="text-sm text-muted">No events yet.</p>}
           {f.events.map((e, i) => (
-            <div key={i} className="grid grid-cols-[13rem_1fr_auto] items-start gap-3">
-              <DateField label={`Event ${i + 1} date`} value={e.date} onChange={(v) => setEvent(i, { date: v })} />
-              <textarea rows={2} className={input} placeholder="What happened" value={e.what} onChange={(ev) => setEvent(i, { what: ev.target.value })} />
-              <Button variant="ghost" size="sm" onClick={() => updateFacts({ events: f.events.filter((_, j) => j !== i) })}>
-                Remove
-              </Button>
+            <div key={i} className="space-y-3 rounded-card border border-line bg-white p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="w-72 max-w-full">
+                  <DateField label={`Event ${i + 1} date`} value={e.date} onChange={(v) => setEvent(i, { date: v })} />
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => updateFacts({ events: f.events.filter((_, j) => j !== i) })}>
+                  Remove
+                </Button>
+              </div>
+              {/* Full width and tall enough for what is written (about 80 characters a line), so nothing is cut off. */}
+              <textarea
+                rows={Math.min(8, Math.max(2, Math.ceil(e.what.length / 80)))}
+                className={input}
+                aria-label={`Event ${i + 1}: what happened`}
+                placeholder="What happened"
+                value={e.what}
+                onChange={(ev) => setEvent(i, { what: ev.target.value })}
+              />
             </div>
           ))}
         </section>

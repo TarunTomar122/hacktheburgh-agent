@@ -8,7 +8,7 @@ import type { SpsoAnswers } from "./agent/spsoAnswers";
 import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord } from "./agent/enquiryTypes";
 import type { TrackId, TrackRecommendation } from "./agent/track";
-import type { EvidenceResult, PlanStep, Say } from "./agent/plannerTypes";
+import type { ComplaintResult, EvidenceResult, PlanStep, Say } from "./agent/plannerTypes";
 
 export type CaseRunRecord = {
   runId: string;
@@ -21,6 +21,9 @@ export type CaseRunRecord = {
   durationMs: number;
   finishedAt: string;
 };
+
+/** D65: the complaint crew's last run (the case file for step 1). `sample` = a recorded run played back, not a real one. */
+export type ComplaintRunRecord = { result: ComplaintResult; sample: boolean; durationMs: number; finishedAt: string };
 
 /** Everything we keep about the user's case. Stored in this browser only (localStorage). */
 export type Profile = {
@@ -36,6 +39,7 @@ export type Profile = {
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
   /** D52: the crew's last run, for the case file and "Review the run" (conversation, plan, evidence, counts). */
   caseRun?: CaseRunRecord;
+  complaintRun?: ComplaintRunRecord;
   /** Step 4: the message (editable), the last run's outcome per firm (`sample` = fixture), and the tracker (updated by hand for now). */
   enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
   enquiries?: EnquiryRecord[];
@@ -134,6 +138,11 @@ export function setLegalAid(patch: { funding?: Partial<Funding>; result?: Step3R
 export function setCaseRun(run: CaseRunRecord | null) {
   const p = read();
   if (p) write({ ...p, caseRun: run ?? undefined });
+}
+
+export function setComplaintRun(run: ComplaintRunRecord | null) {
+  const p = read();
+  if (p) write({ ...p, complaintRun: run ?? undefined });
 }
 
 export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation }) {

@@ -1,5 +1,6 @@
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
-import type { Funding, Step3Event, Step3Result } from "./legalAidTypes";
+import type { Funding, Step3Event, Step3Result, Stats, TraceStep } from "./legalAidTypes";
+import type { Draft } from "./draft";
 
 /**
  * Planner agent contract (D47). Client-safe.
@@ -41,6 +42,11 @@ export const TOOL_CREW: Record<string, CrewId> = {
   read_judgment: "iona",
   compare_care: "iona",
   fill_enquiry: "kit",
+  // The complaint crew (D65): Elliot, Robin, Iona and Kit.
+  read_process: "robin",
+  check_time_limit: "robin",
+  draft_complaint: "elliot",
+  fill_complaint_form: "kit",
 };
 
 /** One line in the crew's conversation: Elliot assigns, a worker reports, someone asks you. */
@@ -102,8 +108,28 @@ export type PlannerResult = Step3Result & {
   recoveries: number;
 };
 
+/** What the complaint crew found and did (D65): the route NHS Lothian describes, the time limit, the evidence, the draft, the form. */
+export type ComplaintResult = {
+  runId: string;
+  runDir: string;
+  plan: PlanStep[];
+  thoughts: Thought[];
+  turns: number;
+  says: Say[];
+  trace: TraceStep[];
+  stats: Stats;
+  asks: number;
+  process?: { summary: string; steps: string[]; support: string; url: string };
+  timeLimit?: { limit: string; status: "within" | "close" | "outside" | "unclear"; explanation: string; url: string };
+  evidence: EvidenceResult;
+  draft?: Draft;
+  form: { status: "ready_to_submit" | "needs_input" | "incomplete" | "failed" | "not_started"; filled: { label: string; value: string }[]; unfilled: string[]; note: string; url: string };
+  message?: string;
+};
+
 export type PlannerEvent =
   | Step3Event
+  | { type: "complaint_result"; result: ComplaintResult }
   | { type: "run"; runId: string }
   | { type: "funding"; funding: Funding }
   | { type: "plan"; steps: PlanStep[] }

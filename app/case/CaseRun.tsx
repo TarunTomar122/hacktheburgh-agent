@@ -140,7 +140,7 @@ function Intro({ onStart, onDemo, error }: { onStart: () => void; onDemo: (toEnd
 }
 
 /** Quiet controls for presenting (D63). Kept apart from the product UI so they never read as part of it. */
-function DemoBar({ children }: { children: React.ReactNode }) {
+export function DemoBar({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-16 flex flex-wrap items-center justify-center gap-2 text-[12px] text-muted">
       <span className="mr-1">Demo</span>
@@ -148,7 +148,7 @@ function DemoBar({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-function DemoButton({ onClick, children, disabled }: { onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
+export function DemoButton({ onClick, children, disabled }: { onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
   return (
     <button disabled={disabled} onClick={onClick} className="rounded-full border border-dashed border-line px-3 py-1 text-ink-2 hover:border-brand hover:text-brand disabled:opacity-40">
       {children}
@@ -160,7 +160,11 @@ function DemoButton({ onClick, children, disabled }: { onClick: () => void; chil
 
 type RunState = ReturnType<typeof usePlannerRun>["state"];
 
-function Workspace({ state, onAnswer, onSkip }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void }) {
+/** Who works in a flow, in story order, and what each one is called in it (the complaint crew reuses the same screen, D65). */
+export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
+const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
+
+export function Workspace({ state, onAnswer, onSkip, kit = COMPENSATION_KIT }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; kit?: CrewKit }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -188,12 +192,14 @@ function Workspace({ state, onAnswer, onSkip }: { state: RunState; onAnswer: (id
     : focusCrew === "elliot"
       ? replanned !== null
         ? lastPlan!.text
-        : lastPlan
+        : state.crew.elliot?.state === "working" && state.crew.elliot.note
+          ? `is ${lowerFirst(state.crew.elliot.note)}`
+          : lastPlan
           ? `is deciding the next step: ${lowerFirst(lastPlan.text)}`
           : "is reading your case and making a plan"
       : lowerFirst(state.crew[focusCrew]?.note || spot?.tab.split(" · ")[1] || "is working");
   const site = spot && focusCrew !== "elliot" ? host(state.trace.findLast((t) => t.agent === spot.tab && t.url)?.url) : "";
-  const order: CrewId[] = ["nell", "robin", "iona", "kit"];
+  const order = kit.workers;
   const stepNo = order.indexOf(focusCrew) + 1;
 
   return (
@@ -204,7 +210,7 @@ function Workspace({ state, onAnswer, onSkip }: { state: RunState; onAnswer: (id
           <CrewMark id={focusCrew} size={64} />
           <div className="min-w-0 flex-1">
             <p className={cx("text-[12px]", replanned !== null && !question ? "font-medium text-amber" : "text-muted")}>
-              {replanned !== null && !question ? "Elliot · changed the plan" : `${CREW[focusCrew].name} · ${CREW[focusCrew].role.toLowerCase()}${site ? ` · on ${site}` : ""}${stepNo > 0 ? ` · step ${stepNo} of 4` : ""}${state.demo ? " · recorded run" : ""}`}
+              {replanned !== null && !question ? "Elliot · changed the plan" : `${CREW[focusCrew].name} · ${kit.role(focusCrew).toLowerCase()}${site ? ` · on ${site}` : ""}${stepNo > 0 ? ` · step ${stepNo} of ${order.length}` : ""}${state.demo ? " · recorded run" : ""}`}
             </p>
             <h1 key={`${focusCrew}-${task}`} className="rise display mt-1 text-[28px] leading-[1.2] text-ink">
               {question || (focusCrew === "elliot" && replanned === null) ? `${CREW[focusCrew].name} ${task}` : task.replace(/^./, (c) => c.toUpperCase())}
@@ -221,7 +227,7 @@ function Workspace({ state, onAnswer, onSkip }: { state: RunState; onAnswer: (id
         {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} />}
       </section>
 
-      <CrewRow state={state} onOpen={(id) => setDrawer(id)} />
+      <CrewRow state={state} ids={["elliot", ...kit.workers]} onOpen={(id) => setDrawer(id)} />
 
       <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} />
 
@@ -252,7 +258,7 @@ function Workspace({ state, onAnswer, onSkip }: { state: RunState; onAnswer: (id
 
       {drawer && (
         <Drawer
-          title={drawer === "all" ? "The plan and everything that happened" : `${CREW[drawer].name}: ${CREW[drawer].role.toLowerCase()}`}
+          title={drawer === "all" ? "The plan and everything that happened" : `${CREW[drawer].name}: ${kit.role(drawer).toLowerCase()}`}
           onClose={() => {
             setDrawer(null);
             window.dispatchEvent(new CustomEvent("live-focus", { detail: "follow" }));
@@ -323,10 +329,10 @@ function Found({ says, trace, runId, onTrace }: { says: Say[]; trace: TraceStep[
 }
 
 /** The crew as one quiet row: who has finished, who is working, who is waiting. Click someone to see what they did. */
-function CrewRow({ state, onOpen }: { state: RunState; onOpen: (id: CrewId) => void }) {
+function CrewRow({ state, ids, onOpen }: { state: RunState; ids: CrewId[]; onOpen: (id: CrewId) => void }) {
   return (
     <nav aria-label="The crew" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
-      {CREW_ORDER.map((id, i) => {
+      {ids.map((id, i) => {
         const c = state.crew[id];
         const started = c.state !== "idle" || state.says.some((s) => s.from === id);
         const done = c.state === "done" || (c.state === "idle" && state.says.some((s) => s.from === id && s.kind === "report" && s.ok !== false));
@@ -749,7 +755,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
 }
 
 /** One part of the case file: who found it on the left, what it means on the right. */
-function Row({ crew, topic, title, children }: { crew: CrewId; topic: string; title: string; children: React.ReactNode }) {
+export function Row({ crew, topic, title, children }: { crew: CrewId; topic: string; title: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-4 px-6 py-6 md:grid-cols-[180px_1fr] md:gap-8">
       <div className="flex items-center gap-3 md:flex-col md:items-start md:gap-2">
@@ -767,7 +773,7 @@ function Row({ crew, topic, title, children }: { crew: CrewId; topic: string; ti
   );
 }
 
-function Said({ label, children }: { label: string; children: React.ReactNode }) {
+export function Said({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <p className="text-[13px] font-medium text-ink-2">{label}</p>
@@ -777,7 +783,7 @@ function Said({ label, children }: { label: string; children: React.ReactNode })
 }
 
 /** A quote in the source's own words, with a link to where it came from. */
-function Quote({ source, href, inline, children }: { source: string; href: string; inline?: boolean; children: React.ReactNode }) {
+export function Quote({ source, href, inline, children }: { source: string; href: string; inline?: boolean; children: React.ReactNode }) {
   return (
     <figure className={cx(!inline && "mt-3 border-l-2 border-line pl-4")}>
       <blockquote className="font-serif text-[16px] leading-7 text-ink">&ldquo;{children}&rdquo;</blockquote>

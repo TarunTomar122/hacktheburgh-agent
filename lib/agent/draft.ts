@@ -18,12 +18,18 @@ Rules:
 - Do not include the patient's contact details (they go in separate fields).
 - If desiredOutcome is null, return an empty string for outcome.`;
 
-export async function draftComplaint(facts: CaseFacts): Promise<Draft> {
+/** What Iona found (D65): one guideline recommendation and the question it raises. Goes in as a polite question, never a claim. */
+export type DraftEvidence = { guideline: string; point: string; question: string };
+
+const EVIDENCE_RULE = `
+- An "evidence" item may be given: a clinical guideline recommendation and a question it raises. Add ONE short paragraph near the end that quotes the recommendation exactly and politely asks NHS Lothian to explain how that was followed in the patient's care. Do not say it was not followed. Do not say anyone was at fault.`;
+
+export async function draftComplaint(facts: CaseFacts, evidence?: DraftEvidence): Promise<Draft> {
   return structured({
     model: MODELS.draft,
     effort: EFFORT.draft,
-    instructions: INSTRUCTIONS,
-    input: `Facts:\n${JSON.stringify(facts, null, 2)}`,
+    instructions: evidence ? INSTRUCTIONS + EVIDENCE_RULE : INSTRUCTIONS,
+    input: `Facts:\n${JSON.stringify(facts, null, 2)}${evidence ? `\n\nEvidence:\n${JSON.stringify(evidence, null, 2)}` : ""}`,
     schema: Draft,
     name: "complaint_draft",
   });

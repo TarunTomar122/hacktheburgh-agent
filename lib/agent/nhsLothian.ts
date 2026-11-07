@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { Page } from "playwright";
 import type { CaseFacts } from "./facts";
 import type { Draft } from "./draft";
 import { closeWhenSubmitted, dismissCookies, openSession } from "../browser";
@@ -31,6 +32,34 @@ export function nhsValues(facts: CaseFacts, draft: Draft): Value[] {
 export type Step1Result = BrowserRun & { screenshot?: string; runDir: string };
 
 /**
+ * Open NHS Lothian's form in this tab and fill it with the saved values, stopping before Submit. Shared by the
+ * single-agent route below and by Kit in the complaint crew (D65). Uses the Decisions API, with the tool-calling
+ * loop as the backup (D21, D46).
+ */
+export async function fillNhsForm(page: Page, facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; extra?: ExtraAnswers } = {}): Promise<BrowserRun> {
+  const emit = opts.onEvent ?? (() => {});
+  emit({ type: "status", message: "Opening the NHS Lothian form" });
+  await page.goto(NHS_LOTHIAN_FORM, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("textarea", { timeout: 20000 });
+  await dismissCookies(page, 2500);
+  const args = {
+    page,
+    goal: "Fill in the NHS Lothian online feedback/complaint form using the saved values. Do not submit.",
+    values: [...nhsValues(facts, draft), ...extraValues(opts.extra)],
+    allowCheckboxes: facts.emailRiskAccepted === true,
+    onEvent: emit,
+  };
+  if (process.env.AGENT_ENGINE === "tools") return runBrowserAgent(args);
+  try {
+    return await runDecisionAgent(args);
+  } catch (e) {
+    const why = (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120);
+    emit({ type: "status", message: `The decision service failed (${why}); switching to the backup engine` });
+    return runBrowserAgent(args);
+  }
+}
+
+/**
  * Fill the NHS Lothian form in a visible browser and STOP before submitting.
  * Submitting is deliberately not implemented yet: it needs a human approval path and a decision on test data.
  */
@@ -40,21 +69,7 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
   const { browser, page } = await openSession();
   let reviewing = false;
   try {
-    emit({ type: "status", message: "Opening the NHS Lothian form" });
-    await page.goto(NHS_LOTHIAN_FORM, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("textarea", { timeout: 20000 });
-    await dismissCookies(page, 2500);
-
-    // Engine: Decisions API (default, D21) or the tool-calling loop (fallback). Set AGENT_ENGINE=tools to use the loop.
-    const runAgent = process.env.AGENT_ENGINE === "tools" ? runBrowserAgent : runDecisionAgent;
-    const run = await runAgent({
-      page,
-      goal: "Fill in the NHS Lothian online feedback/complaint form using the saved values. Do not submit.",
-      values: [...nhsValues(facts, draft), ...extraValues(opts.extra)],
-      allowCheckboxes: facts.emailRiskAccepted === true,
-      onEvent: emit,
-    });
-
+    const run = await fillNhsForm(page, facts, draft, { onEvent: emit, extra: opts.extra });
     const screenshot = path.join(runDir, "final.png");
     await page.screenshot({ path: screenshot, fullPage: true });
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
