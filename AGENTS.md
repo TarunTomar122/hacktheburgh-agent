@@ -76,4 +76,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | `app/` | UI (`/` onboarding, `/case` profile and steps, `/dev` directory search) and `app/api/agent/*` |
 | `scripts/` | CLI runners; **`bench.ts` is the browser-agent regression suite (`npm run bench`)**. `scripts/probes/probe.mjs` inspects any URL; `scripts/probes/observe.ts` prints exactly what the agent sees. Neither submits anything |
 
-Run: `npm install && npx playwright install chromium`, add `OPENAI_API_KEY` to `.env.local`, then `npm run dev`. Only one `next dev` can run per project directory.
+Run: `npm install && npx playwright install chromium`, add `OPENAI_API_KEY` to `.env.local`, then `npm run dev`. Only one `next dev` can run per project directory. **Dev shortcut:** on the home page click "Skip: use demo patient" to jump to `/case` with a fictional patient (`lib/agent/sample.ts`) instead of doing the interview.

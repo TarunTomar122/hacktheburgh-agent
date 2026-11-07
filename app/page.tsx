@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
+import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_MESSAGES } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
+
+// Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
+const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
 
 export default function Onboarding() {
   const router = useRouter();
@@ -48,6 +52,11 @@ export default function Onboarding() {
     }
   }
 
+  function skipWithDemoPatient() {
+    createProfile(SAMPLE_FACTS, SAMPLE_MESSAGES, SAMPLE_DRAFT);
+    router.push("/case");
+  }
+
   function start() {
     createProfile(facts, messages);
     router.push("/case");
@@ -55,9 +64,20 @@ export default function Onboarding() {
 
   return (
     <main className="mx-auto flex h-screen max-w-2xl flex-col">
-      <header className="px-6 pt-8 pb-4">
-        <h1 className="text-lg font-semibold">Let&apos;s start with you</h1>
-        <p className="text-sm text-zinc-500">A few questions so we can prepare your case. Nothing is sent to the NHS yet.</p>
+      <header className="flex items-start justify-between gap-4 px-6 pt-8 pb-4">
+        <div>
+          <h1 className="text-lg font-semibold">Let&apos;s start with you</h1>
+          <p className="text-sm text-zinc-500">A few questions so we can prepare your case. Nothing is sent to the NHS yet.</p>
+        </div>
+        {SHOW_SKIP && (
+          <button
+            onClick={skipWithDemoPatient}
+            title="Dev shortcut: skips the interview and loads a fictional patient with a ready-made draft"
+            className="shrink-0 rounded-md border border-dashed border-zinc-400 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            Skip: use demo patient
+          </button>
+        )}
       </header>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-6 py-2">

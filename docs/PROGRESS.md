@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Claude · DONE · Dev shortcut: "Skip: use demo patient" button (D24)
+Tarun asked for a way to skip onboarding while developing. The onboarding page (`/`) now has a dashed "Skip: use demo patient" button that saves a fictional patient (Ailsa Reid) with a ready-written draft and goes straight to `/case`, so step 1 shows a draft with no model call. Shown in dev; hidden in production builds unless `NEXT_PUBLIC_DEMO_SKIP=1`. The demo data now lives in one place, `lib/agent/sample.ts`, shared by the button, `scripts/agent-nhs.ts` and the benchmark (the NHS benchmark task still passes after the refactor). Tested in a real browser: the skip lands on `/case` with the draft filled, the Profile tab is complete with consent ticked, the data survives a reload, no console errors. The demo conversation is a single note saying no interview took place. The draft text is static and was not written by the model on this run.
+
 ### 2026-11-07 · Claude (from the parent thread, with Tarun's go-ahead) · DONE · Complexity backlog recorded (D23)
 Added `docs/COMPLEXITY_BACKLOG.md` (six items with status, owner and why each is real browser complexity), three rules in `AGENTS.md` (read at session start; update with every site test or status change, marking unverified items `untested`; refresh statuses and the date daily or at session end), an `ACTIVE_WORK.md` row for backlog upkeep, and D23. Statuses were set from what we have actually run; anything that came only from the parent thread's text is labelled unverified in the backlog (for example, the GP-complaints page, the claim that Kennedys/TLT/Burges Salmon act for the NHS or insurers, and whether SPSO has a searchable decisions archive).
 

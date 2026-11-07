@@ -2,27 +2,10 @@
 import { draftComplaint } from "../lib/agent/draft";
 import type { CaseFacts } from "../lib/agent/facts";
 import { fillNhsComplaint } from "../lib/agent/nhsLothian";
+import { SAMPLE_FACTS } from "../lib/agent/sample";
 
-export const SAMPLE: CaseFacts = {
-  complainingFor: "me",
-  title: "Ms",
-  firstName: "Ailsa",
-  lastName: "Reid",
-  address: "14 Example Street, Edinburgh",
-  postcode: "EH1 1AA",
-  phone: "07700 900123",
-  email: "ailsa.reid@example.com",
-  preferredContact: "Email",
-  incidentLocation: "Royal Infirmary of Edinburgh, Accident & Emergency department",
-  incidentSummary: "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. The pain did not go away.",
-  events: [
-    { date: "early July 2026", what: "Fell on outstretched hand and attended A&E at the Royal Infirmary. X-rayed, told it was a sprain, sent home." },
-    { date: "mid August 2026", what: "Pain continued. My GP sent me back and a second X-ray showed a scaphoid fracture." },
-    { date: "November 2026", what: "The fracture has not healed and I now need surgery." },
-  ],
-  desiredOutcome: "An explanation of why the fracture was missed, and an apology.",
-  emailRiskAccepted: process.env.NO_CONSENT ? null : true,
-};
+// Fictional demo patient shared with the UI skip button (lib/agent/sample.ts). NO_CONSENT=1 withholds the email consent.
+export const SAMPLE: CaseFacts = { ...SAMPLE_FACTS, emailRiskAccepted: process.env.NO_CONSENT ? null : true };
 
 async function main() {
   console.log("Drafting complaint text...");

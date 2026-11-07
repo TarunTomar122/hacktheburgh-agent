@@ -40,9 +40,9 @@ function write(p: Profile) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-export function createProfile(facts: CaseFacts, messages: ChatMessage[]) {
+export function createProfile(facts: CaseFacts, messages: ChatMessage[], draft: Draft | null = null) {
   const now = new Date().toISOString();
-  write({ facts, messages, draft: null, createdAt: now, updatedAt: now });
+  write({ facts, messages, draft, createdAt: now, updatedAt: now });
 }
 
 export function updateFacts(patch: Partial<CaseFacts>) {
