@@ -231,8 +231,8 @@ function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]; stats
         {tiles.map((t) => (
           <li key={t.id} className="flex items-center gap-3 px-5 py-3 text-sm">
             <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.color }} />
-            <span className="w-44 shrink-0 truncate font-medium text-ink">{t.label}</span>
-            <span className="min-w-0 flex-1 truncate text-ink-2">{t.note}</span>
+            <span className="w-44 shrink-0 font-medium text-ink">{t.label}</span>
+            <span className="min-w-0 flex-1 text-ink-2">{t.note}</span>
             <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", STATE[t.state].cls)}>{STATE[t.state].text}</span>
           </li>
         ))}
@@ -245,7 +245,7 @@ function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]; stats
               <span className="shrink-0 font-medium" style={{ color: s.color }}>
                 {s.agent}
               </span>
-              <span className="truncate">{s.text}</span>
+              <span className="min-w-0">{s.text}</span>
             </li>
           ))}
         </ol>
@@ -277,19 +277,34 @@ function Badge({ children, cls }: { children: ReactNode; cls: string }) {
 
 /** "How well this firm fits what you need" (D39). A fit, never a chance of winning. */
 export function FitRing({ fit, size = 60, title = "How well this firm fits what you need, from the checks below. Not a chance of winning." }: { fit: number; size?: number; title?: string }) {
+  // Everything is drawn in one 56x56 SVG coordinate space, so the number and "FIT" are centred on the ring and scale with it at any size.
   const r = 22;
   const c = 2 * Math.PI * r;
+  const n = Math.max(0, Math.min(100, Math.round(fit)));
+  const showLabel = size >= 48;
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }} title={title}>
-      <svg viewBox="0 0 56 56" className="size-full -rotate-90" aria-hidden>
-        <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-line-soft)" strokeWidth="5" />
-        <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-brand)" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(fit / 100) * c} ${c}`} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className="font-medium tabular-nums text-ink" style={{ fontSize: Math.round(size / 4) }}>{fit}%</span>
-        <span className="mt-0.5 text-[9px] uppercase tracking-[0.1em] text-muted">fit</span>
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 56 56" className="shrink-0" role="img" aria-label={`${n}% fit`}>
+      <title>{title}</title>
+      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-line-soft)" strokeWidth="4.5" />
+      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--color-brand)" strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${(n / 100) * c} ${c}`} transform="rotate(-90 28 28)" />
+      <text
+        x="28"
+        y={showLabel ? 26 : 28}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={n === 100 ? 11 : 12.5}
+        fontWeight={600}
+        fill="var(--color-ink)"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {n}%
+      </text>
+      {showLabel && (
+        <text x="28" y="36.5" textAnchor="middle" dominantBaseline="central" fontSize="5" letterSpacing="0.6" fill="var(--color-muted)">
+          FIT
+        </text>
+      )}
+    </svg>
   );
 }
 
@@ -305,14 +320,15 @@ export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "m
   const [open, setOpen] = useState(false);
   return (
     <li>
-      <button onClick={() => setOpen((o) => !o)} title={row.evidence} aria-expanded={open} className="grid w-full grid-cols-[14px_1fr_96px_44px] items-center gap-2 py-1 text-left text-[13px] hover:bg-subtle">
+      <button onClick={() => setOpen((o) => !o)} title={row.evidence} aria-expanded={open} className="grid w-full grid-cols-[14px_1fr_auto] items-baseline gap-x-2 gap-y-1 rounded py-1.5 text-left text-[13px] hover:bg-subtle">
         <span aria-hidden className={cx("text-center text-[12px]", MARK[row.status].cls)}>{MARK[row.status].t}</span>
-        <span className="truncate text-ink-2">{row.label}</span>
-        <span className="h-1.5 overflow-hidden rounded-full bg-line-soft">
-          <span className={cx("block h-full rounded-full", BAR[row.status])} style={{ width: `${row.max ? (row.points / row.max) * 100 : 0}%` }} />
-        </span>
+        <span className="leading-5 text-ink-2">{row.label}</span>
         <span className="text-right text-[11px] tabular-nums text-muted">
           {row.points}/{row.max}
+        </span>
+        <span aria-hidden />
+        <span className="col-span-2 h-1 overflow-hidden rounded-full bg-line-soft">
+          <span className={cx("block h-full rounded-full", BAR[row.status])} style={{ width: `${row.max ? (row.points / row.max) * 100 : 0}%` }} />
         </span>
       </button>
       {open && <p className="mb-1.5 ml-[22px] rounded bg-subtle px-3 py-2 text-[12px] leading-5 text-ink-2">{row.evidence}</p>}

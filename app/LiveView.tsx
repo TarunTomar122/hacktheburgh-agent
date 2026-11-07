@@ -369,12 +369,12 @@ export default function LiveView() {
           </Button>
         )}
         {grid ? (
-          <div className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{pages.length} agents working at once</div>
+          <div className="min-w-0 flex-1 text-[13px] font-medium text-ink">{pages.length} agents working at once</div>
         ) : (
           <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white px-4 py-1.5 text-[13px] text-ink-2">
             {focusedPage && <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: focusedPage.color }} />}
             {focusedPage && <span className="shrink-0 font-medium text-ink">{focusedPage.label}</span>}
-            <span className="truncate" title={url}>
+            <span className="break-all" title={url}>
               {url.replace(/^https?:\/\/(www\.)?/, "") || "about:blank"}
             </span>
           </div>
@@ -463,7 +463,7 @@ export default function LiveView() {
               Back
             </Button>
           )}
-          <span className="flex-1 truncate text-[12px] text-muted">
+          <span className="flex-1 text-[12px] text-muted">
             {control ? "Your clicks and typing go to the real page." : "The agent never presses Submit."}
           </span>
           <Button
@@ -498,7 +498,7 @@ function Tile({ page, ended, onImg, onOpen }: { page: LivePage; ended: boolean; 
       <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", ended && "opacity-50")} />
       {failed && (
         <span className="absolute inset-0 flex items-end bg-danger/10 ring-1 ring-inset ring-danger/40">
-          <span className="w-full truncate bg-danger/85 px-2 py-1 text-left text-[11px] text-white">{page.note || "Failed"}</span>
+          <span className="w-full bg-danger/85 px-2 py-1 text-left text-[11px] leading-4 text-white">{page.note || "Failed"}</span>
         </span>
       )}
     </button>

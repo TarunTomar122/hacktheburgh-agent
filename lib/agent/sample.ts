@@ -1,8 +1,9 @@
-// Fictional demo patient "Ailsa Reid". Safe to use anywhere: scripts, benchmark, and the UI's skip button.
+// Fictional demo patients. Safe to use anywhere: scripts, benchmark, and the onboarding page's demo buttons.
 // Every detail is made up (example.com email, Ofcom drama-range phone number).
 import type { ChatMessage } from "./chat";
 import type { Draft } from "./draft";
 import type { CaseFacts } from "./facts";
+import { COMPENSATION_CHOICE, OUTCOME_CHOICES, outcomeSentence } from "./inputs";
 
 export const SAMPLE_FACTS: CaseFacts = {
   complainingFor: "me",
@@ -51,3 +52,73 @@ export const SAMPLE_SPSO = {
   impact: "The fracture has not healed and I am in pain every day. I now need surgery, I have missed lectures and shifts at my part-time job, and I am worried about whether I will get full use of my wrist back.",
   outcome: "I would like NHS Lothian to explain in writing why the fracture was missed at A&E, to apologise to me, and to review how wrist X-rays are checked so the same mistake does not happen to other patients.",
 };
+
+/* ------------------------------------------------------------------ demo personas (D24 rules: fictional, example.com, Ofcom drama numbers) */
+
+
+const [EXPLANATION, APOLOGY, CHANGES, SUPPORT] = OUTCOME_CHOICES;
+
+export type DemoPersona = { id: "complaint" | "compensation"; name: string; label: string; blurb: string; facts: CaseFacts; draft: Draft; messages: ChatMessage[] };
+
+/** Persona A: short-lived harm, wants answers not money. Should be recommended "Make a complaint" (D42). */
+const CALLUM: CaseFacts = {
+  complainingFor: "me",
+  title: "Mr",
+  firstName: "Callum",
+  lastName: "Fraser",
+  address: "22 Sample Road, Edinburgh",
+  postcode: "EH3 6AA",
+  phone: "07700 900456",
+  email: "callum.fraser@example.com",
+  preferredContact: "Letter",
+  incidentLocation: "Western General Hospital, day surgery unit",
+  incidentSummary:
+    "After a minor operation in day surgery I was given twice the right dose of an anti-sickness medicine. I was dizzy and very sick for the rest of the day and was kept in overnight. I was back to normal two days later, but nobody explained what had happened.",
+  events: [
+    { date: "3 October 2026", what: "Day surgery at the Western General. Given a double dose of anti-sickness medicine afterwards, felt very unwell and was kept in overnight." },
+    { date: "5 October 2026", what: "Felt back to normal. Asked the ward what had happened and did not get a clear answer." },
+  ],
+  desiredOutcome: outcomeSentence([EXPLANATION, APOLOGY, CHANGES], ""),
+  emailRiskAccepted: null,
+  medicalRecords: null,
+};
+
+const CALLUM_DRAFT: Draft = {
+  details:
+    "I am complaining about the care I received at the Western General Hospital day surgery unit.\n\nOn 3 October 2026, after a minor operation, I was given twice the correct dose of an anti-sickness medicine. I was dizzy and very sick for the rest of the day and was kept in overnight.\n\nI was back to normal by 5 October 2026. When I asked the ward what had happened, I did not get a clear answer.",
+  location: "Western General Hospital, day surgery unit",
+  outcome: CALLUM.desiredOutcome ?? "",
+};
+
+/** Persona B: Ailsa, with lasting harm that has cost her study and work, and who asks for compensation. Should be recommended "Claim compensation". */
+const AILSA_B: CaseFacts = {
+  ...SAMPLE_FACTS,
+  incidentSummary:
+    "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. The pain did not go away. Weeks later a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.",
+  events: [
+    ...SAMPLE_FACTS.events,
+    { date: "October 2026", what: "Missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist." },
+  ],
+  desiredOutcome: outcomeSentence([EXPLANATION, SUPPORT, COMPENSATION_CHOICE], ""),
+};
+
+export const DEMO_PERSONAS: DemoPersona[] = [
+  {
+    id: "complaint",
+    name: "Callum Fraser",
+    label: "Demo: complaint",
+    blurb: "Wrong medicine dose, recovered in two days. Wants an explanation, an apology and changes.",
+    facts: CALLUM,
+    draft: CALLUM_DRAFT,
+    messages: [{ role: "agent", content: "Demo patient loaded (Callum Fraser, fictional). No interview took place, so there is no conversation to show." }],
+  },
+  {
+    id: "compensation",
+    name: "Ailsa Reid",
+    label: "Demo: compensation",
+    blurb: "Missed wrist fracture that has not healed; missed exams and work. Wants compensation.",
+    facts: AILSA_B,
+    draft: SAMPLE_DRAFT,
+    messages: SAMPLE_MESSAGES,
+  },
+];

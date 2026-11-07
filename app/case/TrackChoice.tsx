@@ -89,7 +89,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-brand-soft text-[11px] font-medium text-brand">{i + 1}</span>
                   <span className={cx(s.state === "soon" ? "text-muted" : "text-ink")}>
                     {s.title}
-                    {s.state === "soon" && <span className="ml-1 text-xs text-faint">(coming soon)</span>}
+                    {s.state === "soon" && <span className="block text-xs text-faint">Coming soon</span>}
                   </span>
                 </li>
               ))}

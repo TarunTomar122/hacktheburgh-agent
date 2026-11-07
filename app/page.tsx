@@ -6,7 +6,7 @@ import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
 import { echoFor, inputFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
-import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_MESSAGES } from "../lib/agent/sample";
+import { DEMO_PERSONAS, type DemoPersona } from "../lib/agent/sample";
 import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
@@ -75,8 +75,9 @@ export default function Onboarding() {
     return run([...messages, { role: "user", content: echo }], answer);
   }
 
-  function skipWithDemoPatient() {
-    createProfile(SAMPLE_FACTS, SAMPLE_MESSAGES, SAMPLE_DRAFT);
+  /** Dev shortcut (D24): load a fictional persona with onboarding complete and go to the recommendation. */
+  function skipWith(p: DemoPersona) {
+    createProfile(p.facts, p.messages, p.draft);
     router.push("/case");
   }
 
@@ -98,13 +99,19 @@ export default function Onboarding() {
             </div>
           </div>
           {SHOW_SKIP && (
-            <button
-              onClick={skipWithDemoPatient}
-              title="Dev shortcut: skips the interview and loads a fictional patient with a ready-made draft"
-              className="shrink-0 rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
-            >
-              Skip: use demo patient
-            </button>
+            <div className="flex shrink-0 items-center gap-2" aria-label="Developer shortcut: load a fictional demo patient">
+              <span className="hidden text-[11px] text-white/70 md:inline">Try a demo:</span>
+              {DEMO_PERSONAS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => skipWith(p)}
+                  title={`Dev shortcut, fictional: ${p.name}. ${p.blurb}`}
+                  className="rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           )}
         </header>
         <Stripes />

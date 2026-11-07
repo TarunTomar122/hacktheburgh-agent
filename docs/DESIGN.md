@@ -100,6 +100,9 @@ Each interview question is a full screen under the header: heading in `.display`
 
 ## Do / don't
 
+- **Never truncate text** (no `truncate`, ellipsis or line clamps). Let it wrap, or change the layout so it fits; long URLs use `break-all` (Tarun, 2026-11-07).
+- **Progressive disclosure:** a little up front, details on click (Tarun, 2026-11-07).
+
 - Do use serif only for headings, big numbers and the user's own draft text. Everything else is sans.
 - Do keep copy plain and short. No jargon, no exclamation marks.
 - Don't use circles for steps or avatars other than the profile button. Don't add shadows, gradients or a second primary colour.

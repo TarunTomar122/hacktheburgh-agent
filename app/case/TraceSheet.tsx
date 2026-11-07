@@ -134,7 +134,7 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
                 </div>
                 <p className="text-[14px] leading-5 text-ink">{s.text}</p>
                 {s.url && (
-                  <a href={s.url} target="_blank" rel="noreferrer" className="block truncate text-[12px] text-brand underline-offset-2 hover:underline">
+                  <a href={s.url} target="_blank" rel="noreferrer" className="block break-all text-[12px] text-brand underline-offset-2 hover:underline">
                     {s.url.replace(/^https?:\/\/(www\.)?/, "")}
                   </a>
                 )}
