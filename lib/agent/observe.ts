@@ -20,6 +20,7 @@ export type Observation = {
   title: string;
   headings: string[];
   errors: string[];
+  text: string; // visible text of the main content, trimmed (questionnaire pages put the question here)
   elements: El[];
 };
 
@@ -29,6 +30,20 @@ export type Observation = {
  * Hidden, off-screen and honeypot fields are left out on purpose: filling a spam trap gets a form rejected.
  */
 export async function observe(page: Page): Promise<Observation> {
+  // A click can start a navigation; wait for it to settle and retry instead of crashing.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.waitForLoadState("domcontentloaded", { timeout: 10000 }).catch(() => {});
+      return await observeOnce(page);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (attempt >= 3 || !/Execution context was destroyed|navigation|Target closed/i.test(msg)) throw e;
+      await page.waitForTimeout(500);
+    }
+  }
+}
+
+async function observeOnce(page: Page): Promise<Observation> {
   return page.evaluate(() => {
     document.querySelectorAll("[data-aid]").forEach((x) => x.removeAttribute("data-aid"));
     const text = (n: Element | null | undefined) => (n?.textContent ?? "").replace(/\s+/g, " ").trim();
@@ -116,7 +131,9 @@ export async function observe(page: Page): Promise<Observation> {
       .filter(Boolean)
       .slice(0, 5);
     const headings = Array.from(document.querySelectorAll("h1, h2")).filter(visible).map((n) => text(n)).slice(0, 4);
-    return { url: location.href, title: document.title, headings, errors, elements: out };
+    const main = document.querySelector("main") ?? document.body;
+    const pageText = ((main as HTMLElement).innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 2500);
+    return { url: location.href, title: document.title, headings, errors, text: pageText, elements: out };
   });
 }
 
@@ -147,6 +164,7 @@ export function formatObservation(o: Observation): string {
   const lines = [`PAGE: ${o.title} (${o.url})`];
   if (o.headings.length) lines.push(`HEADINGS: ${o.headings.join(" | ")}`);
   if (o.errors.length) lines.push(`ERRORS ON PAGE: ${o.errors.join(" | ")}`);
+  if (o.text) lines.push(`PAGE TEXT (start): ${o.text.slice(0, 1200)}`);
   lines.push("ELEMENTS:");
   for (const e of o.elements) {
     const req = e.required ? " *required*" : "";

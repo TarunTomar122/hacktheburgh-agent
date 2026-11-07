@@ -41,4 +41,4 @@ async function main() {
   console.log("Screenshot:", result.screenshot);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+if (process.argv[1]?.includes("agent-nhs")) main().catch((e) => { console.error(e); process.exit(1); });

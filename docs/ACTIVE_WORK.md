@@ -6,9 +6,10 @@ Claim an area before you start, release it when you finish. One row per area. Ke
 
 | Area | Owner (human + agent) | Status | Files | Notes |
 |---|---|---|---|---|
-| Agent core: interview, draft, NHS form fill | Tarun + Claude | **Done, idle** (submit not built) | `lib/agent/*`, `app/api/agent/*` | Next: step 2 onward, or submit (needs D14 decision) |
+| Agent core: interview, draft, NHS form fill (step 1) | Tarun + Claude | **Done, idle** (submit not built) | `lib/agent/*`, `app/api/agent/*` | Step 1 runs on the Decisions engine. Next: steps 2+, or submit (needs D14) |
 | UI: onboarding, profile tab, case view | Tarun | Basic version done; Tarun will rework | `app/page.tsx`, `app/case/*` | Do not restyle without asking |
 | Law Society directory search | Tarun + Claude | Basic search works; sub-category filter and "View details" not done | `lib/directory.ts`, `app/dev/page.tsx` | Needed for step 5 |
+| Decisions API (Luna) engine + benchmark | Tarun + Claude | **Done, idle** | `lib/agent/decisions.ts`, `lib/agent/decisionAgent.ts`, `scripts/bench.ts` | Adopted (D21). Implementers of any step: use this engine; do not write a new loop. Run `npm run bench` before changing `observe.ts` or the engine |
 | Step 2: records request | unclaimed | Not started | | |
 | Step 3: ombudsman check | unclaimed | Not started | | Site verified to question 5 |
 | Step 4: legal aid check | unclaimed | Not started | | Site verified |

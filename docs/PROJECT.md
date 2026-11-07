@@ -11,11 +11,11 @@ Ailsa (21, student, Edinburgh) fell on her hand. A&E said sprain; weeks later a 
 | # | Step | Status |
 |---|---|---|
 | 0 | Intake interview -> structured facts, saved as a profile | **Built.** Real OpenAI agent. Tested end to end |
-| 1 | Complain to NHS Lothian | **Fill is built and tested.** Stops before submit. **Submit is not built** (needs approval path, test-data decision, reCAPTCHA handling) |
+| 1 | Complain to NHS Lothian | **Fill is built and tested on the Decisions engine** (D21). Stops before submit. **Submit is not built** (needs approval path, test-data decision, reCAPTCHA handling) |
 | 2 | Medical records request | Not built. Plan: code fills a PDF. Whether Lothian has an online route is **unverified** |
 | 3 | Ombudsman (SPSO) check | Not built. Site verified up to question 5 (see below) |
-| 4 | Legal aid check (SLAB) | Not built. Site verified |
-| 5 | Find solicitors, send enquiries | Directory search built (`/dev`). Firm enquiry forms exist but are not automated yet |
+| 4 | Legal aid check (SLAB) | Not built. Site verified, **and the benchmark completes it end to end** with the Decisions agent (`bench` task `slab`) |
+| 5 | Find solicitors, send enquiries | Directory search built (`/dev`) and driven by the agent in the benchmark (`lawsoc`). Anderson Strathern, MFMac and Irwin Mitchell forms are filled (not submitted) in the benchmark. Not yet wired into the app |
 | 6 | Case file | Not built |
 
 Not in scope for now: booking an expert (solicitor chooses and instructs experts), consultation booking, England, filing with the ombudsman for real.
@@ -36,8 +36,12 @@ All checked on 2026-11-07 with headless Playwright, a Chrome user-agent, **nothi
 | SPSO complaint checker | https://www.spso.org.uk/form/complaint-checker | Multi-step radio questions: Scottish public service? -> final written response received? -> when (under or over 1 year) -> when did you first know (under or over 1 year) -> desired outcomes (Money, Disciplinary action, Decision overturned, None). Answering "No" to the final-response question stops with "SPSO can only consider a complaint once you have completed the organisation's process". Verdict screen after question 5 **not seen** |
 | SLAB civil legal aid estimator | https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/ | 5-step branching form; result calculates on the page as you type. Dummy student figures returned "likely to qualify for civil legal aid". **403 without a normal Chrome user-agent** |
 | Law Society "Find a Solicitor" | https://www.lawscot.org.uk/find-a-solicitor/ | Search by postcode/city, area of law, legal aid checkbox. "Edinburgh" + "Accident and injury" returns 97 firms with name, address, legal-aid badge, partner count. Cookie banner blocks clicks until dismissed. The "Medical negligence" sub-category is a hidden multi-select; **setting it did not work yet**, so results are not filtered to clinical negligence. Result rows show **no website link**; "View details" not yet opened. The list appears to include defender-side firms (e.g. insurer-side) - **unverified** |
-| Firm enquiry forms | [Anderson Strathern](https://www.andersonstrathern.co.uk/legal-expertise/medical-negligence/), [MFMac](https://mfmac.com/legal-expertise/individuals-and-families/personal-injury/medical-negligence-compensation), [Irwin Mitchell](https://www.irwinmitchell.com/personal-injury-claims/scotland) | Forms exist and load. Invisible reCAPTCHA fires on submit. Anderson Strathern has a required tick box saying you are not eligible for legal aid unless seeking help with medical negligence, linking to SLAB (a real cross-site dependency). MFMac has an Urgent/General option (effect on the form untested). Slater & Gordon gave a certificate error from one machine |
+| Firm enquiry forms | [Anderson Strathern](https://www.andersonstrathern.co.uk/legal-expertise/medical-negligence/), [MFMac](https://mfmac.com/legal-expertise/individuals-and-families/personal-injury/medical-negligence-compensation), [Irwin Mitchell contact form](https://www.irwinmitchell.com/contact-us) | **Anderson Strathern:** on-page form; First/Last name, Email*, Phone*, City, Company, "How can we help?"*, Yes/No radio (meaning unknown), "how did you hear" dropdown, **two required checkboxes** (one says you are not eligible for legal aid unless seeking help with medical negligence and links to SLAB; one is Terms/Privacy). **MFMac:** enquiry form in a popup; Your Name*, Telephone, Email*, urgency dropdown (Urgent / General enquiry), summary*, optional "send me a copy". **Irwin Mitchell:** the Scotland page has **no form**; the form is at `/contact-us` (First*, Last*, Email*, Phone*, Description; "Request a callback" is disabled until required fields are filled). Invisible reCAPTCHA reported on submit for the firms (not tested by us). Slater & Gordon gave a certificate error from one machine. Corrected 2026-11-07, see Discrepancy 1 in `docs/PROGRESS.md` |
 | GMC register | https://www.gmc-uk.org/registration-and-licensing/our-registers | Search box exists and no CAPTCHA seen. **Search results never loaded** in testing. Several GMC URLs we guessed returned 404 |
+
+## Decisions API (Luna) facts
+
+Verified 2026-11-07 against our key and OpenAI's official pages (see `docs/PROGRESS.md` for how). `POST /v1/decisions`, only model `gpt-6-luna`, generally available. Body: `model`, `input` (string/array of text, image, JSON), `questions` (1-400, types `predicate`, `choice`, `score`). Answers come back in question order with probabilities and, for choice/score, `confidence`. No free-text output, no DOM input type (send your own text snapshot). Observed: one call mapping 5 fields in 163-853 ms. Benchmark (2026-11-07): 10/10 on 10 sites on the second run, 0.3-2.8 s model time per task; see `docs/PROGRESS.md`. Unverified: OpenAI's "10x faster than Responses" claim, cost per call, comparison with the tool loop, flakiness beyond 2 runs. `gpt-5.6-luna` is a different, cheaper chat model, not the Decisions API.
 
 ## Gotchas we hit
 
@@ -48,6 +52,10 @@ All checked on 2026-11-07 with headless Playwright, a Chrome user-agent, **nothi
 - tsx/esbuild injects `__name` into code sent to the page. `openSession()` defines it via an init script.
 - Next.js 16 here rejects `export const runtime` in route handlers when `cacheComponents` is on. Read `node_modules/next/dist/docs/` before relying on older Next knowledge.
 - Only one `next dev` per project directory.
+- Forms can load lazily: wait before concluding a form is absent (Irwin Mitchell).
+- Pages can navigate under you; `observe()` retries after a navigation.
+- Cookie banners differ per site; `dismissCookies()` now finds reject/necessary buttons generically.
+- SLAB shows only one radio question on first load; later steps appear after answering.
 
 ## Unverified claims (do not present as fact)
 

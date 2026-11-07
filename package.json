@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "agent:interview": "tsx --env-file=.env.local scripts/agent-interview.ts",
-    "agent:nhs": "tsx --env-file=.env.local scripts/agent-nhs.ts"
+    "agent:nhs": "tsx --env-file=.env.local scripts/agent-nhs.ts",
+    "bench": "tsx --env-file=.env.local scripts/bench.ts"
   },
   "dependencies": {
     "next": "16.4.5",

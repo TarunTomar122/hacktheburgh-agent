@@ -21,18 +21,40 @@ export async function openSession(): Promise<Session> {
   return { browser, context, page };
 }
 
-/** Reject cookies if a known banner appears; never fail if there isn't one. */
-export async function dismissCookies(page: Page, waitMs = 6000): Promise<void> {
-  const selector = [
-    "#ccc-reject-settings", // Civic Cookie Control (Law Society)
-    'button:has-text("Reject cookies")', // GMC
-  ].join(", ");
-  const el = page.locator(selector).first();
-  try {
-    await el.waitFor({ state: "visible", timeout: waitMs });
-    await el.click({ timeout: 3000 });
-    await page.locator("#ccc-overlay").waitFor({ state: "hidden", timeout: 3000 }).catch(() => {});
-  } catch {
-    // no banner appeared
+/**
+ * Dismiss a cookie banner if one appears. Prefers reject / necessary-only. Falls back to "accept" only when the
+ * banner offers no way to refuse, because an unclosable banner blocks the page. Never fails if there is no banner.
+ */
+export async function dismissCookies(page: Page, waitMs = 6000): Promise<"rejected" | "accepted" | "none"> {
+  const reject = /^\s*(reject( all| cookies)?|decline( all| cookies)?|refuse|deny|only (essential|necessary)( cookies)?|necessary( cookies)? only|i do not accept cookies|continue without accepting)\s*$/i;
+  const accept = /^\s*(accept( all| all cookies| cookies| recommended settings)?|allow all( cookies)?|i agree|agree|ok|okay|got it|close)\s*$/i;
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    const buttons = page.locator("button, [role=button], a.button, input[type=button], input[type=submit]");
+    const n = Math.min(await buttons.count(), 60);
+    let fallback: ReturnType<typeof buttons.nth> | null = null;
+    for (let i = 0; i < n; i++) {
+      const b = buttons.nth(i);
+      if (!(await b.isVisible().catch(() => false))) continue;
+      const label = ((await b.innerText().catch(() => "")) || (await b.getAttribute("value").catch(() => "")) || "").trim();
+      if (!label || label.length > 40) continue;
+      const inBanner = await b
+        .evaluate((el) => !!el.closest('[id*="cookie" i], [class*="cookie" i], [id*="consent" i], [class*="consent" i], [id*="ccc" i], [id*="onetrust" i], [class*="cc-" i], [aria-label*="cookie" i], [role=dialog]'))
+        .catch(() => false);
+      if (!inBanner) continue;
+      if (reject.test(label)) {
+        await b.click({ timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(500);
+        return "rejected";
+      }
+      if (accept.test(label)) fallback ??= b;
+    }
+    if (fallback) {
+      await fallback.click({ timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      return "accepted";
+    }
+    await page.waitForTimeout(400);
   }
+  return "none";
 }

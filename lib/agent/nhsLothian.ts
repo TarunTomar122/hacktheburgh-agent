@@ -3,6 +3,7 @@ import type { CaseFacts } from "./facts";
 import type { Draft } from "./draft";
 import { dismissCookies, openSession } from "../browser";
 import { runBrowserAgent, type BrowserRun, type Value } from "./browserAgent";
+import { runDecisionAgent } from "./decisionAgent";
 import { makeLogger, type OnEvent } from "./events";
 
 export const NHS_LOTHIAN_FORM = "https://www.nhslothian.scot/yourrights/online-feedback-form/";
@@ -42,9 +43,11 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
     await page.waitForSelector("textarea", { timeout: 20000 });
     await dismissCookies(page, 2500);
 
-    const run = await runBrowserAgent({
+    // Engine: Decisions API (default, D21) or the tool-calling loop (fallback). Set AGENT_ENGINE=tools to use the loop.
+    const runAgent = process.env.AGENT_ENGINE === "tools" ? runBrowserAgent : runDecisionAgent;
+    const run = await runAgent({
       page,
-      goal: "Fill in the NHS Lothian online feedback/complaint form using VALUES. Do not submit.",
+      goal: "Fill in the NHS Lothian online feedback/complaint form using the saved values. Do not submit.",
       values: nhsValues(facts, draft),
       allowCheckboxes: facts.emailRiskAccepted === true,
       onEvent: emit,

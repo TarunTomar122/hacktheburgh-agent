@@ -10,22 +10,47 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # hacktheburgh-agent: read this first
 
-A browser-use agent for the Wordsmith.AI track at HackTheBurgh: "Make the most complicated end-to-end agentic AI browser-use workflow." It helps one patient (fictional "Ailsa", Edinburgh) take a missed-diagnosis case from "something went wrong" to "a solicitor has her case file". Legal angle is a bonus, not a requirement.
+## What we are doing and why (the 10-line version)
 
-**Several people and their agents work in this repo at the same time.** To avoid overriding each other:
+1. **Event:** HackTheBurgh, Wordsmith.AI track. The brief, verbatim: "Make the most complicated end-to-end agentic AI browser-use workflow." The slide adds: legal is "ideally, not required. Creativity required."
+2. **What is judged** (our reading, confirmed by Tarun): lots of steps, lots of sites, branching decisions, recovering from failures. Complexity must be in the **browser work**, not in the code or AI around it.
+3. **Our project:** an agent that helps one fictional patient, **Ailsa** (Edinburgh), whose broken wrist bone was missed at A&E. It interviews her, drafts a complaint, fills the NHS Lothian form in a visible browser, and later checks the ombudsman and legal aid, finds solicitors, sends enquiries and builds one case file.
+4. **Why a legal case:** it gives real multi-site dependencies (the legal aid result feeds a field on a law firm's form) and a bonus for the "legal" hint. It is not a legal product and none of its legal facts are verified.
+5. **Honest weakness:** the NHS form (one page) and the ombudsman checker (5 questions) are easy for a browser agent. The hard part is unfamiliar sites: searching a directory, finding and filling many different law-firm forms. See `docs/PROJECT.md`.
+6. **Never goes live:** the agent stops before submitting. A real submit sends a real complaint to a real organisation.
+7. **Stack:** Next.js app + Node server driving a visible Playwright Chromium. OpenAI models. No logins, no extension, no desktop app.
+8. **Browser engine (settled, D21):** OpenAI's Decisions API (`gpt-6-luna`). The model only chooses; our code types. Anyone implementing a step uses `runDecisionAgent` and adds a task to `scripts/bench.ts`. See `AGENT.md`. The older tool-calling loop is a fallback only.
+9. **Everything we tried and rejected, and why:** `docs/NOT_DOING.md`. Do not re-propose these without new evidence.
+10. **Everything we decided:** `docs/DECISIONS.md`. Do not override these silently.
 
-1. Read `docs/PROJECT.md` (what exists, what was verified), `docs/DECISIONS.md` (what is settled) and `docs/ACTIVE_WORK.md` (who is on what) before you change anything.
-2. **Claim your area** in `docs/ACTIVE_WORK.md` before you start, and release it when you finish. If someone else holds it, talk to them first.
-3. **Do not change a settled decision silently.** If you disagree, add a new entry to `docs/DECISIONS.md` that supersedes the old one, with your reason. Never edit or delete old entries.
-4. **Log every decision you make** (a library, a model, a rule, a thing you ruled out) in `docs/DECISIONS.md`. Short is fine. Anything not written down will be re-decided by someone else.
-5. Update `docs/PROJECT.md` when you build or verify something. Mark claims **verified** (with how and when) or **unverified**. Do not state legal or site facts you have not checked.
-6. `git pull` before you start and commit small. Never force-push.
+## Rules for every agent and every person
 
-## Hard rules (also enforced in code where possible)
+**Source of truth, in order:** `docs/DECISIONS.md` > `docs/ACTIVE_WORK.md` > `docs/PROGRESS.md` > `docs/PROJECT.md` > `docs/NOT_DOING.md` > code comments > your own memory. If your memory or a chat message disagrees with the docs, the docs win until a new decision entry says otherwise.
 
-- **Never submit a real form** during development or tests. The agent stops at `ready_to_submit`. A real submit sends a real complaint to a real organisation.
+### Start of every session
+1. `git pull`. Then read `docs/DECISIONS.md`, `docs/ACTIVE_WORK.md`, the top of `docs/PROGRESS.md` and the Discrepancies table.
+2. **Claim your area** in `docs/ACTIVE_WORK.md`. If someone else holds it, talk to them first.
+3. Tell the human what you understood the current state to be, in a few lines, before you change anything.
+
+### Before every commit or push (the sync check - do not skip)
+1. `git fetch`, then `git pull --rebase`. If there are conflicts, resolve them without discarding the other person's work.
+2. **Re-read what changed while you worked:** `git diff <your-last-pulled-commit>..HEAD -- AGENTS.md AGENT.md docs/` and skim new commits touching `lib/`, `app/`.
+3. **Compare your change against the docs.** Ask: does it contradict a settled decision? Duplicate or collide with something in `ACTIVE_WORK.md` or someone's new code? Rely on a claim `PROJECT.md` marks unverified? Change a file someone else has claimed?
+4. **Flag every discrepancy.** A discrepancy is any difference between: docs and reality; two docs; your change and a decision; two people's in-flight work. Add a row to the Discrepancies table in `docs/PROGRESS.md` (status `open`), **and** state it plainly in your message to the human. Do not quietly fix someone else's work, and do not quietly override a decision. If you must deviate, add a superseding entry to `docs/DECISIONS.md` first.
+5. **Update the docs in the same commit as the code:** `PROGRESS.md` (what you did, tried, learned, and why), `DECISIONS.md` (anything you chose), `PROJECT.md` (anything you built or verified), `ACTIVE_WORK.md` (release or hand off your area).
+6. Run `npx tsc --noEmit` and `npx eslint .`.
+7. Push. If the push is rejected, go back to step 1. **Never force-push.**
+
+### Writing things down
+- **Log what you tried, including failures, and why.** A failed attempt that is not written down will be repeated by someone else.
+- **Log why you did NOT do something** in `docs/NOT_DOING.md`.
+- Mark every claim **verified** (say how and when) or **unverified**. Do not state legal facts, site behaviour or benchmark results you have not checked. Label an agent's suggestion as `proposed`, not `decided`.
+- Dates are absolute (`2026-11-07`), never "yesterday".
+
+### Hard rules (also enforced in code where possible)
+- **Never submit a real form** in development or tests. The agent stops at `ready_to_submit`.
 - **Fictional data only** in tests, scripts and screenshots. The repo is public.
-- **No secrets in git.** The OpenAI key lives in `.env.local` (git-ignored). Copy `.env.example`.
+- **No secrets in git.** The OpenAI key lives in `.env.local` (git-ignored). Copy `.env.example`. Never paste a key in chat or a doc.
 - The agent must not tick consent boxes the user has not agreed to, and must not invent personal data. See `AGENT.md`.
 - Playwright needs a normal Chrome user-agent (SLAB returns 403 otherwise). Use `openSession()` in `lib/browser.ts`.
 
@@ -34,12 +59,14 @@ A browser-use agent for the Wordsmith.AI track at HackTheBurgh: "Make the most c
 | Where | What |
 |---|---|
 | `AGENT.md` | How the agent works: interview, draft, browser loop, safety rules, entry points |
-| `docs/PROJECT.md` | Status, verified site facts, gotchas, unverified claims |
+| `docs/PROGRESS.md` | Living log of what was done, tried and learned; open discrepancies; open questions |
 | `docs/DECISIONS.md` | Append-only decision log |
+| `docs/NOT_DOING.md` | Ideas considered and rejected, with reasons |
+| `docs/PROJECT.md` | Status, verified site facts, gotchas, unverified claims |
 | `docs/ACTIVE_WORK.md` | Who is working on what right now |
-| `lib/agent/` | Agent code (facts, interview, draft, observe, browserAgent, nhsLothian) |
-| `lib/browser.ts`, `lib/directory.ts` | Playwright session and the Law Society directory search |
-| `app/` | UI (`/` onboarding, `/case` profile and steps, `/dev` directory search) and `app/api/agent/*` routes |
-| `scripts/` | CLI runners; `scripts/probes/probe.mjs` inspects any URL (forms, CAPTCHA signals), submits nothing |
+| `lib/agent/` | Agent code: facts, interview, draft, observe, **decisions + decisionAgent (default engine)**, browserAgent (fallback), nhsLothian |
+| `lib/browser.ts`, `lib/directory.ts` | Playwright session, cookie handling, Law Society directory search |
+| `app/` | UI (`/` onboarding, `/case` profile and steps, `/dev` directory search) and `app/api/agent/*` |
+| `scripts/` | CLI runners; **`bench.ts` is the browser-agent regression suite (`npm run bench`)**. `scripts/probes/probe.mjs` inspects any URL; `scripts/probes/observe.ts` prints exactly what the agent sees. Neither submits anything |
 
 Run: `npm install && npx playwright install chromium`, add `OPENAI_API_KEY` to `.env.local`, then `npm run dev`. Only one `next dev` can run per project directory.

@@ -6,12 +6,15 @@ import type { OnEvent, RunStatus } from "./events";
 
 export type Value = { key: string; description: string; value: string };
 
+export type RunStats = { calls: number; ms: number; inputTokens: number };
+
 export type BrowserRun = {
   status: RunStatus;
   summary: string;
   unfilled: string[];
   question?: string;
   steps: number;
+  stats?: RunStats;
 };
 
 const obj = (properties: Record<string, unknown>, required: string[]) => ({
@@ -36,15 +39,19 @@ const TOOLS: FunctionTool[] = [
     parameters: obj({ summary: { type: "string" } }, ["summary"]) },
 ];
 
-const SYSTEM = `You operate a web form for a user. You see the page as a numbered list of elements and act with tools.
+const SYSTEM_BASE = `You operate a web form for a user. You see the page as a numbered list of elements and act with tools.
 Rules:
 - Enter ONLY data from VALUES. Never invent, guess or paraphrase personal data. If the form needs something not in VALUES, call ask_user.
 - Fill every required field. Also fill optional fields when you have a matching value.
 - You may call several tools in one turn (e.g. fill many fields at once). Use element ids from the latest page view only.
 - Tick a checkbox (consent, agreement, disclaimer) ONLY if VALUES says the user agreed to it. Otherwise leave it and call finish.
-- Do not touch fields you cannot map to a value. Do not click submit. The human approves submission, not you.
+- Do not touch fields you cannot map to a value.
+{{SUBMIT_RULE}}
 - After filling, check the next page view shows the values you entered. When all required fields show values, call finish.
 - Radios and dropdowns: choose the option that matches the value's meaning.`;
+
+const SUBMIT_NEVER = "- Do not click submit. The human approves submission, not you.";
+const SUBMIT_OK = "- This page is read-only (a search, calculator or checker). You may click submit/next buttons to move forward; nothing is sent to anyone. Use the page text to understand each question, answer it from VALUES, and call finish when the goal is reached or you cannot answer from VALUES.";
 
 export async function runBrowserAgent(opts: {
   page: Page;
@@ -54,11 +61,15 @@ export async function runBrowserAgent(opts: {
   onEvent?: OnEvent;
   /** Tick consent/agreement checkboxes only when the user has explicitly agreed. Default: never. */
   allowCheckboxes?: boolean;
+  /** Let the agent click submit buttons. Only for read-only pages (search, calculators, "next" in a checker). Never for forms that send data to an organisation. */
+  allowSubmit?: boolean;
 }): Promise<BrowserRun> {
   const { page, goal, values, onEvent } = opts;
   const emit: OnEvent = onEvent ?? (() => {});
   const maxSteps = opts.maxSteps ?? 12;
   const history: string[] = [];
+  const stats: RunStats = { calls: 0, ms: 0, inputTokens: 0 };
+  const system = SYSTEM_BASE.replace("{{SUBMIT_RULE}}", opts.allowSubmit ? SUBMIT_OK : SUBMIT_NEVER);
   const valuesText = values.filter((v) => v.value.trim()).map((v) => `- ${v.key} (${v.description}): ${JSON.stringify(v.value)}`).join("\n");
 
   for (let step = 1; step <= maxSteps; step++) {
@@ -72,15 +83,17 @@ export async function runBrowserAgent(opts: {
       `CURRENT PAGE:\n${formatObservation(obs)}`,
     ].filter(Boolean).join("\n\n");
 
+    const t0 = Date.now();
     const res = await openai().responses.create({
       model: MODELS.browser,
       reasoning: { effort: EFFORT.browser },
-      instructions: SYSTEM,
+      instructions: system,
       input,
       tools: TOOLS,
       tool_choice: "required",
       parallel_tool_calls: true,
     });
+    stats.calls++; stats.ms += Date.now() - t0; stats.inputTokens += res.usage?.input_tokens ?? 0;
     const calls = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
 
     for (const call of calls) {
@@ -88,7 +101,7 @@ export async function runBrowserAgent(opts: {
 
       if (call.name === "ask_user") {
         const question = String(args.question);
-        return { status: "needs_input", summary: "The form needs information we don't have.", unfilled: [], question, steps: step };
+        return { status: "needs_input", summary: "The form needs information we don't have.", unfilled: [], question, steps: step, stats };
       }
 
       if (call.name === "finish") {
@@ -98,21 +111,21 @@ export async function runBrowserAgent(opts: {
         if (unfilled.length === 0 && pending.length > 0) {
           if (!opts.allowCheckboxes) {
             const question = `The form asks you to confirm: "${pending[0].label}". Do you agree?`;
-            return { status: "needs_input", summary: "The form needs the user's consent before it can be submitted.", unfilled: [], question, steps: step };
+            return { status: "needs_input", summary: "The form needs the user's consent before it can be submitted.", unfilled: [], question, steps: step, stats };
           }
           const msg = `finish REJECTED: the user agreed, so tick these checkboxes first: ${pending.map((p) => `[${p.id}] ${p.label.slice(0, 60)}`).join("; ")}`;
           history.push(msg);
           emit({ type: "action", step, tool: "finish", args, result: msg });
           break;
         }
-        if (unfilled.length === 0) return { status: "ready_to_submit", summary: String(args.summary), unfilled, steps: step };
+        if (unfilled.length === 0) return { status: "ready_to_submit", summary: String(args.summary), unfilled, steps: step, stats };
         const msg = `finish REJECTED: required fields still empty: ${unfilled.join("; ")}`;
         history.push(msg);
         emit({ type: "action", step, tool: "finish", args, result: msg });
         break; // look at the page again
       }
 
-      const result = await execute(page, obs, call.name, args, !!opts.allowCheckboxes);
+      const result = await execute(page, obs, call.name, args, !!opts.allowCheckboxes, !!opts.allowSubmit);
       history.push(`${call.name}(${JSON.stringify(args)}) -> ${result}`);
       if (result.startsWith("BLOCKED")) emit({ type: "blocked", step, reason: result });
       else emit({ type: "action", step, tool: call.name, args, result });
@@ -121,10 +134,10 @@ export async function runBrowserAgent(opts: {
   }
 
   const unfilled = unfilledRequired(await observe(page));
-  return { status: "max_steps", summary: "Ran out of steps before the form was complete.", unfilled, steps: maxSteps };
+  return { status: "max_steps", summary: "Ran out of steps before the form was complete.", unfilled, steps: maxSteps, stats };
 }
 
-async function execute(page: Page, obs: Observation, tool: string, args: Record<string, unknown>, allowCheckboxes: boolean): Promise<string> {
+async function execute(page: Page, obs: Observation, tool: string, args: Record<string, unknown>, allowCheckboxes: boolean, allowSubmit: boolean): Promise<string> {
   const el: El | undefined = obs.elements.find((e) => e.id === args.id);
   if (!el) return `error: no element with id ${String(args.id)} on the current page`;
   if (el.disabled) return "error: element is disabled";
@@ -155,7 +168,7 @@ async function execute(page: Page, obs: Observation, tool: string, args: Record<
         return "ok";
       case "click":
         // Hard rule in code, not a prompt: the agent can never submit.
-        if (el.kind === "submit") return "BLOCKED: submitting needs human approval. Do not click it. Call finish when the form is filled.";
+        if (el.kind === "submit" && !allowSubmit) return "BLOCKED: submitting needs human approval. Do not click it. Call finish when the form is filled.";
         await loc.click({ timeout: 5000 });
         await page.waitForTimeout(500);
         return "ok";

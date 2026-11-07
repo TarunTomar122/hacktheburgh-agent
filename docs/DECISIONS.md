@@ -63,4 +63,34 @@ Why: the safest default until the team decides.
 **D15 · 2026-11-07 · Tarun · decided**
 Repo is public: https://github.com/TarunTomar122/hacktheburgh-agent. Fictional data only; no secrets committed.
 
-<!-- Add new entries above this line. Next number: D16 -->
+**D16 · 2026-11-07 · Tarun · decided (to trial) · adoption pending**
+Trial OpenAI's Decisions API (`POST /v1/decisions`, `gpt-6-luna`) as the browser agent's decision engine and compare it with the existing tool-calling loop (`gpt-5.4-mini`) on a benchmark of real and practice sites. If it works, update the rules and make it the default for the browser part; otherwise keep D8.
+Why: Tarun saw people use a fast decision model (Jev) for browser use. OpenAI now offers a comparable one with no waitlist. Design and plan: `docs/PROGRESS.md`.
+**Adoption criteria (proposed by Claude, change if you disagree):** pass rate at least equal to the tool loop on the benchmark; no safety-rule violations (never submits, never ticks unagreed consent, never fills the honeypot, never invents data); clearly faster or cheaper; low-confidence answers lead to `ask_user`, not guesses.
+
+**D17 · 2026-11-07 · Claude · proposed, implemented and in use (supersedes part of D7)**
+Per-task `allowSubmit` flag. Submit-type buttons are clickable **only** on read-only pages (search, calculators, "next" in a checker). It is set by the task author in code, never by the model, and is **never** set for forms that send data to an organisation (NHS, law firms). D7's "never submit" still holds for those.
+Why: the SPSO checker, SLAB estimator and Law Society search move forward with submit-type buttons, so a blanket ban makes them untestable.
+
+**D18 · 2026-11-07 · Claude · proposed**
+Cookie banners are handled by code, not the model: prefer "reject / necessary only"; click "accept" only if the banner offers no way to refuse and blocks the page. The outcome is logged.
+Why: banners appear late, intercept clicks, and differ per site; handling them deterministically removes a whole class of flaky failures.
+
+**D19 · 2026-11-07 · Tarun · decided**
+Before any commit or push, every agent and person pulls the latest work, re-reads the docs, checks their change against settled decisions and other people's work, and **flags discrepancies** in `docs/PROGRESS.md` and to the human. Full procedure in `AGENTS.md`. Docs are updated in the same commit as the code.
+Why: several people and agents work in one repo; without this they override each other.
+
+**D20 · 2026-11-07 · Claude · proposed**
+The benchmark mixes our real target sites (NHS Lothian, three firms, SLAB, SPSO, Law Society) with two public practice forms (httpbin.org/forms/post, selenium.dev web-form). Nothing is ever submitted. Pass/fail is checked from the live page by code.
+Why: the real sites are what we need to work; the practice forms add breadth and a "do not invent data" test (the password field has no saved value and must stay empty).
+
+**D21 · 2026-11-07 · Tarun + Claude · decided**
+**The browser agent's engine is the Decisions API (`gpt-6-luna`)** via `lib/agent/decisionAgent.ts`. `fillNhsComplaint` uses it by default. The tool-calling loop (`browserAgent.ts`, `gpt-5.4-mini`) stays as a fallback: set `AGENT_ENGINE=tools`. **Supersedes D8 for the browser engine only**; D8 still applies to the interview (`gpt-5.4-mini`) and the draft (`gpt-5.4`).
+Why: 10/10 on the benchmark on the second run (7/10 on the first, with one real bug fixed), 0.3-2.8 s of model time per task, and structurally safer: the model only chooses and our code types, so it cannot invent text. Tarun's bar was "good enough". The adoption criteria in D16 were met except "at least equal to the tool loop", which was **not measured**. If someone runs the benchmark with `--engine both` and the tool loop is clearly better, supersede this.
+**Everyone implementing a step must use this engine** (call `runDecisionAgent`, or `fillNhsComplaint`-style wrappers). Do not write a new browser loop.
+
+**D22 · 2026-11-07 · Claude · proposed**
+Keep `scripts/bench.ts` as the regression suite for the browser agent. Run `npm run bench` before changing `observe.ts`, `decisionAgent.ts`, `browser.ts` or the values/goal wording, and log any drop in `docs/PROGRESS.md`. Add a task for each new site you automate.
+Why: it caught a real navigation crash and two bad checks within minutes.
+
+<!-- Add new entries above this line. Next number: D23 -->
