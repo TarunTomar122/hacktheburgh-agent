@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FirmFinding, Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
+import { MAX_ENQUIRIES } from "../../lib/agent/enquiryTypes";
 import { Button, Callout, cx, Eyebrow } from "../ui";
 import { Badge, FitRing, host, ScoreRow, StatsLine } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
@@ -71,7 +72,9 @@ export default function FirmResults({
     .filter((f) => passes(f, q))
     .sort((a, b) => (sort === "fit" ? fitOf(b) - fitOf(a) : (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9)));
   const count = (test: (f: FirmFinding) => boolean, skip: "fit" | "miles" | Flag) => result.firms.filter((f) => passes(f, q, skip) && test(f)).length;
-  const toggle = (id: string) => onSelected(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  const full = selected.length >= MAX_ENQUIRIES;
+  // Up to MAX_ENQUIRIES firms (D45): once full, unticked boxes are disabled.
+  const toggle = (id: string) => onSelected(selected.includes(id) ? selected.filter((x) => x !== id) : full ? selected : [...selected, id]);
   const firmScope = (f: FirmFinding): TraceScope => ({ title: f.name, subtitle: f.excluded ? `Left out: ${f.excluded}` : undefined, steps: trace.filter((s) => s.firms?.includes(f.id)) });
   const anyFilter = q.minFit > 0 || q.maxMiles !== null || q.flags.length > 0;
 
@@ -187,7 +190,7 @@ export default function FirmResults({
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {shown.map((f) => (
                 <li key={f.id}>
-                  <FirmTile firm={f} top={result.shortlist.includes(f.id)} selected={selected.includes(f.id)} onToggle={() => toggle(f.id)} onOpen={() => setOpen(f)} />
+                  <FirmTile firm={f} top={result.shortlist.includes(f.id)} selected={selected.includes(f.id)} locked={full && !selected.includes(f.id)} onToggle={() => toggle(f.id)} onOpen={() => setOpen(f)} />
                 </li>
               ))}
             </ul>
@@ -198,7 +201,8 @@ export default function FirmResults({
       {selected.length > 0 && (
         <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-card bg-ink px-5 py-3 text-white shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
           <span className="text-[14px]">
-            <span className="font-medium tabular-nums">{selected.length}</span> selected
+            <span className="font-medium tabular-nums">{selected.length}</span> of {MAX_ENQUIRIES} selected
+            {full && <span className="ml-2 text-[13px] text-white/70">(the most we contact at once)</span>}
             <button className="ml-3 text-[13px] text-white/70 underline-offset-2 hover:text-white hover:underline" onClick={() => onSelected([])}>
               Clear
             </button>
@@ -214,6 +218,7 @@ export default function FirmResults({
           firm={open}
           top={result.shortlist.includes(open.id)}
           selected={selected.includes(open.id)}
+          locked={full && !selected.includes(open.id)}
           onToggle={() => toggle(open.id)}
           onClose={() => setOpen(null)}
           onTrace={trace.some((s) => s.firms?.includes(open.id)) ? () => setScope(firmScope(open)) : undefined}
@@ -255,7 +260,7 @@ function badges(f: FirmFinding, max: number) {
   return all.slice(0, max);
 }
 
-function FirmTile({ firm, top, selected, onToggle, onOpen }: { firm: FirmFinding; top: boolean; selected: boolean; onToggle: () => void; onOpen: () => void }) {
+function FirmTile({ firm, top, selected, locked, onToggle, onOpen }: { firm: FirmFinding; top: boolean; selected: boolean; locked: boolean; onToggle: () => void; onOpen: () => void }) {
   return (
     <article
       className={cx(
@@ -266,8 +271,12 @@ function FirmTile({ firm, top, selected, onToggle, onOpen }: { firm: FirmFinding
       onClick={onOpen}
     >
       <div className="flex items-center justify-between gap-2">
-        <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink-2" onClick={(e) => e.stopPropagation()}>
-          <input type="checkbox" className="size-4 accent-brand" checked={selected} onChange={onToggle} aria-label={`Select ${firm.name}`} />
+        <label
+          className={cx("flex items-center gap-2 text-[12px]", locked ? "cursor-not-allowed text-faint" : "cursor-pointer text-ink-2")}
+          onClick={(e) => e.stopPropagation()}
+          title={locked ? `You can contact up to ${MAX_ENQUIRIES} firms at once` : undefined}
+        >
+          <input type="checkbox" className="size-4 accent-brand" checked={selected} disabled={locked} onChange={onToggle} aria-label={`Select ${firm.name}`} />
           Select
         </label>
         {top && <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-white">Top pick</span>}
@@ -293,7 +302,7 @@ function FirmTile({ firm, top, selected, onToggle, onOpen }: { firm: FirmFinding
   );
 }
 
-function FirmModal({ firm, top, selected, onToggle, onClose, onTrace }: { firm: FirmFinding; top: boolean; selected: boolean; onToggle: () => void; onClose: () => void; onTrace?: () => void }) {
+function FirmModal({ firm, top, selected, locked, onToggle, onClose, onTrace }: { firm: FirmFinding; top: boolean; selected: boolean; locked: boolean; onToggle: () => void; onClose: () => void; onTrace?: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -361,9 +370,9 @@ function FirmModal({ firm, top, selected, onToggle, onClose, onTrace }: { firm: 
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft p-6">
-          <label className="flex cursor-pointer items-center gap-2 text-[14px] text-ink">
-            <input type="checkbox" className="size-4 accent-brand" checked={selected} onChange={onToggle} />
-            Contact this firm in the next step
+          <label className={cx("flex items-center gap-2 text-[14px]", locked ? "cursor-not-allowed text-faint" : "cursor-pointer text-ink")}>
+            <input type="checkbox" className="size-4 accent-brand" checked={selected} disabled={locked} onChange={onToggle} />
+            {locked ? `Contact this firm (you already picked ${MAX_ENQUIRIES})` : "Contact this firm in the next step"}
           </label>
           {onTrace && (
             <Button variant="secondary" size="sm" onClick={onTrace}>

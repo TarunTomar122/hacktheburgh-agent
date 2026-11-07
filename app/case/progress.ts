@@ -26,7 +26,9 @@ export function milestones(p: Profile): Milestone[] {
     { step: 3, label: "Legal aid checked", done: !!p.legalAid?.result && !p.legalAid.sample },
     { step: 3, label: "Lawyers shortlisted", done: !!p.legalAid?.result && !p.legalAid.sample && p.legalAid.result.shortlist.length > 0 },
     { step: 4, label: "Lawyers selected", done: (p.legalAid?.selected?.length ?? 0) > 0 && !p.legalAid?.sample },
-    { step: 4, label: "Enquiries sent", done: false },
+    // Sent = the agent sent it, or the user marked an email draft as sent (self-reported).
+    { step: 4, label: "Enquiries sent", done: (p.enquiries ?? []).some((e) => e.status === "sent" || e.status === "replied" || e.status === "not_interested") },
+    { step: 4, label: "A firm replied", done: (p.enquiries ?? []).some((e) => e.status === "replied") },
     { step: 5, label: "Case file complete", done: false },
   ];
 }

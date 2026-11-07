@@ -246,7 +246,7 @@ const STATE: Record<AgentTile["state"], { text: string; cls: string }> = {
   failed: { text: "Failed", cls: "bg-danger-soft text-danger" },
 };
 
-function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]; stats: Stats | null; status: string | null; live: TraceStep[] }) {
+export function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]; stats: Stats | null; status: string | null; live: TraceStep[] }) {
   return (
     <section className="space-y-3" aria-live="polite">
       <div className="flex items-end justify-between gap-4">

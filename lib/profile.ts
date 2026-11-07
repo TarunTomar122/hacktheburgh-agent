@@ -6,6 +6,7 @@ import type { Draft } from "./agent/draft";
 import { emptyFacts, type CaseFacts } from "./agent/facts";
 import type { SpsoAnswers } from "./agent/spsoAnswers";
 import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
+import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord } from "./agent/enquiryTypes";
 import type { TrackId, TrackRecommendation } from "./agent/track";
 
 /** Everything we keep about the user's case. Stored in this browser only (localStorage). */
@@ -20,6 +21,9 @@ export type Profile = {
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
   /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
+  /** Step 4: the message (editable), the last run's outcome per firm (`sample` = fixture), and the tracker (updated by hand for now). */
+  enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
+  enquiries?: EnquiryRecord[];
   /** D42: the recommendation shown after onboarding, and the track the user chose (null until they choose). */
   track?: { chosen: TrackId | null; rec?: TrackRecommendation };
   createdAt: string;
@@ -110,6 +114,32 @@ export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommenda
   if (!p) return;
   const cur = p.track ?? { chosen: null };
   write({ ...p, track: { chosen: patch.chosen === undefined ? cur.chosen : patch.chosen, rec: patch.rec ?? cur.rec } });
+}
+
+export function setEnquiry(patch: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean }) {
+  const p = read();
+  if (p) write({ ...p, enquiry: { ...p.enquiry, ...patch } });
+}
+
+/** Update one firm's outcome in place (after an approval or a send). */
+export function setOutcome(o: EnquiryOutcome) {
+  const p = read();
+  if (!p) return;
+  const outcomes = (p.enquiry?.outcomes ?? []).map((x) => (x.firmId === o.firmId ? o : x));
+  write({ ...p, enquiry: { ...p.enquiry, outcomes } });
+}
+
+/** Add or update tracker rows by firm id. */
+export function upsertEnquiries(records: (Partial<EnquiryRecord> & Pick<EnquiryRecord, "firmId">)[]) {
+  const p = read();
+  if (!p) return;
+  const cur = [...(p.enquiries ?? [])];
+  for (const r of records) {
+    const i = cur.findIndex((x) => x.firmId === r.firmId);
+    if (i >= 0) cur[i] = { ...cur[i], ...r };
+    else cur.push({ firmName: r.firmName ?? r.firmId, status: "draft", ...r } as EnquiryRecord);
+  }
+  write({ ...p, enquiries: cur });
 }
 
 export function clearProfile() {
