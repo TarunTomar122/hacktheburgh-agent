@@ -8,6 +8,9 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-07 · Om + Claude · DONE · Demo: skip step 1 and continue to step 2 (D48)
+Om: the demo does not file the NHS complaint, so step 1 needs a skip. Added "Skip and continue to step 2 (demo)" beside the fill button in `app/case/page.tsx` (always visible; disabled while the agent runs). It unlocks step 2 and opens it; the "filled in" and "sent" milestones stay unticked. Checked: `tsc` and `eslint` clean; Playwright in Chrome with the Callum demo patient: button present and enabled on step 1, click opens step 2 unlocked, no sent flag written, no page errors. NOT checked: the button during an agent run (it is disabled by `filling`; not exercised); `next build`.
+
 ### 2026-11-07 · Tarun + Claude · DONE · Step 4 redesign and recovery (D46); planner backend started (D47)
 **Step 4:**
 - **Real run in the app:** compensation persona, 3 sample firms (step 3 fixture), real firm websites, about 40 s, filling only (the send gate stays closed).
@@ -42,7 +45,7 @@ Tarun's fixes 4-8. **Switching tracks** moved off the step pages into the profil
 ### 2026-11-07 · Om + Claude · DONE · Stricter email check; postcode inside the address is not asked for again (D44)
 Om asked for a harder email check and to stop asking for the postcode when it is already in the address. `emailProblem` and `splitPostcode` (both in `lib/agent/inputs.ts`) are used by `app/StageInputs.tsx` (the stepper skips the postcode step and says so; Back returns to the address with the postcode put back in it), `app/InputPanel.tsx`, `app/case/ProfileTab.tsx` and the server (`validatePatch`, `normaliseFacts`). Checked: `tsc` and `eslint` clean; 31 email cases and 8 address cases in a script (all as expected); Playwright in Chrome through the contact form (postcode skipped, Back, typo messages for `gmial.com`, `.con`, `@@`, `a@b.c`); the real API route with a postcode in the address (stored apart, interview moves on) and with a typo email (400 with the message). NOT checked: the model path with the real key (it goes through the same `normaliseFacts`); the profile tab in a browser; `next build`.
 
-### 2026-11-07 · Om + Claude · DONE · New logo, logo links to landing or profile, full name in the header (D45)
+### 2026-11-07 · Om + Claude · DONE · New logo, logo links to landing or profile, full name in the header (D43)
 Om sent a new Elliot logo, asked for "Case for" to show the full name and for a click on the logo to go to the landing page or profile depending on stage. Icons regenerated from the new image (ellipse mask on the measured circle, 1 px inside the edge; `public/logo.png` 192 x 192, `app/icon.png` 512, `app/apple-icon.png` on brand blue, `app/favicon.ico`). `LogoLink` (in `app/ui.tsx`) is used by `app/page.tsx` and `app/case/Header.tsx`. Checked: `tsc` and `eslint` clean; Playwright in Chrome: link target with and without a saved case, click mid-interview (stays), on `/case` (opens the profile, stays open on a second click), from the landing page with a saved case (`/case#profile` opens the profile), plain `/case` (profile closed), header reads "Om Prabhu" once the last name is known; no console errors. NOT checked: `next build`; Safari.
 
 ### 2026-11-07 · Om + Claude · DONE · Fix: the name was asked twice (D41)

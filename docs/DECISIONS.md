@@ -214,4 +214,9 @@ Why: Tarun wants the agent to do the sending, but never without the user seeing 
 
 Why: Tarun found the old screen confusing (three buttons per firm, a duplicate replies list, a dead-end email draft, a failure with no way out) and the auto-opening panel unhelpful.
 
-<!-- Add new entries above this line. Next number: D47 -->
+**D48 · 2026-11-07 · Om (requested), built by Claude · decided**
+**Step 1 has a "Skip and continue to step 2 (demo)" button.** It sits next to "Fill in NHS Lothian's form" in `app/case/page.tsx`, is always shown (not hidden in production builds, unlike the other demo shortcuts), and is disabled while the browser agent is filling the form. It sets `ombudsman.unlocked` (as if NHS Lothian had replied) and opens step 2.
+Why: the demo does not file a real complaint, so the demo needs a way past step 1 without the agent run, and without waiting for a reply that will never come.
+**Limits:** it does NOT mark "NHS form filled in" or "Complaint sent to NHS Lothian" as done, because neither happened; the checklist and the progress figure stay honest. The button should be removed or gated behind `NEXT_PUBLIC_DEMO_SKIP` before any real use.
+
+<!-- Add new entries above this line. Next number: D49 -->

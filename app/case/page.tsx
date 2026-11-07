@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
-import { setDraft, setProgress, useProfile, type Profile } from "../../lib/profile";
+import { setDraft, setOmbudsman, setProgress, useProfile, type Profile } from "../../lib/profile";
 import { Button, Callout, Console, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
@@ -84,7 +84,7 @@ export default function CasePage() {
                   ) : active === 4 ? (
                     <ContactLawyersStep profile={profile} onBack={() => setActive(3)} />
                   ) : (
-                    <StepOne profile={profile} />
+                    <StepOne profile={profile} onContinue={() => setActive(2)} />
                   )}
                 </div>
                 <StepAside profile={profile} step={active} />
@@ -97,7 +97,7 @@ export default function CasePage() {
   );
 }
 
-function StepOne({ profile }: { profile: Profile }) {
+function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filling, setFilling] = useState(false);
@@ -167,9 +167,23 @@ function StepOne({ profile }: { profile: Profile }) {
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      <Button onClick={() => fill()} disabled={!canFill}>
-        {filling ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in NHS Lothian's form"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button onClick={() => fill()} disabled={!canFill}>
+          {filling ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in NHS Lothian's form"}
+        </Button>
+        {/* Demo (D48): no real complaint is filed, so the demo can go on to step 2 as if NHS Lothian had replied. Always shown, on purpose. */}
+        <Button
+          variant="secondary"
+          disabled={filling}
+          onClick={() => {
+            setOmbudsman({ unlocked: true });
+            onContinue();
+          }}
+          title="Demo: nothing is sent to NHS Lothian. Opens step 2 as if they had replied."
+        >
+          Skip and continue to step 2 (demo)
+        </Button>
+      </div>
 
       {log.length > 0 && <Console label="Browser agent progress" lines={log} />}
 
