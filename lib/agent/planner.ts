@@ -506,7 +506,7 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
   const tApi = Date.now();
   const viaApi = await searchApi(query, note, track);
   if (viaApi) recordAccess({ via: "api", kind: "search", reason: viaApi.length ? "Linkup search API" : "search limit for this run reached", url: query, ms: Date.now() - tApi });
-  else recordAccess({ via: "browser", kind: "search", reason: "no search API available, so a search engine was opened in the browser", url: query });
+  else recordAccess({ via: "browser", kind: "search", reason: "the search API did not answer, so a search engine was opened in the browser", url: query });
   if (viaApi) {
     diskPut(key, viaApi);
     searchCache.set(key, { at: Date.now(), hits: Promise.resolve(viaApi) });

@@ -101,7 +101,7 @@ function readRun(dir: string, id: string): RunSummary | null {
   const run: RunSummary = {
     id,
     flow: flowOf(id),
-    startedAt: id.replace(/^[a-z0-9]+-/, "").replace(/T(\d\d)-(\d\d)-(\d\d)-\d+Z$/, "T$1:$2:$3Z"),
+    startedAt: id.replace(/^[a-z0-9]+-/, "").replace(/T(\d\d)-(\d\d)-(\d\d)-\d+Z.*$/, "T$1:$2:$3Z"),
     ms: last,
     finished,
     place,

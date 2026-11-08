@@ -1,0 +1,30 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[4s] case [elliot] Start the checks together
+[10s] case [robin] 8 firms found by search.
+[29s] case ASK (yes_no) I confirm that I have read and understand the above disclaimer. -> Yes
+[29s] case [nell] I confirm that I have read and understand the above disclaimer.
+[33s] case [nell] Could not finish: checked funding with Legal Aid Board
+[44s] case [iona] Found the clinical guidance
+[59s] case [iona] I looked on the official sites and found no published decisions to cite.
+[63s] case [robin] Searched Law Society of Ireland
+[69s] case [elliot] Move to firm website checks
+[72s] case [robin] Checked Lavelle Partners on its own website.
+[73s] case [robin] Checked Michael Boylan Litigation on its own website.
+[73s] case [robin] Checked Good & Murray Smith on its own website.
+[80s] case [robin] Checked Anderson Gallagher on its own website.
+[82s] case [elliot] Anderson Gallagher: fit 47%
+[86s] case [elliot] Prepare the shortlisted contacts
+[103s] case [kit] Filled Anderson Gallagher's enquiry form
+[126s] case [kit] Good & Murray Smith: No online enquiry form on their website
+[127s] case [kit] Michael Boylan Litigation: No online enquiry form on their website
+[131s] case [elliot] I found that this looks like the ordinary solicitor route for a medical negligence claim in Ireland, not a special compensation scheme. A Dublin shortlist is ready: Anderson Gallagher was the stronges
+
+CASE step3-2026-11-08T06-17-10-801Z 2.2 min (research 0.0 min)
+  funding: unknown ""
+  firms: 8 found, 4 checked on their sites, shortlist anderson-gallagher, good-murray-smith, michael-boylan-litigation
+  guidance: homsassist.ie: "The recommended first step is a four-view scaphoid X-ray series, taken from specific angles to give the best chance of s"; gaps 3; decisions 0
+  enquiries: Anderson Gallagher: ready_to_send (7 fields); Good & Murray Smith: no_form (0 fields); Michael Boylan Litigation: no_form (0 fields)
+  questions to the patient: 1
+  pages fetch 4 / browser 2; firms fetch 5 / browser 1; searches api 13 cache 0 browser 3; browser jobs 7
+  browser because: search: no search API available, so a search engine was opened in the browser | page: the page is built by scripts (mostly code, little text) | task: answered the place's own eligibility checker (1 question; each answer changes the next question) | task: answered the place's own eligibility checker (6 questions; each answer changes the next question) | task: searched the lawyer register with its own search filters (area of law, location) | page: a login page | firm: their home page: a plain request failed (network or certificate) | task: filled Anderson Gallagher's enquiry form (7 fields) and stopped before Send | task: searched the lawyer register with its own search filters (location) | task: filled Good & Murray Smith's enquiry form (0 fields) and stopped before Send | task: filled Michael Boylan Litigation's enquiry form (0 fields) and stopped before Send

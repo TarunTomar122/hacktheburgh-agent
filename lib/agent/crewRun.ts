@@ -118,7 +118,8 @@ export type CrewFlow<R> = {
 };
 
 export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<R> {
-  const runId = opts.runId ?? `${flow.prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+  // A short random tail: two runs started in the same millisecond (three cases at once) must not share a folder.
+  const runId = opts.runId ?? `${flow.prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}-${Math.random().toString(36).slice(2, 6)}`;
   const runDir = path.join(process.cwd(), ".runs", runId);
   const log = makeLogger(runDir);
   const startedAt = Date.now();
