@@ -6,11 +6,24 @@ import path from "node:path";
  * alongside), so the run screen and case file can be shown in seconds during a demo. The client plays it back.
  */
 export async function GET(req: Request) {
-  const asked = new URL(req.url).searchParams.get("flow");
-  const flow = asked === "complaint" || asked === "discovery" ? asked : "step3";
+  const params = new URL(req.url).searchParams;
+  const asked = params.get("flow");
+  const flow = asked === "complaint" || asked === "discovery" || asked === "escalation" ? asked : "step3";
+  // ?place=Wales: only a recording made for that place (demo/<run>/meta.json), so a Welsh case never plays a Scottish run.
+  const place = params.get("place")?.toLowerCase() ?? null;
   const root = path.join(process.cwd(), "demo");
   try {
-    const runId = (await readdir(root)).filter((d) => new RegExp(`^${flow}-[0-9T-]+Z?$`).test(d)).sort().at(-1);
+    const runs = (await readdir(root)).filter((d) => new RegExp(`^${flow}-[0-9T-]+Z?$`).test(d)).sort();
+    const placeOf = async (d: string) => {
+      try {
+        return String(JSON.parse(await readFile(path.join(root, d, "meta.json"), "utf8")).place ?? "").toLowerCase();
+      } catch {
+        return "";
+      }
+    };
+    const matching: string[] = [];
+    for (const d of runs) if (!place || (await placeOf(d)) === place) matching.push(d);
+    const runId = matching.at(-1);
     if (!runId) throw new Error("no demo run");
     const text = await readFile(path.join(root, runId, "events.ndjson"), "utf8");
     const events = text.split("\n").filter(Boolean).map((l) => JSON.parse(l));

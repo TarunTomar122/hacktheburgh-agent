@@ -189,11 +189,11 @@ export function usePlannerRun() {
   }, [apply]);
 
   const replay = useCallback(
-    async (opts: { toEnd?: boolean; flow?: "compensation" | "complaint" | "discovery" } = {}) => {
+    async (opts: { toEnd?: boolean; place?: string; flow?: "compensation" | "complaint" | "discovery" } = {}) => {
       abort.current?.abort();
       stopReplay();
       setS({ ...initial(), status: "running", startedAt: Date.now(), demo: true });
-      const res = await fetch(opts.flow && opts.flow !== "compensation" ? `/api/agent/plan/demo?flow=${opts.flow}` : "/api/agent/plan/demo").catch(() => null);
+      const res = await fetch(`/api/agent/plan/demo?flow=${opts.flow && opts.flow !== "compensation" ? opts.flow : "step3"}${opts.place ? `&place=${encodeURIComponent(opts.place)}` : ""}`).catch(() => null);
       const data = res?.ok ? ((await res.json()) as { events: Rec[] }) : null;
       if (!data?.events.length) {
         setS((cur) => ({ ...cur, status: "error", error: "No recorded demo run is available yet." }));

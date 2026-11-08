@@ -11,6 +11,7 @@ import FirmResults from "./FirmResults";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
+import { placeOf, useDemoAvailable } from "./useDemo";
 import { summarise, type LedgerEntry } from "../../lib/agent/ledgerSummary";
 
 /**
@@ -53,6 +54,8 @@ const SLAB_CALC = "https://www.slab.org.uk/new-to-legal-aid/eligibility-estimato
 
 export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profile; onReviewEnquiries: () => void }) {
   const { state, start, answer, replay, skip } = usePlannerRun();
+  const place = placeOf(profile);
+  const hasDemo = useDemoAvailable("step3", place);
   const [view, setView] = useState<"case" | "firms" | "replay">("case");
   const saved = profile.caseRun;
   const result = profile.legalAid?.result;
@@ -109,9 +112,10 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     <Intro
       error={state.status === "error" ? state.error : undefined}
       onStart={go}
+      recorded={hasDemo}
       onDemo={(toEnd) => {
         skipStep(3);
-        return replay({ toEnd });
+        return replay({ toEnd, place });
       }}
     />
   );
@@ -119,7 +123,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ onStart, onDemo, error }: { onStart: () => void; onDemo: (toEnd: boolean) => void; error?: string }) {
+function Intro({ onStart, onDemo, recorded, error }: { onStart: () => void; onDemo: (toEnd: boolean) => void; recorded: boolean; error?: string }) {
   return (
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">Prepare your case</h1>
@@ -136,10 +140,12 @@ function Intro({ onStart, onDemo, error }: { onStart: () => void; onDemo: (toEnd
         </p>
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>
-      <DemoBar>
-        <DemoButton onClick={() => onDemo(false)}>Play a recorded run, fast</DemoButton>
-        <DemoButton onClick={() => onDemo(true)}>Jump to the finished case</DemoButton>
-      </DemoBar>
+      {recorded && (
+        <DemoBar>
+          <DemoButton onClick={() => onDemo(false)}>Play a recorded run, fast</DemoButton>
+          <DemoButton onClick={() => onDemo(true)}>Jump to the finished case</DemoButton>
+        </DemoBar>
+      )}
     </div>
   );
 }

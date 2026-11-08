@@ -14,6 +14,7 @@ import StepStrip, { type Step } from "./crew/StepStrip";
 import { DemoBar, DemoButton, Quote, Row, Said, Workspace, type CrewKit } from "./CaseRun";
 import { closeAgentBrowser } from "./streamAgent";
 import { usePlannerRun } from "./usePlannerRun";
+import { placeOf, useDemoAvailable } from "./useDemo";
 
 /**
  * Step 1, "Complain to NHS Lothian" (D65): the same crew story as "Prepare your case", with the crew that makes
@@ -53,7 +54,9 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   const route = profile.route && "map" in profile.route ? profile.route.map : undefined;
   const body = route?.steps.find((x) => x.kind === "complaint")?.body ?? "NHS Lothian";
   const go = () => (route ? start(profile.facts, undefined, "complaint_anywhere", route) : start(profile.facts, undefined, "complaint"));
-  const demo = (toEnd: boolean) => replay({ toEnd, flow: "complaint" });
+  const place = placeOf(profile);
+  const hasDemo = useDemoAvailable("complaint", place);
+  const demo = (toEnd: boolean) => replay({ toEnd, flow: "complaint", place });
   const skipToStepTwo = () => {
     void closeAgentBrowser(); // a half-filled form is no use any more
     skipStep(1);
@@ -64,8 +67,8 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   if (!route && !supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
   if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => go()} kit={KIT} />;
   if (saved && !again) return <ComplaintFile body={body} profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
-  // The recorded complaint run is the Scotland one: only offer it when there is no route map for another place.
-  return <Intro body={body} recorded={!route} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
+  // A recorded run is offered only if one was made for this case's place.
+  return <Intro body={body} recorded={hasDemo} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
 }
 
 /* ------------------------------------------------------------------ before */

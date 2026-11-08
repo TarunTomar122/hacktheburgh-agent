@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { placeOf, useDemoAvailable } from "./useDemo";
 import { CREW, type CrewId } from "../../lib/agent/plannerTypes";
 import type { RouteMap } from "../../lib/agent/routeTypes";
 import type { Profile } from "../../lib/profile";
@@ -37,10 +38,8 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
   }, [state.status, state.discovery, state.demo, onDone]);
 
   // Demo controls only when a recorded discovery run exists.
-  const [hasDemo, setHasDemo] = useState(false);
-  useEffect(() => {
-    void fetch("/api/agent/plan/demo?flow=discovery").then((r) => setHasDemo(r.ok)).catch(() => {});
-  }, []);
+  const place = placeOf(profile);
+  const hasDemo = useDemoAvailable("discovery", place);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
   // The route map fills in beside the work, one row per part, as soon as a quote checks on an official page.
@@ -83,8 +82,8 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
       )}
       {hasDemo && (
         <DemoBar>
-          <DemoButton onClick={() => replay({ flow: "discovery" })}>Play a recorded run, fast</DemoButton>
-          <DemoButton onClick={() => replay({ flow: "discovery", toEnd: true })}>Jump to the result</DemoButton>
+          <DemoButton onClick={() => replay({ flow: "discovery", place })}>Play a recorded run, fast</DemoButton>
+          <DemoButton onClick={() => replay({ flow: "discovery", toEnd: true, place })}>Jump to the result</DemoButton>
         </DemoBar>
       )}
     </div>

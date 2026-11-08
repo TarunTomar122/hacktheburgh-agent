@@ -1,0 +1,16 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[6s] [elliot] Start with the complaint route and check the rules before drafting anything.
+[8s] [elliot → robin] Check NHS Lothian’s own complaint page for how to complain, response times and any time limit, and compare that with Ailsa’s 2026 dates.
+[34s] [robin → elliot] I could not tell from your dates. The page does not mention a time limit, so we cannot determine if the complaint is within the limit. The timeline shows events in 2026 but no specific deadline is provided.
+[38s] [elliot] The complaint appears to be to NHS Lothian first, and no time limit was found on the page checked, so the next useful step is clinical guidance.
+[40s] [elliot → iona] Find guidance relevant to a wrist injury with possible scaphoid fracture after a fall on an outstretched hand, and compare it with Ailsa’s timeline.
+[180s] [iona → elliot] Healthcare Improvement Scotland / SIGN: "In cases of suspected scaphoid fracture where the initial radiographs are negative, a supplementary MRI, or alternatively CT, should be carried out within thre…" One question to ask: Did the A&E depa
+[184s] [elliot] We now have relevant guidance to help shape one polite question in the complaint, so the next step is to draft it.
+[196s] [elliot → you] Written to NHS Lothian. It asks about the guidance politely, without blaming anyone.
+[200s] [elliot] The complaint draft is ready, so the next step is to place it into NHS Lothian’s online feedback route without submitting it.
+[203s] [elliot → kit] Open NHS Lothian’s online feedback form and fill it as far as possible from the available facts, stopping before final submission.
+[221s] [kit → elliot] The form is filled (12 fields) and waiting for you to check it and press Submit yourself.
+[224s] [elliot → you] I prepared your complaint to NHS Lothian about the Royal Infirmary of Edinburgh A&E and included a question about the scaphoid fracture guidance. I also filled NHS Lothian’s online feedback form up to the final submit step, without sending 
+
+RUN complaint-2026-11-08T00-29-57-870Z 3.7 min; form ready_to_submit (12 fields, unfilled: none) at https://www.nhslothian.scot/yourrights/online-feedback-form/; limit unclear; guidance 4 points; stats {"agents":3,"sites":6,"pages":22,"actions":26}
