@@ -262,7 +262,9 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         // What the patient reads is one short plain line of what was done; what the page said stays in the details.
         const full = bad ? out : flow.describe(call.name, args, out);
         const did = pastTense(flow.doing(call.name, args));
-        const text = bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did;
+        // Plain lines for the two tools that used to read "Worked" / "Found the guidance" whatever happened.
+        const plain = !bad && call.name === "find_guidance" && /^No applicable guidance/i.test(out) ? "Found no guidance that applies to your injury" : !bad && call.name === "web_search" ? `Searched the web${/^(\d+) results?/.exec(out)?.[1] ? `, ${/^(\d+) results?/.exec(out)![1]} results` : ""}` : "";
+        const text = plain || (bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did);
         say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? full : out.includes("\n") ? out : undefined, tool: call.name, tab: thought.tab, ok: !bad });
         crewState(who, "idle", text);
       } else if (call.name === "finish") {
