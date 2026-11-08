@@ -1,7 +1,7 @@
 import { EnquiryFillGuard } from "./plannerGuards";
 import { formatPostcode, isPostcode, parseFundingNumber } from "./inputs";
 import type { SearchLocation } from "./searchLocation";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "playwright";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
@@ -299,7 +299,25 @@ type SearchHit = { title: string; url: string; snippet: string };
  * job, and an API never shows a bot check. Only the query leaves the machine (never patient values). The browser then opens
  * the pages, so every quote is still checked against a page this run really read. Returns null if no key or it failed.
  */
-async function searchApi(query: string, note: Note): Promise<SearchHit[] | null> {
+const EXA_PER_RUN = Number(process.env.EXA_MAX_PER_RUN ?? 10); // credits are limited: a run gets 10 Exa searches, then the browser takes over
+const EXA_TOTAL = Number(process.env.EXA_MAX_TOTAL ?? 1200); // and one machine never spends more than ~$5 in total ($0.004 per Lite search)
+const exaUsed = new WeakMap<object, number>();
+function exaAllowed(track: Tracker): boolean {
+  if ((exaUsed.get(track) ?? 0) >= EXA_PER_RUN) return false;
+  const file = path.join(process.cwd(), ".runs", "exa-usage.json");
+  let total = 0;
+  try {
+    total = (JSON.parse(readFileSync(file, "utf8")) as { n: number }).n;
+  } catch {}
+  if (total >= EXA_TOTAL) return false;
+  try {
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ n: total + 1, updated: new Date().toISOString() }));
+  } catch {}
+  exaUsed.set(track, (exaUsed.get(track) ?? 0) + 1);
+  return true;
+}
+async function searchApi(query: string, note: Note, track: Tracker): Promise<SearchHit[] | null> {
   const sites = [...query.matchAll(/\bsite:([^\s]+)/g)].map((m) => m[1]);
   const q = query.replace(/\bsite:[^\s]+/g, "").replace(/\s+/g, " ").trim() || query;
   const post = async (url: string, headers: Record<string, string>, body: unknown) => {
@@ -309,9 +327,9 @@ async function searchApi(query: string, note: Note): Promise<SearchHit[] | null>
   };
   const clean = (x: { title?: string; url?: string; snippet?: string }): SearchHit => ({ title: String(x.title ?? x.url ?? "").slice(0, 100), url: String(x.url ?? ""), snippet: String(x.snippet ?? "").replace(/\s+/g, " ").slice(0, 220) });
   const tries: [string, () => Promise<SearchHit[]>][] = [];
-  if (process.env.EXA_API_KEY)
+  if (process.env.EXA_API_KEY && exaAllowed(track))
     tries.push(["Exa", async () => {
-      const j = (await post("https://api.exa.ai/search", { "x-api-key": process.env.EXA_API_KEY! }, { query: q, numResults: 10, type: "auto", ...(sites.length ? { includeDomains: sites } : {}), contents: { highlights: { numSentences: 2, highlightsPerUrl: 1 } } })) as { results?: { title?: string; url?: string; highlights?: string[] }[] };
+      const j = (await post("https://api.exa.ai/search", { "x-api-key": process.env.EXA_API_KEY! }, { query: q, numResults: 10, type: "lite", ...(sites.length ? { includeDomains: sites } : {}), contents: { highlights: true } })) as { results?: { title?: string; url?: string; highlights?: string[] }[] };
       return (j.results ?? []).map((x) => clean({ ...x, snippet: x.highlights?.[0] }));
     }]);
   if (process.env.TAVILY_API_KEY)
@@ -350,7 +368,7 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
     const r = await hit.hits.catch(() => null);
     if (r?.length) return r;
   }
-  const viaApi = await searchApi(query, note);
+  const viaApi = await searchApi(query, note, track);
   if (viaApi) {
     searchCache.set(key, { at: Date.now(), hits: Promise.resolve(viaApi) });
     return viaApi;
