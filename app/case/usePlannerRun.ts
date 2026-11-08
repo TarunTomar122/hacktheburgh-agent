@@ -163,7 +163,7 @@ export function usePlannerRun(scope?: RunScope) {
         case "route":
           return { ...cur, route: e.route };
         case "discovery_result":
-          return { ...cur, status: "done", discovery: e.result, endedAt: now, route: e.result.route, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
+          return { ...cur, status: "done", discovery: e.result, endedAt: now, route: e.result.route, says: cur.says.length ? cur.says : e.result.says, plan: cur.plan.length ? cur.plan : e.result.plan, trace: cur.trace.length ? cur.trace : e.result.trace, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "model":
           return { ...cur, models: [...cur.models, e.entry] };
         case "complaint_result":
@@ -293,7 +293,7 @@ export function usePlannerRun(scope?: RunScope) {
   useEffect(() => {
     if (!slot) return;
     const st = readStored(scopeRef.current);
-    if (st?.seen && st.status !== "running") return; // already shown and saved by this screen: it shows its own file
+    if (st?.seen && st.status !== "running" && scopeRef.current?.scope !== "discovery") return; // already shown and saved by this screen: it shows its own file (the research screen keeps its crew and history, so it always reattaches)
     const ctrl = new AbortController();
     abort.current = ctrl;
     void (async () => {
@@ -331,7 +331,7 @@ export function usePlannerRun(scope?: RunScope) {
   }, [s.status, s.demo]);
 
   const start = useCallback(
-    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" | "escalation_anywhere" = "compensation", route?: RouteMap, progress?: EscalationInput) => {
+    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" | "escalation_anywhere" = "compensation", route?: RouteMap, progress?: EscalationInput, focus?: string) => {
       abort.current?.abort();
       stopReplay();
       const ctrl = new AbortController();
@@ -344,7 +344,7 @@ export function usePlannerRun(scope?: RunScope) {
       startedRef.current = Date.now();
       setS({ ...initial(), status: "running", startedAt: startedRef.current });
       try {
-        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route, progress, slot: slotOf(scopeRef.current) }), signal: ctrl.signal });
+        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route, progress, focus, slot: slotOf(scopeRef.current) }), signal: ctrl.signal });
         if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the crew");
         if (await consume(res, ctrl)) return settle();
         if (ctrl.signal.aborted || abort.current !== ctrl) return;

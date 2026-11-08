@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Page } from "playwright";
 import type { CaseFacts } from "./facts";
 import { pageText } from "./legalAid";
-import { searchBudgetUsed, webSearch, type Emit } from "./planner";
+import { searchBudgetUsed, searchViaApi, webSearch, type Emit } from "./planner";
 import { detectPlace } from "./place";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit, type WorkersSpec } from "./crewRun";
 import { MODELS, structured } from "./llm";
@@ -97,13 +97,25 @@ const AutoStep = z.object({
 const SEARCH_NOTE = `Searches are scarce: this run has about 12 in total, shared by the crew, and ONE query returns about 10 pages. Aim each query at one part of the route and read the results (and the links on the pages) instead of searching again; never reword the same question. When the limit is reached, read pages you already found and follow their links.`;
 const BATCH_NOTE = `Speed: call every independent tool in the same turn (many searches, many reads, several record_steps at once); 6 to 12 calls per turn. Do not wait to see one result before starting work that does not depend on it. Aim to finish in about 6 turns.`;
 
+/** One generic search per part of the route, built from the place only: it names no site, scheme or country-specific body. */
+const PART_QUERY: Record<RouteKind, (p: Place) => string> = {
+  complaint: (p) => `how to make a complaint about hospital care ${p.hospital ?? ""} ${p.city ?? ""} ${p.region ?? ""} ${p.country ?? ""}`,
+  escalation: (p) => `independent review or ombudsman if a hospital complaint is not resolved ${p.region ?? ""} ${p.country ?? ""}`,
+  compensation: (p) => `how to claim compensation for medical negligence harm from hospital care ${p.region ?? ""} ${p.country ?? ""}`,
+  funding: (p) => `legal aid or funding for a clinical negligence claim ${p.region ?? ""} ${p.country ?? ""}`,
+  lawyers: (p) => `official register to find a medical negligence solicitor or lawyer ${p.region ?? ""} ${p.country ?? ""}`,
+  guideline: (p) => `national body that publishes clinical guidelines for doctors ${p.region ?? ""} ${p.country ?? ""}`,
+  advice: (p) => `free independent patient advocacy or advice service for complaints about care ${p.region ?? ""} ${p.country ?? ""}`,
+  records: (p) => `how to request a copy of your medical records from a hospital ${p.hospital ?? ""} ${p.region ?? ""} ${p.country ?? ""}`,
+};
+
 const WORKER_SYSTEM = (place: Place, id: CrewId, brief: string) => `You are ${CREW[id].name}, one member of a crew that works out, live, how the health and legal system works for one patient, and finds the real official pages. The lead gave you this job: ${brief}
 The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply.
 Parts of the route (kinds): ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
-Searches are scarce (about 12 for the whole crew, so use at most 3): ONE query returns about 10 pages, so aim each at one part and then read the pages and follow their links instead of searching again. Work fast: call many tools in one turn (several searches and reads at the same time). You can only open pages this run found (search results, or links on pages you opened). Search, read the official pages, and record_step each part as soon as an official page backs it, with 1-3 verbatim quotes copied from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only for the body itself or a government, health service, ombudsman, regulator, court or professional body. Use current consolidated law, never the as-enacted text. Time limits come from the national rules AND the provider's page. Do not look for online forms; record the official page that explains how to complain or apply. Never ask the patient anything, never sign in, never fill anything. Say "not found" honestly. When you have all you can in a few turns, call member_done.`;
+Your brief gives the search results already found for your part. Turn 1: read the 3 or 4 most promising official pages AT THE SAME TIME (several read_page calls in one turn). Turn 2: follow their links to the page that holds the facts (time limits, stages, who it applies to, how to apply) and record_step. Searches are scarce (a shared budget): search at most once, and only if the results hold no official page. Work fast: many calls per turn. You can only open pages this run found (search results, or links on pages you opened). Search, read the official pages, and record_step each part as soon as an official page backs it, with 1-3 verbatim quotes copied from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only for the body itself or a government, health service, ombudsman, regulator, court or professional body. Use current consolidated law, never the as-enacted text. Time limits come from the national rules AND the provider's page. Do not look for online forms; record the official page that explains how to complain or apply. Never ask the patient anything, never sign in, never fill anything. Say "not found" honestly. When you have all you can in a few turns, call member_done.`;
 
-export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string; speed?: string | Speed } = {}): Promise<DiscoveryResult> {
-  const speed: Speed = typeof opts.speed === "object" ? opts.speed : parseSpeed(opts.speed ?? process.env.DISCOVERY_SPEED ?? "fast"); // fast unless told otherwise
+export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string; speed?: string | Speed; /** Follow-up: research one part more deeply, keeping the rest of `base`. */ focus?: RouteKind; base?: RouteMap } = {}): Promise<DiscoveryResult> {
+  const speed: Speed = { ...(typeof opts.speed === "object" ? opts.speed : parseSpeed(opts.speed ?? process.env.DISCOVERY_SPEED ?? "fast")), ...(opts.focus ? { workers: true } : {}) }; // fast unless told otherwise
   const detected = await detectPlace(facts);
   // The country and region the patient confirmed in onboarding win over the model's reading.
   const f = facts as CaseFacts & { country?: string | null; region?: string | null };
@@ -111,6 +123,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   opts.onEvent?.({ type: "place", place });
   opts.onEvent?.({ type: "speed", speed: speedLabel(speed) } as never);
   const steps = new Map<RouteKind, RouteStep>();
+  if (opts.base) for (const s of opts.base.steps) steps.set(s.kind, s); // a follow-up starts from what is already found
   const texts = new Map<string, string>(); // url -> page text, for checking quotes
   const keyOf = (u: string) => normUrl(u);
   const remember = (url: string, text: string) => texts.set(keyOf(url), normText(text));
@@ -147,7 +160,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const whoOf = (a: Record<string, unknown>): CrewId => (["robin", "iona", "nell"].includes(String(a.who)) ? (a.who as CrewId) : "robin");
   const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
 
-  const pending: { who: CrewId; brief: string }[] = []; // jobs the lead assigned (speed lever "workers")
+  let partHits = new Map<RouteKind, { title: string; url: string; snippet: string }[]>(); // search results per part (speed lever "workers")
   const readings = new Map<string, PageReading>(); // url -> what the reader found (for autorecord)
   const autoDone = new Set<string>();
   const labelOf = (k: string) => ROUTE_KINDS.find((x) => x.kind === k)?.label ?? k;
@@ -334,7 +347,11 @@ Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf
       ...evidenceOf(step),
       claims: { deadline: deadlineOk ? claimSupport.get(String(a.deadline)) : undefined, what: whatOk ? claimSupport.get(String(a.what ?? "")) : undefined, points: keptPoints?.map((pt) => claimSupport.get(pt)) },
     };
-    steps.set(kind, step);
+    // A new record replaces the old one only if it is at least as well backed (a deeper look must never make a part worse).
+    const rank = (c: RouteStep["confidence"]) => (c === "confirmed" ? 3 : c === "likely" ? 2 : 1);
+    const prev = steps.get(kind);
+    const worse = prev && (rank(step.confidence) < rank(prev.confidence) || (rank(step.confidence) === rank(prev.confidence) && (step.points?.length ?? 0) < (prev.points?.length ?? 0)));
+    if (!worse) steps.set(kind, step);
     publish(kit);
     const bad = sources.filter((s) => !s.checked);
     const dropped = [...(a.deadline && !step.deadline ? [String(a.deadline)] : []), ...(!whatOk ? [String(a.what ?? "")] : []), ...((Array.isArray(a.points) ? (a.points as string[]) : []).filter((pt) => !step.points?.includes(String(pt))))];
@@ -345,23 +362,48 @@ Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf
   return runCrew<DiscoveryResult>(
     {
       prefix: "discovery",
-      system: SYSTEM(place) + `\n${SEARCH_NOTE}` + (speed.batch ? `\n${BATCH_NOTE}` : "") + (speed.workers ? `\nYou do not search or read yourself in this run: update_plan, then assign_jobs ONCE (there is only one round) so Robin, Iona and Nell work at the same time (give each concrete briefs: Robin the hospital, complaint, escalation, compensation, lawyers, free help and records; Iona the clinical guidance; Nell the funding). You get the merged route back. When they report back, record_step anything still unrecorded that they reported with quotes, then finish. You may record_step too.` : ""),
-      tools: speed.workers ? [PLAN_TOOL, ASSIGN_TOOL, ...TOOLS.filter((t) => t.name === "record_step"), ASK_TOOL, FINISH_TOOL] : TOOLS,
+      system: SYSTEM(place) + (opts.focus ? `\nThis is a follow-up: only the part "${opts.focus}" is being researched more deeply (the rest is already recorded). update_plan with one step, then the crew starts by itself; when it reports back, finish.` : "") + `\n${SEARCH_NOTE}` + (speed.batch ? `\n${BATCH_NOTE}` : "") + (speed.workers ? `
+You do not search or read yourself in this run: call update_plan with one short step per part of the route, then call update_plan again or wait: the crew (one worker per part) starts by itself, and you get the merged route back. Then record_step anything still unrecorded, and finish.` : ""),
+      tools: speed.workers ? [PLAN_TOOL, ...TOOLS.filter((t) => t.name === "record_step"), ASK_TOOL, FINISH_TOOL] : TOOLS,
       ...(speed.fastmodel || speed.workers ? { turnModel: (turn: number) => (turn === 1 && !speed.workers ? { model: MODELS.draft, effort: "low" as const } : { model: MODELS.browser, effort: "low" as const }) } : {}),
       ...(speed.batch ? { tabLimit: 6 } : {}),
       ...(speed.workers
         ? {
             workers: {
               model: { model: MODELS.browser, effort: "low" as const },
-              maxTurns: 3,
-              maxRounds: 1,
-              take: () => pending.splice(0),
+              maxTurns: opts.focus ? 4 : 3,
+              maxRounds: opts.focus ? 1 : 2,
+              take: async (round: number, kit: CrewKit) => {
+                const hitsOf = (hits: { title: string; url: string; snippet: string }[]) => hits.filter((h) => !visited.has(keyOf(h.url))).slice(0, 8).map((h, i) => `${i + 1}. ${h.title} — ${h.url}\n   ${h.snippet.slice(0, 300)}`).join("\n");
+                if (opts.focus) {
+                  // Follow-up on one part: three differently worded searches at once, then one worker reads the best of all of them.
+                  const k = ROUTE_KINDS.find((x) => x.kind === opts.focus)!;
+                  const where = [place.region, place.country].filter(Boolean).join(" ");
+                  const qs = [PART_QUERY[k.kind](place), `${k.question} ${where}`, `${k.label} official guidance ${where}`].map((q) => q.replace(/\s+/g, " ").trim());
+                  const all = (await Promise.all(qs.map((q) => searchViaApi(q, kit.track).catch(() => [])))).flat();
+                  const seen = new Set<string>();
+                  const hits = all.filter((h) => (seen.has(h.url) ? false : (seen.add(h.url), true)));
+                  hits.forEach((h) => learn(h.url));
+                  const have = steps.get(k.kind);
+                  return [{ who: k.crew, brief: `Part "${k.kind}" (${k.label}): ${k.question}\n${have ? `Already found: ${have.body}. ${have.what}\nGo deeper: the time limits, stages, who it applies to, costs, and how to apply, from the body's own pages.` : "Not found yet."}\nSearch results:\n${hitsOf(hits)}` }];
+                }
+                if (round === 0) {
+                  // One generic search per part, all at once, in code: no planner turn spent on finding the first pages.
+                  const found = await Promise.all(ROUTE_KINDS.map(async (k) => ({ k, hits: await searchViaApi(PART_QUERY[k.kind](place).replace(/\s+/g, " ").trim(), kit.track).catch(() => []) })));
+                  for (const f of found) for (const h of f.hits) learn(h.url);
+                  partHits = new Map(found.map((f) => [f.k.kind, f.hits]));
+                  return found.map(({ k, hits }) => ({ who: k.crew, brief: `Part "${k.kind}" (${k.label}): ${k.question}\nSearch results already found for it:\n${hitsOf(hits) || "none: search once with different words."}` }));
+                }
+                // Gap fill: only the parts still missing or unbacked, each on its own, with what the first pass left unread.
+                const gaps = ROUTE_KINDS.filter((k) => !steps.has(k.kind) || steps.get(k.kind)!.confidence === "unconfirmed");
+                return gaps.map((k) => ({ who: k.crew, brief: `Part "${k.kind}" (${k.label}): ${k.question}\nA first try did not back this part. Pages not read yet:\n${hitsOf(partHits.get(k.kind) ?? []) || "none"}\nRead the best of them at the same time, follow links to the page that holds the facts, and you may search once with different words.` }));
+              },
               system: (id: CrewId, brief: string) => WORKER_SYSTEM(place, id, brief),
               tools: () => [...TOOLS.filter((t) => WORK_TOOLS.includes(t.name)).map(withoutWho), MEMBER_DONE],
-              merge: (round: number) => {
+              merge: () => {
                 const have = ROUTE_KINDS.map((k) => ({ k, s: steps.get(k.kind) }));
                 const lines = have.map(({ k, s }) => (s ? `- ${k.kind}: ${s.body} (${s.confidence}${s.deadline ? `, limit ${s.deadline}` : ""}${s.deadlineCheck === "one_site" ? ", limit on one site only" : ""})` : `- ${k.kind}: NOT FOUND`));
-                return `Round ${round} is over. The route so far:\n${lines.join("\n")}\n${round >= 1 ? "No more worker rounds: record_step anything you can still back from what was reported, then finish." : "If an important part is missing or weak, assign_jobs once more with only those gaps; otherwise finish."}`;
+                return `The crew has finished. The route:\n${lines.join("\n")}\nrecord_step anything still unrecorded that was reported with quotes, then finish with two or three plain sentences for the patient on what was found and what was not.`;
               },
             } satisfies WorkersSpec,
           }
@@ -411,12 +453,6 @@ Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf
           }
           case "record_step":
             return recordStep(a, kit);
-          case "assign_jobs": {
-            const jobs = (Array.isArray(a.jobs) ? a.jobs : []) as { who?: string; brief?: string }[];
-            const ok = jobs.filter((j) => ["robin", "iona", "nell"].includes(String(j.who)) && String(j.brief ?? "").trim());
-            for (const j of ok) pending.push({ who: j.who as CrewId, brief: String(j.brief) });
-            return ok.length ? `Jobs handed to ${ok.map((j) => CREW[j.who as CrewId].name).join(", ")}. They start now and work at the same time.` : "Error: no valid jobs (who must be robin, iona or nell, each with a brief).";
-          }
           default:
             return `Unknown tool ${call.name}`;
         }

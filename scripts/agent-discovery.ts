@@ -1,19 +1,22 @@
 // Run discovery (night plan, "Elliot anywhere") on a fictional persona, headless: npx tsx --env-file=.env.local scripts/agent-discovery.ts wales
 // RECORD_VIDEO=docs/night-runs/<run>/video records every tab. Answers any question with ANSWER (default: skip).
 process.env.HANDOFF_WAIT_MS ??= "0";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { personaFacts } from "./personaFacts";
 import { runDiscovery } from "../lib/agent/discovery";
 import { answerQuestion } from "../lib/agent/planner";
 
 async function main() {
   const who = process.argv[2] ?? "wales";
-  const speed = process.argv[3] ?? process.env.DISCOVERY_SPEED; // default fast; also classic | quick | fastmodel,batch,...
+  const focus = process.argv.find((a) => a.startsWith("--focus="))?.slice(8) as never; // follow-up on one part: --focus=complaint --base=.runs/<id>/route.json
+  const baseFile = process.argv.find((a) => a.startsWith("--base="))?.slice(7);
+  const speed = process.argv[3]?.startsWith("--") ? undefined : process.argv[3] ?? process.env.DISCOVERY_SPEED; // default fast; also classic | quick | fastmodel,batch,...
   const facts = personaFacts(who);
   let runId = "";
   const t0 = Date.now();
   const r = await runDiscovery(facts, {
     speed,
+    ...(focus && baseFile ? { focus, base: JSON.parse(readFileSync(baseFile, "utf8")) } : {}),
     onEvent: (e) => {
       if (e.type === "run") runId = e.runId;
       if (e.type === "place") console.log(`PLACE: ${JSON.stringify(e.place)}`);

@@ -5,7 +5,7 @@ import { PERSONA_PICKER_ENABLED } from "../../lib/personas";
 import { minutes, readResearchTime, writeResearchTime } from "./speedPref";
 import { placeOf, useDemoAvailable } from "./useDemo";
 import { CREW, type CrewId } from "../../lib/agent/plannerTypes";
-import type { RouteMap } from "../../lib/agent/routeTypes";
+import type { RouteKind, RouteMap } from "../../lib/agent/routeTypes";
 import type { Profile } from "../../lib/profile";
 import { Button } from "../ui";
 import { DemoBar, DemoButton, Workspace, type CrewKit } from "./CaseRun";
@@ -43,19 +43,16 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
   const place = placeOf(profile);
   const hasDemo = useDemoAvailable("discovery", place);
 
-  const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  // The route map fills in beside the work, one row per part, as soon as a quote checks on an official page.
-  if (live)
-    return (
-      <div className="space-y-6">
-        <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => start(profile.facts, undefined, "discovery")} kit={KIT} />
-        {state.route && (
-          <div className="mx-auto max-w-6xl">
-            <RouteMapCard route={state.route} compact handoff={state.handoffs.find((h) => !h.outcome) ?? null} />
-          </div>
-        )}
-      </div>
-    );
+  // The crew screen stays after the research is done: look back through what they did, and ask for more on any part.
+  const live = state.status === "running" || state.says.length > 0;
+  const more = (kind: RouteKind) => start(profile.facts, undefined, "discovery", state.route ?? saved, undefined, kind);
+  // One row: the route map fills in on the left (3/4), one row per part, as soon as a quote checks on an official page;
+  // what the crew did scrolls past on the right (1/4). The map is there from the start, every part saying "Not found yet".
+  if (live) {
+    const f = profile.facts as { region?: string | null; country?: string | null };
+    const route: RouteMap = state.route ?? { runId: "", place: { country: f.country ?? "", region: f.region ?? "", city: "", hospital: "", careSetting: "unknown", why: "" }, system: "", summary: "", steps: [], foundAt: "" };
+    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => start(profile.facts, undefined, "discovery")} kit={KIT} main={<RouteMapCard route={route} compact={state.status === "running"} handoff={state.handoffs.find((h) => !h.outcome) ?? null} onRerun={state.status === "running" ? undefined : more} />} />;
+  }
   if (saved && state.status !== "error") {
     const t = PERSONA_PICKER_ENABLED ? readResearchTime(profile.createdAt) : null;
     return (

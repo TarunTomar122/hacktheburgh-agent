@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ROUTE_KINDS, trustOf, type RouteMap as Route, type RouteStep } from "../../lib/agent/routeTypes";
+import { ROUTE_KINDS, trustOf, type RouteKind, type RouteMap as Route, type RouteStep } from "../../lib/agent/routeTypes";
 import { cx } from "../ui";
 import { CrewMark } from "./crew/Crew";
 
@@ -28,9 +28,9 @@ const host = (u: string) => {
   }
 };
 
-export default function RouteMapCard({ route, compact, handoff }: { route: Route; compact?: boolean; handoff?: { url: string } | null }) {
+export default function RouteMapCard({ route, compact, handoff, onRerun }: { route: Route; compact?: boolean; handoff?: { url: string } | null; /** Research one part more: the crew looks again at just that part and keeps the rest. */ onRerun?: (kind: RouteKind) => void }) {
   const where = [route.place.region, route.place.country].filter(Boolean).join(", ") || "your place";
-  if (route.steps.some((s) => s.takeaway)) return <Takeaways route={route} where={where} handoff={handoff} />;
+  if (route.steps.some((s) => s.takeaway)) return <Takeaways route={route} where={where} handoff={handoff} onRerun={onRerun} />;
   return (
     <section aria-label="How it works where you live" className="rounded-card border border-line bg-white">
       <header className="border-b border-line-soft px-6 py-5">
@@ -133,7 +133,7 @@ function Chip({ tone, children }: { tone: "ok" | "warn" | "plain"; children: Rea
 }
 
 /** What to know: one plain line per part the crew could back, the reason and the exact sources one click away. */
-function Takeaways({ route, where, handoff }: { route: Route; where: string; handoff?: { url: string } | null }) {
+function Takeaways({ route, where, handoff, onRerun }: { route: Route; where: string; handoff?: { url: string } | null; onRerun?: (kind: RouteKind) => void }) {
   const found = ROUTE_KINDS.map((k) => ({ k, s: route.steps.find((x) => x.kind === k.kind) })).filter((x): x is { k: (typeof ROUTE_KINDS)[number]; s: RouteStep } => !!x.s?.takeaway && x.s.confidence !== "unconfirmed");
   const missing = ROUTE_KINDS.filter((k) => !found.some((f) => f.k.kind === k.kind));
   return (
@@ -144,19 +144,32 @@ function Takeaways({ route, where, handoff }: { route: Route; where: string; han
       </header>
       <ol className="divide-y divide-line-soft">
         {found.map(({ k, s }) => (
-          <Takeaway key={k.kind} label={k.label} step={s} ask={!!(handoff && s.url && host(s.url) === host(handoff.url))} />
+          <Takeaway key={k.kind} label={k.label} step={s} ask={!!(handoff && s.url && host(s.url) === host(handoff.url))} onRerun={onRerun ? () => onRerun(k.kind) : undefined} />
         ))}
       </ol>
       {missing.length > 0 && (
         <p data-testid="not-found" className="border-t border-line-soft px-6 py-4 text-[13px] leading-6 text-muted">
-          Not found in this research: {missing.map((m) => m.label).join(" · ")}
+          Not found in this research:{" "}
+          {missing.map((m, i) => (
+            <span key={m.kind}>
+              {i > 0 && " · "}
+              {onRerun ? (
+                <button className="text-brand hover:underline" onClick={() => onRerun(m.kind)} title={`Look again: ${m.label}`}>
+                  {m.label}
+                </button>
+              ) : (
+                m.label
+              )}
+            </span>
+          ))}
+          {onRerun && <span className="text-faint"> (click one to look again)</span>}
         </p>
       )}
     </section>
   );
 }
 
-function Takeaway({ label, step, ask }: { label: string; step: RouteStep; ask: boolean }) {
+function Takeaway({ label, step, ask, onRerun }: { label: string; step: RouteStep; ask: boolean; onRerun?: () => void }) {
   const [open, setOpen] = useState(false);
   const t = step.takeaway!;
   const trust = trustOf(step);
@@ -194,11 +207,18 @@ function Takeaway({ label, step, ask }: { label: string; step: RouteStep; ask: b
               </li>
             ))}
           </ul>
-          {step.url && (
-            <a className="text-[13px] text-brand hover:underline" href={step.url} target="_blank" rel="noreferrer">
-              Open the page ({host(step.url)}) ↗
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-4 text-[13px]">
+            {step.url && (
+              <a className="text-brand hover:underline" href={step.url} target="_blank" rel="noreferrer">
+                Open the page ({host(step.url)}) ↗
+              </a>
+            )}
+            {onRerun && (
+              <button className="rounded-full border border-line px-3 py-1 text-ink-2 hover:border-brand hover:text-brand" onClick={onRerun}>
+                Research this more
+              </button>
+            )}
+          </div>
         </div>
       )}
     </li>

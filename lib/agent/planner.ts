@@ -403,7 +403,7 @@ async function searchApi(query: string, note: Note, track: Tracker): Promise<Sea
     if (!r.ok) throw new Error(`${url} ${r.status}`);
     return (await r.json()) as Record<string, unknown>;
   };
-  const clean = (x: { title?: string; url?: string; snippet?: string }): SearchHit => ({ title: String(x.title ?? x.url ?? "").slice(0, 100), url: String(x.url ?? ""), snippet: String(x.snippet ?? "").replace(/\s+/g, " ").slice(0, 220) });
+  const clean = (x: { title?: string; url?: string; snippet?: string }): SearchHit => ({ title: String(x.title ?? x.url ?? "").slice(0, 100), url: String(x.url ?? ""), snippet: String(x.snippet ?? "").replace(/\s+/g, " ").slice(0, 400) });
   const tries: [string, () => Promise<SearchHit[]>][] = [];
   let exhausted = false;
   if (process.env.LINKUP_API_KEY) {
@@ -471,6 +471,16 @@ const diskPut = (key: string, hits: SearchHit[]) => {
     writeFileSync(SEARCH_CACHE_FILE, JSON.stringify(all));
   } catch {}
 };
+/** One search by API only (cache, then Linkup): never opens a browser. [] when there is no key, the budget is used or it failed. */
+export async function searchViaApi(query: string, track: Tracker): Promise<{ title: string; url: string; snippet: string }[]> {
+  const key = query.toLowerCase().replace(/\s+/g, " ").trim();
+  const saved = diskGet(key);
+  if (saved) return saved;
+  const noop = Object.assign(() => {}, { log: async () => {} }) as unknown as Note;
+  const hits = (await searchApi(query, noop, track)) ?? [];
+  if (hits.length) diskPut(key, hits);
+  return hits;
+}
 export async function webSearch(page: Page, query: string, note: Note, track: Tracker): Promise<SearchHit[]> {
   const key = query.toLowerCase().replace(/\s+/g, " ").trim();
   const hit = searchCache.get(key);

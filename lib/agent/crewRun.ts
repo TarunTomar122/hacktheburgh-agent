@@ -72,8 +72,8 @@ export type WorkersSpec = {
   model: { model: string; effort: "low" | "medium" | "high" };
   maxTurns: number; // per crew member per round
   maxRounds: number; // rounds of worker loops (the first, plus at most one targeted extra)
-  /** Jobs the planner assigned in its last turn (returns and clears them). */
-  take: () => { who: CrewId; brief: string }[];
+  /** The jobs for worker round `round` (0 = first); an empty list ends the rounds. Code decides them, not the planner. */
+  take: (round: number, kit: CrewKit) => Promise<{ who: CrewId; brief: string }[]> | { who: CrewId; brief: string }[];
   system: (id: CrewId, brief: string) => string;
   tools: (id: CrewId) => FunctionTool[];
   /** What the planner is told when the round is over. */
@@ -349,13 +349,15 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       const order = (n: string) => (n === "update_plan" ? 0 : n === "finish" ? 2 : 1);
       calls.sort((x, y) => order(x.name) - order(y.name));
       let outputs = await runBatch(calls);
-      if (flow.workers && !finished) {
-        const jobs = flow.workers.take();
-        if (jobs.length && rounds < flow.workers.maxRounds) {
+      if (flow.workers && !finished && rounds === 0) {
+        // All the rounds run back to back with no planner turn in between: round 0 is one worker per part; round 1 only the parts still missing.
+        for (let r = 0; r < flow.workers.maxRounds; r++) {
+          const jobs = await flow.workers.take(r, kit);
+          if (!jobs.length) break;
           rounds++;
           await Promise.all(jobs.map((j) => memberLoop(j.who, j.brief)));
-          outputs = [...outputs, { role: "user" as const, content: flow.workers.merge(rounds) }];
-        } else if (jobs.length) outputs = [...outputs, { role: "user" as const, content: "No more worker rounds. record_step what is backed by checked quotes, then finish." }];
+        }
+        if (rounds) outputs = [...outputs, { role: "user" as const, content: flow.workers.merge(rounds) }];
       }
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
     }
