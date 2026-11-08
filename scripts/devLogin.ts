@@ -17,5 +17,8 @@ export async function devLogin(page: Page, base: string) {
  * seeds a case in the browser also saves it to the account. No-op when accounts or saving are off.
  */
 export async function seedAccount(page: Page, base: string, profile: { updatedAt?: string }) {
-  await page.request.put(`${base}/api/profile`, { data: { profile, updatedAt: profile.updatedAt ?? new Date().toISOString() } }).catch(() => null);
+  // Saved as the newest copy (the account keeps whichever copy is newest), so an earlier check's case never wins over this one.
+  const now = new Date().toISOString();
+  const r = await page.request.put(`${base}/api/profile`, { data: { profile: { ...profile, updatedAt: now }, updatedAt: now } }).catch(() => null);
+  if (r && r.status() === 409) await page.request.put(`${base}/api/profile`, { data: { profile: { ...profile, updatedAt: new Date(Date.now() + 1000).toISOString() }, updatedAt: new Date(Date.now() + 1000).toISOString() } }).catch(() => null);
 }

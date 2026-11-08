@@ -40,7 +40,11 @@ const check = (ok: boolean, what: string) => {
     }
   }, [JSON.stringify(profile), `elliot-run-v1:${created}:discovery`, JSON.stringify(stored)]);
   await page.goto(`${BASE}/case?step=research`);
-  await page.locator("#live-slot").waitFor({ state: "attached", timeout: 30_000 });
+  const slot = await page.locator("#live-slot").waitFor({ state: "attached", timeout: 30_000 }).then(() => true, () => false);
+  if (!slot) {
+    await page.screenshot({ path: "/tmp/tiles-fail.png" });
+    console.log("no live slot at", page.url());
+  }
   await page.waitForTimeout(2000); // the live stream connects
   await page.evaluate((b) => fetch(`${b}/api/dev/live-fixture`, { method: "POST" }), BASE);
   const tiles = () => page.locator('#live-slot [title^="Watch "][title$=" up close"]').count();
