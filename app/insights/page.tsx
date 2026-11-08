@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { allRuns, browserEvidence, type Flow } from "../../lib/insights";
+import { DECISION_MODEL } from "../../lib/agent/decisions";
+import { MODELS } from "../../lib/agent/llm";
 
 const FLOW_NAME: Partial<Record<Flow, string>> = { discovery: "Research", compensation: "Prepare your case", complaint: "Complaint", escalation: "Independent review" };
 const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60_000).toFixed(1)} min`;
@@ -18,6 +20,15 @@ const CREW = [
   { id: "iona", name: "Iona", job: "Finds guidance and decisions." },
   { id: "kit", name: "Kit", job: "Prepares enquiries for review." },
 ];
+
+/** What each model is for, and why that model: keyed by the configured model ids (lib/agent/llm.ts, lib/agent/decisions.ts). */
+const MODEL_ROLES: { id: string; name: string; why: string }[] = [
+  { id: MODELS.draft, name: "Reasoning", why: "Plans, re-plans and writes. Used where a wrong call costs the most." },
+  { id: MODELS.browser, name: "Fast reader", why: "Reads pages and picks links many times a run, so it has to be quick and cheap." },
+  { id: DECISION_MODEL, name: "Decisions", why: "Yes, no or pick-one answers with a confidence, like 'does this firm act for patients?'." },
+  { id: MODELS.private, name: "On this Mac", why: "Anything with your health story, money or identity stays on this machine." },
+];
+const modelLabel = (id: string) => id.replace(/^local:/, "").replace(/^qwen3:8b$/, "Qwen3 8B");
 
 export default function Insights() {
   return <Suspense fallback={<main className="mx-auto max-w-6xl px-6 py-16 text-muted">Reading the run logs.</main>}><Dashboard /></Suspense>;
@@ -51,6 +62,20 @@ async function Dashboard() {
   const cloudPrivate = scope.flatMap((r) => r.models).some((m) => m.where === "cloud" && m.data.some((d) => /health|money|identity|contact|financial/i.test(d)));
   const stops = access.filter((a) => a.kind === "task" && /filled .*form \([1-9]\d* fields\).*stopped before Send/.test(a.reason)).length;
   const cohort = `Latest ${scope.length} runs · ${scope.at(-1)?.startedAt.slice(0, 16).replace("T", " ")} to ${scope[0]?.startedAt.slice(11, 16)} UTC`;
+  // Which model did which job, per step, from the ledger of the recent finished runs.
+  const modelsByFlow = (["discovery", "compensation"] as Flow[]).map((flow) => {
+    const rs = finished.filter((r) => r.flow === flow);
+    const by = new Map<string, { model: string; where: string; calls: number; ms: number; crew: Set<string> }>();
+    for (const r of rs)
+      for (const m of r.models) {
+        const cur = by.get(m.model) ?? { model: m.model, where: m.where, calls: 0, ms: 0, crew: new Set<string>() };
+        cur.calls += m.calls;
+        cur.ms += m.ms;
+        if (CREW.some((c) => c.id === m.agent)) cur.crew.add(m.agent);
+        by.set(m.model, cur);
+      }
+    return { flow, runs: rs.length, models: [...by.values()].filter((m) => m.calls > 0).sort((a, b) => b.calls - a.calls) };
+  }).filter((f) => f.runs > 0);
 
   return (
     <main className="mx-auto max-w-6xl space-y-16 px-6 py-10 sm:px-10 sm:py-14">
@@ -70,6 +95,27 @@ async function Dashboard() {
           {CREW.map((c) => <div key={c.id} className="border-t border-line pt-4"><Avatar id={c.id} size="size-24" /><h3 className="mt-3 text-base font-medium text-ink">{c.name}</h3><p className="mt-1 text-sm leading-6 text-ink-2">{c.job}</p></div>)}
         </div>
       </section>
+
+      {modelsByFlow.length > 0 && <section aria-labelledby="models-title">
+        <Heading id="models-title" label="The right model for each job" title="Four models, one crew." />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {MODEL_ROLES.map((m) => <div key={m.name} className="rounded-card border border-line p-5"><p className="text-xs uppercase tracking-widest text-muted">{m.name}</p><p className="mt-2 text-base font-medium text-ink">{modelLabel(m.id)}</p><p className="mt-2 text-sm leading-6 text-ink-2">{m.why}</p></div>)}
+        </div>
+        <div className="mt-8 space-y-6">
+          {modelsByFlow.map((f) => <div key={f.flow}>
+            <p className="mb-3 text-sm font-medium text-ink">{FLOW_NAME[f.flow]} <span className="font-normal text-muted">· {f.runs} recent runs</span></p>
+            <div className="flex flex-wrap gap-3">
+              {f.models.map((m) => <div key={m.model} className="flex items-center gap-3 rounded-card border border-line bg-white px-4 py-3" title={`${modelLabel(m.model)}: ${m.calls} calls, ${(m.ms / m.calls / 1000).toFixed(1)} s each on average`}>
+                <span className="flex -space-x-1.5">{[...m.crew].map((c) => <Avatar key={c} id={c} size="size-6" />)}</span>
+                <span className="text-sm text-ink">{modelLabel(m.model)}</span>
+                <span className={m.where === "local" ? "rounded-full bg-teal-soft px-2 py-0.5 text-xs text-teal" : "rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand"}>{m.where === "local" ? "On this Mac" : "Cloud"}</span>
+                <span className="text-xs tabular-nums text-muted">{m.calls} calls · {(m.ms / m.calls / 1000).toFixed(1)} s each</span>
+              </div>)}
+            </div>
+          </div>)}
+        </div>
+        <p className="mt-4 text-xs text-muted">From the model ledger of every run: who called which model, how often and how long it took. Onboarding asks its questions with {modelLabel(MODELS.interview)}.</p>
+      </section>}
 
       {lanesRun && <section aria-labelledby="parallel-title" className="rounded-card border border-line bg-subtle p-5 sm:p-8">
         <Heading id="parallel-title" label="One shared clock" title="Together, not in a queue." />
