@@ -1,8 +1,30 @@
 import type { Page } from "playwright";
 import { z } from "zod";
 import { dismissCookies } from "../../browser";
-import { MODELS, structured } from "../llm";
-import { byId, clickEl, detectWall, formatSnapshot, hostOf, matchOption, norm, settle, snapshot, tick, type Snapshot, type UiEl } from "./searchDirectory";
+import { MODELS, modelFor, structured } from "../llm";
+import {
+  AMBIGUOUS_RE,
+  auditPress,
+  byId,
+  carriesOnlyOurs,
+  CHECKER_NAV_RE,
+  clickEl,
+  detectWall,
+  formatSnapshot,
+  HARD_STOP_RE,
+  hostOf,
+  isPersonalField,
+  matchOption,
+  PLACE_FIELD_RE,
+  norm,
+  RESULT_STEP_RE,
+  settle,
+  snapshot,
+  tick,
+  type PressAudit,
+  type Snapshot,
+  type UiEl,
+} from "./searchDirectory";
 import type { Quote, Value, Wall, WorkerCtx } from "./types";
 
 /**
@@ -12,6 +34,12 @@ import type { Quote, Value, Wall, WorkerCtx } from "./types";
  * page's own options). It never guesses money or personal answers. It presses Next / Continue between pages (these
  * checkers send nothing to anyone), stops at pages that ask for identity or contact details or a login, and reads the
  * final result, quoting it word for word (the quote and its caveats are checked against the page text by code).
+ *
+ * Safety in code (`checkerPress`), whatever the model chose: a control is clicked only if it is a checker's own
+ * navigation (next, continue, check, calculate, see result, start, back) or one of a question's answers, the page asks
+ * for no identity / contact details, and what it sends holds only the answers code typed. Send / pay / apply / sign /
+ * register labels are never pressed; Submit / Confirm / Finish (in any language) only as a pure calculator's own
+ * "see result" step. Otherwise the worker stops "before a final button" and says so.
  *
  * Knows nothing about any site. Models see the page and the KEYS + descriptions of known values; code types the
  * values. A choice value is shown to the model only when code cannot map it onto the page's options itself, and
@@ -37,14 +65,14 @@ const AnswerType = z.enum(["choice", "multi", "yes_no", "money", "number", "text
 const PageRead = z.object({
   pageKind: z
     .enum(["start", "questions", "result", "identity_or_contact", "login", "other"])
-    .describe("start: an intro page with a start button; questions: asks questions; result: shows the checker's outcome; identity_or_contact: asks for name, date of birth, address, email, phone, ID numbers; login: asks to sign in"),
+    .describe("start: an intro page with a start button; questions: asks questions; result: shows the checker's outcome; identity_or_contact: asks for name, date of birth, street address, email, phone, ID numbers (a postcode, town or region on its own is not identity); login: asks to sign in"),
   reasoning: z.string().describe("one plain sentence about this page"),
   questions: z.array(
     z.object({
       question: z.string().describe("the question exactly as the page words it (its legend / heading / label, not a generic instruction like 'Please select'), including any period like 'each month'"),
       controlIds: z.array(z.number()).describe("ids of ALL the controls that answer this question: every radio option, every checkbox, the box or dropdown, or, when the page offers each answer as its own link or button, those links/buttons"),
       answerType: AnswerType.describe("money for any amount of money; multi for 'select all that apply'"),
-      personal: z.boolean().describe("asks for identity/contact details (name, date of birth, address, postcode, email, phone, NI number)"),
+      personal: z.boolean().describe("asks for identity/contact details (name, date of birth, street address, email, phone, NI / NHS / ID numbers, a free-text description of the person's case). A postcode, town, region or country on its own is NOT personal"),
       knownKey: z.string().nullable().describe("the KEY of a KNOWN value whose description clearly answers exactly this question (same person, same thing, same period); null if none does"),
       hint: z.string().nullable().describe("the page's own hint text for this question, if any"),
     }),
@@ -63,8 +91,15 @@ type Q = z.infer<typeof PageRead>["questions"][number];
 
 const ChoiceMap = z.object({ options: z.array(z.string()).describe("the page options that the answer means, exactly as listed; empty if it means none of them") });
 
-/** Labels the worker never presses to move on: they send, pay, sign in or apply. */
-const NEVER_PRESS = /\b(pay|payment|send|sign ?in|log ?in|register|create (an )?account|apply (now|online|for)|submit (your |an |my )?application|delete|email (me|my|the|these)|print|download)\b/i;
+/** Labels the worker never presses to move on, on top of HARD_STOP_RE: they leave the checker. */
+const NEVER_PRESS = /\b(print|download|save (and|&) (come back|return|exit)|save for later)\b/i;
+/** The words to report when the worker stops before a control it may not press. */
+const STOPPED_FINAL = "stopped before a final button";
+
+/** A text box on the page that asks for identity / contact details, or free text (the person's own words). Code, not the model. */
+export function personalOnPage(snap: Snapshot): UiEl | undefined {
+  return snap.els.find((e) => !e.chrome && e.kind === "text" && !e.disabled && (e.personal || e.type === "" || isPersonalField({ type: e.type, name: e.name, label: e.label, tag: e.type === "" ? "textarea" : "input" })));
+}
 
 export async function runQuestionnaire(ctx: WorkerCtx, opts: { url: string; goal: string; known: Value[]; maxPages?: number }): Promise<QuestionnaireRun> {
   const { page, note } = ctx;
@@ -74,6 +109,7 @@ export async function runQuestionnaire(ctx: WorkerCtx, opts: { url: string; goal
   const known = new Map(opts.known.filter((v) => v.value.trim()).map((v) => [v.key, v]));
   const answers: QuestionnaireAnswer[] = [];
   const memo = new Map<string, { values: string[]; display: string; tries: number }>();
+  const typed = new Set<string>(); // every text code typed into the checker (its answers), and nothing else may be sent
   const log = (kind: Parameters<typeof note.log>[0], text: string, extra: Parameters<typeof note.log>[2] = {}) => note.log(kind, text, extra).catch(() => {});
   const act = () => ctx.track.bump("action");
   const stop = (summary: string, wall?: Wall, extra: Partial<QuestionnaireRun> = {}): QuestionnaireRun => ({ ok: false, answers, result: "", caveats: [], summary, ...(wall ? { wall } : {}), ...extra });
@@ -116,9 +152,12 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
     await log("decide", read.reasoning.slice(0, 200), { detail: read.questions.map((q) => `${q.question} [${q.answerType}]${q.knownKey ? ` <- known "${q.knownKey}"` : ""}`).join("\n") || undefined });
 
     // Identity, contact details or login: stop. The checker's result, if already shown, still counts.
-    const personalField = snap.els.find((e) => e.personal && !e.chrome && e.kind === "text");
-    if (read.pageKind === "login" || read.pageKind === "identity_or_contact" || read.questions.some((q) => q.personal) || personalField) {
-      const detail = read.pageKind === "login" ? "The checker asks the user to sign in" : `The checker now asks for identity or contact details (${(read.questions.find((q) => q.personal)?.question ?? personalField?.label ?? "personal details").slice(0, 80)})`;
+    // A postcode / town / region question is place, not identity: code overrides the model's "personal" for it.
+    const personalField = personalOnPage(snap);
+    const personalQ = read.questions.find((q) => q.personal && !isPlaceQuestion(q, snap));
+    const identityPage = read.pageKind === "identity_or_contact" && !(read.questions.length && read.questions.every((q) => isPlaceQuestion(q, snap) || !q.personal));
+    if (read.pageKind === "login" || identityPage || personalQ || personalField) {
+      const detail = read.pageKind === "login" ? "The checker asks the user to sign in" : `This checker wants personal details (${(personalQ?.question ?? personalField?.label ?? "personal details").slice(0, 80)})`;
       await log("check", `${detail}. Stopped: this worker never enters personal details`, { shot: true });
       if (read.result) return finish(read.result, snap, true);
       return stop(`${detail}; stopped before it.`, { kind: read.pageKind === "login" ? "login" : "dead_end", detail, url: snap.url });
@@ -136,7 +175,7 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
       const current = els.find((e) => e.kind === "select")?.value ?? els.find((e) => e.checked)?.label;
       memo.set(qKey(q, snap), { values: want?.values ?? [], display: want?.display ?? "", tries: 1 });
       if (!want || !current || norm(current) === norm(want.values[0])) continue;
-      await apply(page, q, els, want.values);
+      await apply(page, q, els, want.values, typed);
       act();
       answers.push({ question: q.question, answer: want.display, source: "known" });
       await log("pick", `${q.question.slice(0, 80)}: the page had "${current}" pre-selected; changed it to the known answer`, { detail: `Answer: ${want.display}` });
@@ -162,7 +201,13 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
           await log("check", `You chose not to answer "${q.question.slice(0, 80)}". Stopped there`);
           return stop(`Stopped: no answer to "${q.question.slice(0, 100)}".`);
         }
-        const ok = await apply(page, q, els, got.values);
+        // An answer offered as a link / button is a press: code checks it like any other (it may submit the page's form).
+        const target = els.every((e) => CLICK_KINDS.has(e.kind)) ? clickTarget(els, got.values[0]) : undefined;
+        if (target) {
+          const v = await checkerPress(target, snap, "answer");
+          if (!v.ok) return refuse(v, target, snap, read.result);
+        }
+        const ok = await apply(page, q, els, got.values, typed);
         act();
         if (!prev) {
           memo.set(key, { values: got.values, display: got.display, tries: 1 });
@@ -182,10 +227,9 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
 
     const next = read.continueId === null ? undefined : snap.els.find((e) => e.id === read.continueId);
     if (next) {
-      if (NEVER_PRESS.test(next.label)) {
-        await log("check", `Did not press "${next.label}": it would send, pay, apply or sign in`, { shot: true });
-        return read.result ? finish(read.result, snap, true) : stop(`Stopped before "${next.label}".`, { kind: "dead_end", detail: `The next step is "${next.label}", which the agent never presses.`, url: snap.url });
-      }
+      // Code decides whether the model's "continue" may be pressed; the model's choice never overrides it.
+      const v = await checkerPress(next, snap, "continue");
+      if (!v.ok) return refuse(v, next, snap, read.result);
       if (advances >= maxPages) return stop(`Stopped after ${advances} pages without a result.`, { kind: "dead_end", detail: "Too many pages", url: snap.url });
       const before = sig(snap);
       note(`Pressing "${next.label.slice(0, 30)}"`);
@@ -220,6 +264,23 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
   return stop(`Ran out of steps on ${host}.`);
 
   /* ---------------------------------------------------------------- helpers that close over the run */
+
+  /** Code's verdict on pressing a control (see checkerPressVerdict), read from the live page. */
+  async function checkerPress(el: UiEl, snap: Snapshot, role: "continue" | "answer") {
+    return checkerPressVerdict(await auditPress(page, el.id), el, snap, typed, role);
+  }
+
+  /** Stop at a control code refused. Personal details are reported as such; anything else as a final button. */
+  async function refuse(v: { why: string; personal?: boolean }, el: UiEl, snap: Snapshot, result: z.infer<typeof PageRead>["result"]): Promise<QuestionnaireRun> {
+    if (v.personal) {
+      const detail = `This checker wants personal details (${v.why})`;
+      await log("check", `${detail}. Stopped: this worker never enters personal details`, { shot: true });
+      return result ? finish(result, snap, true) : stop(`${detail}; stopped before it.`, { kind: "dead_end", detail, url: snap.url });
+    }
+    await log("check", `Did not press "${el.label.slice(0, 40)}": ${v.why}. ${STOPPED_FINAL[0].toUpperCase()}${STOPPED_FINAL.slice(1)}`, { shot: true });
+    if (result) return finish(result, snap, true);
+    return stop(`Stopped before "${el.label.slice(0, 60)}": ${v.why}.`, { kind: "dead_end", detail: `${STOPPED_FINAL}: ${v.why}`, url: snap.url }, { result: STOPPED_FINAL });
+  }
 
   async function finish(r: NonNullable<z.infer<typeof PageRead>["result"]>, snap: Snapshot, stoppedEarly: boolean): Promise<QuestionnaireRun> {
     const resultQuote = checkQuote(r.quote, snap);
@@ -273,7 +334,14 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
       const n = parseAmount(value);
       return n === null ? null : { values: [n], display: q.answerType === "money" ? `£${Number(n).toLocaleString("en-GB")}` : n };
     }
-    if (!options.length) return { values: [value.trim()], display: value.trim() };
+    if (!options.length) {
+      // A postcode question gets only the postcode (or its first part when that is all it asks), never the rest of an address.
+      if (/post ?code|postal code|outward code/i.test(q.question)) {
+        const pc = postcodeOf(value, /first (?:part|half)|outward|first \d|district/i.test(`${q.question} ${q.hint ?? ""}`));
+        return pc ? { values: [pc], display: pc } : null;
+      }
+      return { values: [value.trim()], display: value.trim() };
+    }
     const parts = q.answerType === "multi" ? value.split(/\s*(?:,|;|\band\b)\s*/i).filter(Boolean) : [value];
     const mapped = parts.map((p) => matchChoice(options, p));
     if (mapped.every(Boolean)) {
@@ -281,11 +349,12 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
       return { values, display: values.join(", ") };
     }
     // Code could not map it; a model maps the words onto the page's options (never money, see above).
+    // The person's own answer (benefits, savings, work: their money) is seen here, so it runs on this Mac by default.
+    // Amounts never reach a model (parseAmount above); page reading sees only the descriptions of known values.
     const m = await structured({
-      model: MODEL,
-      effort: "low",
+      ...modelFor("check", ["money"]),
       name: "questionnaire_choice",
-      data: [],
+      data: ["money"],
       schema: ChoiceMap,
       instructions: `Map an answer onto a checker's options. Choose ${q.answerType === "multi" ? "every option" : "the one option"} the answer clearly means, copied exactly. Empty if it means none of them or is unclear. Do not guess.`,
       input: `QUESTION: ${q.question}\nOPTIONS:\n${options.map((o) => `- ${o}`).join("\n")}\n${fromUser ? "THE USER ANSWERED" : "KNOWN VALUE"}: ${value}`,
@@ -364,11 +433,55 @@ export function parseAmount(s: string): string | null {
   return String(Number.isInteger(n) ? n : Math.round(n * 100) / 100);
 }
 
-/** Put the answer into the page's own controls. */
-async function apply(page: Page, q: Q, els: UiEl[], values: string[]): Promise<boolean> {
+/**
+ * May a checker control be pressed? Only (a) a checker's own navigation (next, continue, check, calculate, see result,
+ * start, back) or one of a question's answers, (b) on a page that asks for no identity / contact details, (c) when
+ * what it sends holds only the answers code typed (`typed`; no free text, no file, no password, no ticked consent).
+ * Send / pay / apply / sign / register: never. Submit / Confirm / Finish (any language): only when it is also the
+ * checker's own "see result" step on such a pure calculator. When unsure: refuse.
+ */
+export function checkerPressVerdict(a: PressAudit, el: UiEl, snap: Snapshot, typed: Iterable<string>, role: "continue" | "answer"): { ok: true } | { ok: false; why: string; personal?: boolean } {
+  const label = (a.label || el.label).trim();
+  const labels = [el.label, a.label].filter(Boolean);
+  if (labels.some((l) => HARD_STOP_RE.test(l) || NEVER_PRESS.test(l))) return { ok: false, why: `"${label.slice(0, 40)}" would send, pay, apply, sign or create an account` };
+  const pf = personalOnPage(snap) ?? a.fields.find((f) => (f.visible || f.value.trim()) && isPersonalField(f));
+  if (pf) return { ok: false, personal: true, why: `it asks for "${(pf.label || pf.name || "personal details").slice(0, 60)}"` };
+  if (!a.found) return { ok: false, why: `"${label.slice(0, 40)}" could not be read on the live page` };
+  const plainLink = el.kind === "link" && !a.inForm && !!el.href && !/^\s*javascript:/i.test(el.href);
+  const carried = plainLink ? ({ ok: true } as const) : carriesOnlyOurs(a, typed);
+  if (!carried.ok) return { ok: false, why: carried.why };
+  const ambiguous = labels.some((l) => AMBIGUOUS_RE.test(l));
+  if (role === "answer") return ambiguous ? { ok: false, why: `the answer "${label.slice(0, 40)}" reads like a final button` } : { ok: true };
+  // Ambiguous: only a pure calculator's own "see result" step (everything it sends was typed by code, checked above).
+  if (ambiguous) return RESULT_STEP_RE.test(label) ? { ok: true } : { ok: false, why: `"${label.slice(0, 40)}" may send the answers for good, and it is not a "see result" step` };
+  if (CHECKER_NAV_RE.test(label)) return { ok: true };
+  return { ok: false, why: `"${label.slice(0, 40) || "an unnamed button"}" is not a next / continue / see-result step` };
+}
+
+/** A question about place only (postcode, town, region, country), judged by code from its words and its boxes' labels. */
+function isPlaceQuestion(q: Q, snap: Snapshot): boolean {
+  const els = q.controlIds.map((id) => snap.els.find((e) => e.id === id)).filter((e): e is UiEl => !!e);
+  const words = [q.question, ...els.map((e) => `${e.label} ${e.name}`)];
+  if (words.some((w) => /\b(?:name|e-?mail|phone|telephone|mobile|date of birth|birth|street|house|address line|full address|national insurance|nhs number|passport)\b/i.test(w))) return false;
+  return PLACE_FIELD_RE.test(q.question) && els.every((e) => e.kind !== "text" || e.type !== "" ) && els.every((e) => e.kind !== "text" || !isPersonalField({ type: e.type, name: e.name, label: e.label }));
+}
+
+/** A UK postcode in the text ("CF10 1AB"), or its outward code ("CF10") when `outward`; null when there is none. */
+export function postcodeOf(text: string, outward: boolean): string | null {
+  const m = text.toUpperCase().match(/\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/) ?? text.toUpperCase().match(/\b([A-Z]{1,2}\d[A-Z\d]?)\b(?!\s*\d[A-Z]{2})/);
+  if (!m) return null;
+  if (outward || !m[2]) return m[1];
+  return `${m[1]} ${m[2]}`;
+}
+
+/** The link / button that carries this answer. */
+const clickTarget = (els: UiEl[], value: string) => els.find((e) => e.label === value) ?? els.find((e) => norm(e.label) === norm(value));
+
+/** Put the answer into the page's own controls. Text typed is remembered in `typed` (the only text a press may send). */
+async function apply(page: Page, q: Q, els: UiEl[], values: string[], typed: Set<string>): Promise<boolean> {
   if (els.every((e) => CLICK_KINDS.has(e.kind))) {
-    const el = els.find((e) => e.label === values[0]) ?? els.find((e) => norm(e.label) === norm(values[0]));
-    if (!el || NEVER_PRESS.test(el.label)) return false;
+    const el = clickTarget(els, values[0]);
+    if (!el || NEVER_PRESS.test(el.label) || HARD_STOP_RE.test(el.label)) return false;
     const ok = (await clickEl(page, el)) === "ok";
     await settle(page, 700);
     return ok;
@@ -404,6 +517,7 @@ async function apply(page: Page, q: Q, els: UiEl[], values: string[]): Promise<b
   for (let i = 0; i < Math.min(boxes.length, parts.length); i++) {
     const loc = byId(page, boxes[i].id);
     try {
+      typed.add(parts[i]);
       await loc.fill(parts[i], { timeout: 5000 });
       await loc.press("Tab", { timeout: 2000 }).catch(() => {}); // many calculators recompute on change/blur
     } catch {

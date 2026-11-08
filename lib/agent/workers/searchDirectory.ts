@@ -153,7 +153,8 @@ function inPageSnapshot(args: { textCap: number; linkCap: number }): Snapshot {
   const controls: { e: HTMLElement; el: Omit<UiEl, "id"> }[] = [];
   const buttons: typeof controls = [];
   const links: typeof controls = [];
-  const personalAuto = /^(name|given-name|family-name|additional-name|honorific|email|tel|tel-|street-address|address-line|address-level|postal-code|bday|sex|username|current-password|new-password|cc-)/i;
+  // Place on its own (postcode, town, region, country) is not identity: the product uses it to find nearby services.
+  const personalAuto = /^(name|given-name|family-name|additional-name|honorific|email|tel|tel-|street-address|address-line|bday|sex|username|current-password|new-password|cc-)/i;
   for (const e of Array.from(document.querySelectorAll<HTMLElement>(sel))) {
     if (seen.has(e)) continue;
     seen.add(e);
@@ -447,6 +448,220 @@ export function termFromCriteria(wanted: string, criteria: Criterion[]): { text:
 /** Labels of boxes the search worker must never tick, whatever the model says. */
 const NEVER_TICK = /agree|consent|terms|privacy|subscribe|newsletter|marketing|remember me|keep me signed/i;
 
+/* ================================================================== press guard (safety, in code; shared by the generic workers) */
+
+/** Word-start / word-end that also works for accented letters. */
+const words = (alts: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${alts})(?![\\p{L}\\p{N}])`, "iu");
+
+/** Labels that are never pressed by a generic worker, whatever the page or the model says: they send, pay, apply, sign or make an account. */
+export const HARD_STOP_RE = words(
+  "send|sent|pay|pay now|payment|checkout|check out|buy|purchase|place (?:an |the |your |my )?order|order now|donate|book (?:now|online|an appointment)|" +
+    "apply (?:now|online|for|to|here)|(?:start|submit|send|continue) (?:an? |your |my |the |with (?:your |the )?|to (?:your |the )?)?application|^register$|register (?:now|here|for|an? account|your)|registration form|" +
+    "sign ?(?:in|up|on)|log ?in|create (?:an |my |your )?account|subscribe|e-?sign|sign (?:and|here|now|the|this|my|your)|i agree|agree (?:and|to)|accept (?:and|all|terms|the)|i consent|consent and|i declare|declare and|" +
+    "lodge|file (?:my|the|this|your|a)|make (?:a |your )?(?:complaint|claim|payment)|email (?:me|my|the|these|this|results?)|delete|" +
+    "absend\\p{L}*|abschick\\p{L}*|senden|bezahlen|zahlen|anmelden|registrieren|einreichen|envoyer|envoi|payer|s'inscrire|inscription|enviar|pagar|registrarse|inviare|invia|pagare|registrati|verzenden|verstuur|versturen|betalen|aanmelden|skicka|betala|wyślij|zapłać|odeslat|zaplatit|trimite|küldés|gönder|送信|支払|提交|发送|付款",
+);
+/** Labels that might end a flow (submit, confirm, finish ...). Never pressed except as the checker's own "see result" step on a pure calculator. */
+export const AMBIGUOUS_RE = words(
+  "submit|submission|confirm|confirmation|finish|finalise|finalize|complete|done|ok|okay|proceed to (?:payment|checkout)|" +
+    "absend\\p{L}*|abschick\\p{L}*|einreich\\p{L}*|bestätig\\p{L}*|fertig|abschließen|soumettre|valider|confirmer|terminer|enviar|confirmar|finalizar|terminar|invia|conferma|termina|indienen|bevestig\\p{L}*|voltooien|skicka|bekräfta|slutför|lähetä|vahvista|wyślij|potwierdź|zakończ|odeslat|potvrdit|dokončit|送信|確認|提交|确认|完成",
+);
+/** A search control. */
+export const SEARCH_LABEL_RE = words(
+  "search|find|filter|filters|apply filters?|update (?:results|search|filters)|refine|show (?:results|matches)|go|look ?up|" +
+    "suchen|suche|finden|filtern|rechercher|recherche|chercher|trouver|filtrer|buscar|busca|encontrar|filtrar|cerca|cercare|trova|filtra|zoeken|zoek|vinden|sök|søk|søg|hae|etsi|szukaj|wyszukaj|hledat|vyhledat|keresés|ara|検索|搜索|查找",
+);
+/** A form or box that says it is a search (its role, action, name, id, class, placeholder). */
+const SEARCH_SCOPE_RE = /search|find|filter|query|look-?up|finder|directory|(?<![a-z])q(?![a-z])|keywords?|suche|recherche|buscar|busqueda|zoek|cerca|ricerca|sok|szukaj|hledat/i;
+/** Moving on in a checker or calculator, or back. Sends nothing for good. */
+export const CHECKER_NAV_RE = words(
+  "next|continue|save and continue|save & continue|start|start now|begin|get started|check|check (?:my |your )?(?:answers|eligibility)|calculate|estimate|" +
+    "(?:get|see|show|view|display) (?:my |your |the )?(?:results?|estimate|outcome|answer|eligibility)|results?|back|go back|previous|" +
+    "weiter|nächste|fortfahren|zurück|berechnen|ergebnis(?:se)? anzeigen|suivant|continuer|précédent|retour|calculer|voir (?:le |les |mon |mes )?résultats?|siguiente|continuar|anterior|atrás|calcular|ver (?:el |los )?resultados?|avanti|continua|indietro|calcola|volgende|verder|doorgaan|vorige|berekenen|nästa|fortsätt|tillbaka|beräkna|seuraava|jatka|dalej|następn\\p{L}*|další|pokračovat|次へ|下一步|戻る",
+);
+/** The checker's own "see the result" step. */
+export const RESULT_STEP_RE = words("(?:get|see|show|view|display|calculate|check) (?:my |your |the )?(?:results?|estimate|outcome|eligibility)|calculate|estimate|results?|ergebnis\\p{L}*|résultats?|resultados?|risultat\\p{L}*|resultaat|resultat\\p{L}*");
+/** Identity and contact fields (name, email, phone, address, date of birth, ID numbers, sign-in), in several languages. */
+const PERSONAL_FIELD_RE = words(
+  "(?:first|last|full|given|family|middle|sur|maiden|your|patient'?s?|applicant'?s?|claimant'?s?|contact|legal) ?names?|forenames?|surnames?|e-?mail|email address|phone|telephone|mobile|cell ?phone|tel|contact (?:number|details)|" +
+    "(?:home|street|postal|your|house|correspondence|full|billing|delivery|current) address|address ?(?:line|1|2)|street|house number|date of birth|birth ?date|dob|birthday|national insurance|ni (?:number|no)|nino|nhs (?:number|no)|chi number|passport|" +
+    "driving licen[cs]e|social security|ssn|account (?:number|no)|sort code|card number|iban|cvv|username|user name|password|passcode|" +
+    "vorname|nachname|geburtsdatum|telefon\\p{L}*|anschrift|wohnort|prénom|nom de famille|courriel|téléphone|date de naissance|adresse postale|nombre completo|apellidos?|correo|teléfono|dirección|fecha de nacimiento|cognome|indirizzo|data di nascita|achternaam|voornaam|geboortedatum",
+);
+const NAME_ONLY = new Set(["name", "your name", "naam", "nom", "nombre", "nome", "namn", "imie", "imię", "jmeno"]);
+/** Free-text boxes that carry a person's own words. */
+const CONTACT_TEXT_RE = words("message|enquiry|inquiry|comments?|complaint|feedback|describe|description|tell us|details of|your question|nachricht|mensaje|messaggio|bericht|wiadomość");
+const PERSONAL_AUTOCOMPLETE = /^(name|given-name|family-name|additional-name|honorific|nickname|email|tel|street-address|address-line|bday|sex|username|current-password|new-password|one-time-code|cc-|organization-title)/i;
+/** Place data on its own (postcode, outward code, town, city, region, county, country): allowed, it is not identity. */
+export const PLACE_FIELD_RE = words("post ?code|postal code|zip(?: code)?|outward code|first part of (?:your |the )?postcode|town|city|region|county|country|area|local authority|council|location|where (?:do you|you) live|postleitzahl|plz|ort|wohnort|code postal|ville|código postal|ciudad|cap|città|postcode|woonplaats");
+
+export type PressField = { tag: string; type: string; name: string; id: string; label: string; placeholder: string; autocomplete: string; value: string; defaultValue: string; visible: boolean; checked: boolean };
+export type PressAudit = {
+  found: boolean;
+  /** Pressing it submits a form (a submit / image input, or a submit button inside a form). */
+  submits: boolean;
+  /** What a person reads on it: text, value, aria-label, title, image alt or svg title. */
+  label: string;
+  inForm: boolean;
+  method: string;
+  /** The form's (or the area's) own words: role, action, name, id, aria-label, class, and its boxes' placeholders and names. */
+  scopeSays: string;
+  /** The label of the form's default (first) submit button: what Enter in one of its boxes would press. */
+  defaultButton: string;
+  /** The fields pressing it would send (its form), or the fields around it when it has no form. */
+  fields: PressField[];
+};
+
+/** Read, from the live DOM, what pressing an element (tagged by the last snapshot) would do and send. */
+export async function auditPress(page: Page, id: number): Promise<PressAudit> {
+  const none: PressAudit = { found: false, submits: false, label: "", inForm: false, method: "", scopeSays: "", defaultButton: "", fields: [] };
+  await page.evaluate("window.__name = window.__name || ((f) => f)").catch(() => {});
+  return byId(page, id)
+    .evaluate((node) => {
+      const clean = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
+      const e = node as HTMLElement;
+      const tag = e.tagName.toLowerCase();
+      const type = (e.getAttribute("type") || "").toLowerCase();
+      const ownForm = (e as HTMLButtonElement).form ?? e.closest("form");
+      const labelOf = (b: Element) =>
+        clean((b as HTMLElement).innerText) ||
+        (b.tagName === "INPUT" ? clean((b as HTMLInputElement).value) : "") ||
+        clean(b.getAttribute("aria-label")) ||
+        clean(b.getAttribute("title")) ||
+        clean(b.querySelector("img")?.getAttribute("alt")) ||
+        clean(b.querySelector("svg title")?.textContent) ||
+        clean(b.querySelector("svg")?.getAttribute("aria-label"));
+      const isSubmit = (b: Element) => {
+        const t = (b.getAttribute("type") || "").toLowerCase();
+        return (b.tagName === "INPUT" && (t === "submit" || t === "image")) || (b.tagName === "BUTTON" && (t === "" || t === "submit"));
+      };
+      const submits = !!ownForm && isSubmit(e);
+      let scope: Element | null = ownForm;
+      if (!scope) {
+        let n = e.parentElement;
+        for (let i = 0; i < 6 && n && n !== document.body; i++, n = n.parentElement) {
+          if (n.querySelector("input:not([type=hidden]), textarea, select")) {
+            scope = n;
+            break;
+          }
+        }
+      }
+      const raw: Element[] = ownForm ? Array.from(ownForm.elements) : scope ? Array.from(scope.querySelectorAll("input, textarea, select")) : [];
+      const fields = raw
+        .filter((f) => ["INPUT", "TEXTAREA", "SELECT"].includes(f.tagName))
+        .filter((f) => !["hidden", "submit", "button", "reset", "image"].includes(((f as HTMLInputElement).type || "").toLowerCase()) || f.tagName !== "INPUT")
+        .map((f) => {
+          const i = f as HTMLInputElement;
+          const r = f.getBoundingClientRect();
+          const style = getComputedStyle(f);
+          const lab = i.labels && i.labels.length ? clean(Array.from(i.labels).map((l) => l.innerText).join(" ")) : clean(f.getAttribute("aria-label")) || clean(f.getAttribute("title"));
+          return {
+            tag: f.tagName.toLowerCase(),
+            type: f.tagName === "INPUT" ? (i.type || "text").toLowerCase() : f.tagName.toLowerCase(),
+            name: i.name || "",
+            id: f.id || "",
+            label: lab.slice(0, 160),
+            placeholder: clean(i.placeholder),
+            autocomplete: (f.getAttribute("autocomplete") || "").toLowerCase(),
+            value: f.tagName === "SELECT" ? "" : i.value ?? "",
+            defaultValue: f.tagName === "TEXTAREA" ? (f as HTMLTextAreaElement).defaultValue : f.tagName === "INPUT" ? i.defaultValue : "",
+            visible: r.width > 1 && r.height > 1 && style.visibility !== "hidden" && style.display !== "none",
+            checked: !!i.checked,
+          };
+        });
+      const says: string[] = [];
+      if (scope) for (const a of ["role", "action", "name", "id", "aria-label", "class", "title"]) says.push(scope.getAttribute(a) || "");
+      if (e.closest("[role=search], search")) says.push("search");
+      for (const f of fields) says.push(f.placeholder, f.name, f.id, f.type === "search" ? "search" : "");
+      const def = ownForm ? Array.from(ownForm.elements).find(isSubmit) : undefined;
+      return {
+        found: true,
+        submits,
+        label: labelOf(e).slice(0, 160),
+        inForm: !!ownForm,
+        method: ownForm ? (ownForm.getAttribute("method") || "get").toLowerCase() : "",
+        scopeSays: says.filter(Boolean).join(" ").slice(0, 600),
+        defaultButton: def ? labelOf(def).slice(0, 160) : "",
+        fields,
+        tag,
+        type,
+      };
+    })
+    .then((a) => a as PressAudit)
+    .catch(() => none);
+}
+
+/** Does this field ask for identity or contact details? Decided by code from its type, autocomplete hint, label, name and placeholder. */
+export function isPersonalField(f: { type: string; name: string; id?: string; label: string; placeholder?: string; autocomplete?: string; tag?: string }): boolean {
+  if (["email", "tel", "password", "file"].includes(f.type)) return true;
+  if (f.autocomplete && PERSONAL_AUTOCOMPLETE.test(f.autocomplete)) return true;
+  const split = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_\-.[\]:]+/g, " ").replace(/\s+/g, " ").trim();
+  const parts = [f.label, f.placeholder ?? "", split(f.name), split(f.id ?? "")].map((s) => s.replace(/[*:?]+\s*$/, "").trim()).filter(Boolean);
+  // A postcode / town / region box is place, not identity, unless it also names a person or a street address.
+  if (parts.some((p) => PLACE_FIELD_RE.test(p)) && !parts.some((p) => /street|house|address line|full address|your address|name|e-?mail|phone/i.test(p))) return false;
+  if (parts.some((p) => PERSONAL_FIELD_RE.test(p) || NAME_ONLY.has(p.toLowerCase()))) return true;
+  const multiline = f.tag === "textarea" || f.type === "textarea";
+  return multiline && parts.some((p) => CONTACT_TEXT_RE.test(p));
+}
+
+const TEXTLIKE_SKIP = new Set(["checkbox", "radio", "range", "color", "select"]);
+const asNumber = (s: string) => (/^\s*[£$€]?\s*[\d,. ]+\s*$/.test(s) && /\d/.test(s) ? Number(s.replace(/[^\d.]/g, "")) : NaN);
+/** Same text, allowing for the page's own reformatting ("1500" shown back as "1,500.00"). */
+const sameText = (a: string, b: string) => norm(a) === norm(b) || a.trim() === b.trim() || (!Number.isNaN(asNumber(a)) && asNumber(a) === asNumber(b));
+
+/**
+ * What would pressing this send? Refuses (with a reason) when the area holds identity / contact fields, a password or
+ * file box, a free-text box with content, a ticked consent box, or text that the worker did not type itself.
+ * `typed` holds every value code typed on this page (from the criteria or the checker's own answers).
+ */
+export function carriesOnlyOurs(a: PressAudit, typed: Iterable<string>): { ok: true } | { ok: false; why: string } {
+  const ours = [...typed].filter((t) => t.trim());
+  for (const f of a.fields) {
+    const hasValue = f.tag !== "select" && !TEXTLIKE_SKIP.has(f.type) && f.value.trim() !== "";
+    if (f.type === "file") return { ok: false, why: "the form has a file upload" };
+    if (f.type === "password") return { ok: false, why: "the form has a password box" };
+    if ((f.visible || hasValue) && isPersonalField(f)) return { ok: false, why: `the form asks for identity or contact details ("${(f.label || f.placeholder || f.name).slice(0, 50)}")` };
+    if (f.tag === "textarea" && f.value.trim() && !ours.some((t) => sameText(t, f.value))) return { ok: false, why: "the form has a free-text box with writing in it" };
+    if ((f.type === "checkbox" || f.type === "radio") && f.checked && /agree|consent|terms|privacy|declare|confirm|subscribe|newsletter|marketing/i.test(`${f.label} ${f.name}`)) return { ok: false, why: `a consent box is ticked ("${f.label.slice(0, 50)}")` };
+    if (hasValue && !ours.some((t) => sameText(t, f.value)) && f.value !== f.defaultValue) return { ok: false, why: `the box "${(f.label || f.placeholder || f.name).slice(0, 40)}" holds text the agent did not type` };
+  }
+  return { ok: true };
+}
+
+/** Result paging and reveal controls that may legitimately be form buttons (server-rendered pagination, "more filters"). */
+const NEXT_LIKE_RE = words("next|more|load more|show more|previous|prev|page \\d+|\\d+|advanced(?: search)?|more (?:options|filters)|filters?|weiter|suivant|siguiente|avanti|volgende|nästa|›|»|>");
+const isSearchLike = (label: string) => SEARCH_LABEL_RE.test(label) && !HARD_STOP_RE.test(label.replace(SEARCH_LABEL_RE, " "));
+const iconOnly = (label: string) => !/\p{L}{2,}/u.test(label) || /magnif|loupe|search icon|lupe/i.test(label);
+
+/**
+ * May the search worker press this control (or press Enter in a box of its form)? Allowed only when (a) every text in
+ * the form was typed by us from the criteria or is the page's default, (b) the form has no identity / contact fields,
+ * password, file box or free text, and (c) the control means search / find / filter / go, or it is an unnamed icon
+ * button inside a form that says it is a search. `purpose`: "search" runs the search; "enter" is Enter in a box;
+ * "other" is any other click (tabs, filters, expanders, next page), which must not send or submit anything else.
+ */
+export function searchPressVerdict(a: PressAudit, typed: Iterable<string>, purpose: "search" | "enter" | "other", fallbackLabel = ""): { ok: true } | { ok: false; why: string } {
+  const label = a.label || fallbackLabel;
+  const isSearchLabel = isSearchLike(label);
+  if (purpose !== "enter" && !isSearchLabel && (HARD_STOP_RE.test(label) || AMBIGUOUS_RE.test(label))) return { ok: false, why: `its label "${label.slice(0, 40)}" sends or confirms` };
+  if (purpose === "other" && !a.submits) return { ok: true };
+  if (!a.found && purpose !== "other") return { ok: false, why: "the control could not be read" };
+  const carried = carriesOnlyOurs(a, typed);
+  if (!carried.ok) return carried;
+  const scopeSearch = SEARCH_SCOPE_RE.test(a.scopeSays);
+  if (purpose === "enter") {
+    if (!a.inForm) return { ok: true }; // no form: Enter cannot submit anything by itself
+    const d = a.defaultButton;
+    if (d && !(isSearchLike(d) || (iconOnly(d) && scopeSearch))) return { ok: false, why: `Enter would press the form's "${d.slice(0, 40)}" button, which is not a search` };
+    if (!d && !scopeSearch) return { ok: false, why: "the form does not say it is a search" };
+    return { ok: true };
+  }
+  if (purpose === "other") return isSearchLabel || NEXT_LIKE_RE.test(label) ? { ok: true } : { ok: false, why: `"${label.slice(0, 40)}" would submit a form` };
+  if (isSearchLabel) return { ok: true };
+  if (iconOnly(label) && scopeSearch) return { ok: true };
+  return { ok: false, why: `"${label.slice(0, 40) || "an unnamed button"}" does not say search, find or filter` };
+}
+
 /* ================================================================== model calls */
 
 const FormPlan = z.object({
@@ -570,7 +785,7 @@ export async function searchDirectory(
       await log("recover", `The search did not run (${form.problem}). Trying another way`, { shot: true });
       continue;
     }
-    const read = await readResults(ctx, criteria, opts.goal, maxResults, maxPages, log, act);
+    const read = await readResults(ctx, criteria, opts.goal, maxResults, maxPages, log, act, form.typed);
     pagesRead += read.pages;
     if (read.wall) return done({ ok: false, results: [], searchedWith: form.used, wall: read.wall, summary: read.wall.detail });
     if (read.entries.length === 0) {
@@ -630,17 +845,33 @@ async function runSearchForm(
   attempts: Attempt[],
   log: Log,
   act: () => void,
-): Promise<{ searched: boolean; used: Used[]; problem?: string; wall?: Wall }> {
+): Promise<{ searched: boolean; used: Used[]; problem?: string; wall?: Wall; typed: Set<string> }> {
   const { page, note } = ctx;
   const revealed = new Set<string>();
   const used: Used[] = [];
+  // Every text code typed into this page (pieces of the criteria, or the suggestion picked for them). Pressing Search
+  // is allowed only when the form holds nothing else (see searchPressVerdict).
+  const typed = new Set<string>();
+  /** Refuse a press in code, whatever the model chose. Returns why it is refused, or null when it may be pressed. */
+  const refusal = async (el: UiEl, purpose: "search" | "enter" | "other") => {
+    const v = searchPressVerdict(await auditPress(page, el.id), typed, purpose, el.label);
+    if (!v.ok) await log("check", `Did not ${purpose === "enter" ? `press Enter in "${el.label.slice(0, 40)}"` : `press "${el.label.slice(0, 40) || "an unnamed button"}"`}: ${v.why}. Nothing was sent`, { shot: true });
+    return v.ok ? null : v.why;
+  };
+  const refused = (why: string, label: string): { searched: false; used: Used[]; problem: string; wall: Wall; typed: Set<string> } => ({
+    searched: false,
+    used,
+    typed,
+    problem: why,
+    wall: { kind: "dead_end", detail: `Stopped before "${label.slice(0, 40) || "the button"}": ${why}. The search worker only presses a plain search form holding nothing but the search criteria, so nothing was sent.`, url: page.url() },
+  });
   const focus = criteria.flatMap((c) => tokens(c.value));
   for (let step = 0; step < 6; step++) {
     const snap = await snapshot(page, { linkCap: 50 });
     const wall = detectWall(snap);
     if (wall) {
       await log("fail", wall.detail, { shot: true });
-      return { searched: false, used, wall };
+      return { searched: false, used, wall, typed };
     }
     note(step === 0 ? "Reading the search form" : "Looking at the form again");
     const input = [
@@ -679,7 +910,7 @@ Decide how to run the directory search that meets the GOAL on this page:
         .filter(Boolean)
         .join("\n"),
     });
-    if (plan.state === "results" && step === 0 && attempts.length === 0 && plan.fills.length === 0) return { searched: true, used };
+    if (plan.state === "results" && step === 0 && attempts.length === 0 && plan.fills.length === 0) return { searched: true, used, typed };
 
     // 1) Reveal the right tab / advanced filters first, then look again.
     let revealedNow = 0;
@@ -687,6 +918,7 @@ Decide how to run the directory search that meets the GOAL on this page:
       const el = snap.els.find((e) => e.id === id);
       if (!el || revealed.has(el.label)) continue;
       revealed.add(el.label);
+      if (await refusal(el, "other")) continue;
       note(`Opening "${el.label.slice(0, 40)}"`);
       const r = await clickEl(page, el);
       act();
@@ -707,7 +939,7 @@ Decide how to run the directory search that meets the GOAL on this page:
         await log("check", `Left "${el.label}" alone: it asks for personal details`);
         continue;
       }
-      const r = await applyFill(page, el, f, c, criteria, log, act, note);
+      const r = await applyFill(page, el, f, c, criteria, log, act, note, typed);
       if (r) {
         used.push(r);
         if (el.kind === "text") lastTyped = el;
@@ -716,13 +948,32 @@ Decide how to run the directory search that meets the GOAL on this page:
     }
     if (page.url() !== urlBefore) {
       await settle(page);
-      return { searched: true, used };
+      return { searched: true, used, typed };
     }
-    if (used.length === 0 && plan.fills.length > 0) return { searched: false, used, problem: "none of the chosen fields could be set" };
-    if (used.length === 0 && criteria.length > 0) return { searched: false, used, problem: plan.reasoning };
+    if (used.length === 0 && plan.fills.length > 0) return { searched: false, used, problem: "none of the chosen fields could be set", typed };
+    if (used.length === 0 && criteria.length > 0) return { searched: false, used, problem: plan.reasoning, typed };
 
-    // 3) Press this form's Search (or Enter in the last box typed).
-    const submit = plan.submitId === null ? undefined : snap.els.find((e) => e.id === plan.submitId);
+    // 3) Press this form's Search (or Enter in the last box typed). Code decides whether it may be pressed (searchPressVerdict):
+    //    the model's choice of button never overrides it.
+    // Filling can re-read the page (re-tagging every element), so find the chosen button and box again on the live page
+    // by what they are, never by a stale id: pressing the wrong element is how a form gets sent by accident.
+    const live = await snapshot(page, { linkCap: 50 });
+    const relocate = (el: UiEl | undefined | null) => {
+      if (!el) return undefined;
+      const same = live.els.filter((e) => e.kind === el.kind && e.label === el.label && e.name === el.name);
+      return same.find((e) => e.form === el.form) ?? (same.length === 1 ? same[0] : undefined);
+    };
+    const chosen = plan.submitId === null ? undefined : snap.els.find((e) => e.id === plan.submitId);
+    const submit = relocate(chosen);
+    if (chosen && !submit) return refused("the chosen button could not be found again on the page", chosen.label);
+    if (lastTyped) lastTyped = relocate(lastTyped) ?? null;
+    if (submit) {
+      const no = await refusal(submit, "search");
+      if (no) return refused(no, submit.label);
+    } else if (lastTyped) {
+      const no = await refusal(lastTyped, "enter");
+      if (no) return refused(no, lastTyped.label);
+    }
     let handle: ElementHandle | null = null;
     if (submit) handle = await byId(page, submit.id).elementHandle({ timeout: 2000 }).catch(() => null);
     note("Searching");
@@ -735,19 +986,23 @@ Decide how to run the directory search that meets the GOAL on this page:
       await log("click", `Pressed "${(submit.label || "the search button").slice(0, 40)}"`);
       await settle(page, 1200);
       if (sigOf(await snapshot(page, { linkCap: 0 })) === formSig) {
-        // The button did not respond (overlays, script not ready). Submit the same form the way a keyboard user would.
-        const box = lastTyped ? await byId(page, lastTyped.id).elementHandle({ timeout: 1500 }).catch(() => null) : null;
+        // The button did not respond (overlays, script not ready). Submit the same form the way a keyboard user would,
+        // after checking again (the page may have changed the form since) that it is still the same plain search.
+        const still = await searchStillSafe(page, submit, typed);
+        if (still) return refused(still, submit.label);
+        const enterOk = lastTyped ? searchPressVerdict(await auditPress(page, lastTyped.id), typed, "enter").ok : false;
+        const box = lastTyped && enterOk ? await byId(page, lastTyped.id).elementHandle({ timeout: 1500 }).catch(() => null) : null;
         if (box) await box.press("Enter").catch(() => {});
-        else await handle.evaluate((n) => (n as HTMLButtonElement).form?.requestSubmit()).catch(() => {});
+        else await handle.evaluate((n) => (n as HTMLButtonElement).form?.requestSubmit(n as HTMLButtonElement)).catch(() => {});
         act();
         await log("recover", `"${(submit.label || "Search").slice(0, 30)}" did not respond; submitted the same search with ${box ? "Enter" : "the form itself"}`);
         await settle(page, 1200);
-        if (sigOf(await snapshot(page, { linkCap: 0 })) === formSig) {
-          await handle.evaluate((n) => (n as HTMLButtonElement).form?.requestSubmit()).catch(() => {});
+        if (sigOf(await snapshot(page, { linkCap: 0 })) === formSig && !(await searchStillSafe(page, submit, typed))) {
+          await handle.evaluate((n) => (n as HTMLButtonElement).form?.requestSubmit(n as HTMLButtonElement)).catch(() => {});
           await settle(page, 1200);
         }
       }
-      return { searched: true, used };
+      return { searched: true, used, typed };
     } else if (lastTyped) {
       await byId(page, lastTyped.id).press("Enter").catch(() => {});
       act();
@@ -756,9 +1011,17 @@ Decide how to run the directory search that meets the GOAL on this page:
       await log("check", "Set the filters; the page searches by itself");
     }
     await settle(page, 1200);
-    return { searched: true, used };
+    return { searched: true, used, typed };
   }
-  return { searched: false, used, problem: "could not find the search form" };
+  return { searched: false, used, problem: "could not find the search form", typed };
+}
+
+/** Re-check, on the live page, that the search button still passes (null) or why it no longer does. */
+async function searchStillSafe(page: Page, submit: UiEl, typed: Set<string>): Promise<string | null> {
+  const loc = byId(page, submit.id);
+  if (!(await loc.count().catch(() => 0))) return "the search button is gone from the page";
+  const v = searchPressVerdict(await auditPress(page, submit.id), typed, "search", submit.label);
+  return v.ok ? null : v.why;
 }
 
 /** Set one field from one criterion. Returns what was used, or null. */
@@ -771,8 +1034,21 @@ async function applyFill(
   log: Log,
   act: () => void,
   note: (s: string) => void,
+  typed: Set<string>,
 ): Promise<Used | null> {
   const loc = byId(page, el.id);
+  /** Remember what code typed (and what the box now holds after our typing or our pick). */
+  const remember = async (text: string) => {
+    typed.add(text);
+    const v = await byId(page, el.id).inputValue({ timeout: 1500 }).catch(() => "");
+    if (v.trim()) typed.add(v);
+  };
+  /** Clicks other than typing (custom dropdowns, filter chips) must not send or submit anything. */
+  const mayClick = async (target: UiEl) => {
+    const v = searchPressVerdict(await auditPress(page, target.id), typed, "other", target.label);
+    if (!v.ok) await log("check", `Did not press "${target.label.slice(0, 40)}": ${v.why}. Nothing was sent`);
+    return v.ok;
+  };
   if (el.kind === "text") {
     const term = termFromCriteria(f.text ?? c.value, criteria);
     if (!term) {
@@ -802,6 +1078,7 @@ async function applyFill(
       return null;
     }
     act();
+    await remember(term.text);
     await page.waitForTimeout(1300);
     const sug = await popupOptions(page);
     if (sug.length === 0) {
@@ -834,6 +1111,7 @@ async function applyFill(
     await optLoc.click({ timeout: 4000 }).catch(() => optLoc.evaluate((n) => (n as HTMLElement).click()).catch(() => {}));
     act();
     await page.waitForTimeout(500);
+    await remember(pick.text);
     await log("pick", `Typed "${term.text}" and picked the suggestion "${pick.text.slice(0, 60)}"`, { detail: `Suggestions: ${sug.map((s) => s.text).join(" | ")}\nWhy: ${why}` });
     return { label: c.label, value: pick.text };
   }
@@ -870,6 +1148,7 @@ async function applyFill(
   const isDropdownButton = (el.kind === "button" || el.kind === "toggle") && !!f.option && norm(f.option) !== norm(el.label);
   if (el.kind === "combo" || isDropdownButton) {
     // A custom dropdown: open it, then pick from its own list.
+    if (!(await mayClick(el))) return null;
     await clickEl(page, el);
     act();
     await page.waitForTimeout(700);
@@ -890,6 +1169,7 @@ async function applyFill(
   }
   if (el.kind === "button" || el.kind === "toggle" || el.kind === "option" || el.kind === "tab") {
     // Filter chips and toggle buttons.
+    if (!(await mayClick(el))) return null;
     const r = await clickEl(page, el);
     act();
     await log("click", `Chose the filter "${el.label.slice(0, 50)}" for ${c.label}`);
@@ -908,8 +1188,14 @@ async function readResults(
   maxPages: number,
   log: Log,
   act: () => void,
+  typed: Set<string>,
 ): Promise<{ entries: Entry[]; pages: number; ignored: string[]; why: string; kind: string; wall?: Wall }> {
   const { page, note } = ctx;
+  const mayClick = async (el: UiEl) => {
+    const v = searchPressVerdict(await auditPress(page, el.id), typed, "other", el.label);
+    if (!v.ok) await log("check", `Did not press "${el.label.slice(0, 40)}": ${v.why}. Nothing was sent`);
+    return v.ok;
+  };
   const out = new Map<string, Entry>();
   const ignored = new Set<string>();
   let pages = 0;
@@ -931,6 +1217,7 @@ async function readResults(
       const seenLines = new Set(snap.text.split("\n"));
       const revealed: string[] = [];
       for (const el of toOpen) {
+        if (!(await mayClick(el))) continue;
         await clickEl(page, el);
         act();
         await page.waitForTimeout(350);
@@ -975,7 +1262,7 @@ async function readResults(
     });
     if (ex.pageKind !== "results" || out.size >= maxResults || ex.nextId === null) break;
     const next = snap.els.find((e) => e.id === ex.nextId);
-    if (!next) break;
+    if (!next || !(await mayClick(next))) break;
     lastSig = sigOf(snap);
     note(`Next page of results`);
     await clickEl(page, next);

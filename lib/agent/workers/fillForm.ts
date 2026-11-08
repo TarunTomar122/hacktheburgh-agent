@@ -892,8 +892,46 @@ async function classify(page: Page, obs: Observation, goal: string, values: Valu
     else if (stepper && stepper.n >= stepper.total && kind === "form") { final = true; finalWhy = `last step (${stepper.n} of ${stepper.total})`; }
     else if (kind === "form" && !forwardIsPlainLink && (lastP >= 0.85 || (!nextish && lastP >= 0.4))) { final = true; finalWhy = `the model thinks this is the last page (${lastP.toFixed(2)})`; }
     else if (kind === "form" && !nextish && !answers.length) { final = true; finalWhy = "could not tell, so treated as final"; }
+    // A form page carries the patient's answers. Whatever its label ("Continue", "Next", "Proceed"), the button that
+    // sends this form is FINAL unless code sees positive evidence of a later step: a stepper or "step 1 of 4" short of
+    // the end, a progress bar short of full, or (for a script button that submits nothing) the form's own further
+    // questions waiting hidden on this page. When unsure: final, stop.
+    if (!final && kind === "form" && anyFields && !forwardIsPlainLink) {
+      const later = await laterStepEvidence(page, forward.id, stepper);
+      if (later) why.push(`later step: ${later}`);
+      else { final = true; finalWhy = `"${short(label, 30)}" may send this form: nothing on the page shows a later step`; }
+    }
   }
   return { kind, forward: forward && { id: forward.id, label: forward.label.trim(), kind: forward.kind }, forwardIsPlainLink, final, finalWhy, stepper, confidence, intended, why };
+}
+
+/**
+ * Positive evidence, found by code, that pressing the forward control leads to another page of the form rather than
+ * sending it: a stepper / "step n of N" short of the end, a progress bar short of full, or, when the control submits
+ * no <form> (a script wizard's own button), further questions of the same form hidden on this page. Null when none.
+ */
+async function laterStepEvidence(page: Page, id: string | number, stepper: { n: number; total: number } | null): Promise<string | null> {
+  if (stepper && stepper.n < stepper.total) return `step ${stepper.n} of ${stepper.total}`;
+  return page
+    .locator(`[data-aid="${id}"]`)
+    .evaluate((node) => {
+      const vis = (e: Element) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
+      for (const p of Array.from(document.querySelectorAll("progress, [role=progressbar]"))) {
+        if (!vis(p)) continue;
+        const now = p.tagName === "PROGRESS" ? (p as HTMLProgressElement).value : Number(p.getAttribute("aria-valuenow"));
+        const max = p.tagName === "PROGRESS" ? (p as HTMLProgressElement).max : Number(p.getAttribute("aria-valuemax") || 100);
+        if (Number.isFinite(now) && Number.isFinite(max) && max > 0 && now < max) return `progress ${now} of ${max}`;
+      }
+      const el = node as HTMLButtonElement;
+      const t = (el.getAttribute("type") || "").toLowerCase();
+      const form = el.form ?? el.closest("form");
+      const submits = !!form && ((el.tagName === "INPUT" && (t === "submit" || t === "image")) || (el.tagName === "BUTTON" && (t === "" || t === "submit")));
+      if (submits) return null; // a submit button sends everything in its form: hidden questions are no evidence
+      const scope = form ?? el.closest("main") ?? document.body;
+      const hidden = Array.from(scope.querySelectorAll("input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea")).filter((f) => !vis(f) && !(f as HTMLInputElement).disabled && !((f as HTMLInputElement).labels?.[0] && vis((f as HTMLInputElement).labels![0])));
+      return hidden.length >= 1 ? `${hidden.length} more question(s) of this form wait hidden on the page` : null;
+    })
+    .catch(() => null);
 }
 
 /** After filling, buttons can change (a conditional question reveals a new step). Re-find the forward button by label, or ask again. */
