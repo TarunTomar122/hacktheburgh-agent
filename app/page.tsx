@@ -74,6 +74,7 @@ function SiteFooter() {
         <div className="flex gap-8 text-sm text-ink-2">
           <a href="#how" className="hover:text-brand">How it works</a>
           <a href="#crew" className="hover:text-brand">The crew</a>
+          <Link href="/insights" className="hover:text-brand">How the crew uses the web</Link>
           <StartLink className="hover:text-brand" arrow={false} />
         </div>
       </div>

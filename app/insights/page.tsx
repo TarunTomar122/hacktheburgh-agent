@@ -31,11 +31,19 @@ export default async function Insights() {
   const runs = allRuns();
   const recent = runs.filter((r) => r.finished);
   const logged = runs.filter((r) => r.access.length);
-  const pagesF = sum(runs, (r) => r.pages.fetch);
-  const pagesB = sum(runs, (r) => r.pages.browser);
-  const sApi = sum(runs, (r) => r.searches.api);
-  const sCache = sum(runs, (r) => r.searches.cache);
-  const sBrowser = sum(runs, (r) => r.searches.browser);
+  // The headline is about how the crew works now: the latest runs (the oldest ones predate fetch-first).
+  const scope = runs.slice(0, 25);
+  const pagesF = sum(scope, (r) => r.pages.fetch);
+  const pagesB = sum(scope, (r) => r.pages.browser);
+  const sApi = sum(scope, (r) => r.searches.api);
+  const sCache = sum(scope, (r) => r.searches.cache);
+  const sBrowser = sum(scope, (r) => r.searches.browser);
+  const timed = logged.flatMap((r) => r.access.filter((a) => a.kind === "page" && typeof a.ms === "number"));
+  const avg = (v: "fetch" | "browser") => {
+    const xs = timed.filter((a) => a.via === v).map((a) => a.ms!);
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+  };
+  const latest = logged[0];
   const jobs = logged.flatMap((r) => r.access.filter((a) => a.kind === "task"));
   const firms = logged.flatMap((r) => r.access.filter((a) => a.kind === "firm"));
   const reasons = browserReasons(logged);
@@ -47,7 +55,7 @@ export default async function Insights() {
     return { f, n: rs.length, median: median(rs.map((r) => r.ms)), latest: median(latest.map((r) => r.ms)) };
   });
   const byFlow = flows.map((f) => {
-    const rs = runs.filter((r) => r.flow === f);
+    const rs = scope.filter((r) => r.flow === f);
     return { f, fetch: sum(rs, (r) => r.pages.fetch), browser: sum(rs, (r) => r.pages.browser) };
   });
   const maxFlow = Math.max(1, ...byFlow.map((x) => x.fetch + x.browser));
@@ -75,7 +83,7 @@ export default async function Insights() {
         </p>
         <h1 className="display text-[40px] text-ink">How the crew uses the web</h1>
         <p className="max-w-[70ch] text-[15px] leading-6 text-ink-2">
-          Fetch first, a search API instead of a search engine, and a real browser only where a page or a job needs one. Every number here comes from the logs of {runs.length} real runs on this machine{places.size ? `, across ${places.size} countr${places.size === 1 ? "y" : "ies"} (${[...places].join(", ")})` : ""}. Nothing is filled in or sent without the patient.
+          Fetch first, a search API instead of a search engine, and a real browser only where a page or a job needs one. Every number here comes from the logs of real runs on this machine ({runs.length} in total; the headline counts the latest {scope.length}){places.size ? `, across ${places.size} countr${places.size === 1 ? "y" : "ies"} (${[...places].join(", ")})` : ""}. Nothing is filled in or sent without the patient.
         </p>
       </header>
 
@@ -90,7 +98,12 @@ export default async function Insights() {
       {/* Fetch vs browser, per step */}
       <section className="space-y-4">
         <Title aside={<Legend />}>Fetch first, browser when it matters</Title>
-        <p className="max-w-[70ch] text-[14px] leading-6 text-ink-2">A plain request reads most official pages and PDFs in under a second. When a page is built by scripts, sits behind a bot check or a login, or is a form, the same agent opens a real browser instead. Every quote is checked against the page it came from either way.</p>
+        {avg("fetch") > 0 && avg("browser") > 0 && (
+          <p className="text-[14px] text-ink">
+            A plain read took <span className="font-medium tabular-nums">{(avg("fetch") / 1000).toFixed(1)} s</span> on average; a page in the browser took <span className="font-medium tabular-nums">{(avg("browser") / 1000).toFixed(1)} s</span>.
+          </p>
+        )}
+        <p className="max-w-[70ch] text-[14px] leading-6 text-ink-2">A plain request reads most official pages and PDFs quickly. When a page is built by scripts, sits behind a bot check or a login, or is a form, the same agent opens a real browser instead. Every quote is checked against the page it came from either way.</p>
         <div className="space-y-3">
           {byFlow.map(({ f, fetch, browser }) => (
             <div key={f} className="grid grid-cols-[10rem_1fr_8rem] items-center gap-4">
@@ -106,6 +119,28 @@ export default async function Insights() {
           ))}
         </div>
       </section>
+
+      {/* The latest run, line by line */}
+      {latest && (
+        <section className="space-y-4">
+          <Title>
+            The latest run, line by line <span className="text-[14px] text-muted">({FLOW_NAME[latest.flow]}{latest.place ? `, ${latest.place}` : ""}, {mins(latest.ms)})</span>
+          </Title>
+          <ol className="divide-y divide-line-soft rounded-card border border-line bg-white">
+            {latest.access.map((a, i) => (
+              <li key={i} className="grid grid-cols-[4rem_6rem_7rem_1fr] items-baseline gap-3 px-5 py-2 text-[13px]">
+                <span className="tabular-nums text-muted">{mins(a.t)}</span>
+                <span className="capitalize text-ink-2">{a.agent}</span>
+                <span className={a.via === "browser" ? "font-medium text-brand" : a.via === "fetch" ? "font-medium text-teal" : "text-ink-2"}>{a.via === "fetch" ? "Plain fetch" : a.via === "api" ? "Search API" : a.via === "cache" ? "Saved search" : "Browser"}</span>
+                <span className="min-w-0 break-words text-ink">
+                  {a.kind === "search" ? `Searched "${a.url}"` : a.url ? a.url.replace(/^https?:\/\/(www\.)?/, "") : ""}
+                  <span className="text-muted"> · {a.reason}{typeof a.ms === "number" ? ` · ${(a.ms / 1000).toFixed(1)} s` : ""}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {/* Why the browser */}
       <section className="space-y-4">
