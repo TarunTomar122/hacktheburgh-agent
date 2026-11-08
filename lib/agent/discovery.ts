@@ -272,10 +272,22 @@ Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf
     }
   };
   /** Record one route step (the code checks every quote, number, officialness and form claim). */
-  const recordStep = (a: Record<string, unknown>, kit: CrewKit): string => {
+  const recordStep = (aIn: Record<string, unknown>, kit: CrewKit): string => {
+    let a = aIn;
     const kind = String(a.kind) as RouteKind;
     if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
-    if (String(a.body ?? "").length > 70 || /[.;]\s/.test(String(a.body ?? ""))) return "Error: body must be only the organisation's name (under 8 words), not a sentence. Put the sentence in \"what\" and record_step again.";
+    if (String(a.body ?? "").length > 70 || /[.;]\s/.test(String(a.body ?? ""))) {
+      // A sentence where the organisation's name belongs: keep the sentence as "what" and name the body after the source's
+      // publisher or site, instead of sending the planner round again (it used to retry up to six times).
+      const srcs = (a.sources as { url?: string; publisher?: string }[] | undefined) ?? [];
+      const pub = srcs.find((x) => x.publisher && x.publisher.length <= 60 && !/[.;]\s/.test(x.publisher))?.publisher;
+      let site = "";
+      try {
+        site = new URL(String(a.url ?? srcs[0]?.url ?? "")).hostname.replace(/^www\./, "");
+      } catch {}
+      if (!pub && !site) return "Error: body must be only the organisation's name (under 8 words), not a sentence. Put the sentence in \"what\" and record_step again.";
+      a = { ...a, what: a.what ? `${String(a.what)} ${String(a.body)}` : a.body, body: pub ?? site };
+    }
     // "official" needs both: the model's judgement of the publisher, and a page on that host really opened in this run.
     // "official" needs three things: the model's judgement, a page on that host really opened in this run, and (code) that page
     // naming its publisher or the body itself. Unknown text (e.g. a PDF) keeps the model's judgement only with the host check.
