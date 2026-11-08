@@ -64,7 +64,7 @@ How to work:
 - record_step as soon as a part is clear, with 1-3 verbatim quotes from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only if it is the body itself or a government, health service, ombudsman, regulator, court or professional body site.
 - Recover when a page fails: try the site's search, another page, or another official source. Say "not found" honestly rather than guess.
 - Budget: about 45 tool calls in total; spend most on reading the right second-level pages. Then finish with two or three sentences for the patient on how it works where they live.
-Never submit, sign up or log in. Never type the patient's personal details anywhere.`;
+Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Never submit, sign up or log in. Never type the patient's personal details anywhere.`;
 
 export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string } = {}): Promise<DiscoveryResult> {
   const detected = await detectPlace(facts);

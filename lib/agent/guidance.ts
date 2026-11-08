@@ -4,6 +4,7 @@ import type { CrewKit } from "./crewRun";
 import type { EvidenceResult, Thought } from "./plannerTypes";
 import type { RouteMap } from "./routeTypes";
 import { exploreSite, readPage } from "./workers/explore";
+import { webSearch } from "./planner";
 
 /**
  * Iona's guidance step for any place (night plan, "Elliot anywhere"): on the guidance body discovery found, find the
@@ -14,11 +15,23 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   const g = route.steps.find((s) => s.kind === "guideline");
   const start = g?.url ?? g?.sources[0]?.url;
   if (!start) return { text: "Could not find guidance: discovery found no clinical guidance body.", guideline: null };
+  const ask = `Quote, word for word, the recommendation(s) about ${condition}, with their numbers if printed.`;
   const r = await kit.inTab(thought, "iona", (g?.body ?? "Guidance").slice(0, 26), async (p, note) => {
     const ctx = { page: p, note, track: kit.track };
     const found = await exploreSite(ctx, start, `the clinical guidance recommendation about ${condition}`, { want: "page" });
-    return readPage(ctx, found.ok ? found.url : start, `Quote, word for word, the recommendation(s) about ${condition}, with their numbers if printed.`);
-  }, 150_000);
+    const first = await readPage(ctx, found.ok ? found.url : start, ask);
+    if (first.quotes.some((q) => q.checked)) return first;
+    // The body's own site did not lead there: search the web for its guidance on this condition, on the same site first.
+    await note.log("recover", `No recommendation on ${found.ok ? found.url : start}; searching ${new URL(start).hostname} for guidance on ${condition}`);
+    const host = new URL(start).hostname.replace(/^www\./, "");
+    let hits = await webSearch(p, `site:${host} ${condition} recommendation`, note, kit.track).catch(() => []);
+    if (!hits.length) hits = await webSearch(p, `${g?.body ?? ""} guideline ${condition} recommendation`, note, kit.track).catch(() => []);
+    for (const h of hits.slice(0, 3)) {
+      const next = await readPage(ctx, h.url, ask);
+      if (next.quotes.some((q) => q.checked)) return next;
+    }
+    return first;
+  }, 240_000);
   if (!r.ok) return { text: `Could not find the guidance: ${r.error}`, guideline: null };
   const quotes = r.value.quotes.filter((q) => q.checked);
   if (!quotes.length) return { text: `No recommendation about ${condition} found on ${r.value.url}.`, guideline: null };

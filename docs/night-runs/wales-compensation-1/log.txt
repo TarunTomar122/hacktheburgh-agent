@@ -1,0 +1,18 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[5s] [elliot] Start with funding and scheme because that decides whether a lawyer is needed and what kind.
+[7s] [elliot → nell] See whether legal aid is likely or whether this is mainly a no win, no fee case.
+[7s] [elliot → robin] Check the Welsh NHS redress scheme because compensation may start inside the complaint process and may include funded legal advice.
+[17s] [robin → elliot] Welsh NHS redress scheme under the National Health Service (Concerns, Complaints and Redress Arrangements) (Wales) Regulations: This page is about the Health Board complaints process, not a compensation scheme. It says to raise the complain
+[19s] [nell → elliot] I hit a problem: Blocked: dead_end (This checker wants personal details (Postcode))
+[25s] [elliot] Funding checker was blocked by a postcode field, so use the route-map funding rules and scheme route to decide the practical route.
+[27s] [elliot → robin] Find claimant-side solicitors in the official directory for the likely private/CFA route.
+[52s] [robin → elliot] I hit a problem: Blocked: captcha on solicitors.lawsociety.org.uk (The page shows a CAPTCHA / human check. Stopped: the user has to do this themselves.). Try another official d…
+[60s] [elliot] The official solicitor register is blocked by a CAPTCHA, so keep moving on evidence support while deciding how to get firm names.
+[62s] [elliot → iona] Clinical guidance may help frame the timeline and the reason a claimant firm would want to look at the missed scaphoid fracture issue.
+[163s] [iona → elliot] No recommendation about suspected scaphoid fracture / wrist injury after fall on outstretched hand found on https://www.nice.org.uk/what-nice-does/our-guidance/about-nice-guidelines.
+ASK (text): Please open the Law Society 'Find a Solicitor' page from the route map, search for 'clinical negligence' in Cardiff or Wales, and send me the names or links of 3 to 4 firms you see. Then I can check which ones act for patients, avoid defence work, shortlist the best ones, and draft the enquiry forms. -> null
+[166s] [elliot → you] Please open the Law Society 'Find a Solicitor' page from the route map, search for 'clinical negligence' in Cardiff or Wales, and send me the names or links of 3 to 4 firms you see. Then I can check which ones act for patients, avoid defenc
+[171s] [elliot → you] For this kind of Wales NHS case, the practical route is to start with a complaint to Cardiff and Vale University Health Board, because that can lead to NHS redress and, if redress is considered, paid legal advice within the scheme. Ordinary
+
+RUN step3-2026-11-08T00-09-15-828Z 2.9 min; verdict unknown ""; firms 0, checked 0, ruled out 0; shortlist ; enquiries ; stats {"agents":4,"sites":5,"pages":21,"actions":17}

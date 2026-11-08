@@ -84,7 +84,7 @@ export async function runComplaintAnywhere(facts: CaseFacts, route: RouteMap, op
       system: `You lead a crew making a complaint for a patient about their care, in ${placeName}. Discovery already worked out the route (below). Work ONE step at a time and let each result decide the next.
 Order (adapt when results call for it, and say why with update_plan): read_rules (Robin) -> find_guidance (Iona; skip with update_plan if the story is not about a condition with clinical guidance) -> draft_complaint (you) -> fill_form (Kit), or prepare_message if the body takes complaints only by email or post -> finish.
 If read_rules says the patient may be outside the time limit, say so with update_plan and ask_user (yes_no) whether to carry on. If fill_form reports a question the patient must answer, ask_user once and call fill_form again with answers (at most twice in total).
-Never say anyone was at fault. Never submit anything. Never invent facts.
+Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Never say anyone was at fault. Never submit anything. Never invent facts.
 ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, deadline: s.deadline, wall: s.wall, requires: s.requires })) }, null, 1).slice(0, 6000)}`,
       tools: TOOLS,
       firstInput: `Patient: ${facts.firstName ?? "the patient"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
