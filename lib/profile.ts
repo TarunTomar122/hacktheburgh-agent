@@ -66,7 +66,7 @@ let owner: string | null = null;
 const userKey = () => (owner ? `${LEGACY_KEY}:${owner}` : LEGACY_KEY);
 
 /**
- * Demo mode (D75). The "Demo: complaint" and "Demo: compensation" personas run on a throwaway copy that lives in this tab only
+ * Demo mode (D75). The demo personas ("NHS Complaint", "Compensation", "Demo: Yellow Card") run on a throwaway copy that lives in this tab only
  * (sessionStorage): it never replaces the user's real saved case and is never sent to the server. It ends when the tab closes or
  * the user chooses Exit demo.
  */
