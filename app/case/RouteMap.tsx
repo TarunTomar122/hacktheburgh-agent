@@ -89,7 +89,7 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
           {!compact && <p className="mt-1 text-[14px] leading-6 text-ink-2 md:pl-39">{firstLine(step.what)}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] md:pl-39">
             {HOW[step.how] && <Chip tone={step.how === "online_form" ? "ok" : step.how === "login_required" ? "warn" : "plain"}>{HOW[step.how]}</Chip>}
-            {step.deadline && step.deadline.length <= 40 && <Chip tone="plain">{step.deadline}</Chip>}
+            {step.deadline && step.deadline.length <= 40 && <Chip tone={step.deadlineCheck === "sources_differ" ? "warn" : "plain"}>{step.deadline}{step.deadlineCheck === "one_site" ? " · one source" : step.deadlineCheck === "sources_differ" ? " · sources differ" : ""}</Chip>}
             {step.wall && <Chip tone="warn">{firstLine(step.wall, 60)}</Chip>}
             {step.url && (
               <a className="text-brand hover:underline" href={step.url} target="_blank" rel="noreferrer">
@@ -104,6 +104,7 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
             <div className="rise mt-3 space-y-3 md:pl-39">
               {step.what !== firstLine(step.what) && <p className="text-[14px] leading-6 text-ink-2">{step.what}</p>}
               {step.deadline && step.deadline.length > 40 && <p className="text-[13px] leading-5 text-ink-2">Time limit: {step.deadline}</p>}
+              {step.deadlineCheck === "sources_differ" && <p className="text-[13px] leading-5 text-amber">Official pages give different periods ({[step.deadline, ...(step.deadlineOthers ?? [])].join(" / ")}). Check with the body before relying on it.</p>}
               {step.points?.length ? (
                 <ul className="list-disc space-y-0.5 pl-5 text-[13px] leading-5 text-ink-2">
                   {step.points.map((pt) => (

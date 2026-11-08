@@ -244,12 +244,29 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
                   const re = new RegExp(`(^|[^\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${u ? `\\s*${u}` : "(?![\\p{N}])"}`, "u");
                   return re.test(checkedText);
                 });
+            /** Corroboration in code: the deadline's period appears in checked official quotes on two different sites; or the quotes give different periods. */
+            const deadlineCheckOf = (d: string | undefined, srcs: Source[]): Pick<RouteStep, "deadlineCheck" | "deadlineOthers"> => {
+              if (!d) return {};
+              const m = [...d.matchAll(NUM)].find((x) => x[2]);
+              if (!m) return {};
+              const unit = normText(m[2]).replace(/s$/, "");
+              const n = normText(m[1]);
+              const ok = srcs.filter((x) => x.checked && x.official);
+              const periods = new Map<string, Set<string>>(); // number -> hosts
+              for (const x of ok)
+                for (const mm of normText(x.quote).matchAll(new RegExp(`(^|[^\\p{N}])(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty)\\s*${unit}`, "gu")))
+                  periods.set(mm[2], new Set([...(periods.get(mm[2]) ?? []), hostOf(x.url)]));
+              const others = [...periods.keys()].filter((k) => k !== n).map((k) => `${k} ${unit}s`);
+              if (others.length) return { deadlineCheck: "sources_differ", deadlineOthers: others };
+              return { deadlineCheck: (periods.get(n)?.size ?? 0) >= 2 ? "two_sites" : "one_site" };
+            };
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),
               // The card's sentence too: if its numbers are not in a checked quote, keep it but without them (say "see the source").
               what: backed(String(a.what ?? "")) ? String(a.what ?? "") : `${String(a.what ?? "").replace(NUM, (m0, n, u) => (/\d/.test(n) || u ? "[see source]" : m0))}`,
               deadline: a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined,
+              ...deadlineCheckOf(a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined, sources),
               // "online form" only where the crew really reached a form; a URL only if this run opened that page (code checks).
               how: ((h) => (h === "online_form" && !(a.url && forms.has(keyOf(String(a.url)))) ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"),
               url: a.url && visited.has(keyOf(String(a.url))) ? String(a.url) : undefined,
@@ -268,7 +285,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             publish(kit);
             const bad = sources.filter((s) => !s.checked);
             const dropped = [...(a.deadline && !step.deadline ? [String(a.deadline)] : []), ...((Array.isArray(a.points) ? (a.points as string[]) : []).filter((pt) => !step.points?.includes(String(pt))))];
-            return `Recorded ${kind} (${step.confidence}).${dropped.length ? ` Not kept, because their numbers are not in a checked quote: ${dropped.map((d) => `"${short(String(d), 60)}"`).join("; ")}.` : ""}${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
+            const dl = step.deadlineCheck === "one_site" ? " The deadline has only one official source: confirm it on a second official site (e.g. the national rules) and record_step again." : step.deadlineCheck === "sources_differ" ? ` Official sources give different periods (${[step.deadline, ...(step.deadlineOthers ?? [])].join(" / ")}): find which applies to this case now and record_step again.` : "";
+            return `Recorded ${kind} (${step.confidence}).${dl}${dropped.length ? ` Not kept, because their numbers are not in a checked quote: ${dropped.map((d) => `"${short(String(d), 60)}"`).join("; ")}.` : ""}${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
           }
           default:
             return `Unknown tool ${call.name}`;

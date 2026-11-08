@@ -34,6 +34,8 @@ export type RouteStep = {
   body: string; // who: "Cardiff and Vale University Health Board"
   what: string; // one plain sentence
   deadline?: string; // as the source says it
+  deadlineCheck?: "two_sites" | "one_site" | "sources_differ"; // code: how many different official sites carry the deadline's numbers; or they disagree
+  deadlineOthers?: string[]; // other periods for the same unit found in checked quotes, when sources differ
   how: "online_form" | "email" | "post" | "phone" | "login_required" | "court" | "unknown";
   url?: string; // the page or form the crew found
   wall?: string; // "needs a login", "CAPTCHA", "phone or post only"
