@@ -360,6 +360,31 @@ async function searchApi(query: string, note: Note, track: Tracker): Promise<Sea
 const oneSearch = limiter(1);
 const searchCache = new Map<string, { at: number; hits: Promise<SearchHit[]> }>();
 let lastSearchAt = 0;
+/** Search results are kept on disk for two weeks: the same persona or place asked again costs no Exa credit and no browser search. Pages are still read live. */
+const SEARCH_CACHE_FILE = path.join(process.cwd(), ".runs", "search-cache.json");
+const SEARCH_TTL = 14 * 24 * 3600 * 1000;
+type DiskCache = Record<string, { at: number; hits: SearchHit[] }>;
+const readDiskCache = (): DiskCache => {
+  try {
+    return JSON.parse(readFileSync(SEARCH_CACHE_FILE, "utf8")) as DiskCache;
+  } catch {
+    return {};
+  }
+};
+const diskGet = (key: string): SearchHit[] | null => {
+  if (process.env.SEARCH_CACHE === "0") return null;
+  const e = readDiskCache()[key];
+  return e && Date.now() - e.at < SEARCH_TTL && e.hits.length ? e.hits : null;
+};
+const diskPut = (key: string, hits: SearchHit[]) => {
+  if (process.env.SEARCH_CACHE === "0" || !hits.length) return;
+  try {
+    mkdirSync(path.dirname(SEARCH_CACHE_FILE), { recursive: true });
+    const all = readDiskCache();
+    all[key] = { at: Date.now(), hits };
+    writeFileSync(SEARCH_CACHE_FILE, JSON.stringify(all));
+  } catch {}
+};
 export async function webSearch(page: Page, query: string, note: Note, track: Tracker): Promise<SearchHit[]> {
   const key = query.toLowerCase().replace(/\s+/g, " ").trim();
   const hit = searchCache.get(key);
@@ -368,8 +393,16 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
     const r = await hit.hits.catch(() => null);
     if (r?.length) return r;
   }
+  const saved = diskGet(key);
+  if (saved) {
+    note(`Searched before: ${short(query, 40)}`);
+    await note.log("read", `Saved search "${query}": ${saved.length} results (from an earlier run)`, { detail: saved.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}`).join("\n") });
+    searchCache.set(key, { at: Date.now(), hits: Promise.resolve(saved) });
+    return saved;
+  }
   const viaApi = await searchApi(query, note, track);
   if (viaApi) {
+    diskPut(key, viaApi);
     searchCache.set(key, { at: Date.now(), hits: Promise.resolve(viaApi) });
     return viaApi;
   }
@@ -377,7 +410,9 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
     const gap = 2500 + Math.random() * 2500 - (Date.now() - lastSearchAt);
     if (gap > 0) await new Promise((r) => setTimeout(r, gap));
     try {
-      return await searchEngines(page, query, note, track);
+      const found = await searchEngines(page, query, note, track);
+      diskPut(key, found);
+      return found;
     } finally {
       lastSearchAt = Date.now();
     }
