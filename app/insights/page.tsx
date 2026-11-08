@@ -121,8 +121,7 @@ async function Dashboard() {
     <main className="mx-auto max-w-6xl space-y-16 px-6 py-10 sm:px-10 sm:py-14">
       <header>
         <div className="mb-10 flex items-center justify-between text-xs text-muted"><Link href="/" className="font-medium text-brand hover:underline">Elliot / for judges</Link><Link href="/compare" className="font-medium text-brand hover:underline">One story, four countries →</Link></div>
-        <p className="mb-4 text-xs uppercase tracking-widest text-muted">Harmed by care. Faced with a maze.</p>
-        <h1 className="display max-w-3xl text-5xl text-ink sm:text-6xl">One patient.<br />A crew on their side.</h1>
+                <h1 className="display max-w-3xl text-5xl text-ink sm:text-6xl">One patient.<br />A crew on their side.</h1>
         <p className="mt-5 max-w-xl text-base leading-7 text-ink-2">Elliot finds the local route from medical harm to help, wherever the patient lives.</p>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           {[['Research', 'Learn how this place works.'], ['Prepare your case', 'Check funding, firms and evidence.'], ['Review and send', 'The patient has the final word.']].map(([title, text]) => <div key={title} className="rounded-card border border-line bg-subtle p-5"><p className="text-sm font-medium text-ink">{title}</p><p className="mt-1 text-sm text-muted">{text}</p></div>)}
@@ -139,7 +138,7 @@ async function Dashboard() {
       {modelsByFlow.length > 0 && <section aria-labelledby="models-title">
         <Heading id="models-title" label="The right model for each job" title="Four models, one crew." />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {MODEL_ROLES.map((m) => <div key={m.name} className="rounded-card border border-line p-5"><p className="text-xs uppercase tracking-widest text-muted">{m.name}</p><p className="mt-2 text-base font-medium text-ink">{modelLabel(m.id)}</p><p className="mt-2 text-sm leading-6 text-ink-2">{m.why}</p></div>)}
+          {MODEL_ROLES.map((m) => <div key={m.name} className="rounded-card border border-line p-5"><p className="text-sm text-muted">{m.name}</p><p className="mt-2 text-base font-medium text-ink">{modelLabel(m.id)}</p><p className="mt-2 text-sm leading-6 text-ink-2">{m.why}</p></div>)}
         </div>
         <div className="mt-8 space-y-6">
           <div className="grid gap-2 sm:grid-cols-[14rem_1fr]">
@@ -161,9 +160,9 @@ async function Dashboard() {
                     <span aria-hidden className="ml-auto text-sm text-muted group-open:rotate-45 transition-transform">+</span>
                   </summary>
                   <div className="grid gap-5 border-t border-line-soft px-4 py-4 text-sm sm:grid-cols-3">
-                    <div><p className="text-xs uppercase tracking-widest text-muted">Why this model</p><p className="mt-2 leading-6 text-ink-2">{role ? role.why : "Configured for this job."}</p></div>
-                    <div><p className="text-xs uppercase tracking-widest text-muted">What it gets</p><p className="mt-2 leading-6 text-ink-2">{sees.length ? `The job's own text, and from you: ${sees.join(", ")}.` : "Public web pages and the crew's notes. None of your details."}</p><p className="mt-1 text-xs text-muted">{m.where === "local" ? "Runs on this Mac: nothing leaves it." : "Runs in the cloud."}</p></div>
-                    <div><p className="text-xs uppercase tracking-widest text-muted">What it does here</p><ul className="mt-2 space-y-1.5 text-ink-2">{[...m.tasks.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => <li key={t} className="flex gap-3"><span className="w-10 shrink-0 text-right tabular-nums text-muted">{n}×</span><span>{t}</span></li>)}</ul></div>
+                    <div><p className="text-sm text-muted">Why this model</p><p className="mt-2 leading-6 text-ink-2">{role ? role.why : "Configured for this job."}</p></div>
+                    <div><p className="text-sm text-muted">What it gets</p><p className="mt-2 leading-6 text-ink-2">{sees.length ? `The job's own text, and from you: ${sees.join(", ")}.` : "Public web pages and the crew's notes. None of your details."}</p><p className="mt-1 text-xs text-muted">{m.where === "local" ? "Runs on this Mac: nothing leaves it." : "Runs in the cloud."}</p></div>
+                    <div><p className="text-sm text-muted">What it does here</p><ul className="mt-2 space-y-1.5 text-ink-2">{[...m.tasks.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => <li key={t} className="flex gap-3"><span className="w-10 shrink-0 text-right tabular-nums text-muted">{n}×</span><span>{t}</span></li>)}</ul></div>
                   </div>
                 </details>;
               })}
@@ -211,8 +210,8 @@ async function Dashboard() {
       <section aria-labelledby="safety-title" className="rounded-card bg-paper p-6 sm:p-8">
         <Heading id="safety-title" label="The patient stays in control" title="Prepared by the crew. Sent by you." />
         <div className="mt-7 grid gap-6 sm:grid-cols-2">
-          <div className="border-t border-line pt-5"><p className="mb-3 text-xs uppercase tracking-widest text-muted">Crew → Review → Patient sends</p><h3 className="text-lg font-medium text-ink">Stop before Send.</h3><p className="mt-2 text-sm leading-6 text-ink-2">{stops ? `${stops} form tasks recorded a stop before Send in this sample.` : 'The patient reviews each enquiry before sending.'}</p></div>
-          <div className="border-t border-line pt-5"><p className="mb-3 text-xs uppercase tracking-widest text-muted">Mac / Cloud</p><h3 className="text-lg font-medium text-ink">Keep private reasoning local.</h3><p className="mt-2 text-sm leading-6 text-ink-2">{cloudPrivate ? 'Design goal; sampled ledgers still record private-data tags on cloud calls.' : 'Local privacy routing needs verification before a stronger claim.'}</p></div>
+          <div className="border-t border-line pt-5"><h3 className="text-lg font-medium text-ink">Stop before Send.</h3><p className="mt-2 text-sm leading-6 text-ink-2">{stops ? `${stops} form tasks recorded a stop before Send in this sample.` : 'The patient reviews each enquiry before sending.'}</p></div>
+          <div className="border-t border-line pt-5"><h3 className="text-lg font-medium text-ink">Keep private reasoning local.</h3><p className="mt-2 text-sm leading-6 text-ink-2">{cloudPrivate ? 'Design goal; sampled ledgers still record private-data tags on cloud calls.' : 'Local privacy routing needs verification before a stronger claim.'}</p></div>
         </div>
       </section>
       <footer className="border-t border-line pt-5 text-xs text-muted">Live evidence from this machine&apos;s run logs. No crew runs are started by this page.</footer>
@@ -220,8 +219,8 @@ async function Dashboard() {
   );
 }
 
-function Heading({ id, label, title }: { id: string; label: string; title: string }) {
-  return <div><p className="mb-3 text-xs uppercase tracking-widest text-muted">{label}</p><h2 id={id} className="display text-3xl text-ink sm:text-4xl">{title}</h2></div>;
+function Heading({ id, title }: { id: string; label?: string; title: string }) {
+  return <div><h2 id={id} className="display text-3xl text-ink sm:text-4xl">{title}</h2></div>;
 }
 function Avatar({ id, size }: { id: string; size: string }) {
   return <img src={`/crew/${id}-256.png`} alt="" aria-hidden className={`${size} object-contain`} />;

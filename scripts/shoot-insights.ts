@@ -1,9 +1,12 @@
 // Screenshot the judges' dashboard: npx tsx scripts/shoot-insights.ts (dev server on BASE, default :3001)
 import { chromium } from "playwright";
+import { devLogin } from "./devLogin";
 (async () => {
   const b = await chromium.launch({ headless: true });
   const p = await b.newPage({ viewport: { width: 1400, height: 1000 } });
-  await p.goto(`${process.env.BASE ?? "http://localhost:3001"}/insights`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  const base = process.env.BASE ?? "http://localhost:3001";
+  await devLogin(p, base);
+  await p.goto(`${base}/insights`, { waitUntil: "domcontentloaded", timeout: 90_000 });
   await p.getByText("Four models, one crew").first().waitFor({ timeout: 90_000 }).catch(() => {});
   await p.waitForTimeout(2500);
   await p.screenshot({ path: "docs/night-runs/insights/dashboard.png", fullPage: true });
