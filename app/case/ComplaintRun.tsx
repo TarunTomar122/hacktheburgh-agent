@@ -79,7 +79,7 @@ function Intro({ profile, onStart, onDemo, onSkip, error }: { profile: Profile; 
         <StepStrip steps={STEPS} />
       </div>
       <div className="mx-auto mt-10 max-w-xl">
-        <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. We only ask it now that you are making a complaint." />
+        <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. Elliot only asks it now that you are making a complaint." />
       </div>
       <div className="mt-10 flex flex-col items-center gap-4">
         <Button onClick={onStart} disabled={missing.length > 0}>
@@ -157,7 +157,7 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
         </div>
         <div className="flex flex-wrap gap-2">
           {sent ? (
-            <Button onClick={onContinue}>Continue to step 2</Button>
+            <Button onClick={onContinue}>Continue to Ombudsman</Button>
           ) : filledForm && !sample ? (
             <>
               <Button variant="secondary" onClick={() => window.dispatchEvent(new CustomEvent("live-focus", { detail: "Kit" }))}>
@@ -226,7 +226,7 @@ function ComplaintFile({ profile, run, sample, onAgain, onContinue, onSkip }: { 
                   {point.text}
                 </Quote>
               </Said>
-              <Said label="What you told us">{gap.timeline}</Said>
+              <Said label="What you told Elliot">{gap.timeline}</Said>
               <Said label="The question">{gap.question}</Said>
               <p className="text-[13px] leading-5 text-muted">{ev.caveat ?? "Only your medical records show what was actually done."} Your complaint asks this politely; it does not say anyone was at fault.</p>
             </div>

@@ -40,7 +40,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
 
   if (simple) return <section className="space-y-6">
     <h1 className="display text-[40px]">Start by asking for a response</h1>
-    <p className="text-ink-2">You asked for an explanation, an apology, or both. We can prepare one editable email from your story for the hospital or clinic involved.</p>
+    <p className="text-ink-2">You asked for an explanation, an apology, or both. Elliot can prepare one editable email from your story for the hospital or clinic involved.</p>
     <p className="text-sm text-muted">You check the recipient and send it yourself. It may take follow-up; no complaint form is filled and no ombudsman step starts automatically.</p>
     <div className="flex flex-wrap gap-3">
       <Button onClick={() => { setTrack({ chosen: "complaint", complaintMode: "email" }); onChosen(1); }}>Ask for an explanation or apology</Button>
@@ -87,16 +87,16 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
 
       <section className="rounded-card border border-brand/40 bg-white">
         <div className="flex items-center gap-6 border-b border-line-soft p-6">
-          <FitRing fit={rec.tracks[best].fit} size={104} title="How well this track fits what you told us. Not a chance of success." />
+          <FitRing fit={rec.tracks[best].fit} size={104} title="How well this track fits what you told Elliot. Not a chance of success." />
           <div className="min-w-0">
             <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">What you can get</div>
             <p className="mt-1 text-[17px] leading-6 text-ink">{TRACKS[best].gets}</p>
-            <p className="mt-2 text-xs text-muted">Fit is how well this matches what you told us. It is not a chance of winning.</p>
+            <p className="mt-2 text-xs text-muted">Fit is how well this matches what you told Elliot. It is not a chance of winning.</p>
           </div>
         </div>
         <div className="grid gap-8 p-6 sm:grid-cols-[1fr_220px]">
           <div>
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Why we suggest it</div>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Why Elliot suggests it</div>
             <ul>
               {rec.tracks[best].reasons.map((r) => (
                 <CheckRow key={r.label} row={r} />
@@ -126,7 +126,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
       {others.map((other) => (
         <section key={other} className="flex items-center gap-5 rounded-card bg-subtle p-5">
           {/* A path they ticked themselves gets no score: the NHS complaint stores no outcome sentence (D76), so its fit would read 0%. */}
-          {!wanted && <FitRing fit={rec.tracks[other].fit} size={56} title="How well this track fits what you told us. Not a chance of success." />}
+          {!wanted && <FitRing fit={rec.tracks[other].fit} size={56} title="How well this track fits what you told Elliot. Not a chance of success." />}
           <div className="min-w-0 flex-1">
             <div className="text-[15px] font-medium text-ink">{wanted ? "Also: " : "Or: "}{TRACKS[other].title.toLowerCase()}</div>
             {wanted && <p className="text-xs text-teal">You ticked this too.</p>}

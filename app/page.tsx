@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
 import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
-import { echoFor, HELP_ROUTES, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, ROUTE_TRACK, routesFromLabels, type HelpRoute, type InputSpec, type Target } from "../lib/agent/inputs";
+import { echoFor, inputFor, nextTarget, normaliseFacts, questionFor, patchFromAnswer, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, SAMPLE_FACTS, type DemoPersona } from "../lib/agent/sample";
-import { createProfile, setTrack, startDemo } from "../lib/profile";
+import { createProfile, startDemo } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import AccountMenu, { useAccount } from "./AccountMenu";
 import NameStep from "./NameStep";
@@ -28,7 +28,6 @@ export default function Onboarding() {
   // The email they signed in with is the contact email, so it is not asked again (they can change it on the Profile tab).
   const [facts, setFacts] = useState<CaseFacts>(() => ({ ...emptyFacts(), email: account.email }));
   const [done, setDone] = useState(false);
-  const [helpRoutes, setHelpRoutes] = useState<HelpRoute[]>([]); // D80: several can be ticked
   const [editing, setEditing] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,16 +78,6 @@ export default function Onboarding() {
 
   /** A form, button or checklist answered the open question. No model call; the user's choice is shown in the chat. */
   function onAnswer(answer: WidgetAnswer) {
-    if (spec.target === "outcome") {
-      const routes = answer.none === true ? [] : routesFromLabels(Array.isArray(answer.chosen) ? answer.chosen : []);
-      const other = typeof answer.other === "string" ? answer.other.trim() : "";
-      const labels = HELP_ROUTES.filter((r) => routes.includes(r.value)).map((r) => r.label);
-      const echo = answer.none === true ? "I'm not sure yet" : [...labels, other].filter(Boolean).join("; ");
-      return run([...messages, { role: "user", content: echo }], answer).then((ok) => {
-        if (ok) setHelpRoutes(routes);
-        return ok;
-      });
-    }
     const echo = echoFor(spec.target, patchFromAnswer(spec.target, facts, answer));
     return run([...messages, { role: "user", content: echo }], answer);
   }
@@ -112,14 +101,7 @@ export default function Onboarding() {
 
   function start() {
     createProfile(facts, messages);
-    // One path ticked: straight to it (D76). Several: the suggestion page, offering only those (D80). None: the suggestion page as before.
-    const tracks = [...new Set(helpRoutes.map((r) => ROUTE_TRACK[r]))];
-    if (tracks.length === 1) {
-      if (tracks[0] === "complaint") setTrack({ chosen: "complaint", complaintMode: "formal" });
-      else setTrack({ chosen: tracks[0] });
-    } else if (tracks.length > 1) {
-      setTrack({ wanted: tracks });
-    }
+    // The recommendation page suggests a path from what they ticked and their story (D42); they choose there.
     router.push("/case");
   }
 
@@ -198,7 +180,6 @@ export default function Onboarding() {
                   </div>
                 )}
                 <Row label="What you'd like" value={facts.desiredOutcome} />
-                <Row label="How we can help" value={HELP_ROUTES.filter((option) => helpRoutes.includes(option.value)).map((option) => option.label).join(", ") || null} />
                 <Row label="Contact" value={[facts.address, facts.postcode, facts.phone, facts.email].filter(Boolean).join(" · ")} />
                 <Row label="Prefer to be contacted by" value={facts.preferredContact} />
               </div>

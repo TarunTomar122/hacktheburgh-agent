@@ -1,5 +1,5 @@
 import type { CaseFacts } from "./facts";
-import { COMPENSATION_CHOICE, FAULTY_PRODUCT_CHOICE, OUTCOME_CHOICES, SIDE_EFFECT_CHOICE } from "./inputs";
+import { COMPENSATION_CHOICE, FAULTY_PRODUCT_CHOICE, LEGACY_SIDE_EFFECT_CHOICE, OUTCOME_CHOICES, SIDE_EFFECT_CHOICE } from "./inputs";
 import type { Tri } from "./legalAidTypes";
 
 /**
@@ -19,21 +19,21 @@ export const TRACKS: Record<TrackId, { title: string; short: string; what: strin
   complaint: {
     title: "Make a complaint",
     short: "Complaint",
-    what: "We write your complaint and fill in NHS Lothian's form. If their final reply doesn't put things right, we take it to the ombudsman.",
+    what: "Elliot writes your complaint and fills in NHS Lothian's form. If their final reply doesn't put things right, he takes it to the ombudsman.",
     gets: "An explanation, an apology, changes to how things are done. Not money.",
     steps: [1, 2],
   },
   compensation: {
     title: "Claim compensation",
     short: "Compensation",
-    what: "We check whether legal aid could pay for a solicitor, find medical negligence solicitors who act for patients, and help you contact them.",
+    what: "Elliot checks whether legal aid could pay for a solicitor, finds medical negligence solicitors who act for patients, and helps you contact them.",
     gets: "Money for what happened, if a solicitor takes your case and it succeeds.",
     steps: [3, 4],
   },
   yellowcard: {
     title: "Report a medicine problem",
     short: "Yellow Card",
-    what: "We fill in a Yellow Card report for you: the UK scheme where anyone can report a side effect, or a faulty or fake medicine or medical device, to the medicines regulator (MHRA). You check it on their form and send it yourself.",
+    what: "Elliot fills in a Yellow Card report for you: the UK scheme where anyone can report a side effect, or a faulty or fake medicine or medical device, to the medicines regulator (MHRA). You check it on their form and send it yourself.",
     gets: "The regulator learns about the problem, so it can spot safety issues and protect others. Not money, and not a reply about your own care.",
     steps: [6],
   },
@@ -58,7 +58,7 @@ export function goalsFrom(desiredOutcome: string | null) {
     changes: has(CHANGES),
     support: has(SUPPORT),
     money: has(COMPENSATION_CHOICE) || /\bcompensation\b|\bmoney\b/.test(t),
-    sideEffect: has(SIDE_EFFECT_CHOICE),
+    sideEffect: has(SIDE_EFFECT_CHOICE) || has(LEGACY_SIDE_EFFECT_CHOICE),
     faultyProduct: has(FAULTY_PRODUCT_CHOICE),
   };
 }
@@ -72,7 +72,7 @@ const ticked = (yes: boolean, label: string, max: number): TrackReason => ({
 });
 
 const fromStory = (p: number | null, label: string, max: number, invert = false): TrackReason => {
-  if (p === null) return { label, points: 0, max, status: "unknown", evidence: "We could not read this from your story." };
+  if (p === null) return { label, points: 0, max, status: "unknown", evidence: "Elliot could not read this from your story." };
   const q = invert ? 1 - p : p;
   return {
     label,
@@ -115,7 +115,7 @@ export function recommendTrack(f: CaseFacts, s: TrackSignals): TrackRecommendati
       status: report ? "yes" : "no",
       evidence: report
         ? `You ticked "${g.sideEffect ? SIDE_EFFECT_CHOICE : FAULTY_PRODUCT_CHOICE}".`
-        : `You did not tick "${SIDE_EFFECT_CHOICE}" or "${FAULTY_PRODUCT_CHOICE}".`,
+        : `You did not tick "${SIDE_EFFECT_CHOICE}".`,
     },
     fromStory(s.medicine ?? null, "Your story is about a medicine, vaccine or device", 40),
   ]);

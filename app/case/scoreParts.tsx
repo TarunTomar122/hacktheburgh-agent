@@ -60,7 +60,7 @@ export const WHY: Record<ScoreItem["key"], string> = {
   patients: "Some firms only defend the NHS or insurers. You need one that takes cases for patients.",
   nwnf: "If the claim is lost, you pay nothing for their work.",
   form: "With an online form, Kit can fill in your enquiry for you. Otherwise you phone or email them.",
-  checked: "We read the firm's own website, so these details come from the firm itself.",
+  checked: "Elliot read the firm's own website, so these details come from the firm itself.",
 };
 
 /** The same explanations, looked up by the short labels used on chips. */
@@ -94,7 +94,7 @@ export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "m
       {open && (
         <div className="mb-1.5 ml-[22px] space-y-1 rounded bg-subtle px-3 py-2 text-[12px] leading-5">
           {why && <p className="text-ink">{why}</p>}
-          <p className="text-ink-2">What we found: {row.evidence}</p>
+          <p className="text-ink-2">What Elliot found: {row.evidence}</p>
         </div>
       )}
     </li>

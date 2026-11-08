@@ -10,9 +10,9 @@ import { YellowCardAnswers, yellowCardProblems } from "../../../../lib/agent/yel
  * It never registers, sets a password or submits. The last event has type "done".
  */
 export async function POST(req: Request) {
-  const parsed = z.object({ facts: CaseFacts, answers: YellowCardAnswers, extra: ExtraAnswers.optional() }).safeParse(await req.json().catch(() => null));
+  const parsed = z.object({ facts: CaseFacts, answers: YellowCardAnswers, extra: ExtraAnswers.optional(), resume: z.boolean().optional() }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request", detail: parsed.error.message }, { status: 400 });
-  const { facts, answers, extra } = parsed.data;
+  const { facts, answers, extra, resume } = parsed.data;
   const problems = [...(missingForOnboarding(facts).length ? ["Complete your profile first."] : []), ...yellowCardProblems(answers)];
   if (problems.length) return Response.json({ error: problems.join(" ") }, { status: 400 });
 
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         if (!cancelled) controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
       };
       try {
-        await fillYellowCard(facts, answers, { onEvent: send, keepOpen: true, extra });
+        await fillYellowCard(facts, answers, { onEvent: send, keepOpen: true, extra, resume });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message : String(e) });
       } finally {

@@ -21,7 +21,7 @@ export default function AgentAsk({ result, busy, onAnswer }: { result: DoneEvent
   if (result.unfilled.length === 0) {
     return (
       <section className="rounded-card border border-line bg-white p-6">
-        <Eyebrow>The agent stopped part-way</Eyebrow>
+        <Eyebrow>Elliot stopped part-way</Eyebrow>
         {/* The engine says which page it got stuck on when it knows (D80); otherwise the general line. */}
         <p className="mt-1 text-sm text-ink-2">{result.question ?? "It was not sure how to continue on one page."} Nothing has been sent.</p>
         <Button size="sm" className="mt-3" disabled={busy} onClick={() => onAnswer([])}>
@@ -34,8 +34,8 @@ export default function AgentAsk({ result, busy, onAnswer }: { result: DoneEvent
   return (
     <section data-agent-question tabIndex={-1} className="overflow-hidden rounded-card border border-brand/30 bg-white">
       <div className="space-y-1 bg-brand-soft/60 px-6 py-4">
-        <Eyebrow className="text-brand">The form asked something we do not know</Eyebrow>
-        <p className="text-sm text-ink-2">Answer below and we will fill it in again. Nothing has been sent.</p>
+        <Eyebrow className="text-brand">The form asked something Elliot does not know</Eyebrow>
+        <p className="text-sm text-ink-2">Answer below and Elliot will fill it in again. Nothing has been sent.</p>
       </div>
       <div className="space-y-4 p-6">
         {items.map((label, i) => (

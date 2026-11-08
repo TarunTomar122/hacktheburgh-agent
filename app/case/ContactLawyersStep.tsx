@@ -176,7 +176,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="display text-[40px] text-ink">Contact lawyers</h1>
         {trace.length > 0 && !running && (
-          <Button variant="secondary" size="sm" onClick={() => setScope({ title: "Everything the agents did", steps: trace, whole: true })}>
+          <Button variant="secondary" size="sm" onClick={() => setScope({ title: "Everything Elliot's crew did", steps: trace, whole: true })}>
             See how the forms were filled
           </Button>
         )}
@@ -212,7 +212,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
               Skip and mark as sent (demo)
             </Button>
             <p className="text-xs leading-5 text-muted">
-              Our agents fill each form and stop. Nothing is sent until you approve it.{" "}
+              Elliot&apos;s crew fills each form and stops. Nothing is sent until you approve it.{" "}
               <button className="text-brand hover:underline" onClick={onBack}>
                 Change firms
               </button>
@@ -257,7 +257,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
             <ul className="space-y-1 text-[13px] text-muted">
               {swappedOut.map((o) => (
                 <li key={o.firmId}>
-                  <span className="text-ink-2">{o.firmName}</span> had no online form, so the agent {o.note.replace(/^.*swapped in/i, "swapped in")}.
+                  <span className="text-ink-2">{o.firmName}</span> had no online form, so Elliot {o.note.replace(/^.*swapped in/i, "swapped in")}.
                 </li>
               ))}
             </ul>
@@ -406,7 +406,7 @@ function FirmModal({ o, firm, steps, onClose, onSteps, onReview }: { o: EnquiryO
           </>
         )}
       </dl>
-      {firm?.reasons && firm.reasons.length > 0 && <p className="text-[13px] leading-5 text-muted">Why we picked them: {firm.reasons.join(" · ")}.</p>}
+      {firm?.reasons && firm.reasons.length > 0 && <p className="text-[13px] leading-5 text-muted">Why Elliot picked them: {firm.reasons.join(" · ")}.</p>}
     </Modal>
   );
 }
@@ -439,17 +439,17 @@ function FirmCard({
   const due = rec?.status === "sent" && rec.followUpOn && rec.followUpOn <= today();
   const line =
     o.status === "send_blocked"
-      ? "Not sent: this is a demo persona, and we never send fictional enquiries to real firms."
+      ? "Not sent: this is a demo persona, and Elliot never sends fictional enquiries to real firms."
       : rec?.status === "replied"
         ? "They replied."
         : sent
           ? `Sent ${nice(rec?.sentAt ?? o.sentAt)}.${rec?.followUpOn ? ` Follow up from ${nice(rec.followUpOn)} if no reply.` : ""}`
           : o.status === "failed"
-            ? "The agent tried twice and could not finish this one."
+            ? "Elliot tried twice and could not finish this one."
             : o.status === "ready_to_send"
-              ? "Form filled. Check it, then we send it."
+              ? "Form filled. Check it, then Elliot sends it."
               : o.status === "needs_input"
-                ? `Their form needs ${o.unfilled.length ? o.unfilled.join(", ") : "a detail we do not have"}. Add it and the agent fills it in.`
+                ? `Their form needs ${o.unfilled.length ? o.unfilled.join(", ") : "a detail Elliot does not have"}. Add it and Elliot fills it in.`
                 : o.status === "no_form"
                   ? "No online enquiry form on their website, and no other checked firm to swap in. A phone call works just as well."
                   : o.note;
@@ -528,7 +528,7 @@ function MessageDoc({ message, writing, disabled }: { message?: EnquiryMessage; 
   if (!message) {
     return (
       <Paper>
-        <p className="font-serif text-[17px] leading-7 text-ink-2">{writing ? "Writing your message from what you told us…" : "No message yet."}</p>
+        <p className="font-serif text-[17px] leading-7 text-ink-2">{writing ? "Writing your message from what you told Elliot…" : "No message yet."}</p>
       </Paper>
     );
   }
@@ -677,9 +677,9 @@ function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; loca
           </Callout>
         ) : (
           <div className="space-y-3">
-            {needed.length > 0 && <p className="text-[13px] text-amber">Still needed before we can send: {needed.map((f) => f.label.replace(/\s*\*$/, "")).join(", ")}.</p>}
+            {needed.length > 0 && <p className="text-[13px] text-amber">Still needed before Elliot can send: {needed.map((f) => f.label.replace(/\s*\*$/, "")).join(", ")}.</p>}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-muted">The agent presses Send on their page only after you approve.</span>
+              <span className="text-xs text-muted">Elliot presses Send on their page only after you approve.</span>
               <span className="flex items-center gap-2">
                 {edits.length > 0 && (
                   <Button variant="secondary" onClick={save} disabled={!!busy}>
@@ -699,7 +699,7 @@ function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; loca
         <section className="space-y-3 rounded-card border border-amber/40 bg-amber-soft/40 p-4">
           <div>
             <p className="text-[14px] font-medium text-ink">Their form needs {waiting.length === 1 ? "one more detail" : `${waiting.length} more details`}</p>
-            <p className="text-[12px] leading-5 text-muted">We did not have {waiting.length === 1 ? "this" : "these"} in your case file. Type {waiting.length === 1 ? "it" : "them"} here and the agent puts {waiting.length === 1 ? "it" : "them"} into their form.</p>
+            <p className="text-[12px] leading-5 text-muted">Elliot did not have {waiting.length === 1 ? "this" : "these"} in your case file. Type {waiting.length === 1 ? "it" : "them"} here and Elliot puts {waiting.length === 1 ? "it" : "them"} into their form.</p>
           </div>
           {waiting.map((f) => input(f, !current(f).trim()))}
         </section>
@@ -708,8 +708,8 @@ function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; loca
       {filled.length > 0 && (
         <section className="space-y-3">
           <div>
-            <Eyebrow>What we will send</Eyebrow>
-            <p className="mt-1 text-xs text-muted">This is what the agent put into their form. Change anything that is wrong.</p>
+            <Eyebrow>What Elliot will send</Eyebrow>
+            <p className="mt-1 text-xs text-muted">This is what Elliot put into their form. Change anything that is wrong.</p>
           </div>
           {filled.map((f) => input(f, false))}
         </section>
@@ -727,7 +727,7 @@ function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; loca
       {o.consents.length > 0 && (
         <div>
           <Eyebrow>Their form asks you to agree</Eyebrow>
-          <p className="mt-1 text-xs text-muted">We only tick the boxes you tick here.</p>
+          <p className="mt-1 text-xs text-muted">Elliot only ticks the boxes you tick here.</p>
           <ul className="mt-2 space-y-2">
             {o.consents.map((c) => (
               <li key={c}>
@@ -740,7 +740,7 @@ function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; loca
           </ul>
         </div>
       )}
-      {saved && !error && <p className="text-[13px] text-teal">Saved. The agent has put your changes into their form.</p>}
+      {saved && !error && <p className="text-[13px] text-teal">Saved. Elliot has put your changes into their form.</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
     </Modal>
   );

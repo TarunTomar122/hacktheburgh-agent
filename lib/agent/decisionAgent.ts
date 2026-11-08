@@ -24,19 +24,26 @@ const OPTIONAL_TAG = /\s*\(optional\)\s*/gi;
  * The model only CHOOSES from the page's own unanswered fields (D21). Returns their labels (most likely first, at most 3), or []
  * when it says nothing is missing. Replaces a vague "this page needs something" question that the user could not answer (Lea, 2026-11-08).
  */
-async function whatIsMissing(input: string, obs: Observation, stats: DecisionRunStats): Promise<string[]> {
+async function whatIsMissing(input: string, obs: Observation, stats: DecisionRunStats, opts: { unmarked?: boolean } = {}): Promise<string[]> {
   const isEmpty = (e: El) => e.value.trim() === "" || PLACEHOLDER.test(e.value.trim());
+  // Optional fields are never worth asking the user about. Only what the site marks as required counts. `unmarked` widens that to
+  // everything not labelled "(optional)", for when the site refused to move on and did not mark which field it wanted (Lea, 2026-11-08).
+  const wanted = (required: boolean, label: string) => required || (!!opts.unmarked && !/\(optional\)/i.test(label));
   const labels: string[] = [];
   const boxes = new Set<string>(); // tick boxes are asked as yes/no, so the answer can only ever tick what the user agreed to
   const tidy = (l: string) => l.replace(OPTIONAL_TAG, " ").replace(/\s+/g, " ").trim().slice(0, 200);
   for (const e of obs.elements) {
     if (e.disabled || !e.label.trim()) continue;
+    if (!wanted(e.required, e.label)) continue;
     if ((e.kind === "text" || e.kind === "textarea" || e.kind === "select") && isEmpty(e)) labels.push(e.label);
     else if (e.kind === "checkbox" && !e.checked) { labels.push(e.label); boxes.add(tidy(e.label)); }
   }
   const groups = new Map<string, El[]>();
   for (const e of obs.elements) if (e.kind === "radio" && !e.disabled) groups.set(e.name, [...(groups.get(e.name) ?? []), e]);
-  for (const radios of groups.values()) if (!radios.some((r) => r.checked)) labels.push(radios[0].group || radios[0].name);
+  for (const radios of groups.values()) {
+    const label = radios[0].group || radios[0].name;
+    if (!radios.some((r) => r.checked) && wanted(radios.some((r) => r.required), label)) labels.push(label);
+  }
   const choices = uniq(labels.map(tidy).filter(Boolean)).slice(0, 40);
   if (choices.length === 0) return [];
   const { answers, usage, ms } = await decide(input, [
@@ -71,6 +78,10 @@ export async function runDecisionAgent(opts: {
   advance?: RegExp;
   /** Stop as soon as the page URL matches (e.g. a final review page). The agent touches nothing there and reports ready. */
   stopAtUrl?: RegExp;
+  /** Called with each fresh look at the page, before anything is decided. Return true after doing something itself (the engine then looks again). For steps the generic engine cannot do, e.g. a form that opens in the page. */
+  beforeStep?: (page: Page, obs: Observation) => Promise<boolean>;
+  /** Tick boxes the USER chose, by label (case, spacing and an "(Optional)" tag ignored). Ticked by code, no model involved, because the choice is theirs, e.g. severity boxes. */
+  tick?: string[];
   /** Elements the agent must leave alone, e.g. a 'resume saved complaint' login box. Called with each element and the page URL. */
   ignore?: (el: { label: string; name: string; kind: string }, url: string) => boolean;
 }): Promise<DecisionRun> {
@@ -105,9 +116,28 @@ export async function runDecisionAgent(opts: {
 
   for (let step = 1; step <= maxSteps; step++) {
     const obs = await observe(page);
+    if (opts.beforeStep && (await opts.beforeStep(page, obs))) continue;
     if (opts.ignore) obs.elements = obs.elements.filter((e) => !opts.ignore!(e, obs.url));
     emit({ type: "observe", step, url: obs.url, fields: obs.elements.length });
     if (opts.stopAtUrl?.test(obs.url)) return result("ready_to_submit", "Reached the final review page. Nothing was sent.", step);
+
+    // Boxes the user chose themselves are ticked first, without asking the model.
+    if (opts.tick?.length) {
+      const norm = (l: string) => l.replace(/\(optional\)/gi, " ").replace(/\s+/g, " ").trim().toLowerCase();
+      const want = new Set(opts.tick.map(norm));
+      const todo = obs.elements.filter((e) => e.kind === "checkbox" && !e.checked && !e.disabled && want.has(norm(e.label)) && !attempted.has(`t:${e.name}:${e.label}`));
+      if (todo.length > 0) {
+        for (const e of todo) {
+          const tsig = `t:${e.name}:${e.label}`;
+          attempted.add(tsig);
+          const res = await tickCheckbox(page, e);
+          emit({ type: "action", step, tool: "check", args: { id: e.id, label: e.label.slice(0, 40), reason: "the user chose this box" }, result: res });
+          if (res !== "ok") retryLater(tsig, e.label, res);
+        }
+        await page.waitForTimeout(200);
+        continue;
+      }
+    }
 
     const plan = buildQuestions(obs, byKey, goal, !!opts.allowSubmit, attempted, opts.advance);
     if (plan.questions.length === 0) {
@@ -211,7 +241,7 @@ export async function runDecisionAgent(opts: {
       }
       // Truly stuck: say so plainly, with no question the user cannot answer (the step shows "Take control" and "Try again").
       const where = obs.headings.filter((h) => h.trim()).slice(0, 2).join(" · ") || obs.title;
-      return result("needs_input", `Stuck on "${where}".`, step, { unfilled: [], question: `We could not work out what the page "${where}" still needs. Use "Take control" in the browser panel to look, or try again.` });
+      return result("needs_input", `Stuck on "${where}".`, step, { unfilled: [], question: `Elliot could not work out what the page "${where}" still needs. Use "Take control" in the browser panel to look, or try again.` });
     }
     const id = Number(nav.choice.replace("click:", ""));
     const el = obs.elements.find((e) => e.id === id);
@@ -227,10 +257,11 @@ export async function runDecisionAgent(opts: {
     const clicks = (sameClicks.get(clickKey) ?? 0) + 1;
     sameClicks.set(clickKey, clicks);
     if (clicks > 2) {
-      const missing = await whatIsMissing(input, obs, stats);
+      let missing = await whatIsMissing(input, obs, stats);
+      if (missing.length === 0) missing = await whatIsMissing(input, obs, stats, { unmarked: true }); // the site refused and did not say which field
       const where = obs.headings.filter((h) => h.trim()).slice(0, 2).join(" · ") || obs.title;
       if (missing.length) return result("needs_input", "The form asks for something the saved values do not have.", step, { unfilled: missing, question: `The form asks for: ${missing.join("; ")}` });
-      return result("needs_input", `Stuck on "${where}".`, step, { unfilled: [], question: `The page "${where}" did not accept "${el.label.trim()}" and we could not tell why. Use "Take control" in the browser panel to look, or try again.` });
+      return result("needs_input", `Stuck on "${where}".`, step, { unfilled: [], question: `The page "${where}" did not accept "${el.label.trim()}" and Elliot could not tell why. Use "Take control" in the browser panel to look, or try again.` });
     }
     try {
       await pointAt(page, page.locator(`[data-aid="${el.id}"]`));

@@ -391,4 +391,23 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 3. The same click on the same unchanged page a third time stops and asks what is missing.
 4. A yes to a tick-box question becomes plain agreement in `extra.ts`, so the box is ticked only because the user agreed.
 
-<!-- Add new entries above this line. Next number: D81 -->
+**D81 · 2026-11-08 · Om (asked), Claude (built) · decided**
+**"Delete all my data" now removes the case from the database for good.** Before, it wrote a tombstone (the row stayed, with `user_id` and `email`, profile set to null) so other devices would clear their copy. Now `DELETE /api/profile` deletes the row outright, so nothing about the user is left in Tiger (no case, no email, no id). To keep other devices from re-uploading a deleted case, each browser keeps two small markers in `localStorage`: "synced" (this browser has exchanged its case with the server) and "delete pending". A browser that has synced before and finds no server row clears its own copy; one that has never synced uploads as before. If the delete request fails (offline), the pending marker retries it on the next pull and the local copy stays gone. **Known edges:** (1) a second device that edits the case after the delete and before its next pull will upload it again, recreating the row; (2) if the database is ever wiped by hand, every browser that had synced will clear its local copy on its next pull (the local copy is no longer a backup); (3) old tombstone rows from before this change keep their email until removed with `DELETE FROM case_profiles WHERE profile IS NULL;` in the Tiger console. The persistence test now checks the row and the user's email are gone.
+
+**D82 · 2026-11-08 · Om (asked), Claude (built) · decided. Supersedes the onboarding question of D76 and D80**
+**The last onboarding question is the outcome checklist again, and the recommendation page suggests the path.**
+- **Options:** the five outcomes of D42 (an explanation, an apology, changes so it does not happen to someone else, treatment or support, compensation) plus one medicine option, "Report a prescription or side effect from a medicine". The two medicine boxes of D79 are merged into it; the Yellow Card step still asks whether it is a side effect, a faulty product or a fake one.
+- **Where it leads:** always the recommendation page (D42). Nothing is chosen for the user on the way out of onboarding. `track.wanted` is no longer set by onboarding.
+- **Kept from D76:** the story is not asked twice, the login email fills the contact email, the new welcome page. **Kept from D80:** the agent engine asks instead of guessing.
+- **Old cases:** a saved case with the earlier wording "Report a side effect from a medicine or vaccine" still counts as a side effect (`LEGACY_SIDE_EFFECT_CHOICE`).
+
+## D83 - Pressing Submit in the agent's browser marks the step as sent; the page's button then changes (Om, 2026-11-08)
+
+- **What:** when the user presses Submit/Send on a form the agent filled (NHS Lothian, the ombudsman, Yellow Card), the app now does what "I've pressed Submit" does: marks that step as sent and nothing more (revised 04:02: it first jumped to step 2 itself; Om wanted it simpler). The page does not move. On the NHS step the "Skip and continue to step 2 (demo)" button becomes "Continue to Ombudsman" (same in `ComplaintRun.tsx`), and skips nothing. The ombudsman and Yellow Card are the last step of their path and show "Marked as sent".
+- **How:** `closeWhenSubmitted` (lib/browser.ts, D57) already noticed a POST plus a new confirmation text. It now takes `flow` ("nhs", "spso", "yellowcard") and announces it on the live stream (`submitted` event, lib/liveview.ts). `LiveView` turns it into a window event `agent-submitted`; `app/case/page.tsx` listens and sets `nhsSent` / `spsoSent` / `ycSent`.
+- **Kept:** the "I've pressed Submit" buttons stay as a fallback, because detection depends on the site showing a confirmation text (`SUBMITTED_TEXT`).
+- **NHS form (Ninja Forms, invisible reCAPTCHA):** success message is in `.nf-response-msg`, so that is watched too, and the watcher logs `[submit-watch]` lines (POST host/path, form messages) to the dev terminal. 2026-11-08 03:58: a real submit from the live view produced no POST line at all, cause not yet known.
+- **Not seen:** the Yellow Card confirmation page (never submitted while probing). `SUBMITTED_TEXT` now also matches "thank you for your report / reporting", which is a guess. If it does not trigger, send the confirmation page's wording and add it.
+- **Compensation path (steps 3 and 4):** nothing to detect. The agent sends the firms' forms itself after the user's OK in step 4, and that step already marks each as sent.
+
+<!-- Add new entries above this line. Next number: D84 -->

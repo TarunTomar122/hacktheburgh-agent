@@ -49,8 +49,8 @@ export default function LegalAidStep({ profile, onContinue }: { profile: Profile
   }
 
   const lede = funding.skipped
-    ? "We look for lawyers who take this kind of case and may work on a no win no fee basis, on several sites at once."
-    : "We check the Scottish Legal Aid Board's calculator with your answers and look for lawyers who take this kind of case, on several sites at once.";
+    ? "Elliot looks for lawyers who take this kind of case and may work on a no win no fee basis, on several sites at once."
+    : "Elliot checks the Scottish Legal Aid Board's calculator with your answers and looks for lawyers who take this kind of case, on several sites at once.";
 
   const changeAnswers = (
     <button className="text-brand underline underline-offset-2" onClick={() => setLegalAid({ funding: EMPTY_FUNDING, result: null })}>
@@ -89,7 +89,7 @@ export default function LegalAidStep({ profile, onContinue }: { profile: Profile
     <div className="space-y-8">
       <PageTitle eyebrow="Compensation · step 1" title="Check legal aid and find lawyers" lede={lede} />
 
-      <AskMissing profile={profile} why="The lawyer search needs this, and it was not covered when we first talked." />
+      <AskMissing profile={profile} why="The lawyer search needs this, and it was not covered when you first talked to Elliot." />
 
       {missing.length > 0 ? (
         <FundingAsk funding={funding} next={missing[0]} />
@@ -152,7 +152,7 @@ function FundingAsk({ funding, next }: { funding: Funding; next: keyof Funding }
       <div className="space-y-1 bg-brand-soft/60 px-6 py-4">
         <Eyebrow className="text-brand">The legal aid calculator asks</Eyebrow>
         <p className="text-[15px] leading-6 text-ink">{question}</p>
-        <p className="text-xs text-muted">Only for the calculator. We do not send these figures to any lawyer.</p>
+        <p className="text-xs text-muted">Only for the calculator. Elliot does not send these figures to any lawyer.</p>
       </div>
       <div className="space-y-4 p-6">
         {body}
@@ -251,7 +251,7 @@ export function AgentsPanel({ tiles, stats, status, live }: { tiles: AgentTile[]
       </div>
       {status && <p className="text-xs text-muted">{status}</p>}
       <ul className="divide-y divide-line-soft rounded-card border border-line bg-white">
-        {tiles.length === 0 && <li className="px-5 py-3 text-sm text-muted">Starting the agents…</li>}
+        {tiles.length === 0 && <li className="px-5 py-3 text-sm text-muted">Starting Elliot&apos;s crew…</li>}
         {tiles.map((t) => (
           <li key={t.id} className="flex items-center gap-3 px-5 py-3 text-sm">
             <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.color }} />
