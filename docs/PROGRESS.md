@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Production build no longer type-checks `scripts/`
+
+`npm run build` failed on Om's Mac: Next's type check covered every `.ts` file, including a local, git-ignored `scripts/test-restart-logout.ts` whose `./mock-oidc` import does not exist. `tsconfig.json` now excludes `scripts`. The scripts still run with `tsx`; nothing in `app/` or `lib/` imports them. `tsc --noEmit` now reports no errors. `npm run build` to be re-run on the Mac.
+
 ### 2026-11-08 - Om + Claude - DONE - One agent run at a time
 
 A double click, or starting a second step while one was filling, started a second hidden browser that ran unseen for up to 15 minutes.
