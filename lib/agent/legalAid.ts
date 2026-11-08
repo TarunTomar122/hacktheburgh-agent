@@ -13,6 +13,7 @@ import type { Value } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { decide, type DAnswer } from "./decisions";
 import { makeLogger } from "./events";
+import { quickFetchWhy } from "./workers/quickRead";
 import {
   AGENT_COLORS,
   type AgentTile,
@@ -650,6 +651,90 @@ export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: 
       nwnf: `The model read ${pageUrl}: no win, no fee ${said(by.get("nwnf"))}`,
       form: enquiryUrl ? `Form found at ${enquiryUrl}` : "No form on the medical negligence or contact page",
       checked: redirected ?? `Opened ${firm.website} and ${pageUrl}`,
+    },
+  };
+}
+
+/**
+ * The same firm check without a browser (fetch first): read the firm's home page and its medical negligence page with
+ * plain requests. It can only CONFIRM: if the pages clearly say the firm acts for patients, that is the answer in seconds.
+ * Anything else (a script-built site, no such page, an unclear answer) returns { ok: false, why } and the caller opens the
+ * browser, so a firm is never ruled out on a page a plain request could not see properly.
+ */
+export async function vetFirmQuick(firm: FirmFinding, note: Note, track: Tracker): Promise<{ ok: true; v: Vetted; landed: string; pages: string[] } | { ok: false; why: string }> {
+  if (!firm.website) return { ok: false, why: "no website listed" };
+  note("Reading their website (no browser)");
+  const home = await quickFetchWhy(firm.website);
+  if (!home.page || home.page.kind !== "html") return { ok: false, why: `their home page: ${home.reason}` };
+  track.bump("quick", home.page.url);
+  const landed = home.page.url;
+  const redirected = registrable(landed) !== registrable(firm.website) ? `Website sends you to ${new URL(landed).hostname.replace(/^www\./, "")}` : null;
+  await note.log("open", `Read ${firm.website} directly (no browser needed)`, { url: landed });
+  const cands = [...new Map(home.page.links.filter((l) => /medical|clinical|negligence/i.test(l.text + " " + l.url) && registrable(l.url) === registrable(landed)).map((l) => [l.url.split("#")[0], l])).values()].slice(0, 12);
+  let read = home.page;
+  if (cands.length) {
+    let target = cands[0];
+    if (cands.length > 1) {
+      const { answers } = await decide(`Firm: ${firm.name}. Links on its website:\n${cands.map((l, i) => `${i}: ${l.text} (${l.url})`).join("\n")}`, [
+        { type: "choice", name: "link", instructions: "Which link most likely leads to the firm's page about medical or clinical negligence claims for patients?", choices: cands.map((l, i) => ({ value: String(i), description: l.text || l.url })) },
+      ]);
+      const a = answers[0];
+      if (a?.type === "choice") target = cands[Number(a.choice)] ?? target;
+      await note.log("decide", `Chose the link "${target.text || target.url}" out of ${cands.length}`, { confidence: conf(a) });
+    }
+    const page = await quickFetchWhy(target.url);
+    if (!page.page || page.page.kind !== "html") return { ok: false, why: `their medical negligence page: ${page.reason}` };
+    track.bump("quick", page.page.url);
+    read = page.page;
+    await note.log("open", `Read "${target.text || "their medical negligence page"}" directly (no browser needed)`, { url: read.url });
+  }
+  note("Reading what they do");
+  const text = read.text.replace(/\s+/g, " ").slice(0, 7000);
+  const yn = (value: string, description: string) => ({ value, description });
+  const choices = [yn("yes", "The page clearly says so"), yn("no", "The page clearly says the opposite"), yn("unknown", "The page does not say")];
+  const { answers } = await decide(`Firm: ${firm.name}\nPage: ${read.url}\nPage text:\n${text}`, [
+    { type: "choice", name: "patients", instructions: "Does this firm act for patients (claimants, pursuers) who were harmed by medical or clinical negligence?", choices },
+    { type: "choice", name: "defends", instructions: "Does this firm mainly defend the NHS, health boards, doctors or insurers against medical negligence claims?", choices },
+    { type: "choice", name: "nwnf", instructions: "Does the page say the firm offers no win, no fee (or a speculative fee / success fee agreement) for these claims?", choices },
+  ]);
+  const by = new Map(answers.map((a) => [a.name, a]));
+  const actsForPatients = tri(by.get("defends")) === "yes" ? "no" : tri(by.get("patients"));
+  // Only the browser may rule a firm out or leave it unclear: a plain request may have missed part of the page.
+  if (actsForPatients !== "yes") return { ok: false, why: `the plain page did not clearly say they act for patients (${said(by.get("patients"))}), so the browser looks properly` };
+  const noWinNoFee = tri(by.get("nwnf"));
+  await note.log("decide", `Acts for patients: ${said(by.get("patients"))}`, { confidence: conf(by.get("patients")) });
+  await note.log("decide", `Offers no win, no fee: ${said(by.get("nwnf"))}`, { confidence: conf(by.get("nwnf")) });
+  // Where would the enquiry go? A form on the page, else on their contact page (both read without a browser).
+  let enquiryUrl: string | null = read.form ? read.url : home.page.form ? home.page.url : null;
+  const pages = [home.page.url, ...(read !== home.page ? [read.url] : [])];
+  if (!enquiryUrl) {
+    const contact = [...read.links, ...home.page.links].find((l) => /contact|enquir|get in touch/i.test(l.text) && registrable(l.url) === registrable(landed));
+    if (contact) {
+      const c = await quickFetchWhy(contact.url);
+      if (c.page?.kind === "html") {
+        track.bump("quick", c.page.url);
+        pages.push(c.page.url);
+        if (c.page.form) enquiryUrl = c.page.url;
+      }
+    }
+  }
+  await note.log("found", enquiryUrl ? `Found an enquiry form at ${enquiryUrl}` : "No enquiry form found without a browser (Kit looks again when filling)", {});
+  note(["Represents patients", noWinNoFee === "yes" ? "no win no fee" : null, enquiryUrl ? "form found" : null].filter(Boolean).join(" · "));
+  return {
+    ok: true,
+    landed,
+    pages,
+    v: {
+      actsForPatients,
+      noWinNoFee,
+      enquiryUrl,
+      excluded: redirected,
+      evidence: {
+        patients: `The model read ${read.url}: acts for patients ${said(by.get("patients"))}; mainly defends ${said(by.get("defends"))}`,
+        nwnf: `The model read ${read.url}: no win, no fee ${said(by.get("nwnf"))}`,
+        form: enquiryUrl ? `Form found at ${enquiryUrl}` : "No form found on the pages read without a browser",
+        checked: redirected ?? `Read ${firm.website} and ${read.url} directly`,
+      },
     },
   };
 }

@@ -1,3 +1,4 @@
+import { recordAccess } from "./access";
 import { EnquiryFillGuard } from "./plannerGuards";
 import { formatPostcode, isPostcode, parseFundingNumber } from "./inputs";
 import type { SearchLocation } from "./searchLocation";
@@ -475,10 +476,15 @@ const diskPut = (key: string, hits: SearchHit[]) => {
 export async function searchViaApi(query: string, track: Tracker): Promise<{ title: string; url: string; snippet: string }[]> {
   const key = query.toLowerCase().replace(/\s+/g, " ").trim();
   const saved = diskGet(key);
-  if (saved) return saved;
+  if (saved) {
+    recordAccess({ via: "cache", kind: "search", reason: "the same search from an earlier run", url: query });
+    return saved;
+  }
+  const t0 = Date.now();
   const noop = Object.assign(() => {}, { log: async () => {} }) as unknown as Note;
   const hits = (await searchApi(query, noop, track)) ?? [];
   if (hits.length) diskPut(key, hits);
+  recordAccess({ via: "api", kind: "search", reason: hits.length ? "Linkup search API" : "search API gave nothing (limit reached or no results)", url: query, ms: Date.now() - t0 });
   return hits;
 }
 export async function webSearch(page: Page, query: string, note: Note, track: Tracker): Promise<SearchHit[]> {
@@ -491,12 +497,16 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
   }
   const saved = diskGet(key);
   if (saved) {
+    recordAccess({ via: "cache", kind: "search", reason: "the same search from an earlier run", url: query });
     note(`Searched before: ${query}`);
     await note.log("read", `Saved search "${query}": ${saved.length} results (from an earlier run)`, { detail: saved.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}`).join("\n") });
     searchCache.set(key, { at: Date.now(), hits: Promise.resolve(saved) });
     return saved;
   }
+  const tApi = Date.now();
   const viaApi = await searchApi(query, note, track);
+  if (viaApi) recordAccess({ via: "api", kind: "search", reason: viaApi.length ? "Linkup search API" : "search limit for this run reached", url: query, ms: Date.now() - tApi });
+  else recordAccess({ via: "browser", kind: "search", reason: "no search API available, so a search engine was opened in the browser", url: query });
   if (viaApi) {
     diskPut(key, viaApi);
     searchCache.set(key, { at: Date.now(), hits: Promise.resolve(viaApi) });

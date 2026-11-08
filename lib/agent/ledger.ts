@@ -36,6 +36,8 @@ export function enterLedger(ctx: Ctx) {
   store.enterWith({ ...(store.getStore() ?? {}), ...ctx });
 }
 
+/** The run context of the current async call chain (run folder, emitter, crew member), for other run-wide logs. */
+export const ledgerCtx = () => store.getStore() ?? {};
 export const currentAgent = () => store.getStore()?.agent ?? "system";
 export const currentRunId = () => store.getStore()?.runId;
 

@@ -5,7 +5,8 @@ import { dismissCookies } from "../../browser";
 import { pointAt } from "../../agentCursor";
 import { gateWall } from "../handoff";
 import { tookHandoff } from "../handoffQuiet";
-import { quickFetch } from "./quickRead";
+import { quickFetchWhy } from "./quickRead";
+import { recordAccess } from "../access";
 import { pageText } from "../legalAid";
 import { EFFORT, MODELS, structured } from "../llm";
 import type { Quote, Wall, WorkerCtx } from "./types";
@@ -465,12 +466,15 @@ export async function readPage(ctx: WorkerCtx, url: string, question: string): P
   const { page, note, track } = ctx;
   const stamp = <T extends PageReading>(r: T): T => (tookHandoff(page) ? { ...r, handedOff: true } : r);
   // Fetch first: most official pages and PDFs need no browser. The browser opens only when the page needs one (a wall, a script-built page, a login).
-  const quick = await quickFetch(url);
+  const t0 = Date.now();
+  const fetched = await quickFetchWhy(url);
+  const quick = fetched.page;
   if (quick) track.bump("quick", quick.url);
   else note(`Reading ${hostOf(url)}`);
   const opened: Opened = quick ? (quick.kind === "pdf" ? (() => { const t = pdfText(quick.buf); return readable(t) ? ({ kind: "pdf", text: t } as Opened) : null; })() : { kind: "html", status: 200 }) ?? (await openUrl(ctx, url)) : await openUrl(ctx, url);
   const direct = !!quick && (quick.kind === "html" || opened.kind === "pdf");
   if (!direct) track.bump("action");
+  recordAccess(direct ? { via: "fetch", kind: "page", reason: quick!.kind === "pdf" ? "a PDF, read directly" : "a plain page", url, ms: Date.now() - t0 } : { via: "browser", kind: "page", reason: quick ? "a PDF that needed the browser to open" : fetched.reason, url, ms: Date.now() - t0 });
   if (opened.kind === "fail") {
     await note.log("fail", `Could not read ${hostOf(url)}: ${opened.wall.detail}`, { shot: true, url });
     note(opened.wall.detail);

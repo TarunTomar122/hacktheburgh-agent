@@ -1,6 +1,7 @@
 "use client";
 
 import type { Verdict } from "../../lib/agent/legalAidTypes";
+import type { Access } from "../../lib/agent/access";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
@@ -39,6 +40,7 @@ export type PlannerRunState = {
   result?: PlannerResult;
   funding?: Funding;
   verdict?: Verdict; // the funding check's conclusion, live (the result carries it too)
+  access: Access[]; // how each page, search and job reached the web (fetch, API, cache or browser, and why)
   complaint?: ComplaintResult; // the complaint crew's result (D65)
   escalation?: EscalationResult; // step 2 anywhere: the escalation crew's result
   startedAt?: number;
@@ -58,7 +60,7 @@ export type PlannerRunState = {
 const idleCrew = (): Record<CrewId, CrewState> =>
   Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "idle", note: "", since: Date.now() }])) as Record<CrewId, CrewState>;
 
-const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [], models: [], handoffs: [] });
+const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [], models: [], handoffs: [], access: [] });
 
 /**
  * Runs live on the server (lib/agent/runRegistry.ts) and keep going when this screen goes away. What survives here is a
@@ -132,6 +134,8 @@ export function usePlannerRun(scope?: RunScope) {
           return { ...cur, funding: e.funding };
         case "verdict":
           return { ...cur, verdict: e.verdict };
+        case "access":
+          return { ...cur, access: [...cur.access, e.entry] };
         case "plan":
           return { ...cur, plan: e.steps };
         case "spotlight":

@@ -3,7 +3,8 @@ import type { CaseFacts } from "./facts";
 import type { Emit } from "./planner";
 import { webSearch } from "./planner";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, tabName } from "./crewRun";
-import { score, slug, vetFirm, type Evidence } from "./legalAid";
+import { score, slug, vetFirm, vetFirmQuick, type Evidence, type Vetted } from "./legalAid";
+import { recordAccess } from "./access";
 import type { FirmFinding, Route, Verdict } from "./legalAidTypes";
 import { draftEnquiry, fillOne, keepForApproval } from "./enquiry";
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
@@ -145,6 +146,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             if (attempt.ok && attempt.value) {
               const r = { ok: true as const, value: attempt.value.q };
               const checkerUrl = attempt.value.target;
+              recordAccess({ via: "browser", kind: "task", reason: `answered the place's own eligibility checker (${r.value.answers.length} question${r.value.answers.length === 1 ? "" : "s"}; each answer changes the next question)`, url: checkerUrl });
               if (r.value.wall) return `Blocked: ${r.value.wall.kind} (${r.value.wall.detail})`;
               fundingQuote = r.value.resultQuote;
               fundingSource = f?.body ?? "The legal aid checker";
@@ -204,6 +206,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const r = await kit.inTab(thought, "robin", tabName(l?.body ?? "Register"), (p, note) => searchDirectory({ page: p, note, track: kit.track }, { url, goal: `Find lawyers or firms who do ${s("area") || "clinical negligence"} near ${where}`, criteria: [{ label: "area of law", value: s("area") || "clinical negligence / medical negligence" }, { label: "location", value: where }], maxResults: 12 }), 4 * 60 * 1000);
             if (!r.ok) return `Could not search the register: ${r.error}`;
             const d = r.value;
+            recordAccess({ via: "browser", kind: "task", reason: `searched the lawyer register with its own search filters (${d.searchedWith.map((c) => c.label).join(", ") || "its search box"})`, url });
             if (d.outcome === "wall") return `Blocked: ${d.wall?.kind ?? "wall"} on ${host(url)} (${d.wall?.detail ?? d.summary}). Try another official directory from the route map, or web search for firms.`;
             for (const x of d.results) {
               const id = slug(x.name);
@@ -232,8 +235,21 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
                 f = { ...f, website: hit.url };
                 how = `found by search ("${short(hit.title, 50)}")`;
               }
-              const v = await vetFirm(p, f, note, kit.track);
-              const landed = host(p.url());
+              // Fetch first: a plain read of their site confirms most firms in seconds. Only the browser may rule a firm out.
+              const t0 = Date.now();
+              const q = await vetFirmQuick(f, note, kit.track);
+              let v: Vetted;
+              let landed: string;
+              if (q.ok) {
+                v = q.v;
+                landed = host(q.landed);
+                recordAccess({ via: "fetch", kind: "firm", reason: `checked ${q.pages.length} page${q.pages.length === 1 ? "" : "s"} of their site without a browser`, url: f.website ?? undefined, ms: Date.now() - t0 });
+              } else {
+                await note.log("recover", `Opening their site in the browser: ${q.why}`, {});
+                v = await vetFirm(p, f, note, kit.track);
+                landed = host(p.url());
+                recordAccess({ via: "browser", kind: "firm", reason: q.why, url: f.website ?? undefined, ms: Date.now() - t0 });
+              }
               const reg = registerSite.get(f.id);
               const same = !reg || landed === reg || landed.endsWith(`.${reg}`) || reg.endsWith(`.${landed}`);
               await note.log(same ? "check" : "recover", same ? `Same firm as the register entry (${how}; site ${landed})` : `The register says ${reg} but the site is ${landed}: not counted as the same firm`, {});
@@ -289,6 +305,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               return o;
             }, 150_000);
             const o: EnquiryOutcome = r.ok ? r.value : { firmId: firm.id, firmName: firm.name, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: `Stopped: ${r.error}` };
+            recordAccess({ via: "browser", kind: "task", reason: `filled ${firm.name}'s enquiry form (${o.filled.length} field${o.filled.length === 1 ? "" : "s"}) and stopped before Send`, url: o.formUrl ?? firm.website ?? undefined });
             enquiries.set(firm.id, o);
             kit.emit({ type: "enquiry", enquiry: o });
             if (o.status === "ready_to_send" && o.formUrl) firms.set(firm.id, { ...firms.get(firm.id)!, enquiryUrl: o.formUrl });
