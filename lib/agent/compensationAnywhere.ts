@@ -28,7 +28,8 @@ const TOOLS = [
   PLAN_TOOL,
   tool("check_funding", "Nell: find out how a claim could be paid for here: run the place's own online funding checker found by discovery (asks the patient only what it asks), or read the funding rules if there is no checker.", {}, []),
   tool("read_scheme", "Robin: when the route map's compensation part is a scheme rather than (or before) court — a redress, no-fault, conciliation or insurance scheme — read the scheme's own pages: how a claim starts (often from the complaint itself), who decides, any cap or threshold, time limits, and whether free legal advice comes with it.", {}, []),
-  tool("search_register", "Robin: search the professional register or directory discovery found, with its own search filters (area of law, place), and read the entries.", { area: { type: "string", description: "The area of law in this place's own terms, e.g. 'clinical negligence'" } }, ["area"]),
+  tool("web_search", "Robin: search the web, e.g. for another official or specialist directory of lawyers for this work when the register is blocked, or for a firm's website.", { query: { type: "string" } }, ["query"]),
+  tool("search_register", "Robin: search a professional register or directory with its own search filters (area of law, place), and read the entries. Defaults to the one discovery found; give url to use another directory found by web_search in this run.", { area: { type: "string", description: "The area of law in this place's own terms, e.g. 'clinical negligence'" }, url: { type: "string" } }, ["area"]),
   tool("check_firm", "Robin: open a firm's own website (from its register entry, or found by search), check it is the same firm as the register entry, and read whether it acts for patients, works on no win no fee, and has an enquiry form.", { firm_id: { type: "string" } }, ["firm_id"]),
   tool("find_guidance", "Iona: find the recommendation about the patient's condition in the place's own clinical guidance, quote it, and compare it with the timeline.", { condition: { type: "string" } }, ["condition"]),
   tool("shortlist", "Elliot: score the checked firms and pick up to 3 for the patient.", { firm_ids: { type: "array", items: { type: "string" } }, route: { type: "string", enum: ["legal_aid", "no_win_no_fee"] } }, ["firm_ids", "route"]),
@@ -53,6 +54,7 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
   let shortlistIds: string[] = [];
   let message: EnquiryMessage | null = null;
   let scheme: { body: string; text: string; quote?: Quote; url: string } | undefined;
+  const found = new Set<string>(); // hosts this run found by search (provenance for search_register's url)
   const host = (u?: string | null) => { try { return u ? new URL(u).hostname.replace(/^www\./, "") : ""; } catch { return ""; } };
   const firmLine = (f: FirmFinding) => `${f.id}: ${f.name}${f.town ? `, ${f.town}` : ""}${f.website ? `, ${host(f.website)}` : ", no website listed"}${f.sources.includes("website") ? `; patients ${f.actsForPatients}, no win no fee ${f.noWinNoFee}, form ${f.enquiryUrl ? "yes" : "not found"}` : ""}${f.excluded ? `; RULED OUT: ${f.excluded}` : ""}`;
 
@@ -61,13 +63,13 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
       prefix: "step3",
       system: `You lead a crew helping a patient in ${placeName} find out how a compensation claim could be paid for, and contact the right lawyers. Discovery already worked out the route (below); use its pages and register. Work in this order, adapting when results call for it (say why with update_plan):
 1. Nell: check_funding, and Robin: read_scheme if the compensation part is a scheme (same turn). Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
-Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
+If the register is blocked (CAPTCHA, login), web_search for another official or specialist directory of lawyers who do this work in this place, then search_register with its url. Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
 ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, points: s.points })), null, 1).slice(0, 6000)}`,
       tools: TOOLS,
       firstInput: `Patient: ${facts.firstName ?? "the patient"}, ${route.place.city || facts.address || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
-      stage: { check_funding: 1, read_scheme: 1, search_register: 1, find_guidance: 1, check_firm: 2, shortlist: 3, fill_enquiry: 4 },
-      who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
+      stage: { check_funding: 1, read_scheme: 1, web_search: 1, search_register: 1, find_guidance: 1, check_firm: 2, shortlist: 3, fill_enquiry: 4 },
+      who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" || name === "web_search" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
       doing: (name, a) => {
         const f = firms.get(String(a.firm_id ?? ""));
         return ({ check_funding: `Checking funding with ${step("funding")?.body ?? "the official checker"}`, read_scheme: `Reading how ${step("compensation")?.body ?? "the scheme"} works`, search_register: `Searching ${step("lawyers")?.body ?? "the register"}`, check_firm: f ? `Checking ${f.name}'s website` : "Checking a firm", find_guidance: "Finding the clinical guidance", shortlist: "Choosing the best fits", fill_enquiry: f ? `Filling ${f.name}'s enquiry form` : "Filling an enquiry form" } as Record<string, string>)[name] ?? "Working";
@@ -127,9 +129,16 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             kit.finding(`${scheme.body}: ${short(r.value.answer, 140)}`, r.value.url, "robin");
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((x) => x.checked).map((x) => `"${x.quote}"`).join(" | ")}`;
           }
+          case "web_search": {
+            const r = await kit.inTab(thought, "robin", "Search", (p, note) => webSearch(p, s("query"), note, kit.track), 90_000);
+            if (!r.ok) return `Could not search: ${r.error}`;
+            r.value.forEach((x) => found.add(host(x.url)));
+            return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
+          }
           case "search_register": {
             const l = step("lawyers");
-            const url = l?.url ?? l?.sources[0]?.url;
+            if (s("url") && !found.has(host(s("url"))) && host(s("url")) !== host(l?.url)) return `Blocked: ${s("url")} was not found in this run. Use web_search first.`;
+            const url = s("url") || (l?.url ?? l?.sources[0]?.url);
             if (!url) return "Could not search: discovery found no register or directory.";
             const where = route.place.city || facts.postcode || route.place.region;
             const r = await kit.inTab(thought, "robin", short(l?.body ?? "Register", 26), (p, note) => searchDirectory({ page: p, note, track: kit.track }, { url, goal: `Find lawyers or firms who do ${s("area") || "clinical negligence"} near ${where}`, criteria: [{ label: "area of law", value: s("area") || "clinical negligence / medical negligence" }, { label: "location", value: where }], maxResults: 12 }), 4 * 60 * 1000);
