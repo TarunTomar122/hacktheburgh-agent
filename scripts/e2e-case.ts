@@ -23,7 +23,7 @@ function listener(tag: string) {
     if (e.type === "run") runId = e.runId;
     if (e.type === "say" && e.say.kind !== "assign") console.log(`[${s()}] ${tag} [${e.say.from}] ${e.say.text.slice(0, 200)}`);
     if (e.type === "ask") {
-      const a = e.ask.kind === "money" || e.ask.kind === "number" ? "14000" : e.ask.kind === "yes_no" ? (/confirm|agree|understand|accept|disclaimer|read the/i.test(e.ask.question) ? "Yes" : "No") : e.ask.kind === "choice" ? (e.ask.options?.find((o) => /clinical|medical|negligen|health|injur/i.test(o)) ?? e.ask.options?.find((o) => /\bcivil\b/i.test(o)) ?? e.ask.options?.find((o) => /other|none|something else|not listed/i.test(o)) ?? e.ask.options?.[0] ?? null) : null;
+      const a = e.ask.kind === "money" || e.ask.kind === "number" ? "14000" : e.ask.kind === "yes_no" ? (/confirm|agree|understand|accept|disclaimer|read the/i.test(e.ask.question) ? "Yes" : "No") : e.ask.kind === "choice" ? (e.ask.options?.find((o) => /clinical|medical negligen|negligen|injur/i.test(o) && !/mental/i.test(o)) ?? e.ask.options?.find((o) => /\bcivil\b/i.test(o)) ?? e.ask.options?.find((o) => /other|none|something else|not listed/i.test(o)) ?? e.ask.options?.[0] ?? null) : null;
       console.log(`[${s()}] ${tag} ASK (${e.ask.kind}) ${e.ask.question} -> ${a}`);
       setTimeout(() => answerQuestion(runId, e.ask.id, a), 800);
     }

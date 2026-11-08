@@ -4,6 +4,12 @@ import type { z } from "zod";
 import { currentAgent, record, SEES, type DataKind } from "./ledger";
 import { throwIfCancelled } from "./runControl";
 
+/**
+ * A cloud call that hangs is retried, not waited on: these calls normally take 2-15 s, but the API sometimes stalls for
+ * minutes (seen 2026-11-08: 134 s and 137 s planner calls). After the time limit the SDK aborts and tries again (twice).
+ */
+const CALL_LIMIT = (model: string) => ({ timeout: Number(process.env.MODEL_TIMEOUT_MS ?? (/mini|nano|luna/.test(model) ? 30_000 : 45_000)), maxRetries: 2 });
+
 let client: OpenAI | null = null;
 export function openai(): OpenAI {
   return (client ??= new OpenAI()); // reads OPENAI_API_KEY from env (.env.local)
@@ -90,7 +96,7 @@ async function cloudStructured<T extends z.ZodType>(opts: StructuredOpts<T>): Pr
     instructions: opts.instructions,
     input: opts.input,
     text: { format: zodTextFormat(opts.schema, opts.name) },
-  });
+  }, CALL_LIMIT(opts.model));
   record({ task: opts.name, model: opts.model, inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0, ms: Date.now() - t0, data: opts.data });
   if (!res.output_parsed) throw new Error(`Model returned no parsable output for ${opts.name}`);
   return res.output_parsed as z.infer<T>;
@@ -142,7 +148,7 @@ async function localStructured<T extends z.ZodType>(opts: StructuredOpts<T>): Pr
 export async function respond(body: Parameters<OpenAI["responses"]["create"]>[0] & { stream?: false }, task: string, data?: DataKind[]) {
   throwIfCancelled();
   const t0 = Date.now();
-  const res = await openai().responses.create(body);
+  const res = await openai().responses.create(body, CALL_LIMIT(String(body.model)));
   record({ task, model: String(body.model), inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0, ms: Date.now() - t0, data });
   return res;
 }
