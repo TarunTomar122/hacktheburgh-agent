@@ -14,10 +14,10 @@ import { CrewMark, StateMark } from "./Crew";
 
 export type Step = { crew: CrewId[]; title: string; line: string };
 export const STEPS: Step[] = [
-  { crew: ["nell"], title: "Check legal aid", line: "Nell runs SLAB's calculator" },
-  { crew: ["robin"], title: "Find solicitors", line: "Robin finds and checks firms" },
-  { crew: ["iona"], title: "Gather evidence", line: "Iona reads guidelines & past cases" },
-  { crew: ["kit"], title: "Fill enquiries", line: "Kit fills each firm's form" },
+  { crew: ["nell"], title: "Check legal aid", line: "Nell checks if legal aid could pay for your claim" },
+  { crew: ["robin"], title: "Find solicitors", line: "Robin finds firms that take cases like yours, and checks each one" },
+  { crew: ["iona"], title: "Gather evidence", line: "Iona checks your care against the clinical guidance and finds similar cases" },
+  { crew: ["kit"], title: "Fill enquiries", line: "Kit fills in each firm's enquiry form for you to check before it is sent" },
 ];
 
 /** The same four steps for a place with a route map: the funding body and the lawyer register are the ones found for that place. */
@@ -29,10 +29,12 @@ export function routeSteps(map: RouteMap): Step[] {
   };
   const funding = body("funding");
   const lawyers = body("lawyers");
+  const guide = map.steps.find((s) => s.kind === "guideline")?.body?.trim();
+  const guideName = guide && guide.length <= 40 && !/[.:;]/.test(guide) ? guide : undefined;
   return [
-    { ...STEPS[0], line: funding ? `Nell checks ${funding}` : "Nell checks what help with costs there is" },
-    { ...STEPS[1], line: lawyers ? `Robin finds and checks firms on ${lawyers}` : "Robin finds and checks firms" },
-    STEPS[2],
+    { ...STEPS[0], line: funding ? `Nell checks if ${funding} could pay for your claim` : STEPS[0].line },
+    { ...STEPS[1], line: lawyers ? `Robin finds firms through ${lawyers}, and checks each one` : STEPS[1].line },
+    { ...STEPS[2], line: guideName ? `Iona checks your care against ${guideName} guidance and finds similar cases` : STEPS[2].line },
     STEPS[3],
   ];
 }
