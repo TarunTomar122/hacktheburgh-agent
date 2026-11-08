@@ -81,7 +81,7 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
   const [big, setBig] = useState<string | null>(null);
   const agents = useMemo(() => [...new Map(scope.steps.map((s) => [s.agent, s.color])).entries()], [scope.steps]);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [every, setEvery] = useState(false);
+  const [every, setEvery] = useState(true); // every step by default; "Show only what was found" narrows it
   const steps = useMemo(() => [...scope.steps].sort((a, b) => a.t - b.t || a.i - b.i).filter((s) => !hidden.has(s.agent) && (every || OUTCOMES.includes(s.kind))), [scope.steps, hidden, every]);
 
   useEffect(() => {
