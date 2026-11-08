@@ -4,7 +4,8 @@ import { pageText } from "./legalAid";
 import { webSearch, type Emit } from "./planner";
 import { detectPlace } from "./place";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit } from "./crewRun";
-import { confidenceOf, ROUTE_KINDS, type Place, type RouteKind, type RouteMap, type RouteStep, type Source } from "./routeTypes";
+import { confidenceOf, evidenceOf, ROUTE_KINDS, type Place, type RouteKind, type RouteMap, type RouteStep, type Source } from "./routeTypes";
+import { checkClaimNumbers, formatQuantity, isEnactedUrl, parseQuantities, scrubUnbacked, type EvidenceQuote } from "./evidence-claims";
 import type { CrewId, DiscoveryResult } from "./plannerTypes";
 import { exploreSite, normText, normUrl, quoteInText, readPage } from "./workers/explore";
 import type { WorkerCtx } from "./workers/types";
@@ -229,51 +230,49 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               const acronym = (x: string) => x.split(" ").filter((w) => w.length > 2).map((w) => w[0]).join("");
               return parts.some((x) => title.includes(x) || hostWords.split(" ").some((h) => h.length > 3 && (x.replace(/ /g, "").includes(h) || acronym(x) === h)));
             };
-            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s) && !/\/(enacted|as-enacted|original)(\/|$)|\bas enacted\b/i.test(String(s.url)), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
-            // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
-            // Law as originally enacted is not today's rule (amended since): its numbers back nothing.
-            const checkedText = sources.filter((x) => x.checked && !/\/(enacted|as-enacted|original)(\/|$)|\bas enacted\b/i.test(x.url)).map((x) => normText(x.quote)).join(" ");
-            // Numbers count with their unit ("12 months" does not back "12 days"); number words too ("six months").
-            const NUM = /(\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty)\s*(working days?|days?|weeks?|months?|years?|%|per ?cent|£|€|\$)?/gi;
-            // Numbers count only as whole tokens with their unit ("12 years" does not back "2 years"; "30 days" does not back "0 days").
-            const backed = (claim?: string) =>
-              !claim ||
-              [...claim.matchAll(NUM)]
-                .filter((m) => /\d/.test(m[1]) || m[2])
-                .every((m) => {
-                  const n = normText(m[1]);
-                  const u = m[2] ? normText(m[2]).replace(/s$/, "") : "";
-                  const re = new RegExp(`(^|[^\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${u ? `\\s*${u}` : "(?![\\p{N}])"}`, "u");
-                  return re.test(checkedText);
-                });
+            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s) && !isEnactedUrl(String(s.url)), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            // A claim with numbers (a time limit, a cap, a percentage) only stands if EVERY number (with its currency or unit)
+            // is in a checked quote from an OFFICIAL source, ideally one quote (evidence-claims.ts). Unofficial quotes, and law as
+            // originally enacted (already not "official" above), back nothing: "£500" does not back "$500" or "€500".
+            const evQuotes: EvidenceQuote[] = sources.map((x) => ({ quote: x.quote, checked: x.checked, official: x.official && !isEnactedUrl(x.url) }));
+            const claimSupport = new Map<string, number[]>();
+            const backed = (claim?: string, opts: { requireSingle?: boolean } = {}) => {
+              if (!claim) return true;
+              const c = checkClaimNumbers(claim, evQuotes, opts);
+              if (c.ok) claimSupport.set(claim, c.support);
+              return c.ok;
+            };
+            /** The claim with only its unbacked numbers replaced by "[see source]". */
+            const scrubbed = (claim: string) => scrubUnbacked(claim, checkClaimNumbers(claim, evQuotes));
             /** Corroboration in code: the deadline's period appears in checked official quotes on two different sites; or the quotes give different periods. */
             const deadlineCheckOf = (d: string | undefined, srcs: Source[]): Pick<RouteStep, "deadlineCheck" | "deadlineOthers"> => {
               if (!d) return {};
-              const m = [...d.matchAll(NUM)].find((x) => x[2]);
-              if (!m) return {};
-              const unit = normText(m[2]).replace(/s$/, "");
-              const n = normText(m[1]);
-              const ok = srcs.filter((x) => x.checked && x.official);
-              const periods = new Map<string, Set<string>>(); // number -> hosts
-              for (const x of ok)
-                for (const mm of normText(x.quote).matchAll(new RegExp(`(^|[^\\p{N}])(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty)\\s*${unit}`, "gu")))
-                  periods.set(mm[2], new Set([...(periods.get(mm[2]) ?? []), hostOf(x.url)]));
-              const others = [...periods.keys()].filter((k) => k !== n).map((k) => `${k} ${unit}s`);
+              const dq = parseQuantities(d).find((x) => x.kind === "duration");
+              if (!dq) return {};
+              const periods = new Map<string, Set<string>>(); // period as written ("12 months", "6-12 months") -> hosts
+              for (const x of srcs.filter((y) => y.checked && y.official))
+                for (const q of parseQuantities(x.quote))
+                  if (q.kind === "duration" && q.unit === dq.unit) periods.set(formatQuantity(q), new Set([...(periods.get(formatQuantity(q)) ?? []), hostOf(x.url)]));
+              const mine = formatQuantity(dq);
+              const others = [...periods.keys()].filter((k) => k !== mine);
               if (others.length) return { deadlineCheck: "sources_differ", deadlineOthers: others };
-              return { deadlineCheck: (periods.get(n)?.size ?? 0) >= 2 ? "two_sites" : "one_site" };
+              return { deadlineCheck: (periods.get(mine)?.size ?? 0) >= 2 ? "two_sites" : "one_site" };
             };
+            const deadlineOk = !!a.deadline && backed(String(a.deadline), { requireSingle: true });
+            const whatOk = backed(String(a.what ?? ""));
+            const keptPoints = Array.isArray(a.points) ? (a.points as string[]).map(String).filter((pt) => backed(pt, { requireSingle: true })).slice(0, 6) : undefined;
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),
               // The card's sentence too: if its numbers are not in a checked quote, keep it but without them (say "see the source").
-              what: backed(String(a.what ?? "")) ? String(a.what ?? "") : `${String(a.what ?? "").replace(NUM, (m0, n, u) => (/\d/.test(n) || u ? "[see source]" : m0))}`,
-              deadline: a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined,
-              ...deadlineCheckOf(a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined, sources),
+              what: whatOk ? String(a.what ?? "") : scrubbed(String(a.what ?? "")),
+              deadline: deadlineOk ? String(a.deadline) : undefined,
+              ...deadlineCheckOf(deadlineOk ? String(a.deadline) : undefined, sources),
               // "online form" only where the crew really reached a form; a URL only if this run opened that page (code checks).
               how: ((h) => (h === "online_form" && !(a.url && forms.has(keyOf(String(a.url)))) ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"),
               url: a.url && visited.has(keyOf(String(a.url))) ? String(a.url) : undefined,
               wall: a.wall ? String(a.wall) : undefined,
-              points: Array.isArray(a.points) ? (a.points as string[]).map(String).filter((pt) => backed(pt)).slice(0, 6) : undefined,
+              points: keptPoints,
               requires: Array.isArray(a.requires) ? (a.requires as string[]).map(String) : undefined,
               appliesIf: a.applies_if ? String(a.applies_if) : undefined,
               alternatives: Array.isArray(a.alternatives) ? (a.alternatives as string[]).map(String) : undefined,
@@ -283,12 +282,16 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               confidence: sources.some((x) => x.checked && (namesBody(normText(x.quote)) || namesBody(texts.get(keyOf(x.url)) ?? ""))) ? confidenceOf(sources) : "unconfirmed",
               by: ROUTE_KINDS.find((k) => k.kind === kind)!.crew,
             };
+            step.evidence = {
+              ...evidenceOf(step),
+              claims: { deadline: deadlineOk ? claimSupport.get(String(a.deadline)) : undefined, what: whatOk ? claimSupport.get(String(a.what ?? "")) : undefined, points: keptPoints?.map((pt) => claimSupport.get(pt)) },
+            };
             steps.set(kind, step);
             publish(kit);
             const bad = sources.filter((s) => !s.checked);
-            const dropped = [...(a.deadline && !step.deadline ? [String(a.deadline)] : []), ...((Array.isArray(a.points) ? (a.points as string[]) : []).filter((pt) => !step.points?.includes(String(pt))))];
+            const dropped = [...(a.deadline && !step.deadline ? [String(a.deadline)] : []), ...(!whatOk ? [String(a.what ?? "")] : []), ...((Array.isArray(a.points) ? (a.points as string[]) : []).filter((pt) => !step.points?.includes(String(pt))))];
             const dl = step.deadlineCheck === "one_site" ? " The deadline has only one official source: confirm it on a second official site (e.g. the national rules) and record_step again." : step.deadlineCheck === "sources_differ" ? ` Official sources give different periods (${[step.deadline, ...(step.deadlineOthers ?? [])].join(" / ")}): find which applies to this case now and record_step again.` : "";
-            return `Recorded ${kind} (${step.confidence}).${dl}${dropped.length ? ` Not kept, because their numbers are not in a checked quote: ${dropped.map((d) => `"${short(String(d), 60)}"`).join("; ")}.` : ""}${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
+            return `Recorded ${kind} (${step.confidence}).${dl}${dropped.length ? ` Not kept (or shown as \"[see source]\"), because their numbers (with their currency or unit) are not in ONE checked quote from an official page: ${dropped.map((d) => `"${short(String(d), 60)}"`).join("; ")}.` : ""}${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
           }
           default:
             return `Unknown tool ${call.name}`;
