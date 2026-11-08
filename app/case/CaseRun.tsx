@@ -226,11 +226,14 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   // The clock stops while the run is paused: it adds each second to the total only when not paused, so a pause never counts.
   const [elapsed, setElapsed] = useState(0);
-  const clock = useRef({ last: 0, paused: false, startedAt: null as number | null, seeded: false });
+  const clock = useRef({ last: 0, paused: false, startedAt: null as number | null, seeded: false, over: false });
   useEffect(() => {
     clock.current.paused = !!state.paused;
     clock.current.startedAt = state.startedAt ?? null;
-  }, [state.paused, state.startedAt]);
+    // The clock stops when the run is over, and shows how long it took.
+    clock.current.over = state.status === "done" || state.status === "error";
+    if (clock.current.over && state.startedAt) setElapsed(Math.max(0, (state.endedAt ?? Date.now()) - state.startedAt));
+  }, [state.paused, state.startedAt, state.status, state.endedAt]);
   useEffect(() => {
     clock.current.last = Date.now();
     const t = setInterval(() => {
@@ -238,7 +241,7 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
       const n = Date.now();
       const dt = n - c.last;
       c.last = n;
-      if (c.startedAt === null) return;
+      if (c.startedAt === null || c.over) return;
       if (!c.seeded) {
         c.seeded = true;
         setElapsed(n - c.startedAt);

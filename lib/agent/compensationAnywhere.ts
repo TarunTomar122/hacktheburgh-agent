@@ -238,7 +238,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const g = proof.guideline?.points[0];
             if (!message) {
               // Nell -> Kit: the funding checker's own words travel into the message, as an estimate, never as eligibility.
-              const funding = fundingQuote?.checked ? `On funding: ${fundingSource}'s online checker says "${short(fundingQuote.quote, 220)}". I understand this is only an estimate.` : "I would also like to know how a case like this could be funded.";
+              const funding = fundingQuote?.checked ? `On funding: ${fundingSource}'s online checker says "${short(fundingQuote.quote, 90)}". I understand this is only an estimate.` : "I would also like to know how a case like this could be funded.";
               message = await draftEnquiry(facts, undefined, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: g.text, question: proof.gaps[0].question } : undefined, { place: placeName, funding });
             }
             const msg = message;

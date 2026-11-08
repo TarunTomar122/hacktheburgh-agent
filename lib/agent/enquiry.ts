@@ -33,18 +33,18 @@ export type LegalAidSummary = { verdict: Step3Result["verdict"]; route: Step3Res
 
 const DraftSchema = z.object({
   subject: z.string().describe("Short subject line, e.g. 'Enquiry: possible medical negligence (missed wrist fracture)'"),
-  body: z.string().describe("The message, first person, plain, 120-220 words, ending with how to reach the person"),
+  body: z.string().describe("The message, first person, plain, 70-130 words, no name or contact details inside it"),
 });
 
 const DRAFT_RULES = (place: string) => `You write a short first enquiry from a member of the public to a law firm in ${place} about a possible medical negligence (clinical negligence) claim. Use the terms people use in ${place}.
 Rules:
 - Use ONLY the facts given. Never invent symptoms, losses, dates, names or places.
-- First person, plain and polite, 120-220 words. No legal jargon.
+- First person, plain and polite, 70-130 words, short paragraphs. No legal jargon. Say each thing once.
 - Say what happened (with the dates and the place from the facts), how it has affected them if the facts say so, and what they want.
 - Do NOT say anyone was negligent, at fault or liable, and do not say they have a claim. Ask whether the firm could advise.
-- If a funding sentence is given, include it word for word.
-- If a guideline point is given, add ONE neutral sentence: name the guideline, quote its point briefly, and ask whether the firm could advise on whether it applies to what happened. Never say the guideline was breached.
-- End with how to reach them: the email and phone given. No postal address.`;
+- If a funding sentence is given, include it as one short sentence, keeping its quoted words exactly.
+- If a guideline point is given, add ONE short neutral sentence: name the guideline and ask whether the firm could advise on whether it applies to what happened. Never say the guideline was breached.
+- Do not write their name, email or phone in the message: the form or the email already carries them. End with "Please reply by email or phone."`;
 
 function fundingSentence(la: LegalAidSummary): string {
   if (!la) return "";
