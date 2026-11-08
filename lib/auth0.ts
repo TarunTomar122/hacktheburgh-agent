@@ -15,7 +15,10 @@ let client: Auth0Client | null = null;
 
 /** The SDK client, made on first use. Only call it when authEnabled() is true: it refuses to start without its settings. */
 export function getAuth0(): Auth0Client {
-  client ??= new Auth0Client();
+  // In dev, next.config.ts sets DEV_BOOT_ID afresh on every start, so the old session cookie no longer decrypts after a restart and the
+  // app opens on the login page (D77). Without it (production, or AUTH0_KEEP_SESSIONS=1) the key is just AUTH0_SECRET.
+  const boot = process.env.DEV_BOOT_ID;
+  client ??= new Auth0Client(boot && process.env.AUTH0_SECRET ? { secret: `${process.env.AUTH0_SECRET}:${boot}` } : undefined);
   return client;
 }
 
