@@ -7,150 +7,132 @@ PASS numbers: no numbers, nothing to back
 PASS draft: a missing quote is added word for word with its source
 PASS draft: a quote already in the letter is not added twice
 PASS draft: not English, left to the model (no English template)
-[3s] model iona local local:qwen3:8b investigation_issue data=[health]
-[3s] BRIEF (de-identified, made on this Mac): {"condition":"suspected scaphoid fracture","issue":"a fracture missed on X-ray at an emergency department and the patient sent home as a sprain"}
-[3s] TAB Iona · Decisions
-[3s] TAB Iona · Policies
-[3s] TAB Iona · Inspections
-[3s] TAB Iona · Public records
-[5s] model iona cloud gpt-5.4-mini investigate_queries_decision data=[]
-[6s]   · Iona · Decisions: read Exa search "Health and Disability Commissioner scaphoid fracture emergency department": 10 results
-[6s] model iona cloud gpt-5.4-mini investigate_queries_inspection data=[]
-[6s] model iona cloud gpt-5.4-mini investigate_queries_public_record data=[]
-[6s] model iona cloud gpt-5.4-mini investigate_queries_policy data=[]
-[6s]   · Iona · Inspections: read Exa search "Auckland City Hospital emergency department report scaphoid fracture": 10 results
-[7s]   · Iona · Public records: read Exa search "Health New Zealand scaphoid fracture emergency department disclosure log": 10 results
-[7s]   · Iona · Policies: read Exa search "Te Toka Tumai scaphoid fracture guideline": 10 results
-[8s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
-[8s] model iona cloud gpt-5.4-mini investigate_pick_decision data=[]
+[2s] model iona local local:qwen3:8b investigation_issue data=[health]
+[2s] BRIEF (de-identified, made on this Mac): {"condition":"suspected scaphoid fracture","issue":"a fracture missed on X-ray at an emergency department and the patient sent home as a sprain"}
+[2s] TAB Iona · Decisions
+[2s] TAB Iona · Policies
+[2s] TAB Iona · Inspections
+[2s] TAB Iona · Public records
+[4s] model iona cloud gpt-5.4-mini investigate_queries_inspection data=[]
+[4s] model iona cloud gpt-5.4-mini investigate_queries_decision data=[]
+[4s]   · Iona · Decisions: read Saved search "HDC scaphoid fracture emergency department": 10 results (from an earlier run)
+[4s] model iona cloud gpt-5.4-mini investigate_queries_public_record data=[]
+[4s] model iona cloud gpt-5.4-mini investigate_queries_policy data=[]
+[4s]   · Iona · Inspections: read Exa search "Health New Zealand Auckland City Hospital emergency report scaphoid fracture": 10 results
+[5s]   · Iona · Public records: read Exa search "Health New Zealand scaphoid fracture missed X-ray": 10 results
+[5s]   · Iona · Policies: read Exa search "Te Toka Tumai scaphoid fracture emergency department guideline": 10 results
+[6s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
+[6s] model iona cloud gpt-5.4-mini investigate_pick_decision data=[]
+[6s]   · Iona · Inspections: read Exa search "site:hdc.org.nz Auckland City Hospital emergency scaphoid fracture": 10 results
+[7s] model iona cloud gpt-5.4-mini investigate_pick_policy data=[]
+[7s]   · Iona · Decisions: read Exa search "scaphoid fracture HDC site:hdc.org.nz": 10 results
+[7s]   · Iona · Policies: read Exa search "Te Toka Tumai scaphoid fracture emergency department guideline site:healthnz.govt.nz": 10 results
 [8s] model iona cloud gpt-5.4-mini investigate_pick_public_record data=[]
-[8s]   · Iona · Inspections: read Exa search "Auckland City Hospital emergency department report scaphoid fracture site:hdc.org.nz": 10 results
+[8s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
+[9s]   · Iona · Inspections: open Opened a PDF (2k characters of text)
 [9s] model iona cloud gpt-5.4-mini investigate_pick_policy data=[]
-[10s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
-[12s]   · Iona · Inspections: open Opened a PDF (2k characters of text)
-[14s]   · Iona · Public records: open Opened https://www.hdc.org.nz/decisions/search-decisions/2023/20hdc00167/
-[14s]   · Iona · Decisions: open Opened https://www.hdc.org.nz/decisions/search-decisions/2002/01hdc02275/
-[14s] model iona cloud gpt-5.4-mini read_page data=[health]
-[14s]   · Iona · Inspections: read Read 03hdc14447casenote.pdf: Yes. This is an HDC case note about a hospital Emergency Department and the missed fracture issue, but it is not a perfor
-[16s] model iona cloud gpt-5.4-mini read_page data=[health]
-[16s]   · Iona · Public records: read Read System failed to support clinicians in timely follow-up of …: No. This is a Health and Disability Commissioner decision about delayed follow-up o
-[16s] model iona cloud gpt-5.4-mini read_page data=[health]
-[16s]   · Iona · Decisions: read Read Management of angulated radial fracture without manipulatio…: Yes, this is a published HDC decision, but it is not about a fracture missed on X-r
-[17s]   · Iona · Inspections: open Opened a PDF (89k characters of text)
-[17s]   · Iona · Decisions: read Exa search "Health and Disability Commissioner scaphoid fracture site:hdc.org.nz": 10 results
-[18s]   · Iona · Policies: open Opened https://aci.health.nsw.gov.au/networks/eci/clinical/tools/scaphoid-fracture
+[9s] model iona cloud gpt-5.4-mini investigate_pick_decision data=[]
+[10s]   · Iona · Public records: open Read https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-wrist directly (no browser needed)
+[10s]   · Iona · Decisions: open Read https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/ directly (no browser needed)
+[11s] model iona cloud gpt-5.4-mini read_page data=[health]
+[11s]   · Iona · Inspections: read Read 03hdc14447casenote.pdf: Yes. This is a Health and Disability Commissioner case note about a missed pelvic fracture on X-ray at a public hospital 
+[11s]   · Iona · Policies: open Read https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-arm-or-elbow directly (no browser needed)
+[11s]   · Iona · Inspections: open Read https://www.hdc.org.nz/decisions/search-decisions/2008/07hdc17769/ directly (no browser needed)
+[12s] model iona cloud gpt-5.4-mini read_page data=[health]
+[12s]   · Iona · Public records: read Read Broken wrist: No. This is a general health topic page about broken wrists, not a freedom-of-information response, disclosure log entry, public re
+[12s]   · Iona · Public records: read Exa search "site:healthnz.govt.nz scaphoid fracture emergency department": 10 results
+[13s] model iona cloud gpt-5.4-mini read_page data=[health]
+[13s]   · Iona · Policies: read Read Broken arm or elbow: No. This page is a public health topic page for patients about broken arms or elbows, not a policy, protocol, procedure, or 
+[13s]   · Iona · Policies: open Read https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-wrist directly (no browser needed)
+[13s] model iona cloud gpt-5.4-mini read_page data=[health]
+[13s]   · Iona · Decisions: read Read Care of woman with hand injury — Health & Disability Commis…: Yes. This is a published HDC decision about a fractured finger injury, but it is no
+[13s] model iona cloud gpt-5.4-mini read_page data=[health]
+[13s]   · Iona · Inspections: read Read Emergency department care and management of an incomplete s…: Yes. This is a Health and Disability Commissioner report about Wanganui Hospital Em
+[14s]   · Iona · Inspections: open Read https://www.hdc.org.nz/decisions/search-decisions/2002/01hdc02275/ directly (no browser needed)
+[14s] model iona cloud gpt-5.4-mini investigate_pick_public_record data=[]
+[15s]   · Iona · Decisions: open Opened a PDF (89k characters of text)
+[15s] model iona cloud gpt-5.4-mini read_page data=[health]
+[15s]   · Iona · Policies: read Read Broken wrist: No. This page is a public health topic page for patients about a broken wrist, not a policy, protocol, procedure, or internal guida
+[15s] model iona cloud gpt-5.4-mini read_page data=[health]
+[15s]   · Iona · Inspections: read Read Management of angulated radial fracture without manipulatio…: No. This page is a Health & Disability Commissioner complaint decision about care a
+[16s]   · Iona · Public records: open Read https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments directly (no browser needed)
+[17s] model iona cloud gpt-5.4-mini read_page data=[health]
+[17s]   · Iona · Decisions: read Read 19hdc01258.pdf: Yes. This is a published Health and Disability Commissioner report about a missed thumb fracture/dislocation after an ED visit, w
+[17s]   · Iona · Policies: open Read https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments directly (no browser needed)
+[17s]   · Iona · Decisions: open Read https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/ directly (no browser needed)
+[18s] model iona cloud gpt-5.4-mini read_page data=[health]
+[18s]   · Iona · Public records: read Read Emergency departments (ED): No. This page is a general Health New Zealand information page about emergency departments, not a freedom-of-informat
 [19s] model iona cloud gpt-5.4-mini read_page data=[health]
-[19s]   · Iona · Inspections: read Read 19hdc01258.pdf: Yes. This is a Health and Disability Commissioner report about a district health board emergency department, but it is about a mi
-[20s] model iona cloud gpt-5.4-mini investigate_pick_decision data=[]
-[20s]   · Iona · Inspections: open Opened a PDF (4k characters of text)
-[21s] model iona cloud gpt-5.4-mini read_page data=[health]
-[21s]   · Iona · Policies: read Read Scaphoid fracture clinical tool | Emergency Care Institute: No. This page is an Emergency Care Institute clinical tool from the Agency for Clinic
+[19s]   · Iona · Policies: read Read Emergency departments (ED): Yes. This page is a Health New Zealand | Te Whatu Ora public information page for emergency departments, and it inclu
+[20s]   · Iona · Public records: open Read https://www.healthnz.govt.nz/health-topics/tests-and-treatments/emergencies-and-first-aid/broken-bones-first-aid directly (no browser needed)
+[20s] model iona cloud gpt-5.4-mini read_page data=[health]
+[20s]   · Iona · Decisions: read Read Failure to conduct an adequate medical assessment and to or…: Yes. This is a published HDC decision about a patient who attended urgent care afte
 [22s] model iona cloud gpt-5.4-mini read_page data=[health]
-[22s]   · Iona · Inspections: read Read 11hdc01077casenote.pdf: No. This page is a Health and Disability Commissioner case note about an emergency department incident at a hospital, not
-[22s]   · Iona · Public records: open Opened https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-wrist
-[24s]   · Iona · Policies: open Opened https://www.nice.org.uk/guidance/ng38/chapter/Recommendations
-[24s] model iona cloud gpt-5.4-mini read_page data=[health]
-[24s]   · Iona · Public records: read Read Broken wrist: No. This page is a general Health New Zealand health topic page about broken wrists, not a freedom-of-information response, disclos
-[25s]   · Iona · Public records: read Exa search "site:healthnz.govt.nz scaphoid fracture emergency department": 10 results
-[25s]   · Iona · Decisions: open Opened https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/
-[26s] model iona cloud gpt-5.4-mini read_page data=[health]
-[26s]   · Iona · Policies: read Read Recommendations | Fractures (non-complex): assessment and m…: No. This is a NICE guideline page, not a policy/procedure published by Health New Z
-[26s] model iona cloud gpt-5.4-mini investigate_pick_public_record data=[]
-[27s] model iona cloud gpt-5.4-mini read_page data=[health]
-[27s]   · Iona · Decisions: read Read Care of woman with hand injury — Health & Disability Commis…: Yes. This is a published HDC decision about a hand fracture, but it is not a case o
-[29s] model iona cloud gpt-5.4 investigate_judge_inspection data=[]
-[33s]   · Iona · Decisions: open Opened https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
-[33s]   · Iona · Public records: open Opened https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments
-[36s] model iona cloud gpt-5.4-mini read_page data=[health]
-[36s]   · Iona · Public records: read Read Emergency departments (ED): No. This page is a general Health New Zealand information page about emergency departments, not a freedom-of-informat
-[36s] model iona cloud gpt-5.4-mini read_page data=[health]
-[36s]   · Iona · Decisions: read Read Failure to conduct an adequate medical assessment and to or…: Yes. This is a published HDC decision about a missed hip fracture diagnosis after a
-[37s]   · Iona · Policies: open Opened https://www.pch.health.wa.gov.au/For-health-professionals/Emergency-Department-Guidelines/Fractures-Distal-forearm-or-wrist
-[39s] model iona cloud gpt-5.4-mini read_page data=[health]
-[39s]   · Iona · Policies: read Read Fractures - Distal forearm or wrist: No. This is a Perth Children’s Hospital emergency department guideline for its own staff, not a Health New Z
-[40s]   · Iona · Policies: read Exa search "Te Toka Tumai scaphoid fracture guideline site:healthnz.govt.nz": 10 results
-[41s] model iona cloud gpt-5.4 investigate_judge_decision data=[]
-[42s]   · Iona · Public records: open Opened https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-hand-bones
-[42s] model iona cloud gpt-5.4-mini investigate_pick_policy data=[]
-[44s] model iona cloud gpt-5.4-mini read_page data=[health]
-[44s]   · Iona · Public records: read Read Broken hand bones: No. This is a general health information page about broken hand bones, not a freedom-of-information response, disclosure log e
-[49s]   · Iona · Policies: open Opened https://www.healthnz.govt.nz/health-professionals/guidance-standards/topic/trauma/trauma-guidelines-and-resources
-[50s]   · Iona · Public records: open Opened https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-arm-or-elbow
-[52s] model iona cloud gpt-5.4-mini read_page data=[health]
-[52s]   · Iona · Policies: read Read Trauma guidelines and resources | Health Professionals: Yes, this is a Health NZ page for health professionals that points to trauma guidelines a
-[52s] model iona cloud gpt-5.4-mini read_page data=[health]
-[52s]   · Iona · Public records: read Read Broken arm or elbow: No. This page is a general health topic page about broken arm or elbow, not a freedom-of-information response, disclosure lo
-[52s]   · Iona · Public records: open Exploring healthnz.govt.nz to find a freedom of information response, disclosure log or public statistics published by Health New Zealand | Te Whatu O
-[61s]   · Iona · Public records: open Opened healthnz.govt.nz: "Health New Zealand | Te Whatu Ora"
-[61s]   · Iona · Policies: open Opened https://www.healthnz.govt.nz/health-professionals/guidance-standards
-[63s] model iona cloud gpt-5.4-mini read_page data=[health]
-[63s]   · Iona · Policies: read Read Guidance and standards | Health Professionals: No. This page is only a general "Guidance and standards" landing page for health professionals and
-[63s]   · Iona · Policies: open Exploring healthnz.govt.nz to find a policy, protocol or guidance document published by Health New Zealand | Te Whatu Ora Auckland | Te Toka Tumai abo
-[64s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[64s]   · Iona · Public records: decide Health NZ homepage: promising. This is the general Health New Zealand homepage with broad health links, not the FOI or statistics page you need.
-[69s]   · Iona · Public records: click Clicked "Search": The site search can be used to look for “scaphoid fracture” or “official information”.
-[70s]   · Iona · Policies: open Opened healthnz.govt.nz: "Health New Zealand | Te Whatu Ora"
+[22s]   · Iona · Public records: read Read Broken bones: No. This is a general Health NZ health topic page about broken bones, not a freedom-of-information response, disclosure log entry, 
+[23s] model iona cloud gpt-5.4 investigate_judge_inspection data=[]
+[23s]   · Iona · Public records: open Read https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-hand-bones directly (no browser needed)
+[24s] model iona cloud gpt-5.4 investigate_judge_policy data=[]
+[25s] model iona cloud gpt-5.4-mini read_page data=[health]
+[25s]   · Iona · Public records: read Read Broken hand bones: No. This is a general Health New Zealand patient information page about broken hand bones, not a freedom-of-information respon
+[25s]   · Iona · Public records: open Exploring healthnz.govt.nz to find a freedom of information response, disclosure log or public statistics published by Health New Zealand | Te Whatu O
+[28s] model iona cloud gpt-5.4 investigate_judge_decision data=[]
+[34s]   · Iona · Public records: open Opened healthnz.govt.nz: "Health New Zealand | Te Whatu Ora"
+[37s] model iona cloud gpt-5.4-mini explore_judge data=[]
+[37s]   · Iona · Public records: decide Health New Zealand homepage: promising. This is the main site homepage and does not itself show an FOI disclosure log or scaphoid-fracture statistics,
+[38s]   · Iona · Public records: type Menus show no clear route, so using the site search ("scaphoid fracture Auckland disclosure log statistics"). The site search box can be used to look 
+[47s]   · Iona · Public records: click Clicked the site search ("scaphoid fracture Auckland disclosure log statistics"): The site search box can be used to look for words like “scaphoid fra
+[51s] model iona cloud gpt-5.4-mini explore_judge data=[]
+[51s]   · Iona · Public records: decide Health NZ search results page: promising. This is a general search-results page, and I can see a likely route via health data/statistics links but not
+[59s]   · Iona · Public records: click Clicked "Diagnostic data and statistics": The result title says “Diagnostic data and statistics,” which is the closest match to a public statistics pa
+[62s] model iona cloud gpt-5.4-mini explore_judge data=[]
+[62s]   · Iona · Public records: decide Diagnostic data and statistics: promising. This page is a Health NZ statistics hub about diagnostic wait times, not a FOI response or disclosure log a
+[69s]   · Iona · Public records: click Clicked "Hospital event data and statistics": The link text says "Hospital event data and statistics," which is the most likely place for injury-relat
 [73s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[73s]   · Iona · Public records: decide Health New Zealand home page: promising. This is the general Health New Zealand homepage, not the FOI disclosure or statistics page, but the site sear
-[73s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[73s]   · Iona · Policies: decide Health New Zealand national homepage: promising. This is the national homepage with broad health links, not the specific Auckland guidance document ye
-[74s]   · Iona · Public records: type Menus show no clear route, so using the site search ("suspected scaphoid fracture disclosure log"). The site search box is the quickest way to look fo
-[74s]   · Iona · Policies: type Menus show no clear route, so using the site search ("Auckland fracture missed X-ray emergency department sprain guidance"). Site search is the quicke
-[81s]   · Iona · Public records: click Clicked the site search ("suspected scaphoid fracture disclosure log"): The site search box is the quickest way to look for “suspected scaphoid fractu
-[83s]   · Iona · Policies: click Clicked the site search ("Auckland fracture missed X-ray emergency department sprain guidance"): Site search is the quickest way to look for the speci
-[85s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[85s]   · Iona · Public records: decide Health NZ search results: promising. This is a site search results page, but the visible results are general health topics rather than the disclosure 
-[87s]   · Iona · Public records: type Menus show no clear route, so using the site search ("disclosure log scaphoid fracture Auckland"). The search box is the best way to narrow results to
-[87s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[87s]   · Iona · Policies: decide Search results for Auckland fracture missed X-ray: promising. This is a general search results page, and I can see a likely policy/protocol result abo
-[95s]   · Iona · Policies: click Clicked "Emergency department protocols and MAIDS services…": The result text says “Emergency department protocols,” which sounds closest to the guida
-[97s]   · Iona · Public records: click Clicked the site search ("disclosure log scaphoid fracture Auckland"): The search box is the best way to narrow results to the disclosure log or scaph
-[100s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[100s]   · Iona · Policies: decide OIA response with ED protocol appendixes: promising. This page is an OIA publication with downloadable PDF appendixes that may contain the Auckland ED
-[102s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[102s]   · Iona · Public records: decide Health NZ search results: promising. This is only a site search results page with many unrelated fracture pages, not the disclosure log or FOI statist
-[107s] model iona cloud gpt-5.4-mini explore_pdf_check data=[]
-[107s]   · Iona · Policies: read Read the PDF "Download [PDF document]": not what we need
-[109s]   · Iona · Public records: click Clicked "About us": The About us area is a likely place for official information and disclosure logs.
-[112s] model iona cloud gpt-5.4-mini explore_judge data=[]
-[112s]   · Iona · Public records: decide Health New Zealand about us page: promising. This is a general About Health New Zealand page, but it links to Publications and Health data, which are 
-[112s]   · Iona · Public records: fail Did not reach the page after 4 moves (60s): No page met the goal within 4 moves. Closest page: "About Health New Zealand" https://www.healthnz.govt.nz
-[114s] model iona cloud gpt-5.4-mini explore_pdf_check data=[]
-[114s]   · Iona · Policies: read Read the PDF "Appendix documents 1 to 18 PDF 6.3 MB [PDF docume…": not what we need
-[114s]   · Iona · Policies: fail Did not reach the page after 4 moves (51s): No page met the goal within 4 moves
-[114s] FINDING (iona) Decision: "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the…"
+[73s]   · Iona · Public records: decide Hospital event data and statistics: promising. This page is a statistics hub and links to hospital events data tools that could contain the Auckland s
+[80s]   · Iona · Public records: click Clicked "Hospital events web tool This tool presents data …": The text says this web tool presents hospital discharge and procedure data, which is the
+[83s] model iona cloud gpt-5.4-mini explore_judge data=[]
+[83s]   · Iona · Public records: decide Hospital events web tool: promising. This is a general hospital statistics tool, not the specific scaphoid-fracture disclosure page yet, but it likely
+[83s]   · Iona · Public records: fail Did not reach the page after 4 moves (58s): No page met the goal within 4 moves. Closest page: "Diagnostic data and statistics" https://www.healthnz.g
+[83s] FINDING (iona) Decision: "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the…"
           https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
-[114s] FINDING (iona) Decision: "Had an adequate examination of Mrs A’s hip occurred, a more accurate clinical picture would have emerged, and …"
-          https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
-[114s] FINDING (iona) Decision: "Accordingly, Dr C did not provide services to Ms A with reasonable care and skill, and so breached Right 4(1) …"
+[83s] FINDING (iona) Decision: "Accordingly, Dr C did not provide services to Ms A with reasonable care and skill, and so breached Right 4(1) …"
           https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/
+[83s] FINDING (iona) Decision: "As such, the Deputy Commissioner found the doctor in breach of Right 4(1) of the Code."
+          https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf
+[83s] FINDING (iona) Provider policy: "If your condition gets worse, or you do not get better at home, contact your regular healthcare provider or re…"
+          https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments
 
-3 item(s) in 111s.
+4 item(s) in 81s.
 [Decision, close] Failure to conduct an adequate medical assessment and to order an x-ray — Health & Disability Commissioner (https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/)
-  "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the woman’s symptoms, and by not obtaining an X-ray of her hip, the doctor failed to provide services with reasonable care and skill and breached Right 4(1)"
-  An HDC finding of breach of Right 4(1) where inadequate assessment and no X-ray delayed identification of a fracture, though not shown to involve this provider.
-[Decision, close] Failure to conduct an adequate medical assessment and to order an x-ray — Health & Disability Commissioner (https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/)
-  "Had an adequate examination of Mrs A’s hip occurred, a more accurate clinical picture would have emerged, and Mrs A’s fracture may have been identified earlier."
-  This HDC passage says earlier adequate examination might have identified the fracture earlier, but the quote itself does not show the outcome and is not tied to this provider.
+  "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the woman’s symptoms, and by not obtaining an X-ray of her hip, the doctor failed to provide services with reasonable care and skill and breached Right 4(1)[1] of the Code of Health and Disability Services Consumers’ Rights (the Code)."
+  An HDC decision found a doctor breached Right 4(1) by inadequate assessment and not obtaining an X-ray for a suspected fracture.
 [Decision, partial] Care of woman with hand injury — Health & Disability Commissioner (https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/)
   "Accordingly, Dr C did not provide services to Ms A with reasonable care and skill, and so breached Right 4(1) of the Code of Health and Disability Services Consumers' Rights (the Code)."
-  An HDC case summary finding a breach of Right 4(1) about care for a hand injury, but it is not shown to involve Te Toka Tumai Auckland.
-[Provider policy] nothing found. Searched "Te Toka Tumai scaphoid fracture guideline" and "Te Toka Tumai scaphoid fracture guideline site:healthnz.govt.nz" (20 results). Opened 5 pages (aci.health.nsw.gov.au, nice.org.uk, pch.health.wa.gov.au, healthnz.govt.nz); none had a passage that fits this case. Stopped, not bypassed: healthnz.govt.nz: dead_end.
-[Inspection] nothing found. Searched "Auckland City Hospital emergency department report scaphoid fracture" and "Auckland City Hospital emergency department report scaphoid fracture site:hdc.org.nz" (20 results). Opened 3 pages (hdc.org.nz); none had a passage that fits this case.
-[Public record] nothing found. Searched "Health New Zealand scaphoid fracture emergency department disclosure log" and "site:healthnz.govt.nz scaphoid fracture emergency department" (20 results). Opened 5 pages (hdc.org.nz, healthnz.govt.nz); none had a passage that fits this case. Stopped, not bypassed: healthnz.govt.nz: dead_end.
+  An HDC decision found Dr C breached Right 4(1), which supports citing the reasonable care and skill standard.
+[Decision, partial] 19hdc01258.pdf (https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf)
+  "As such, the Deputy Commissioner found the doctor in breach of Right 4(1) of the Code."
+  This HDC decision says the doctor was found in breach of Right 4(1), supporting the standard expected in assessment and follow-up.
+[Provider policy, partial] Emergency departments (ED) (https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments)
+  "If your condition gets worse, or you do not get better at home, contact your regular healthcare provider or return to the emergency department."
+  This gives discharge advice to seek further help or return to ED if not improving, which is relevant to safety-netting after being sent home.
+[Inspection] nothing found. Searched "Health New Zealand Auckland City Hospital emergency report scaphoid fracture" and "site:hdc.org.nz Auckland City Hospital emergency scaphoid fracture" (20 results). Opened 3 pages (hdc.org.nz); none had a passage that fits this case.
+[Public record] nothing found. Searched "Health New Zealand scaphoid fracture missed X-ray" and "site:healthnz.govt.nz scaphoid fracture emergency department" (20 results). Opened 4 pages (healthnz.govt.nz); none had a passage that fits this case.
 
-searched: "Health and Disability Commissioner scaphoid fracture emergency department" | "Health and Disability Commissioner scaphoid fracture site:hdc.org.nz" | "Te Toka Tumai scaphoid fracture guideline" | "Te Toka Tumai scaphoid fracture guideline site:healthnz.govt.nz" | "Auckland City Hospital emergency department report scaphoid fracture" | "Auckland City Hospital emergency department report scaphoid fracture site:hdc.org.nz" | "Health New Zealand scaphoid fracture emergency department disclosure log" | "site:healthnz.govt.nz scaphoid fracture emergency department"
-opened: https://www.hdc.org.nz/decisions/search-decisions/2002/01hdc02275/ | https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/ | https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/ | https://aci.health.nsw.gov.au/networks/eci/clinical/tools/scaphoid-fracture | https://www.nice.org.uk/guidance/ng38/chapter/Recommendations | https://www.pch.health.wa.gov.au/For-health-professionals/Emergency-Department-Guidelines/Fractures-Distal-forearm-or-wrist | https://www.healthnz.govt.nz/health-professionals/guidance-standards/topic/trauma/trauma-guidelines-and-resources | https://www.healthnz.govt.nz/health-professionals/guidance-standards | https://www.hdc.org.nz/media/y22bhk25/03hdc14447casenote.pdf | https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf | https://www.hdc.org.nz/media/qsoo0lac/11hdc01077casenote.pdf | https://www.hdc.org.nz/decisions/search-decisions/2023/20hdc00167/ | https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-wrist | https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments | https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-hand-bones | https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-arm-or-elbow
+searched: "HDC scaphoid fracture emergency department" | "scaphoid fracture HDC site:hdc.org.nz" | "Te Toka Tumai scaphoid fracture emergency department guideline" | "Te Toka Tumai scaphoid fracture emergency department guideline site:healthnz.govt.nz" | "Health New Zealand Auckland City Hospital emergency report scaphoid fracture" | "site:hdc.org.nz Auckland City Hospital emergency scaphoid fracture" | "Health New Zealand scaphoid fracture missed X-ray" | "site:healthnz.govt.nz scaphoid fracture emergency department"
+opened: https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/ | https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf | https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/ | https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-arm-or-elbow | https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-wrist | https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments | https://www.hdc.org.nz/media/y22bhk25/03hdc14447casenote.pdf | https://www.hdc.org.nz/decisions/search-decisions/2008/07hdc17769/ | https://www.hdc.org.nz/decisions/search-decisions/2002/01hdc02275/ | https://www.healthnz.govt.nz/health-topics/tests-and-treatments/emergencies-and-first-aid/broken-bones-first-aid | https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-hand-bones
 PASS opened in this run: https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
-PASS numbers in "why" are in the quote: An HDC finding of breach of Right 4(1) where inadequate asse
-PASS quote found again on a fresh load: https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
-PASS opened in this run: https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
-PASS numbers in "why" are in the quote: This HDC passage says earlier adequate examination might hav
+PASS numbers in "why" are in the quote: An HDC decision found a doctor breached Right 4(1) by inadeq
 PASS quote found again on a fresh load: https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/
 PASS opened in this run: https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/
-PASS numbers in "why" are in the quote: An HDC case summary finding a breach of Right 4(1) about car
+PASS numbers in "why" are in the quote: An HDC decision found Dr C breached Right 4(1), which suppor
 PASS quote found again on a fresh load: https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/
+PASS opened in this run: https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf
+PASS numbers in "why" are in the quote: This HDC decision says the doctor was found in breach of Rig
+NOTE  https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf is a PDF: its quote was checked by the reader against the extracted text, not re-loaded here
+PASS opened in this run: https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments
+PASS numbers in "why" are in the quote: This gives discharge advice to seek further help or return t
+PASS quote found again on a fresh load: https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments
 PASS every lane either has items or an honest 'nothing found' note
-PASS time-boxed: 111s
+PASS time-boxed: 81s
 
 all checks passed

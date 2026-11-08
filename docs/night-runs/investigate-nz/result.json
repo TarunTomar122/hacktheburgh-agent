@@ -1,5 +1,5 @@
 {
-  "runId": "investigate-new-zealand-2026-11-08T03-48-24-173Z",
+  "runId": "investigate-new-zealand-2026-11-08T04-18-27-739Z",
   "focus": "complaint",
   "brief": {
     "condition": "suspected scaphoid fracture",
@@ -12,18 +12,8 @@
         "title": "Failure to conduct an adequate medical assessment and to order an x-ray — Health & Disability Commissioner",
         "publisher": "hdc.org.nz",
         "url": "https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/",
-        "quote": "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the woman’s symptoms, and by not obtaining an X-ray of her hip, the doctor failed to provide services with reasonable care and skill and breached Right 4(1)",
-        "why": "An HDC finding of breach of Right 4(1) where inadequate assessment and no X-ray delayed identification of a fracture, though not shown to involve this provider.",
-        "fit": "close",
-        "stance": "supports"
-      },
-      {
-        "lane": "decision",
-        "title": "Failure to conduct an adequate medical assessment and to order an x-ray — Health & Disability Commissioner",
-        "publisher": "hdc.org.nz",
-        "url": "https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/",
-        "quote": "Had an adequate examination of Mrs A’s hip occurred, a more accurate clinical picture would have emerged, and Mrs A’s fracture may have been identified earlier.",
-        "why": "This HDC passage says earlier adequate examination might have identified the fracture earlier, but the quote itself does not show the outcome and is not tied to this provider.",
+        "quote": "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the woman’s symptoms, and by not obtaining an X-ray of her hip, the doctor failed to provide services with reasonable care and skill and breached Right 4(1)[1] of the Code of Health and Disability Services Consumers’ Rights (the Code).",
+        "why": "An HDC decision found a doctor breached Right 4(1) by inadequate assessment and not obtaining an X-ray for a suspected fracture.",
         "fit": "close",
         "stance": "supports"
       },
@@ -33,67 +23,78 @@
         "publisher": "hdc.org.nz",
         "url": "https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/",
         "quote": "Accordingly, Dr C did not provide services to Ms A with reasonable care and skill, and so breached Right 4(1) of the Code of Health and Disability Services Consumers' Rights (the Code).",
-        "why": "An HDC case summary finding a breach of Right 4(1) about care for a hand injury, but it is not shown to involve Te Toka Tumai Auckland.",
+        "why": "An HDC decision found Dr C breached Right 4(1), which supports citing the reasonable care and skill standard.",
+        "fit": "partial",
+        "stance": "supports"
+      },
+      {
+        "lane": "decision",
+        "title": "19hdc01258.pdf",
+        "publisher": "hdc.org.nz",
+        "url": "https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf",
+        "quote": "As such, the Deputy Commissioner found the doctor in breach of Right 4(1) of the Code.",
+        "why": "This HDC decision says the doctor was found in breach of Right 4(1), supporting the standard expected in assessment and follow-up.",
+        "fit": "partial",
+        "stance": "supports"
+      },
+      {
+        "lane": "policy",
+        "title": "Emergency departments (ED)",
+        "publisher": "healthnz.govt.nz",
+        "url": "https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments",
+        "quote": "If your condition gets worse, or you do not get better at home, contact your regular healthcare provider or return to the emergency department.",
+        "why": "This gives discharge advice to seek further help or return to ED if not improving, which is relevant to safety-netting after being sent home.",
         "fit": "partial",
         "stance": "supports"
       }
     ],
     "nothing": [
       {
-        "lane": "policy",
-        "note": "Searched \"Te Toka Tumai scaphoid fracture guideline\" and \"Te Toka Tumai scaphoid fracture guideline site:healthnz.govt.nz\" (20 results). Opened 5 pages (aci.health.nsw.gov.au, nice.org.uk, pch.health.wa.gov.au, healthnz.govt.nz); none had a passage that fits this case. Stopped, not bypassed: healthnz.govt.nz: dead_end."
-      },
-      {
         "lane": "inspection",
-        "note": "Searched \"Auckland City Hospital emergency department report scaphoid fracture\" and \"Auckland City Hospital emergency department report scaphoid fracture site:hdc.org.nz\" (20 results). Opened 3 pages (hdc.org.nz); none had a passage that fits this case."
+        "note": "Searched \"Health New Zealand Auckland City Hospital emergency report scaphoid fracture\" and \"site:hdc.org.nz Auckland City Hospital emergency scaphoid fracture\" (20 results). Opened 3 pages (hdc.org.nz); none had a passage that fits this case."
       },
       {
         "lane": "public_record",
-        "note": "Searched \"Health New Zealand scaphoid fracture emergency department disclosure log\" and \"site:healthnz.govt.nz scaphoid fracture emergency department\" (20 results). Opened 5 pages (hdc.org.nz, healthnz.govt.nz); none had a passage that fits this case. Stopped, not bypassed: healthnz.govt.nz: dead_end."
+        "note": "Searched \"Health New Zealand scaphoid fracture missed X-ray\" and \"site:healthnz.govt.nz scaphoid fracture emergency department\" (20 results). Opened 4 pages (healthnz.govt.nz); none had a passage that fits this case."
       }
     ],
     "searched": [
-      "Health and Disability Commissioner scaphoid fracture emergency department",
-      "Health and Disability Commissioner scaphoid fracture site:hdc.org.nz",
-      "Te Toka Tumai scaphoid fracture guideline",
-      "Te Toka Tumai scaphoid fracture guideline site:healthnz.govt.nz",
-      "Auckland City Hospital emergency department report scaphoid fracture",
-      "Auckland City Hospital emergency department report scaphoid fracture site:hdc.org.nz",
-      "Health New Zealand scaphoid fracture emergency department disclosure log",
+      "HDC scaphoid fracture emergency department",
+      "scaphoid fracture HDC site:hdc.org.nz",
+      "Te Toka Tumai scaphoid fracture emergency department guideline",
+      "Te Toka Tumai scaphoid fracture emergency department guideline site:healthnz.govt.nz",
+      "Health New Zealand Auckland City Hospital emergency report scaphoid fracture",
+      "site:hdc.org.nz Auckland City Hospital emergency scaphoid fracture",
+      "Health New Zealand scaphoid fracture missed X-ray",
       "site:healthnz.govt.nz scaphoid fracture emergency department"
     ],
     "opened": [
-      "https://www.hdc.org.nz/decisions/search-decisions/2002/01hdc02275/",
       "https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/",
-      "https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/",
-      "https://aci.health.nsw.gov.au/networks/eci/clinical/tools/scaphoid-fracture",
-      "https://www.nice.org.uk/guidance/ng38/chapter/Recommendations",
-      "https://www.pch.health.wa.gov.au/For-health-professionals/Emergency-Department-Guidelines/Fractures-Distal-forearm-or-wrist",
-      "https://www.healthnz.govt.nz/health-professionals/guidance-standards/topic/trauma/trauma-guidelines-and-resources",
-      "https://www.healthnz.govt.nz/health-professionals/guidance-standards",
-      "https://www.hdc.org.nz/media/y22bhk25/03hdc14447casenote.pdf",
       "https://www.hdc.org.nz/media/ioimlxdj/19hdc01258.pdf",
-      "https://www.hdc.org.nz/media/qsoo0lac/11hdc01077casenote.pdf",
-      "https://www.hdc.org.nz/decisions/search-decisions/2023/20hdc00167/",
+      "https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/",
+      "https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-arm-or-elbow",
       "https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-wrist",
       "https://www.healthnz.govt.nz/hospitals-services/services-support/emergency-departments",
-      "https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-hand-bones",
-      "https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-arm-or-elbow"
+      "https://www.hdc.org.nz/media/y22bhk25/03hdc14447casenote.pdf",
+      "https://www.hdc.org.nz/decisions/search-decisions/2008/07hdc17769/",
+      "https://www.hdc.org.nz/decisions/search-decisions/2002/01hdc02275/",
+      "https://www.healthnz.govt.nz/health-topics/tests-and-treatments/emergencies-and-first-aid/broken-bones-first-aid",
+      "https://www.healthnz.govt.nz/health-topics/conditions-treatments/bones-and-joints/broken-hand-bones"
     ],
-    "tookMs": 111188
+    "tookMs": 81166
   },
   "support": [
     {
       "source": "hdc.org.nz",
       "title": "Failure to conduct an adequate medical assessment and to order an x-ray — Health & Disability Commissioner",
-      "quote": "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the woman’s symptoms, and by not obtaining an X-ray of her hip, the doctor failed to provide services with reasonable care and skill and breached Right 4(1)",
+      "quote": "The Commissioner found that by failing to conduct an adequate medical assessment that took full account of the woman’s symptoms, and by not obtaining an X-ray of her hip, the doctor failed to provide services with reasonable care and skill and breached Right 4(1)[1] of the Code of Health and Disability Services Consumers’ Rights (the Code).",
       "url": "https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/"
     },
     {
       "source": "hdc.org.nz",
-      "title": "Failure to conduct an adequate medical assessment and to order an x-ray — Health & Disability Commissioner",
-      "quote": "Had an adequate examination of Mrs A’s hip occurred, a more accurate clinical picture would have emerged, and Mrs A’s fracture may have been identified earlier.",
-      "url": "https://www.hdc.org.nz/decisions/search-decisions/2020/18hdc01962/"
+      "title": "Care of woman with hand injury — Health & Disability Commissioner",
+      "quote": "Accordingly, Dr C did not provide services to Ms A with reasonable care and skill, and so breached Right 4(1) of the Code of Health and Disability Services Consumers' Rights (the Code).",
+      "url": "https://www.hdc.org.nz/decisions/search-decisions/2016/14hdc01205/"
     }
   ]
 }
