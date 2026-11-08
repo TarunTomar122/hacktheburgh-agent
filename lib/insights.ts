@@ -23,7 +23,7 @@ export type RunSummary = {
   actions: number; // clicks and typing
   sites: number;
   asks: number;
-  models: { agent: string; model: string; where: "local" | "cloud"; calls: number; tokens: number; ms: number; data: string[]; /** calls per job (the ledger's task name) */ tasks: Record<string, number> }[];
+  models: { agent: string; model: string; where: "local" | "cloud"; calls: number; tokens: number; /** the same tokens split by direction, for the cost estimate */ inTok: number; outTok: number; ms: number; data: string[]; /** calls per job (the ledger's task name) */ tasks: Record<string, number> }[];
   access: Access[];
   /** When each crew member was working (from the run's crew events): the parallel work, on one clock. */
   lanes: { crew: string; spans: [number, number][] }[];
@@ -79,9 +79,11 @@ function readRun(dir: string, id: string): RunSummary | null {
     } else if (e.type === "model") {
       const m = e.entry as { agent: string; model: string; where: "local" | "cloud"; inTok: number; outTok: number; ms: number; data: string[] };
       const k = `${m.agent}|${m.model}`;
-      const cur = models.get(k) ?? { agent: m.agent, model: m.model, where: m.where, calls: 0, tokens: 0, ms: 0, data: [], tasks: {} as Record<string, number> };
+      const cur = models.get(k) ?? { agent: m.agent, model: m.model, where: m.where, calls: 0, tokens: 0, inTok: 0, outTok: 0, ms: 0, data: [], tasks: {} as Record<string, number> };
       cur.calls++;
       cur.tokens += (m.inTok ?? 0) + (m.outTok ?? 0);
+      cur.inTok += m.inTok ?? 0;
+      cur.outTok += m.outTok ?? 0;
       cur.ms += m.ms ?? 0;
       cur.data = [...new Set([...cur.data, ...(m.data ?? [])])];
       const tk = String((m as { task?: string }).task ?? "other").replace(/ \(retry\)$/, "");
@@ -122,9 +124,11 @@ function readRun(dir: string, id: string): RunSummary | null {
         const m = JSON.parse(line);
         if (!m.agent || !m.model || !["local", "cloud"].includes(m.where)) continue;
         const key = `${m.agent}|${m.model}`;
-        const cur = models.get(key) ?? { agent: m.agent, model: m.model, where: m.where, calls: 0, tokens: 0, ms: 0, data: [], tasks: {} as Record<string, number> };
+        const cur = models.get(key) ?? { agent: m.agent, model: m.model, where: m.where, calls: 0, tokens: 0, inTok: 0, outTok: 0, ms: 0, data: [], tasks: {} as Record<string, number> };
         cur.calls++;
         cur.tokens += (m.inTok ?? 0) + (m.outTok ?? 0);
+      cur.inTok += m.inTok ?? 0;
+      cur.outTok += m.outTok ?? 0;
         cur.ms += m.ms ?? 0;
         cur.data = [...new Set([...cur.data, ...(m.data ?? [])])] as string[];
         const tk = String(m.task ?? "other").replace(/ \(retry\)$/, "");

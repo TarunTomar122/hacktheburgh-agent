@@ -7,7 +7,7 @@ import { devLogin } from "./devLogin";
   const base = process.env.BASE ?? "http://localhost:3001";
   await devLogin(p, base);
   await p.goto(`${base}/insights`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-  await p.getByText("Four models, one crew").first().waitFor({ timeout: 90_000 }).catch(() => {});
+  await p.getByText("How the crew did it").first().waitFor({ timeout: 90_000 }).catch(() => {});
   await p.waitForTimeout(2500);
   await p.screenshot({ path: "docs/night-runs/insights/dashboard.png", fullPage: true });
   for (const [i, y] of [0, 1000, 2000, 3000].entries()) {
