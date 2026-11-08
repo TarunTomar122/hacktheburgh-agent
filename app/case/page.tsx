@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
@@ -24,7 +23,6 @@ import UnsupportedComplaint from "./UnsupportedComplaint";
 import { supportsLothian } from "../../lib/agent/complaintScope";
 
 export default function CasePage() {
-  const router = useRouter();
   const profile = useProfile();
   const [picked, setActive] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -39,8 +37,10 @@ export default function CasePage() {
   }, []);
 
   useEffect(() => {
-    if (profile === null) router.replace("/");
-  }, [profile, router]);
+    // A full page load, not router.replace: with Cache Components the start page you left earlier is kept alive with its state, so a client-side
+    // return would show the old "check your details" screen (D76) instead of a blank form.
+    if (profile === null) window.location.replace("/");
+  }, [profile]);
 
   if (!profile) return null;
   const f = profile.facts;
@@ -64,7 +64,7 @@ export default function CasePage() {
           <ProfileTab
             profile={profile}
             onClose={() => setProfileOpen(false)}
-            onDeleted={() => router.replace("/")}
+            onDeleted={() => window.location.replace("/")}
             onSwitched={(n) => {
               setActive(n);
               setProfileOpen(false);
