@@ -89,52 +89,79 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   const start = g?.url ?? g?.sources[0]?.url;
   if (!start) return none("Could not find guidance: discovery found no clinical guidance body.");
   const ask = `Quote, word for word, the recommendation(s) about ${condition}, with their numbers if printed.`;
+  const where = [route.place.region, route.place.country].filter(Boolean).join(", ");
+  const setting = route.place.careSetting === "unknown" ? "not stated" : route.place.careSetting;
+  // A PDF can come out with broken spacing ("f or first -line"): such quotes are not shown to the patient; look for a clean page.
+  const clean = (q: { quote: string; checked: boolean }) => q.checked && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25;
+  type Cand = { url: string; title: string; quotes: string[] };
+  type Judged = { cand: Cand; verdicts: ApplicabilityVerdict[]; applicable: string[]; rejected: ApplicabilityVerdict[] };
+  /** Does this page's recommendation apply to this patient (age group, condition, setting, place)? A page that does not is not the end of the search. */
+  const judge = async (cand: Cand): Promise<Judged | { error: string }> => {
+    try {
+      const band = await ageBandOf(facts);
+      const verdicts = await checkApplicability({ ageBand: band.band.replace(/_/g, " "), condition, setting, place: where || "not stated" }, { body: g?.body ?? "", title: cand.title, url: cand.url }, cand.quotes);
+      return { cand, verdicts, applicable: cand.quotes.filter((_, i) => verdicts[i].verdict === "applies"), rejected: verdicts.filter((v) => v.verdict !== "applies") };
+    } catch (e) {
+      // Not able to check = not able to use: an unchecked recommendation never enters the complaint.
+      return { error: `Found guidance on ${cand.url} but could not check that it applies to this patient (${e instanceof Error ? e.message.slice(0, 120) : "check failed"}), so it is not used.` };
+    }
+  };
   const r = await kit.inTab(thought, "iona", (g?.body ?? "Guidance").slice(0, 26), async (p, note) => {
     const ctx = { page: p, note, track: kit.track };
+    const tried: Judged[] = [];
+    const seen = new Set<string>();
+    /** Read a page; if it has clean quotes, judge them. Returns the judgement when something applies. */
+    const tryPage = async (url: string): Promise<Judged | { error: string } | null> => {
+      if (seen.has(url)) return null;
+      seen.add(url);
+      const page = await readPage(ctx, url, ask);
+      const quotes = page.quotes.filter(clean).map((q) => q.quote);
+      if (!quotes.length) return null;
+      const j = await judge({ url: page.url, title: page.title, quotes });
+      if ("error" in j) return j;
+      tried.push(j);
+      return j.applicable.length ? j : null;
+    };
     const found = await exploreSite(ctx, start, `the clinical guidance recommendation about ${condition}`, { want: "page" });
-    // A PDF can come out with broken spacing ("f or first -line"): such quotes are not shown to the patient; look for a clean page.
-    const clean = (q: { quote: string; checked: boolean }) => q.checked && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25;
-    const first = await readPage(ctx, found.ok ? found.url : start, ask);
-    if (first.quotes.some(clean)) return first;
-    // The body's own site did not lead there: search the web for its guidance on this condition, on the same site first.
-    await note.log("recover", `No recommendation on ${found.ok ? found.url : start}; searching ${new URL(start).hostname} for guidance on ${condition}`);
+    const hit1 = await tryPage(found.ok ? found.url : start);
+    if (hit1) return { best: hit1, tried };
+    // The body's own site did not lead there (or what it had is not for this patient): search for its guidance on this condition, its own site first, then anywhere.
+    await note.log("recover", `Nothing that applies on ${found.ok ? found.url : start}; searching for guidance on ${condition}`);
     const host = new URL(start).hostname.replace(/^www\./, "");
-    let hits = await webSearch(p, `site:${host} ${condition} recommendation`, note, kit.track).catch(() => []);
-    if (!hits.length) hits = await webSearch(p, `${g?.body ?? ""} guideline ${condition} recommendation`, note, kit.track).catch(() => []);
-    for (const h of hits.slice(0, 3)) {
-      const next = await readPage(ctx, h.url, ask);
-      if (next.quotes.some(clean)) return next;
+    const queries = [`site:${host} ${condition} recommendation`, `${g?.body ?? ""} guideline ${condition} recommendation ${where}`, `${condition} clinical guideline recommendation ${where}`];
+    let reads = 0;
+    for (const q of queries) {
+      if (reads >= 5) break;
+      const hits = await webSearch(p, q, note, kit.track).catch(() => []);
+      for (const h of hits.slice(0, 3)) {
+        if (reads >= 5) break;
+        if (seen.has(h.url)) continue;
+        reads++;
+        const j = await tryPage(h.url);
+        if (j) return { best: j, tried };
+      }
     }
-    return first;
-  }, 240_000);
+    return { best: null, tried };
+  }, 300_000);
   if (!r.ok) return none(`Could not find the guidance: ${r.error}`);
-  const quotes = r.value.quotes.filter((q) => q.checked && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25);
-  if (!quotes.length) return none(`No recommendation about ${condition} found on ${r.value.url}.`);
-  // Before comparing: does each quote apply to this patient at all (age group, condition, setting, place)? Only those that do go on.
-  let verdicts: ApplicabilityVerdict[];
-  try {
-    const band = await ageBandOf(facts);
-    verdicts = await checkApplicability(
-      { ageBand: band.band.replace(/_/g, " "), condition, setting: route.place.careSetting === "unknown" ? "not stated" : route.place.careSetting, place: [route.place.region, route.place.country].filter(Boolean).join(", ") || "not stated" },
-      { body: g?.body ?? "", title: r.value.title, url: r.value.url },
-      quotes.map((q) => q.quote),
-    );
-  } catch (e) {
-    // Not able to check = not able to use: an unchecked recommendation never enters the complaint.
-    return none(`Found guidance on ${r.value.url} but could not check that it applies to this patient (${e instanceof Error ? e.message.slice(0, 120) : "check failed"}), so it is not used.`);
+  const best = r.value.best;
+  if (best && "error" in best) return none(best.error);
+  if (!best) {
+    const last = r.value.tried[r.value.tried.length - 1];
+    if (!last) return none(`No recommendation about ${condition} found.`);
+    const rejected = last.rejected;
+    kit.finding(`Guidance found (${g?.body ?? last.cand.title}) but it does not apply to this patient: ${rejected[0]?.reason ?? "unclear"}`, last.cand.url, "iona");
+    return none(`No applicable guidance found. ${g?.body ?? last.cand.title} (${last.cand.url}) was checked, but its recommendations are not for this patient: ${rejected.map((v) => `"${v.quote.slice(0, 100)}" (${v.verdict === "unclear" ? "unclear: " : ""}${v.reason})`).join(" | ")}`, rejected);
   }
-  const applicable = quotes.filter((_, i) => verdicts[i].verdict === "applies");
-  const rejected = verdicts.filter((v) => v.verdict !== "applies");
-  if (!applicable.length) {
-    kit.finding(`Guidance found (${g?.body ?? r.value.title}) but it does not apply to this patient: ${rejected[0]?.reason ?? "unclear"}`, r.value.url, "iona");
-    return none(`No applicable guidance found. ${g?.body ?? r.value.title} (${r.value.url}) was checked, but its recommendations are not for this patient: ${rejected.map((v) => `"${v.quote.slice(0, 100)}" (${v.verdict === "unclear" ? "unclear: " : ""}${v.reason})`).join(" | ")}`, rejected);
-  }
-  const guideline: GuidelineReading = { guideline: g?.body ?? r.value.title, url: r.value.url, points: applicable.map((q, i) => ({ id: `${i + 1}`, text: q.quote })) };
+  const applicable = best.applicable.map((quote) => ({ quote }));
+  const rejected = best.rejected;
+  const src = best.cand;
+  const guideline: GuidelineReading = { guideline: g?.body ?? src.title, url: src.url, points: applicable.map((q, i) => ({ id: `${i + 1}`, text: q.quote })) };
   proof.guideline = { name: guideline.guideline, url: guideline.url, points: guideline.points };
   const c = await compareCare(facts, guideline);
   proof.gaps = c.gaps;
   proof.caveat = c.caveat;
   kit.emit({ type: "evidence", evidence: { ...proof } });
-  kit.finding(`${guideline.guideline}: "${applicable[0].quote.slice(0, 120)}"`, r.value.url, "iona");
+  kit.finding(`${guideline.guideline}: "${applicable[0].quote.slice(0, 120)}"`, src.url, "iona");
   return { text: `${guideline.guideline}:\n${applicable.map((q) => q.quote).join("\n")}\nPossible gaps: ${c.gaps.map((x) => x.question).join(" | ") || "none"}`, guideline, notApplicable: rejected.length ? rejected : undefined };
 }

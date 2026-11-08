@@ -56,6 +56,7 @@ export async function runCompensationAnywhere(facts: CaseFacts, routeIn: RouteMa
   let routeKind: Route = "no_win_no_fee";
   let shortlistIds: string[] = [];
   let message: EnquiryMessage | null = null;
+  let drafting: Promise<EnquiryMessage> | null = null; // the forms are filled at the same time: one message for all of them
   let areaOfLaw = "clinical negligence";
   let scheme: { body: string; text: string; quote?: Quote; url: string } | undefined;
   const found = new Set<string>(); // hosts this run found by search (provenance for search_register's url)
@@ -65,11 +66,15 @@ export async function runCompensationAnywhere(facts: CaseFacts, routeIn: RouteMa
   return runCrew<PlannerResult>(
     {
       prefix: "step3",
-      system: `You lead a crew helping a patient in ${placeName} find out how a compensation claim could be paid for, and contact the right lawyers. Discovery already worked out the route (below); use its pages and register. Work in this order, adapting when results call for it (say why with update_plan):
-1. Nell: check_funding, and Robin: read_scheme if the compensation part is a scheme (same turn). Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant), and investigate (once, same turn: published decisions or awards in similar cases). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
+      system: `You lead a crew helping a patient in ${placeName} find out how a compensation claim could be paid for, and contact the right lawyers. Discovery already worked out the route (below); use its pages and register. Work in this order, adapting when results call for it (say why with update_plan). Be quick: put every call that does not depend on another in the SAME turn, because the crew works at the same time.
+1. FIRST TURN, all together: Nell: check_funding; Robin: read_scheme if the compensation part is a scheme, and search_register; Iona: find_guidance (skip if not relevant) and investigate (once: published decisions or awards in similar cases). Iona's work runs in the background alongside everything else: you get "Started" back at once, so carry on with the register and the firms, and never wait for it. Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. Use the area of law in this place's own terms for search_register. 2. Robin: check_firm for the 3-4 most promising firms (one call each, same turn: they run at the same time), replacing any ruled out. 3. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 4. Kit: fill_enquiry for each shortlisted firm (same turn: they run at the same time). 5. finish.
 If the register is blocked (CAPTCHA, login), web_search for another official or specialist directory of lawyers who do this work in this place, then search_register with its url. Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Prefer firms based in or near the patient's own place when checking and shortlisting (a regional directory can list firms far away). Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
 ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, points: s.points })), null, 1).slice(0, 6000)}`,
       tools: TOOLS,
+      // Iona's reading depends on nothing the others find: it runs alongside the whole chain. Each firm gets its own lane (its own tab).
+      background: ["find_guidance", "investigate"],
+      afterBackground: ["fill_enquiry"],
+      lane: (name, a) => (name === "check_firm" || name === "fill_enquiry" ? `${name === "check_firm" ? "robin" : "kit"}:${String(a.firm_id ?? "")}` : name === "find_guidance" || name === "investigate" ? `iona:${name}` : `crew:${name === "check_funding" ? "nell" : name === "update_plan" || name === "shortlist" || name === "ask_user" || name === "finish" ? "elliot" : name === "read_scheme" || name === "search_register" || name === "web_search" ? "robin" : name}`),
       firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
       // Funding and the scheme first: they decide whether lawyers are needed at all (Cursor round 3).
@@ -236,12 +241,15 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             if (!firm || !shortlistIds.includes(firm.id)) return "Blocked: only shortlisted firms get an enquiry.";
             if (enquiries.get(firm.id)?.status === "ready_to_send") return `${firm.name}: already filled.`;
             const g = proof.guideline?.points[0];
-            if (!message) {
+            drafting ??= (async () => {
               // Nell -> Kit: the funding checker's own words travel into the message, as an estimate, never as eligibility.
               const funding = fundingQuote?.checked ? `On funding: ${fundingSource}'s online checker says "${short(fundingQuote.quote, 90)}". I understand this is only an estimate.` : "I would also like to know how a case like this could be funded.";
-              message = await draftEnquiry(facts, undefined, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: g.text, question: proof.gaps[0].question } : undefined, { place: placeName, funding });
-            }
-            const msg = message;
+              return (message = await draftEnquiry(facts, undefined, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: g.text, question: proof.gaps[0].question } : undefined, { place: placeName, funding }));
+            })().catch((e) => {
+              drafting = null; // a failed draft is tried again by the next firm
+              throw e;
+            });
+            const msg = await drafting;
             const r = await kit.inTab(thought, "kit", short(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, ""), 24), async (p, note) => {
               const o = await fillOne(p, firm, { facts, message: msg, area: areaOfLaw }, note, kit.track, (x) => kit.emit({ type: "enquiry", enquiry: x }));
               if (o.status === "ready_to_send" || o.status === "needs_input") {

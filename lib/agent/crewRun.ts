@@ -103,6 +103,12 @@ export type CrewFlow<R> = {
   after?: string[];
   /** Dependencies between tools called in the same turn: lower stages finish before higher ones start (default 1). Within a stage, different crew members work at the same time. */
   stage?: Record<string, number>;
+  /** Tools nothing else waits for: they start at once and the planner's next turn does not wait for them, so a slow one (Iona's reading) overlaps the whole chain. The planner is told they are under way; their reports still appear as they finish. */
+  background?: string[];
+  /** Tools that need the background work finished first (they wait for it): e.g. the enquiry message uses what Iona found. `finish` always waits. */
+  afterBackground?: string[];
+  /** Calls with the same lane run one after another, different lanes at the same time (default: one lane per crew member). Lets a member work on several firms at once, each in its own tab. */
+  lane?: (name: string, args: Record<string, unknown>) => string;
   /** Did this result count as a failure? (default: text starts with Error / Could not / Blocked) */
   failed?: (name: string, out: string) => boolean;
   /** Build and emit the result at the end. */
@@ -131,6 +137,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   const { browser, context, page } = await openSession();
   const actx = { context, emit, track, tracer, first: page };
   const tabs = limiter(flow.tabLimit ?? 4);
+  const pendingBg: Promise<unknown>[] = [];
   waiting.set(runId, new Map());
   skips.set(runId, new Set());
   trackPause(runId, emit);
@@ -263,7 +270,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         const full = bad ? out : flow.describe(call.name, args, out);
         const did = pastTense(flow.doing(call.name, args));
         // Plain lines for the two tools that used to read "Worked" / "Found the guidance" whatever happened.
-        const plain = !bad && call.name === "find_guidance" && /^No applicable guidance/i.test(out) ? "Found no guidance that applies to your injury" : !bad && call.name === "web_search" ? `Searched the web${/^(\d+) results?/.exec(out)?.[1] ? `, ${/^(\d+) results?/.exec(out)![1]} results` : ""}` : "";
+        const plain = !bad && call.name === "find_guidance" && /^No applicable guidance/i.test(out) ? "Found no guidance that applies to your injury" : !bad && call.name === "web_search" ? `Searched the web${/^(\d+) results?/.exec(full)?.[1] ? `, ${/^(\d+) results?/.exec(full)![1]} results` : ""}` : "";
         const text = plain || (bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did);
         say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? full : out.includes("\n") ? out : undefined, tool: call.name, tab: thought.tab, ok: !bad });
         crewState(who, "idle", text);
@@ -277,8 +284,24 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       // Stages first (a tool that needs another's result waits for it), then crew members in parallel within a stage, each member's calls in order.
       const stageOf = (c: ResponseFunctionToolCall) => (c.name === "update_plan" ? -2 : c.name === "ask_user" ? -1 : c.name === "finish" ? 99 : flow.after?.includes(c.name) ? 98 : (flow.stage?.[c.name] ?? 1));
       const outputs: ResponseInputItem[] = [];
+      const laneOf = (c: ResponseFunctionToolCall) => {
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(c.arguments || "{}");
+        } catch {
+          /* handled in exec1 */
+        }
+        return flow.lane ? flow.lane(c.name, args) : flow.who(c.name, args);
+      };
+      const isBg = (c: ResponseFunctionToolCall) => !!flow.background?.includes(c.name);
+      const bgGroups = new Map<string, ResponseFunctionToolCall[]>();
+      for (const c of calls.filter(isBg)) bgGroups.set(laneOf(c), [...(bgGroups.get(laneOf(c)) ?? []), c]);
+      for (const cs of bgGroups.values()) pendingBg.push((async () => { for (const c of cs) await exec1(c).catch(() => undefined); })());
+      for (const cs of bgGroups.values()) for (const c of cs) outputs.push({ type: "function_call_output", call_id: c.call_id, output: "Started. This crew member works on it in the background and the findings arrive in the history and the case file. Do not call it again; carry on with the rest." });
+      calls = calls.filter((c) => !isBg(c));
       for (const st of [...new Set(calls.map(stageOf))].sort((x, y) => x - y)) {
         const inStage = calls.filter((c) => stageOf(c) === st);
+        if (inStage.some((c) => c.name === "finish" || flow.afterBackground?.includes(c.name))) await Promise.allSettled(pendingBg);
         if (st < 1 || st >= 98) {
           for (const c of inStage) outputs.push(await exec1(c));
           continue;
@@ -291,7 +314,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
           } catch {
             /* handled in exec1 */
           }
-          const key = flow.who(c.name, args);
+          const key = flow.lane ? flow.lane(c.name, args) : flow.who(c.name, args);
           groups.set(key, [...(groups.get(key) ?? []), c]);
         }
         const done = await Promise.all([...groups.values()].map(async (cs) => { const o: ResponseInputItem[] = []; for (const c of cs) o.push(await exec1(c)); return o; }));
@@ -363,6 +386,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       }
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
     }
+    await Promise.allSettled(pendingBg);
     const result = await flow.finish(kit, { plan, thoughts, says, turns: turns - 1, asks });
     const alive = kept.filter((p) => !p.isClosed());
     if (opts.keepOpen && alive.length) {
