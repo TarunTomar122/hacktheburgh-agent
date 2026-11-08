@@ -4,23 +4,29 @@
 **Branch base:** `main` at the time of branching (`774222b` plus later teammate commits pulled before branching).
 
 ## Resume here (kept current; read this first after any pause or limit reset)
-- **State at 00:15 (8 Nov):** every generic worker is committed (explore, fillForm, searchDirectory, questionnaire). Discovery runs first in the app and is saved as `profile.route`. Generic complaint (step 1), compensation (step 3, now reads the place's own scheme) are wired; generic escalation (step 2) is being built. Crew engine runs dependent tools in stages. Retry after errors.
-- **Benchmarks:** Wales 5.2 → 6.2, England 6.1 (graded against the answer keys). Deadlines fix (national rules + the provider's own page) committed after these runs.
-- **Running:** NI discovery 2 (`docs/night-runs/ni-discovery-2/`), Wales compensation crew (`docs/night-runs/wales-compensation-1/`); builders: worker safety (questionnaire/searchDirectory, uncommitted), escalation step (page.tsx step 2, route.ts, usePlannerRun, new escalationAnywhere.ts/EscalationRun.tsx, uncommitted), local models (llm.ts, draft.ts, evidence.ts, enquiry.ts, complaintAgents.ts, spsoDraft.ts, uncommitted); Cursor round-2 review pending.
-- **Machine:** do NOT record video in long runs (it leaked 161 ffmpeg processes and pushed load to 700); disk ~25 GB free; kill stale `tsc` piles with `pkill -f "tsc --noEmit"`.
-- **Next:** commit each builder when it reports; Scotland discovery (check the generic path finds NHS Lothian's form); Kit filling a real complaint form via the generic flow (NI or Scotland); countries (personas ready: ireland, new-zealand, california); Codex+Cursor round 3; short video recordings of the best runs; demo recordings in `demo/`; morning summary; then UI hill-climb.
+- **State at 01:05 (8 Nov):** all four steps run on the discovered route (discovery → complaint → independent review → compensation → step 4 review). Three review rounds done (Codex: 7→8 complexity; Cursor: 6→8); all their findings applied and committed. Safety enforced in code (trap suite all passing). Local models for personal data (Qwen3 8B), model/data panel in the UI.
+- **Benchmarks (vs answer keys):** NZ 7.3, NI 6.6, Wales 6.2, England 6.1, Scotland 5 (before the breadth-first fix). Scotland generic complaint: Kit filled NHS Lothian's form found by the crew.
+- **Running:** Ireland discovery, California discovery, Wales compensation 2 (full chain).
+- **Next:** grade Ireland/California; check Wales compensation 2 reached firms and enquiries; rerun Scotland discovery (breadth-first) and England; a round-4 review; short video recordings of 2-3 best runs (RECORD_VIDEO only for short runs; then `pkill -9 -f ffmpeg-mac`); morning summary; then UI hill-climb.
+- **Machine:** never record video on long runs; kill `tsc` piles with `pkill -f "tsc --noEmit"`; Ollama must be running for local models (or `LOCAL_MODELS=0`).
 - **Heartbeat:** session cron every 30 min (:13, :43) + one-shot wrap-up 06:47.
 
 ## Morning summary (kept current through the night)
 
+**The headline:** Elliot's crew now works out the health and legal system for wherever the care happened, live, with nothing hardcoded, and then does the work there. Tested on all four UK nations and New Zealand (Ireland and California running): it found each place's own complaint forms, ombudsman, compensation route (court, Welsh redress, NZ's no-fault ACC), funding and lawyer registers, with every fact quoted from an official page and checked by code.
+
 **What works end to end in the app (night branch):**
 - Onboarding for any country (country/region, international address and phone, one-line place confirmation).
-- Discovery ("How it works where you live"): the crew works out the system live (search with fallbacks, explore sites, read pages and PDFs, code-checked quotes, provenance), shown as a crew run and a route map with sources. Wales 6.2/10 and England 6.1/10 against researched answer keys.
-- Step 1 complaint crew for any place (reads the provider's rules and time limit, finds local guidance, drafts to the right body, fills its online form or prepares the message and finds where it goes).
-- Step 3 compensation crew for any place (the place's own funding checker, its scheme, its lawyer register with its own filters, cross-site firm checks, enquiries carrying the checker's quote), same case file and step 4 review.
-- Model ledger: every model call recorded with agent, model, local/cloud, tokens, data kinds.
+- "How it works where you live": the discovery crew run (same avatars and calm screen), then a route map card with sources one click away.
+- Step 1: complaint crew for any place (reads the provider's rules, finds the place's own guidance, drafts to the right body, fills its online form and stops, or prepares the email and finds where it goes). Proven on Scotland: NHS Lothian's form filled by the generic crew.
+- Step 2: independent review for any place (when you can go, the time limit, the body's own form or a letter to its own address).
+- Step 3: compensation for any place (the place's funding checker or rules, its scheme, its lawyer register with its own filters, cross-site firm checks, enquiries carrying the checker's own words), same case file and step 4 review.
+- Models and data: every model call in a ledger; personal data on this Mac (Qwen3 8B), public research in the cloud; per crew member and per run in the UI.
+- Safety in code: no worker can press send/submit/pay/apply/sign; traps prove it.
 
-**Not done yet / honest gaps:** see Results and Review log; step 2 escalation and local models in progress at 00:15.
+**Honest gaps:** discovery depth varies (5-7.3/10); some registers sit behind CAPTCHAs (reported, then another directory is searched); the form filler stops at a forward button when it cannot prove there is a later step; local Qwen3 is slower and a bit weaker than the cloud (see docs/night-runs/local-vs-cloud.md).
+
+**Look at first:** run the app (`npm run dev`), load a fictional profile from `scripts/personas/`, watch "How it works where you live" (or "Play a recorded run, fast" for Wales), then step 1. Logs and grades per run in `docs/night-runs/`.
 
 ---
 
