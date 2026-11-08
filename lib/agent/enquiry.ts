@@ -140,7 +140,9 @@ async function findForm(page: Page, firm: FirmFinding, note: Note, track: Tracke
         .filter((c) => c.text || c.href),
     );
     const re = /contact|enquir|get in touch|make an enquiry|request a call|call ?back|free consultation|speak to|talk to us/i;
-    const options = cands.filter((c) => c.visible && re.test(`${c.text} ${c.href}`) && !tried.has(c.href || c.text)).slice(0, 12);
+    let options = cands.filter((c) => c.visible && re.test(`${c.text} ${c.href}`) && !tried.has(c.href || c.text)).slice(0, 12);
+    // Not an English site (or unusual wording): offer every visible link and button and let the model judge in any language.
+    if (options.length === 0) options = cands.filter((c) => c.visible && !tried.has(c.href || c.text) && !/^(mailto|tel):/i.test(c.href)).slice(0, 25);
     if (options.length === 0) break;
     let pick = options[0];
     if (options.length > 1) {
@@ -173,7 +175,7 @@ async function findForm(page: Page, firm: FirmFinding, note: Note, track: Tracke
 
 /* ------------------------------------------------------------------ filling */
 
-function enquiryValues(facts: CaseFacts, m: EnquiryMessage): Value[] {
+function enquiryValues(facts: CaseFacts, m: EnquiryMessage, area = "Medical negligence"): Value[] {
   const parts = (facts.address ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const v = (key: string, description: string, value: string | null | undefined): Value => ({ key, description, value: value ?? "" });
   return [
@@ -188,7 +190,7 @@ function enquiryValues(facts: CaseFacts, m: EnquiryMessage): Value[] {
     v("town", "Town or city", parts.length > 1 ? parts[parts.length - 1] : ""),
     v("subject", "Subject of the enquiry", m.subject),
     v("message", "The enquiry message: 'how can we help', 'your message', 'brief details of your enquiry', 'tell us about your case'", m.body),
-    v("area_of_law", "Area of law or type of enquiry: medical negligence (clinical negligence, personal injury if there is no medical option)", "Medical negligence"),
+    { ...v("area_of_law", "Area of law or type of enquiry: medical negligence (clinical negligence, personal injury if there is no medical option)", area), public: true },
   ];
 }
 
@@ -234,7 +236,7 @@ const noop = Object.assign(() => {}, { log: async () => {} }) as Note;
 export async function fillOne(
   p: Page,
   f: FirmFinding,
-  input: { facts: CaseFacts; message: EnquiryMessage },
+  input: { facts: CaseFacts; message: EnquiryMessage; area?: string }, // area: the area of law in the place's own terms
   note: Note = noop,
   track: Pick<Tracker, "bump"> = { bump: () => {} },
   put: (o: EnquiryOutcome) => void = () => {},
@@ -253,13 +255,14 @@ export async function fillOne(
   await pointAt(p, p.locator(FORM_SEL).first()).catch(() => {});
   const before = await snapshot(p);
   const goal = "Fill in this law firm's enquiry form with the saved values. Leave fields empty when no saved value fits. Do not tick any checkbox and do not submit.";
-  const values = enquiryValues(input.facts, input.message);
+  const values = enquiryValues(input.facts, input.message, input.area);
   const onEvent = (e: { type: string }) => {
     if (e.type === "action") track.bump("action");
   };
   let run: { status: string; question?: string };
   try {
-    run = await runDecisionAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 6, onEvent });
+    // hideValues: the decision model sees value names, never the patient's story or contact details (Cursor round 3).
+    run = await runDecisionAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 6, onEvent, hideValues: true });
   } catch (e) {
     // Recovery (D46): the Decisions API is down or overloaded. Switch to the backup engine (tool-calling model) and carry on.
     const why = (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120);

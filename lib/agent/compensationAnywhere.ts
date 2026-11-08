@@ -53,6 +53,7 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
   let routeKind: Route = "no_win_no_fee";
   let shortlistIds: string[] = [];
   let message: EnquiryMessage | null = null;
+  let areaOfLaw = "clinical negligence";
   let scheme: { body: string; text: string; quote?: Quote; url: string } | undefined;
   const found = new Set<string>(); // hosts this run found by search (provenance for search_register's url)
   const host = (u?: string | null) => { try { return u ? new URL(u).hostname.replace(/^www\./, "") : ""; } catch { return ""; } };
@@ -68,7 +69,8 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
       tools: TOOLS,
       firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
-      stage: { check_funding: 1, read_scheme: 1, web_search: 1, search_register: 1, find_guidance: 1, check_firm: 2, shortlist: 3, fill_enquiry: 4 },
+      // Funding and the scheme first: they decide whether lawyers are needed at all (Cursor round 3).
+      stage: { check_funding: 1, read_scheme: 1, web_search: 2, search_register: 2, find_guidance: 2, check_firm: 3, shortlist: 4, fill_enquiry: 5 },
       who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" || name === "web_search" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
       doing: (name, a) => {
         const f = firms.get(String(a.firm_id ?? ""));
@@ -105,7 +107,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               fundingQuote = r.value.resultQuote;
               fundingSource = f.body;
               calculatorText = r.value.result;
-              verdict = /not (likely|eligible)|unlikely|do(es)? not qualify|cannot get|can't get/i.test(r.value.result) ? "unlikely" : /likely|eligible|qualif/i.test(r.value.result) ? "likely" : "unknown";
+              verdict = /\b(not (likely|eligible)|unlikely|ineligible|disqualif\w*|do(es)? not qualify|not qualify|cannot get|can't get|won't get)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
               kit.finding(`${f.body}: ${short(r.value.result, 120)}`, url, "nell");
               return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nAnswers: ${r.value.answers.map((x) => `${x.question} = ${x.answer} (${x.source})`).join("; ")}`;
             }
@@ -141,6 +143,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const url = s("url") || (l?.url ?? l?.sources[0]?.url);
             if (!url) return "Could not search: discovery found no register or directory.";
             const where = route.place.city || facts.postcode || route.place.region;
+            if (s("area")) areaOfLaw = s("area");
             const r = await kit.inTab(thought, "robin", short(l?.body ?? "Register", 26), (p, note) => searchDirectory({ page: p, note, track: kit.track }, { url, goal: `Find lawyers or firms who do ${s("area") || "clinical negligence"} near ${where}`, criteria: [{ label: "area of law", value: s("area") || "clinical negligence / medical negligence" }, { label: "location", value: where }], maxResults: 12 }), 4 * 60 * 1000);
             if (!r.ok) return `Could not search the register: ${r.error}`;
             const d = r.value;
@@ -194,7 +197,8 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           case "find_guidance":
             return (await findGuidance(kit, thought, route, facts, s("condition") || "the patient's condition", proof)).text;
           case "shortlist": {
-            routeKind = s("route") === "legal_aid" ? "legal_aid" : "no_win_no_fee";
+            // Legal aid only when Nell's checker actually said likely; the model's choice cannot override that.
+            routeKind = s("route") === "legal_aid" && verdict === "likely" ? "legal_aid" : "no_win_no_fee";
             for (const [id, f] of firms) firms.set(id, score(f, routeKind, evidence.get(id)));
             shortlistIds = ((a.firm_ids as string[]) ?? []).filter((id) => firms.has(id) && !firms.get(id)!.excluded && firms.get(id)!.sources.includes("website")).sort((x, y) => firms.get(y)!.score - firms.get(x)!.score).slice(0, 3);
             kit.finding(`Shortlisted ${shortlistIds.length}: ${shortlistIds.map((id) => firms.get(id)!.name).join(", ")}`, undefined, "elliot");
@@ -212,7 +216,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             }
             const msg = message;
             const r = await kit.inTab(thought, "kit", short(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, ""), 24), async (p, note) => {
-              const o = await fillOne(p, firm, { facts, message: msg }, note, kit.track, (x) => kit.emit({ type: "enquiry", enquiry: x }));
+              const o = await fillOne(p, firm, { facts, message: msg, area: areaOfLaw }, note, kit.track, (x) => kit.emit({ type: "enquiry", enquiry: x }));
               if (o.status === "ready_to_send" || o.status === "needs_input") {
                 keepForApproval(firm.id, { page: p, firm, email: facts.email, runId: kit.runId, tracer: kit.tracer, note });
                 kit.keep(p);

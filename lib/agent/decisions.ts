@@ -1,6 +1,6 @@
 // Thin client for OpenAI's Decisions API (POST /v1/decisions). Typed answers only: no free text comes back.
 // Docs checked 2026-11-07: https://developers.openai.com/api/reference/resources/decisions
-import { record } from "./ledger";
+import { record, type DataKind } from "./ledger";
 
 export const DECISION_MODEL = process.env.DECISION_MODEL ?? "gpt-6-luna";
 
@@ -16,7 +16,7 @@ export type DAnswer =
 
 export type DUsage = { input_tokens: number; output_tokens: number; total_tokens: number };
 
-export async function decide(input: string, questions: DQuestion[]): Promise<{ answers: DAnswer[]; usage: DUsage; ms: number }> {
+export async function decide(input: string, questions: DQuestion[], data?: DataKind[]): Promise<{ answers: DAnswer[]; usage: DUsage; ms: number }> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("OPENAI_API_KEY is not set");
   const body = JSON.stringify({ model: DECISION_MODEL, input, questions });
@@ -32,7 +32,7 @@ export async function decide(input: string, questions: DQuestion[]): Promise<{ a
     const json = (await res.json().catch(() => ({}))) as { answers?: DAnswer[]; usage?: DUsage; error?: { message?: string } };
     if (res.ok && json.answers) {
       const u = json.usage ?? { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
-      record({ task: "decisions", model: DECISION_MODEL, inTok: u.input_tokens, outTok: u.output_tokens, ms: Date.now() - t });
+      record({ task: "decisions", model: DECISION_MODEL, inTok: u.input_tokens, outTok: u.output_tokens, ms: Date.now() - t, data });
       return { answers: json.answers, usage: u, ms: Date.now() - t };
     }
     lastErr = `${res.status} ${json.error?.message ?? "unknown error"}`;

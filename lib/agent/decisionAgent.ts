@@ -71,7 +71,8 @@ export async function runDecisionAgent(opts: {
 
     const shown = hide ? redactObservation(obs, [...byKey.values()]) : obs;
     const input = [`GOAL: ${goal}`, hide ? `SAVED VALUES (names only; the user's data itself is typed by code and never shown to you):\n${valuesText}` : `SAVED VALUES (the only data the user has provided):\n${valuesText}`, `CURRENT PAGE:\n${formatObservation(shown)}`].join("\n\n");
-    const { answers, usage, ms } = await decide(input, plan.questions);
+    // The ledger records what this call really carried: with hidden values, only the form's own labels; otherwise the patient's values.
+    const { answers, usage, ms } = await decide(input, plan.questions, hide ? [] : ["identity", "health"]);
     stats.calls++; stats.ms += ms; stats.inputTokens += usage.input_tokens;
     const byName = new Map<string, DAnswer>(answers.map((a) => [a.name, a]));
 

@@ -92,7 +92,7 @@ export async function runBrowserAgent(opts: {
       tools: TOOLS,
       tool_choice: "required",
       parallel_tool_calls: true,
-    }, "form agent (backup engine)");
+    }, "form agent (backup engine)", ["identity", "health"]); // the backup engine sees the values it types
     stats.calls++; stats.ms += Date.now() - t0; stats.inputTokens += res.usage?.input_tokens ?? 0;
     const calls = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
 

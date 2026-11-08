@@ -145,6 +145,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
       tools: TOOLS,
       firstInput: `Patient: (name withheld from the planner).\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nProgress: ${status}\n${progress.providerReply ? `What ${provider} said (from the patient): ${progress.providerReply}\n` : ""}What happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
       maxTurns: 14,
+      stage: { read_rules: 1, draft_case: 2, fill_form: 3, find_address: 3, prepare_message: 4 },
       who: (name): CrewId => (name === "read_rules" || name === "find_address" ? "robin" : name === "fill_form" ? "kit" : "elliot"),
       after: ["prepare_message"],
       doing: (name) =>

@@ -93,6 +93,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const learn = (u: string) => { const h = hostOf(u); if (h) known.add(h); };
   const allowed = (u: string) => known.has(hostOf(u));
   const opened = new Set<string>(); // hosts whose pages were really opened (for "official")
+  const visited = new Set<string>(); // exact pages opened in this run (normalised URLs)
+  const forms = new Set<string>(); // pages where explore_site really reached a form
   const titles = new Map<string, string>(); // url -> normalised page title + first heading (for officialness)
   const rememberTitle = async (p: Page) => {
     const t = await p.evaluate(() => `${document.title} ${document.querySelector("h1")?.textContent ?? ""}`).catch(() => "");
@@ -174,6 +176,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             if (!r.ok) return `Could not read ${url}: ${r.error}`;
             const v = r.value;
             learn(v.url);
+            visited.add(keyOf(v.url));
+            visited.add(keyOf(url));
             v.links.forEach((l) => learn(l.url));
             for (const u of [url, v.url]) workerChecked.set(keyOf(u), [...(workerChecked.get(keyOf(u)) ?? []), ...v.quotes.filter((q) => q.checked).map((q) => q.quote)]);
             if (v.wall) return `Blocked: ${v.wall.kind} at ${v.wall.url} (${v.wall.detail})`;
@@ -197,6 +201,9 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const v = r.value;
             learn(v.url);
             v.path.forEach((x) => learn(x.url));
+            visited.add(keyOf(v.url));
+            v.path.forEach((x) => visited.add(keyOf(x.url)));
+            if (v.ok && v.form) forms.add(keyOf(v.url));
             const path = v.path.map((s, i) => `${i + 1}. ${s.via} -> ${s.url}`).join("\n");
             if (!v.ok) return `Not found. ${v.summary}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail}) at ${v.wall.url}` : ""}\nPath:\n${path}`;
             if (v.form) kit.finding(`${host(v.url)}: online form found (${v.form.fields.length} fields${v.form.multiPage ? ", several pages" : ""})`, v.url, who);
@@ -232,8 +239,9 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               body: String(a.body ?? ""),
               what: String(a.what ?? ""),
               deadline: a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined,
-              how: (String(a.how ?? "unknown") as RouteStep["how"]) || "unknown",
-              url: a.url ? String(a.url) : undefined,
+              // "online form" only where the crew really reached a form; a URL only if this run opened that page (code checks).
+              how: ((h) => (h === "online_form" && !(a.url && forms.has(keyOf(String(a.url)))) ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"),
+              url: a.url && visited.has(keyOf(String(a.url))) ? String(a.url) : undefined,
               wall: a.wall ? String(a.wall) : undefined,
               points: Array.isArray(a.points) ? (a.points as string[]).map(String).filter((pt) => backed(pt)).slice(0, 6) : undefined,
               requires: Array.isArray(a.requires) ? (a.requires as string[]).map(String) : undefined,
