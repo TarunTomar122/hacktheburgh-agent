@@ -15,11 +15,12 @@ export default function Welcome(props: PageProps<"/welcome">) {
 }
 
 async function WelcomeContent(props: PageProps<"/welcome">) {
-  if (!authEnabled() || (await sessionUser())) redirect("/case");
+  if (!authEnabled() || (await sessionUser())) redirect("/");
 
   // Only a path on this site is kept as the place to go back to after signing in.
   const asked = (await props.searchParams).returnTo;
-  const returnTo = typeof asked === "string" && asked.startsWith("/") && !asked.startsWith("//") ? asked : "/case";
+  // After signing in you land on the home page, which offers to start or continue your case. Other pages (like /insights) are returned to.
+  const returnTo = typeof asked === "string" && asked.startsWith("/") && !asked.startsWith("//") && !/^\/(case|start)\b/.test(asked) ? asked : "/";
   const q = encodeURIComponent(returnTo);
 
   return (
@@ -27,7 +28,9 @@ async function WelcomeContent(props: PageProps<"/welcome">) {
       <Stripes />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12 text-center">
         <div className="fade-up flex flex-col items-center space-y-7">
-          <Logo className="!h-44 sm:!h-52" />
+          <span className="disc-spin inline-block" title="Elliot">
+            <Logo className="!h-44 sm:!h-52" />
+          </span>
           <h1 className="display text-[38px] sm:text-[52px]">
             <span className="hl-blue">Your</span> case, under <span className="hl-blue">your</span> control
           </h1>

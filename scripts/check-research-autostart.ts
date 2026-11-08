@@ -3,6 +3,7 @@
 // The start request is intercepted and answered with nothing: no crew run happens.
 import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
+import { devLogin, seedAccount } from "./devLogin";
 
 const BASE = process.env.BASE ?? "http://localhost:3001";
 let failed = 0;
@@ -15,6 +16,8 @@ async function visit(createdAt: string) {
   const profile = { facts: { ...facts, country: "United Kingdom", region: "Scotland" }, messages: [], draft: null, createdAt, updatedAt: createdAt };
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
+  await devLogin(page, BASE);
+  await seedAccount(page, BASE, profile);
   const starts: string[] = [];
   await page.route("**/api/agent/plan", async (r) => {
     starts.push(JSON.parse(r.request().postData() ?? "{}").flow);

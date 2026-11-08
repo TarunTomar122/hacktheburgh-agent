@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Stripes } from "./case/Header";
+import AccountMenu from "./AccountMenu";
 import StartLink, { NewCaseLink } from "./StartLink";
 import { Logo } from "./ui";
 
@@ -54,7 +55,11 @@ function SiteHeader() {
             <a href="#proof" className="transition-colors hover:text-white">Why trust it</a>
           </nav>
         </div>
-        <StartLink className="inline-flex items-center gap-2 rounded-ctl bg-white px-5 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft" />
+        <div className="flex items-center gap-4">
+          {/* Signed in (Auth0): who you are and Log out. Nothing while accounts are off. */}
+          <AccountMenu />
+          <StartLink className="inline-flex items-center gap-2 rounded-ctl bg-white px-5 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft" />
+        </div>
       </header>
       <Stripes />
     </div>

@@ -403,3 +403,22 @@ body {
     background-color: var(--color-brand-soft);
   }
 }
+
+/* The welcome page's logo spins like a record; faster on hover. Still for people who ask for less motion. */
+@keyframes disc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.disc-spin {
+  animation: disc-spin 8s linear infinite;
+  border-radius: 9999px;
+}
+.disc-spin:hover {
+  animation-duration: 1.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .disc-spin {
+    animation: none;
+  }
+}

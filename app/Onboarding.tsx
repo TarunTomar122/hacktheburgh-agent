@@ -11,6 +11,7 @@ import type { WidgetAnswer } from "../lib/agent/interview";
 import { PERSONA_PICKER_ENABLED, type Persona } from "../lib/personas";
 import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
+import AccountMenu from "./AccountMenu";
 import NameStep from "./NameStep";
 import PersonaPicker from "./PersonaPicker";
 import StageInput from "./StageInputs";
@@ -141,6 +142,7 @@ export default function Onboarding() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <AccountMenu />
             <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-white/85 transition-colors hover:text-white">
               <ArrowLeftIcon />
               Home

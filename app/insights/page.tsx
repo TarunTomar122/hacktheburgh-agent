@@ -6,7 +6,7 @@ import { allRuns, browserEvidence, type Flow } from "../../lib/insights";
 import { DECISION_MODEL } from "../../lib/agent/decisions";
 import { MODELS } from "../../lib/agent/llm";
 
-const FLOW_NAME: Partial<Record<Flow, string>> = { discovery: "Research", compensation: "Prepare your case", complaint: "Complaint", escalation: "Independent review" };
+const FLOW_NAME: Partial<Record<Flow, string>> = { discovery: "Research", compensation: "Prepare your case", complaint: "Complaint", escalation: "Independent review", enquiries: "Contact lawyers" };
 const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60_000).toFixed(1)} min`;
 const median = (xs: number[]) => {
   const sorted = [...xs].sort((a, b) => a - b);
@@ -28,6 +28,14 @@ const MODEL_ROLES: { id: string; name: string; why: string }[] = [
   { id: DECISION_MODEL, name: "Decisions", why: "Yes, no or pick-one answers with a confidence, like 'does this firm act for patients?'." },
   { id: MODELS.private, name: "On this Mac", why: "Anything with your health story, money or identity stays on this machine." },
 ];
+/** Why each step uses the models it does, in one line. Facts about where data goes are taken from the ledger, not assumed. */
+const STEP_WHY: Partial<Record<Flow, string>> = {
+  discovery: "Research is many small reads at once, so one fast model plans and reads: speed wins.",
+  compensation: "The reasoning model plans and writes, the fast reader works the pages, Decisions answers yes or no.",
+  complaint: "The reasoning model writes your complaint; readers check the rules on the provider's own pages.",
+  escalation: "The reasoning model works out if you can go to the independent body and what to send.",
+  enquiries: "Kit fills each firm's form; quick decisions pick the right fields.",
+};
 const modelLabel = (id: string) => id.replace(/^local:/, "").replace(/^qwen3:8b$/, "Qwen3 8B");
 
 export default function Insights() {
@@ -63,8 +71,9 @@ async function Dashboard() {
   const stops = access.filter((a) => a.kind === "task" && /filled .*form \([1-9]\d* fields\).*stopped before Send/.test(a.reason)).length;
   const cohort = `Latest ${scope.length} runs · ${scope.at(-1)?.startedAt.slice(0, 16).replace("T", " ")} to ${scope[0]?.startedAt.slice(11, 16)} UTC`;
   // Which model did which job, per step, from the ledger of the recent finished runs.
-  const modelsByFlow = (["discovery", "compensation"] as Flow[]).map((flow) => {
-    const rs = finished.filter((r) => r.flow === flow);
+  const modelsByFlow = (["discovery", "compensation", "complaint", "escalation", "enquiries"] as Flow[]).map((flow) => {
+    // The latest finished runs of this step (any age: some steps run less often than others).
+    const rs = runs.filter((r) => r.finished && r.flow === flow).slice(0, 15);
     const by = new Map<string, { model: string; where: string; calls: number; ms: number; crew: Set<string> }>();
     for (const r of rs)
       for (const m of r.models) {
@@ -102,8 +111,12 @@ async function Dashboard() {
           {MODEL_ROLES.map((m) => <div key={m.name} className="rounded-card border border-line p-5"><p className="text-xs uppercase tracking-widest text-muted">{m.name}</p><p className="mt-2 text-base font-medium text-ink">{modelLabel(m.id)}</p><p className="mt-2 text-sm leading-6 text-ink-2">{m.why}</p></div>)}
         </div>
         <div className="mt-8 space-y-6">
-          {modelsByFlow.map((f) => <div key={f.flow}>
-            <p className="mb-3 text-sm font-medium text-ink">{FLOW_NAME[f.flow]} <span className="font-normal text-muted">· {f.runs} recent runs</span></p>
+          <div className="grid gap-2 sm:grid-cols-[14rem_1fr]">
+            <div><p className="text-sm font-medium text-ink">Onboarding</p><p className="mt-1 text-xs leading-5 text-muted">A quick model asks the questions in plain words.</p></div>
+            <div className="flex flex-wrap gap-3"><div className="flex items-center gap-3 rounded-card border border-line bg-white px-4 py-3"><Avatar id="elliot" size="size-6" /><span className="text-sm text-ink">{modelLabel(MODELS.interview)}</span><span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand">Cloud</span></div></div>
+          </div>
+          {modelsByFlow.map((f) => <div key={f.flow} className="grid gap-2 sm:grid-cols-[14rem_1fr]">
+            <div><p className="text-sm font-medium text-ink">{FLOW_NAME[f.flow]} <span className="font-normal text-muted">· {f.runs} runs</span></p>{STEP_WHY[f.flow] && <p className="mt-1 text-xs leading-5 text-muted">{STEP_WHY[f.flow]}{f.models.some((m) => m.where === "local") ? " Your private details go to the model on this Mac." : ""}</p>}</div>
             <div className="flex flex-wrap gap-3">
               {f.models.map((m) => <div key={m.model} className="flex items-center gap-3 rounded-card border border-line bg-white px-4 py-3" title={`${modelLabel(m.model)}: ${m.calls} calls, ${(m.ms / m.calls / 1000).toFixed(1)} s each on average`}>
                 <span className="flex -space-x-1.5">{[...m.crew].map((c) => <Avatar key={c} id={c} size="size-6" />)}</span>

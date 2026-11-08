@@ -3,6 +3,7 @@
 // Uses the development fixture (app/api/dev/live-fixture): three tabs on this app's own pages. No crew run, no outside site.
 import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
+import { devLogin, seedAccount } from "./devLogin";
 
 const BASE = process.env.BASE ?? "http://localhost:3001";
 let failed = 0;
@@ -28,6 +29,8 @@ const check = (ok: boolean, what: string) => {
   const stored = { runId, flow: "discovery", startedAt: Date.now() - 60000, status: "done", seen: true, endedAt: Date.now(), terminal };
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1400, height: 1100 } });
+  await devLogin(page, BASE);
+  await seedAccount(page, BASE, profile);
   await page.addInitScript(([p, k, s]) => {
     if (!sessionStorage.getItem("seeded")) {
       localStorage.clear();

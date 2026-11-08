@@ -2,6 +2,7 @@
 // Walks /start to the "All done" screen. The interview model is called for real (a few cheap calls).
 //   npx tsx --env-file=.env.local scripts/check-demo-fill.ts      (dev server on BASE, default http://localhost:3001; screenshots in docs/night-runs/demo-fill/)
 import { chromium, type Page } from "playwright";
+import { devLogin } from "./devLogin";
 
 const BASE = process.env.BASE ?? "http://localhost:3001";
 const OUT = "docs/night-runs/demo-fill";
@@ -29,6 +30,7 @@ async function filled(page: Page): Promise<string> {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1300, height: 900 } });
+  await devLogin(page, BASE);
   await page.addInitScript(() => localStorage.clear());
   await page.goto(`${BASE}/start`);
   await page.locator("#name-field").waitFor();
