@@ -17,7 +17,7 @@ const store = new AsyncLocalStorage<Ctx>();
 
 /** What each crew member may see by design (used when a call site does not say). */
 export const SEES: Record<LedgerEntry["agent"], DataKind[]> = {
-  elliot: ["place"],
+  elliot: ["place", "health"], // the planner reads the story (no names, no contact details) to plan
   robin: ["place"],
   iona: ["health"],
   nell: ["money"],

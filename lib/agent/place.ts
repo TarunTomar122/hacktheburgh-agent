@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CaseFacts } from "./facts";
-import { MODELS, structured } from "./llm";
+import { modelFor, structured } from "./llm";
 import type { Place } from "./routeTypes";
 
 /** Where the patient is and where the care happened, read from what they told us. No lookup tables: the model reads it. */
@@ -15,8 +15,7 @@ const PlaceSchema = z.object({
 
 export async function detectPlace(facts: CaseFacts): Promise<Place> {
   return structured({
-    model: MODELS.browser,
-    effort: "low",
+    ...modelFor("check", ["identity"]), // the address and story: on this Mac by default
     instructions: "Work out where a patient's care happened from their own words and address. Never guess a country you cannot tell; leave it empty.",
     input: JSON.stringify({ address: facts.address, postcode: facts.postcode, whereTreated: facts.incidentLocation, story: facts.incidentSummary, events: facts.events }),
     schema: PlaceSchema,

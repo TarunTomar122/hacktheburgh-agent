@@ -143,7 +143,7 @@ If the form is still not complete after that (or the patient does not answer), a
 Never say anyone was at fault. Never submit or send anything. Never invent facts, addresses or dates.
 ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s) => s.kind === "complaint" || s.kind === "escalation" || s.kind === "advice").map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, deadline: s.deadline, wall: s.wall, requires: s.requires, points: s.points })) }, null, 1).slice(0, 6000)}`,
       tools: TOOLS,
-      firstInput: `Patient: ${facts.firstName ?? "the patient"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nProgress: ${status}\n${progress.providerReply ? `What ${provider} said (from the patient): ${progress.providerReply}\n` : ""}What happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
+      firstInput: `Patient: (name withheld from the planner).\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nProgress: ${status}\n${progress.providerReply ? `What ${provider} said (from the patient): ${progress.providerReply}\n` : ""}What happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
       maxTurns: 14,
       who: (name): CrewId => (name === "read_rules" || name === "find_address" ? "robin" : name === "fill_form" ? "kit" : "elliot"),
       after: ["prepare_message"],
@@ -170,7 +170,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
             const page = r.value;
             const today = new Date().toISOString().slice(0, 10);
             const x = await structured({
-              ...modelFor("draft", ["health"]), // the patient's timeline: on this Mac by default
+              ...modelFor("reason", ["health"]), // date reasoning on the patient's timeline: on this Mac, thinking on
               instructions: "Decide whether a patient can take their complaint to an independent body yet, using ONLY the page text for the body's rules and ONLY the patient's progress and timeline for what has happened. Never guess a date. If the page requires a step the progress says has not happened, the answer is not_yet.",
               input: `Today: ${today}\nBody: ${bodyName}\nPage answer: ${page.answer}\nQuotes: ${page.quotes.filter((q) => q.checked).map((q) => q.quote).join(" | ")}\nRoute map: requires ${JSON.stringify(esc?.requires ?? [])}; deadline ${esc?.deadline ?? ""}\nProgress: ${status}\nTimeline:\n${facts.events.map((e) => `${e.date}: ${e.what}`).join("\n")}`,
               schema: Ready,
@@ -184,6 +184,9 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
               st = "not_yet";
               explanation = `Not yet: complain to ${provider} first and wait for their final response. ${x.when}`.trim();
             }
+            // One recommendation, reconciled in code: "you can go" never stands next to "past the time limit" without saying so.
+            if (st === "ready" && x.limitStatus === "outside") explanation = `${explanation} But this may be past ${bodyName}'s time limit (${x.limit || "see their page"}); they can sometimes accept a late complaint, so say why it is late.`;
+            if (st === "ready" && !x.limit) explanation = `${explanation} We could not confirm ${bodyName}'s time limit on its page.`;
             ready = { status: st, when: x.when, explanation, include: x.include.slice(0, 5), url: page.url };
             process = { summary: page.answer, steps: x.steps.slice(0, 4), support: "", url: page.url };
             timeLimit = { limit: x.limit, status: x.limitStatus, explanation: x.limitExplanation, url: page.url };
@@ -208,7 +211,7 @@ Use ONLY the facts, the complaint text and the provider's reply given. Never add
               outcome: c.outcome,
             };
             kit.finding(`Case written for ${bodyName} (${draft.details.split(/\s+/).length} words)`, undefined, "elliot");
-            return `Drafted.\n\n${draft.details}${c.outcome ? `\n\nOutcome: ${c.outcome}` : ""}`;
+            return `Drafted (${draft.details.split(/\s+/).length} words). The text stays on the patient's device; you do not need it to continue.`;
           }
           case "fill_form": {
             if (!caseText) return "Write the case first (draft_case).";

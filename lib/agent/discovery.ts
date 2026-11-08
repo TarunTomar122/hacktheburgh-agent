@@ -84,7 +84,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
     const page = texts.get(keyOf(url));
     if (page && quoteInText(quote, page)) return true;
     const q = normText(quote);
-    return (workerChecked.get(keyOf(url)) ?? []).some((w) => q.length >= 12 && (normText(w).includes(q) || q.includes(normText(w))));
+    // Only a quote that is (part of) what the reader itself checked: never a longer text that merely contains it.
+    return (workerChecked.get(keyOf(url)) ?? []).some((w) => q.length >= 12 && normText(w).includes(q));
   };
   /** Provenance: the crew may only open pages this run found (search results, links on opened pages, explore paths), or other pages on those sites. */
   const known = new Set<string>();
@@ -92,6 +93,11 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const learn = (u: string) => { const h = hostOf(u); if (h) known.add(h); };
   const allowed = (u: string) => known.has(hostOf(u));
   const opened = new Set<string>(); // hosts whose pages were really opened (for "official")
+  const titles = new Map<string, string>(); // url -> normalised page title + first heading (for officialness)
+  const rememberTitle = async (p: Page) => {
+    const t = await p.evaluate(() => `${document.title} ${document.querySelector("h1")?.textContent ?? ""}`).catch(() => "");
+    titles.set(keyOf(p.url()), normText(t));
+  };
   const fullText = (p: Page) => p.evaluate(() => document.body?.innerText ?? "").catch(() => "");
   let route: RouteMap = { runId: "", place, system: "", summary: "", steps: [], foundAt: "" };
   const publish = (kit: CrewKit) => {
@@ -157,7 +163,10 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               const v = await readPage(ctxFor(kit, p, note, who), url, String(a.question ?? ""));
               if (!p.isClosed()) {
                 // The DOM text belongs to the page the browser shows; a PDF's text is checked by the reader itself (workerChecked).
-                if (!/\.pdf(\?|#|$)/i.test(v.url) && keyOf(v.url) === keyOf(p.url())) remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
+                if (!/\.pdf(\?|#|$)/i.test(v.url) && keyOf(v.url) === keyOf(p.url())) {
+                  remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
+                  await rememberTitle(p);
+                }
                 if (!v.wall) opened.add(hostOf(v.url));
               }
               return v;
@@ -176,7 +185,10 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
               const v = await exploreSite(ctxFor(kit, p, note, who), url, String(a.goal ?? ""), { want: a.want === "form" ? "form" : "page" });
               if (!p.isClosed()) {
-                if (!/\.pdf(\?|#|$)/i.test(p.url())) remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
+                if (!/\.pdf(\?|#|$)/i.test(p.url())) {
+                  remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
+                  await rememberTitle(p);
+                }
                 if (!v.wall) opened.add(hostOf(p.url()));
               }
               return v;
@@ -201,15 +213,20 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const bodyParts = String(a.body ?? "").split(/\s*(?:\/|\(|\)|,|\band\b|&)\s*/).map(normText).filter((x) => x.length > 3);
             const namesBody = (t: string) => (bodyName.length > 3 && t.includes(bodyName)) || bodyParts.some((x) => t.includes(x));
             const names = (s: Source) => {
-              const t = texts.get(keyOf(String(s.url)));
-              if (!t) return true;
+              // The page is the body's (or the publisher's) own: its title or its site address names it, not just its text.
+              const title = titles.get(keyOf(String(s.url))) ?? "";
+              const hostWords = normText(hostOf(String(s.url)).replace(/\./g, " "));
               const pub = normText(String(s.publisher ?? ""));
-              return namesBody(t) || (pub.length > 3 && t.includes(pub));
+              const parts = [...bodyParts, ...(pub.length > 3 ? [pub] : [])];
+              const acronym = (x: string) => x.split(" ").filter((w) => w.length > 2).map((w) => w[0]).join("");
+              return parts.some((x) => title.includes(x) || hostWords.split(" ").some((h) => h.length > 3 && (x.replace(/ /g, "").includes(h) || acronym(x) === h)));
             };
             const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
             const checkedText = sources.filter((x) => x.checked).map((x) => normText(x.quote)).join(" ");
-            const backed = (claim?: string) => !claim || (claim.match(/\d[\d,.]*/g) ?? []).every((n) => checkedText.includes(normText(n)));
+            // Numbers count with their unit ("12 months" does not back "12 days"); number words too ("six months").
+            const NUM = /(\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty)\s*(working days?|days?|weeks?|months?|years?|%|per ?cent|£|€|\$)?/gi;
+            const backed = (claim?: string) => !claim || [...claim.matchAll(NUM)].filter((m) => /\d/.test(m[1]) || m[2]).every((m) => checkedText.includes(normText(m[2] ? `${m[1]} ${m[2]}` : m[1])) || (!!m[2] && checkedText.includes(normText(`${m[1]}${m[2]}`))));
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),

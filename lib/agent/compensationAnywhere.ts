@@ -66,7 +66,7 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
 If the register is blocked (CAPTCHA, login), web_search for another official or specialist directory of lawyers who do this work in this place, then search_register with its url. Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
 ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, points: s.points })), null, 1).slice(0, 6000)}`,
       tools: TOOLS,
-      firstInput: `Patient: ${facts.firstName ?? "the patient"}, ${route.place.city || facts.address || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
+      firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
       stage: { check_funding: 1, read_scheme: 1, web_search: 1, search_register: 1, find_guidance: 1, check_firm: 2, shortlist: 3, fill_enquiry: 4 },
       who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" || name === "web_search" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),

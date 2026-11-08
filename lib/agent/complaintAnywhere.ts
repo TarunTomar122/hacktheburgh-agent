@@ -88,7 +88,7 @@ If read_rules says the patient may be outside the time limit, say so with update
 Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Never say anyone was at fault. Never submit anything. Never invent facts.
 ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, deadline: s.deadline, wall: s.wall, requires: s.requires })) }, null, 1).slice(0, 6000)}`,
       tools: TOOLS,
-      firstInput: `Patient: ${facts.firstName ?? "the patient"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
+      firstInput: `Patient: (name withheld from the planner).\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
       maxTurns: 14,
       stage: { read_rules: 1, find_guidance: 1, draft_complaint: 2, fill_form: 3, prepare_message: 3 },
       who: (name): CrewId => (name === "read_rules" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_form" ? "kit" : "elliot"),
@@ -134,7 +134,8 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             const gp = proof.guideline?.points[0];
             draft = await draftComplaintTo(facts, { body: body?.body ?? "the health provider", place: placeName }, gp && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: gp.text, question: proof.gaps[0].question } : undefined);
             kit.finding(`Complaint written to ${body?.body ?? "the provider"} (${draft.details.split(/\s+/).length} words)`, undefined, "elliot");
-            return `Drafted.\n\n${draft.details}`;
+            // The letter is written on this Mac and stays out of the cloud planner's conversation (privacy, Codex round 3).
+            return `Drafted (${draft.details.split(/\s+/).length} words). The text stays on the patient's device; you do not need it to continue.`;
           }
           case "fill_form": {
             if (!draft) return "Write the complaint first (draft_complaint).";
