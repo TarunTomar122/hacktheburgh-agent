@@ -130,7 +130,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "complaint",
     name: "Callum Fraser",
-    label: "NHS Complaint",
+    label: "Demo: NHS Complaint",
     blurb: "Wrong medicine dose, recovered in two days. Wants an explanation, an apology and changes.",
     facts: CALLUM,
     draft: CALLUM_DRAFT,
@@ -139,7 +139,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "compensation",
     name: "Ailsa Reid",
-    label: "Compensation",
+    label: "Demo: Compensation",
     blurb: "Missed wrist fracture that has not healed; missed exams and work. Wants compensation.",
     facts: AILSA_B,
     draft: SAMPLE_DRAFT,
