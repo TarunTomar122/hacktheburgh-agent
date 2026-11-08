@@ -1,0 +1,14 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[3s] [elliot] Plan the reporting steps
+[8s] [robin] Found Yellow Card scheme, where anyone can report a side effect.
+[9s] [iona] co-codamol: Very sick, Dizzy.
+[12s] [elliot] Move to the form step
+[62s] [kit] Filled Yellow Card scheme's report
+[64s] [elliot] Record that the form stalled
+[68s] [elliot] I found the UK Yellow Card reporting page and identified the medicine and side effects as co-codamol causing sickness and dizziness from early July 2026. I could not get the online form to move past the start page, so no
+
+MEDICINE medicine-2026-11-08T09-06-20-389Z-m45n 1.1 min
+  regulator: Yellow Card scheme https://www.gov.uk/report-problem-medicine-medical-device
+  medicine: {"name":"co-codamol","reactions":["Very sick","Dizzy"],"started":"early July 2026","outcome":"unknown","howBad":"Very sick and Dizzy."}
+  form: needs_input, 1 fields, unfilled: "Start report" did not move the form on and the page gives no reason | The form would not move on and shows no error; the likely cause is listed. Stopped so you can check. | https://yellowcard.mhra.gov.uk/

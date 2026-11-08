@@ -3,6 +3,7 @@ import type { Funding, Step3Event, Step3Result, Stats, TraceStep, Verdict } from
 import type { Draft } from "./draft";
 import type { LedgerEntry } from "./ledgerSummary";
 import type { Access } from "./access";
+import type { MedicineReport } from "./medicine";
 import type { Place, RouteMap } from "./routeTypes";
 
 /**
@@ -173,6 +174,9 @@ export type EscalationResult = ComplaintResult & {
   subject?: string;
 };
 
+/** What the medicine-report crew found and prepared: the place's regulator, the medicine and side effect, and its form, filled and stopped before Send. */
+export type MedicineResult = MedicineReport & { runId: string; runDir: string; plan: PlanStep[]; thoughts: Thought[]; says: Say[]; turns: number; asks: number; trace: TraceStep[]; stats: Stats };
+
 /** What discovery found (night plan, "Elliot anywhere"): the route map plus the crew's story. */
 export type DiscoveryResult = {
   runId: string;
@@ -191,6 +195,7 @@ export type PlannerEvent =
   | Step3Event
   | { type: "complaint_result"; result: ComplaintResult }
   | { type: "escalation_result"; result: EscalationResult }
+  | { type: "medicine_result"; result: MedicineResult }
   | { type: "model"; entry: LedgerEntry } // one model call (the ledger)
   | { type: "place"; place: Place } // where the patient's care happened, as read from their words
   | { type: "route"; route: RouteMap } // the route map so far (discovery)

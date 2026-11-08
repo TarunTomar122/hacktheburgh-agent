@@ -1,0 +1,14 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[3s] [elliot] Plan the report steps
+[9s] [robin] Found MHRA Yellow Card scheme, where anyone can report a side effect.
+[9s] [iona] co-codamol: Very sick, Dizzy.
+[11s] [elliot] Update after finding details
+[35s] [kit] Filled MHRA Yellow Card scheme's report
+[38s] [elliot] Mark the form step complete
+[40s] [elliot] I found the MHRA Yellow Card site for Scotland and filled in the report details for co-codamol and the side effects you described. Nothing was sent; the page stopped at a button marked Start report, so please check that 
+
+MEDICINE medicine-2026-11-08T09-04-09-402Z-mewc 0.7 min
+  regulator: MHRA Yellow Card scheme https://www.gov.uk/report-problem-medicine-medical-device
+  medicine: {"name":"co-codamol","reactions":["Very sick","Dizzy"],"started":"early July 2026","outcome":"unknown","howBad":"Very sick and Dizzy."}
+  form: needs_input, 1 fields, unfilled: The last button reads "Start report"; it is not clearly a send button, so it was not pressed. Please check what it does. | Filled the form and stopped before "Start report" ("Start report" may send this form: nothing on the page shows a later step). Nothing was sent. The last button reads "Start report"; it is not clearly | https://yellowcard.mhra.gov.uk/

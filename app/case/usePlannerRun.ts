@@ -9,7 +9,7 @@ import type { LedgerEntry } from "../../lib/agent/ledgerSummary";
 import type { HandoffInfo } from "../../lib/agent/handoffCopy";
 import type { Place, RouteMap } from "../../lib/agent/routeTypes";
 import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
-import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EscalationInput, type EscalationResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
+import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EscalationInput, type EscalationResult, type EvidenceResult, type MedicineResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 
 /**
  * Client state for one planner run (D47, D48): streams /api/agent/plan, keeps the crew's conversation, plan, states,
@@ -43,6 +43,7 @@ export type PlannerRunState = {
   access: Access[]; // how each page, search and job reached the web (fetch, API, cache or browser, and why)
   complaint?: ComplaintResult; // the complaint crew's result (D65)
   escalation?: EscalationResult; // step 2 anywhere: the escalation crew's result
+  medicine?: MedicineResult; // the medicine report crew's result (the optional extra step)
   startedAt?: number;
   endedAt?: number; // when the run finished (the server's clock for a run picked up again), for the duration
   reconnectedAt?: number; // set when this screen picked up a run that went on while it was away
@@ -68,7 +69,7 @@ const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], cr
  * event. Coming back, the hook attaches to the run: every event so far arrives at once, then the live tail, so the screen
  * lands on the crew's current stage. Leaving only detaches; a new run (or an explicit cancel) is the only thing that stops one.
  */
-export type RunScope = { scope: "case" | "complaint" | "discovery" | "escalation"; caseId: string };
+export type RunScope = { scope: "case" | "complaint" | "discovery" | "escalation" | "medicine"; caseId: string };
 type Stored = { runId: string; flow: string; startedAt: number; status: "running" | "done" | "error"; seen?: boolean; endedAt?: number; terminal?: PlannerEvent };
 const storeKey = (sc: RunScope) => `elliot-run-v1:${sc.caseId}:${sc.scope}`;
 const slotOf = (sc?: RunScope) => (sc ? `${sc.caseId}:${sc.scope}` : undefined);
@@ -95,7 +96,7 @@ function writeStored(sc: RunScope | undefined, patch: Partial<Stored> | null) {
     /* storage full or blocked: the run still shows for this visit */
   }
 }
-const TERMINAL = new Set(["planner_result", "complaint_result", "escalation_result", "discovery_result"]);
+const TERMINAL = new Set(["planner_result", "complaint_result", "escalation_result", "discovery_result", "medicine_result"]);
 const wait = (a: AbortSignal, ms: number) => new Promise<void>((r) => { const t = setTimeout(r, ms); a.addEventListener("abort", () => { clearTimeout(t); r(); }, { once: true }); });
 
 export function usePlannerRun(scope?: RunScope) {
@@ -178,6 +179,8 @@ export function usePlannerRun(scope?: RunScope) {
           return { ...cur, status: "done", complaint: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "escalation_result":
           return { ...cur, status: "done", escalation: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
+        case "medicine_result":
+          return { ...cur, status: "done", medicine: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "handoff":
           return { ...cur, handoffs: [...cur.handoffs.filter((h) => h.id !== e.id), { id: e.id, crew: e.crew, tab: e.tab, url: e.url, kind: e.kind, why: e.why }] };
         case "handoff_done":
@@ -301,7 +304,7 @@ export function usePlannerRun(scope?: RunScope) {
   useEffect(() => {
     if (!slot) return;
     const st = readStored(scopeRef.current);
-    if (st?.seen && st.status !== "running" && scopeRef.current?.scope !== "discovery" && scopeRef.current?.scope !== "case") return; // already shown and saved by this screen: it shows its own file (the research and case screens keep their crew and history, so they always reattach)
+    if (st?.seen && st.status !== "running" && scopeRef.current?.scope !== "discovery" && scopeRef.current?.scope !== "case" && scopeRef.current?.scope !== "medicine") return; // already shown and saved by this screen: it shows its own file (the research and case screens keep their crew and history, so they always reattach)
     const ctrl = new AbortController();
     abort.current = ctrl;
     void (async () => {
@@ -339,7 +342,7 @@ export function usePlannerRun(scope?: RunScope) {
   }, [s.status, s.demo]);
 
   const start = useCallback(
-    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" | "escalation_anywhere" = "compensation", route?: RouteMap, progress?: EscalationInput, focus?: string) => {
+    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" | "escalation_anywhere" | "medicine_anywhere" = "compensation", route?: RouteMap, progress?: EscalationInput, focus?: string) => {
       abort.current?.abort();
       stopReplay();
       const ctrl = new AbortController();

@@ -22,7 +22,7 @@ export const demoName = () => demoFacts().firstName ?? "Ailsa";
  * demo shows every step. The when and where come from the persona's facts in that step.
  */
 export const demoStory = () =>
-  "My wrist was X-rayed and I was told it was only a sprain, but the pain did not go away. In the end a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.";
+  "My wrist was X-rayed and I was told it was only a sprain. The painkillers I was given, co-codamol, made me very sick and dizzy, so I stopped them after three days. The pain did not go away. In the end a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.";
 
 /** The month and year of the persona's first event, in the shape the date field stores ("July 2026"). */
 function demoDate(): string {

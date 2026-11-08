@@ -318,11 +318,51 @@ async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string
     }
     const v = byKey.get(choice);
     if (!v) return `error: no saved value "${choice}"`;
+    // A search-and-pick box (combobox, autosuggest, react-select): type like a person, then click the suggestion that matches.
+    if (await isAutocomplete(loc)) return await pickSuggestion(page, loc, v.value);
     await loc.fill(v.value, { timeout: 5000 });
     return "ok";
   } catch (e) {
     return `error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
   }
+}
+
+/** Is this text box a search-and-pick box? Generic signs only: ARIA combobox or autocomplete, a datalist, or a widget's input class. */
+export async function isAutocomplete(loc: ReturnType<Page["locator"]>): Promise<boolean> {
+  return loc
+    .evaluate((e) => {
+      // No helper functions in here: code sent to the page must not depend on names the bundler adds.
+      const cls = String((e as HTMLElement).className ?? "").toLowerCase();
+      const role = (e.getAttribute("role") ?? "").toLowerCase();
+      const ac = (e.getAttribute("aria-autocomplete") ?? "").toLowerCase();
+      return role === "combobox" || ac === "list" || ac === "both" || !!e.getAttribute("list") || /autosuggest|autocomplete|select__input|typeahead|combobox/.test(cls);
+    })
+    .catch(() => false);
+}
+
+/**
+ * Type into a search-and-pick box and click the suggestion that best matches what we mean (exact, then starts with, then
+ * contains, ignoring case). Suggestions are found by generic signs: ARIA options, listbox items, or widget option classes.
+ * If none shows, the typed text is left as it is (some boxes accept free text).
+ */
+export async function pickSuggestion(page: Page, loc: ReturnType<Page["locator"]>, value: string): Promise<string> {
+  await loc.click({ timeout: 3000 }).catch(() => {});
+  await loc.fill("", { timeout: 3000 }).catch(() => {});
+  await loc.pressSequentially(value, { delay: 60, timeout: 15000 });
+  const options = page.locator('[role="option"], [role="listbox"] li, [class*="__option"], [class*="-option"], [class*="suggestion"] li, li[class*="suggestion"], datalist option');
+  await options.first().waitFor({ state: "visible", timeout: 6000 }).catch(() => {});
+  const texts = (await options.evaluateAll((els) => els.map((e) => ((e as HTMLElement).innerText || e.textContent || "").replace(/\s+/g, " ").trim()))).map((t, i) => ({ t, i }));
+  const want = value.toLowerCase().trim();
+  const best = texts.find((x) => x.t.toLowerCase() === want) ?? texts.find((x) => x.t.toLowerCase().startsWith(want)) ?? texts.find((x) => x.t.toLowerCase().includes(want)) ?? texts.find((x) => want.includes(x.t.toLowerCase()) && x.t.length > 2);
+  if (!best) return texts.length ? `error: none of the ${texts.length} suggestions matched "${value}"` : "ok";
+  const opt = options.nth(best.i);
+  await pointAt(page, opt).catch(() => {});
+  await opt.click({ timeout: 4000 }).catch(async () => {
+    await loc.press("ArrowDown").catch(() => {});
+    await loc.press("Enter").catch(() => {});
+  });
+  await page.waitForTimeout(400);
+  return "ok";
 }
 
 async function tickRadio(page: Page, el: El): Promise<string> { return tickCheckbox(page, el); }

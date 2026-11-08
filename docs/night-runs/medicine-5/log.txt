@@ -1,0 +1,14 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[3s] [elliot] Set up report steps
+[7s] [robin] Found MHRA Yellow Card scheme, where anyone can report a side effect.
+[9s] [iona] co-codamol: Very sick, Dizzy.
+[11s] [elliot] Move to form filling
+[37s] [kit] Filled MHRA Yellow Card scheme's report
+[40s] [elliot] Record the form access problem
+[43s] [elliot] I found the MHRA Yellow Card reporting route for Scotland and identified the medicine and side effects from your story: co-codamol, with feeling very sick and dizzy, starting in early July 2026. I could not safely open t
+
+MEDICINE medicine-2026-11-08T09-05-21-340Z-f2r0 0.7 min
+  regulator: MHRA Yellow Card scheme https://www.gov.uk/report-problem-medicine-medical-device
+  medicine: {"name":"co-codamol","reactions":["Very sick","Dizzy"],"started":"early July 2026","outcome":"unknown","howBad":"Very sick and Dizzy."}
+  form: failed, 1 fields, unfilled: none | Stopped on an error: refused to click "Start report": "Start report" runs a script (script listener (click)) and may send this form | https://yellowcard.mhra.gov.uk/

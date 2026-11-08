@@ -1,5 +1,6 @@
 "use client";
 
+import { involvesMedicine, MEDICINE_STEP } from "../../lib/agent/medicine";
 import { useEffect, useRef, useState } from "react";
 import { TRACKS } from "../../lib/agent/track";
 import type { Profile } from "../../lib/profile";
@@ -116,6 +117,14 @@ export default function TrackBar({ profile, stage, onSelect }: { profile: Profil
                 </button>
               );
             })}
+          {/* The optional extra step: only when the story involves a medicine, in whichever path was chosen. */}
+          {t && hasRoute && involvesMedicine(profile.facts) && (
+            <button onClick={() => onSelect(MEDICINE_STEP)} aria-current={stage === MEDICINE_STEP ? "step" : undefined} title="Optional: report the side effect to the medicines regulator" className={tab(stage === MEDICINE_STEP, false)}>
+              <span className={box(stage === MEDICINE_STEP, false)}>+</span>
+              <span className="font-medium">Report a medicine problem</span>
+              <span className="text-[11px] font-normal text-muted">optional</span>
+            </button>
+          )}
         </nav>
 
         {t && (

@@ -2,7 +2,7 @@ import type { Page } from "playwright";
 import { pointAt } from "../../agentCursor";
 import { dismissCookies } from "../../browser";
 import { decide, type DAnswer, type DQuestion } from "../decisions";
-import { ANY_PLACEHOLDER, labelDuplicates, matchOption, redactObservation, runDecisionAgent } from "../decisionAgent";
+import { ANY_PLACEHOLDER, isAutocomplete, labelDuplicates, matchOption, pickSuggestion, redactObservation, runDecisionAgent } from "../decisionAgent";
 import { formatObservation, observe, PLACEHOLDER, type El, type Observation } from "../observe";
 import { gateWall } from "../handoff";
 import { tookHandoff } from "../handoffQuiet";
@@ -298,6 +298,30 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
   const visits = new Map<string, number>();
   let pageNo = 0;
   let lastClicked = "";
+  const slowRetried = new Set<string>(); // pages given one more look because they were still loading
+  // The one exception to "unsure means final": a Start, Next or Continue button while nothing personal has been typed into the form
+  // yet, on this page or any before it (only choices like which medicine, who is reporting). Pressing it cannot send the patient's
+  // details, because none are in the form. From the first personal value on, every forward button is judged by the strict rule.
+  const PERSONAL_KEY = /name|email|phone|address|postcode|initial|birth|dob|age|what_happened|narrative|story|details|nhs|description/i;
+  const startsWithNothingPersonal = (label: string | undefined, o: Observation) => {
+    // A start button, or a next / continue button, but never one whose label sends.
+    if (!label || FINAL_RE.test(label) || !(/^\s*(start|begin|get started)\b/i.test(label) || NEXT_RE.test(label))) return false;
+    // Personal = a field holds one of the patient's own values (their name, email, story...), not merely a word from it. Checked on
+    // this page AND every page filled before it: once anything personal is in the form, a later "Next" could send it, so no exception.
+    const personal = values.filter((v) => PERSONAL_KEY.test(v.key) && v.value.trim().length >= 3).map((v) => v.value.trim().toLowerCase());
+    const holds = (text: string) => !!text.trim() && personal.some((p) => text.toLowerCase().includes(p));
+    if (pages.some((pg) => pg.filled.some((f) => holds(f.value)))) return false;
+    return !o.elements.some((e) => (e.kind === "text" || e.kind === "textarea") && holds(e.value));
+  };
+  /** The live final/not-final verdict, with the exception above applied in one place for every forward click. */
+  const forwardVerdict = async (p: Page, f: { label: string; kind: El["kind"] }) => {
+    const v = await liveForwardVerdict(p, f);
+    if (!v.ok && v.fwd && startsWithNothingPersonal(v.fwd.label, await observe(p))) {
+      await log("check", `"${short(v.fwd.label, 40)}" only moves on, and nothing personal is in the form yet, so it is safe to press`);
+      return { ok: true as const, fwd: v.fwd, why: "it only moves on, and nothing personal is in the form yet" };
+    }
+    return v;
+  };
   let stuckWhy = "";
 
   const log = (kind: Parameters<WorkerCtx["note"]["log"]>[0], text: string, extra?: Parameters<WorkerCtx["note"]["log"]>[2]) => note.log(kind, text, extra).catch(() => {});
@@ -391,7 +415,17 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
 
       if (view.kind !== "form" || !obs.elements.some((e) => fillable(e) && !isConsent(e, options))) {
         // Landing or information page: go through "Start now", never through a final button.
-        if (!view.forward) return done({ status: "failed", wall: { kind: "not_found", detail: "No form and no way into one on this page", url: page.url() }, summary: "This page has no form and no button or link that leads into one." });
+        if (!view.forward) {
+          // A page built by scripts can still be drawing its questions: look once more after a short wait before giving up.
+          if (!slowRetried.has(page.url())) {
+            slowRetried.add(page.url());
+            await log("recover", "The page has no questions yet; waiting for it to finish loading");
+            await page.waitForTimeout(3000);
+            pageNo--;
+            continue;
+          }
+          return done({ status: "failed", wall: { kind: "not_found", detail: "No form and no way into one on this page", url: page.url() }, summary: "This page has no form and no button or link that leads into one." });
+        }
         if (view.final && !view.forwardIsPlainLink) {
           if (obs.elements.some(fillable)) await handleConsents(obs, options);
           pages.push(await readPage(page));
@@ -406,14 +440,32 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
 
       // A page of the form: fill it.
       note(`Filling ${where.toLowerCase()}`);
+      const prevEmpty = new Set(obs.elements.filter((e) => fillable(e)).map((e) => `${e.name}|${e.label}`));
       const before = new Set(unfilled);
-      const pending = await fillPage(obs, options);
+      let pending = await fillPage(obs, options);
       obs = await observe(page);
+      // Answering a question can reveal the next one on the same page ("What are you reporting?" appears once "Who are you?"
+      // is set). Fill again while new empty questions show up, at most twice more.
+      for (let pass = 0; pass < 2; pass++) {
+        const seenIds = new Set(prevEmpty);
+        const fresh = obs.elements.filter((e) => fillable(e) && isEmpty(e) && e.kind !== "checkbox" && !isConsent(e, options) && !seenIds.has(`${e.name}|${e.label}`));
+        if (!fresh.length) break;
+        await log("read", `${fresh.length} new question${fresh.length === 1 ? "" : "s"} appeared after answering: ${fresh.slice(0, 3).map((e) => `"${short(cleanLabel(e.label), 40)}"`).join(", ")}`);
+        fresh.forEach((e) => prevEmpty.add(`${e.name}|${e.label}`));
+        pending = await fillPage(obs, options);
+        obs = await observe(page);
+      }
       const view2 = await refreshForward(page, obs, view, opts.goal, [...values, ...variants], options, scan);
       pages.push(await readPage(page));
       const missingHere = unfilled.filter((u) => !before.has(u));
 
+      if (view2.final && view2.forward && startsWithNothingPersonal(view2.forward.label, obs)) {
+        await log("check", `"${short(view2.forward.label, 40)}" only moves on, and nothing personal is in the form yet, so it is safe to press`);
+        view2.final = false;
+      }
       if (view2.final || !view2.forward) {
+        // A box only the patient may tick (a privacy policy, terms) often keeps the way on hidden or disabled: say that, not "no button".
+        if (!view2.forward && pending.length) return done({ status: "needs_input", unfilled: [...unfilled, ...pending.map((p) => `Your agreement: ${p}`)], summary: `Filled this page. It needs your agreement ("${short(pending[0], 100)}") before the form goes on. That box is yours to tick.` });
         if (!view2.forward && !(await finalControls(page)).length) return done({ status: missingHere.length || unfilled.length ? "needs_input" : "failed", wall: { kind: "dead_end", detail: "No button moves this form on", url: page.url() }, summary: "Filled this page but found no button that moves the form on." });
         return stopAtFinal(view2, view2.forward?.label, unfilled.length ? "Filled what we could" : "Filled the form", scan);
       }
@@ -426,7 +478,7 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       }
 
       // The verdict again, on the live page, immediately before the click: never one from before the page was filled.
-      const live = await liveForwardVerdict(page, view2.forward);
+      const live = await forwardVerdict(page, view2.forward);
       if (!live.ok) {
         await log("check", `Not pressing "${short(view2.forward.label, 40)}": ${live.final}`);
         return stopAtFinal({ ...view2, final: true, finalWhy: live.final }, live.fwd?.label ?? view2.forward.label, unfilled.length ? "Filled what we could" : "Filled the form", scan);
@@ -743,7 +795,7 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       }
       if (unfilled.length) { stuckWhy = "The form rejected answers we cannot fix without you; stopped before moving on."; return "stuck"; }
       // The fixes may have changed a conditional answer: the verdict again, on the live page, before pressing once more.
-      const live = await liveForwardVerdict(page, forward);
+      const live = await forwardVerdict(page, forward);
       if (!live.ok) { stuckWhy = `After fixing what the form rejected, "${short(forward.label, 40)}" may now send the form (${live.final}); stopped before pressing it.`; return "stuck"; }
       await clickForward(page, live.fwd, "retry");
     }
@@ -782,7 +834,7 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
     // A start page that already holds answers is a filled page too.
     const answers = await pageHasAnswers(p);
     if (why !== "start" || answers) {
-      const live = await liveForwardVerdict(p, f);
+      const live = await forwardVerdict(p, f);
       if (!live.ok) throw new Error(`refused to click "${short(f.label, 40)}": ${live.final}`);
       f = live.fwd;
     }
@@ -803,10 +855,13 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       const press = async () => {
         await loc.click({ timeout: 6000 }).catch(async () => {
           await loc.evaluate((e) => e.scrollIntoView({ block: "center" })).catch(() => {});
-          await loc.click({ timeout: 3000 }).catch(() => loc.evaluate((e) => (e as HTMLElement).click(), undefined, { timeout: 3000 }));
+          // The button may already have done its job and gone (the page moved on): that is not an error.
+          await loc.click({ timeout: 3000 }).catch(() => loc.evaluate((e) => (e as HTMLElement).click(), undefined, { timeout: 3000 }).catch(() => {}));
         });
       };
-      if (answers && f.kind !== "submit") {
+      // Writes are blocked only when there is something to protect: nothing personal in the form yet means a wizard's own
+      // "start a report" request (creating a draft) may go through.
+      if (answers && f.kind !== "submit" && !startsWithNothingPersonal(f.label, await observe(p))) {
         const { blocked } = await withoutSends(p, press);
         if (blocked.length) { await log("check", `Blocked ${blocked.length} write request(s) made by "${short(f.label, 30)}": ${blocked.slice(0, 2).join("; ")}`); throw new Error(`"${short(f.label, 40)}" tried to send data; blocked`); }
       } else await press();
@@ -878,6 +933,29 @@ function candidates(obs: Observation): El[] {
   return c.sort((a, b) => rank(a) - rank(b)).slice(0, 40);
 }
 
+/**
+ * A start page that asks you to pick something first (a search-and-pick box: "which medicine?", "which product?") is part of
+ * the form: pressing Start with it empty only brings the same page back. Generic signs: ARIA combobox or autocomplete, or a
+ * widget's input class, on an empty text box that is not the site's own search.
+ */
+async function hasPickBox(page: Page, obs: Observation): Promise<boolean> {
+  const ids = obs.elements.filter((e) => e.kind === "text" && isEmpty(e) && !/search/i.test(`${e.name} ${e.label}`)).map((e) => e.id);
+  for (const id of ids) {
+    const pick = await page
+      .locator(`[data-aid="${id}"]`)
+      .evaluate((e) => {
+        if (e.closest("header, nav, [role=search]") || (e as HTMLInputElement).type === "search") return false;
+        const cls = String((e as HTMLElement).className ?? "").toLowerCase();
+        const role = (e.getAttribute("role") ?? "").toLowerCase();
+        const ac = (e.getAttribute("aria-autocomplete") ?? "").toLowerCase();
+        return role === "combobox" || ac === "list" || ac === "both" || !!e.getAttribute("list") || /autosuggest|autocomplete|select__input|typeahead|combobox/.test(cls);
+      })
+      .catch(() => false);
+    if (pick) return true;
+  }
+  return false;
+}
+
 async function classify(page: Page, obs: Observation, goal: string, values: Value[], options: Set<string>, scan: Scan): Promise<View> {
   const why: string[] = [];
   const stepper = stepperOf(obs, scan);
@@ -937,6 +1015,7 @@ async function classify(page: Page, obs: Observation, goal: string, values: Valu
   if (codeReview) kind = "review";
   else if (kind === "review" && empties > 1) { kind = "form"; why.push("model said review, but there are empty questions"); }
   else if ((kind === "landing" || kind === "other") && empties >= 2) { kind = "form"; why.push("empty questions on the page"); }
+  else if ((kind === "landing" || kind === "other") && empties >= 1 && (await hasPickBox(page, obs))) { kind = "form"; why.push("a search-and-pick box to fill before starting (e.g. which product)"); }
   else if (kind === "form" && !anyFields) kind = "landing";
   if (kind === "sent" && anyFields) kind = "form";
 
@@ -1154,6 +1233,8 @@ async function finalControls(page: Page): Promise<string[]> {
 async function typeInto(page: Page, el: El, text: string): Promise<boolean> {
   const loc = page.locator(`[data-aid="${el.id}"]`);
   await pointAt(page, loc);
+  // A search-and-pick box: type like a person and click the matching suggestion (decisionAgent.ts), so the site takes the choice.
+  if (await isAutocomplete(loc)) return (await pickSuggestion(page, loc, text)) === "ok";
   try {
     await loc.fill(text, { timeout: 5000 });
     await loc.dispatchEvent("change").catch(() => {});

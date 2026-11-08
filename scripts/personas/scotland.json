@@ -11,11 +11,15 @@
  "country": null,
  "region": null,
  "incidentLocation": "Royal Infirmary of Edinburgh, Accident & Emergency department",
- "incidentSummary": "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. The pain did not go away. Weeks later a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.",
+ "incidentSummary": "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. At A&E I was given co-codamol for the pain. It made me very sick and dizzy, so I stopped taking it after three days. The pain did not go away. Weeks later a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.",
  "events": [
   {
    "date": "early July 2026",
    "what": "Fell on outstretched hand and attended A&E at the Royal Infirmary. X-rayed, told it was a sprain, sent home."
+  },
+  {
+   "date": "early July 2026",
+   "what": "Given co-codamol for the pain at A&E. It made me very sick and dizzy, so I stopped it after three days."
   },
   {
    "date": "mid August 2026",

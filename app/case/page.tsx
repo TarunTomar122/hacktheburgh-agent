@@ -11,6 +11,8 @@ import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
 import Header from "./Header";
 import CaseRun from "./CaseRun";
+import MedicineRun from "./MedicineRun";
+import { involvesMedicine, MEDICINE_STEP } from "../../lib/agent/medicine";
 import ComplaintRun from "./ComplaintRun";
 import DiscoveryRun from "./DiscoveryRun";
 import EscalationRun from "./EscalationRun";
@@ -61,7 +63,8 @@ export default function CasePage() {
   const hasRoute = !!profile.route;
   const trackSteps = chosen ? TRACKS[chosen].steps : [];
   const natural: Stage = !hasRoute ? "research" : !chosen ? "path" : trackSteps[0];
-  const open = (s: Stage) => (s === "research" ? true : s === "path" ? hasRoute : hasRoute && trackSteps.includes(s));
+  // The optional medicine report (step 6) opens in any path when the story involves a medicine.
+  const open = (s: Stage) => (s === "research" ? true : s === "path" ? hasRoute : hasRoute && (trackSteps.includes(s) || (s === MEDICINE_STEP && !!chosen && involvesMedicine(f))));
   // The address can ask for any stage that is open; anything else falls back to where the case has got to.
   const stage: Stage = param !== null && open(param) ? param : natural;
   const move = (s: Stage) => {
@@ -126,6 +129,11 @@ export default function CasePage() {
                 // With a route map, step 2 takes the complaint to whichever independent body discovery found (night plan).
                 <div className="px-8 py-8">
                   <EscalationRun profile={profile} route={profile.route.map} goToStepOne={() => go(1)} onContinue={trackSteps.includes(3) ? () => go(3) : undefined} />
+                </div>
+              ) : stage === MEDICINE_STEP ? (
+                // The optional extra step: report the side effect to the place's medicines regulator, found live.
+                <div className="px-8 py-8">
+                  <MedicineRun profile={profile} route={profile.route && "map" in profile.route ? profile.route.map : undefined} />
                 </div>
               ) : stage === 3 ? (
                 // Step 3 is Elliot's crew (D49): it uses the whole width while it runs, and a case file when done.

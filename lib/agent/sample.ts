@@ -98,9 +98,11 @@ const CALLUM_DRAFT: Draft = {
 const AILSA_B: CaseFacts = {
   ...SAMPLE_FACTS,
   incidentSummary:
-    "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. The pain did not go away. Weeks later a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.",
+    "I fell on my outstretched hand. A&E X-rayed my wrist and told me it was a sprain. At A&E I was given co-codamol for the pain. It made me very sick and dizzy, so I stopped taking it after three days. The pain did not go away. Weeks later a scaphoid fracture was found. It has not healed, I now need surgery, and I have missed my second-year exams and shifts at my part-time job.",
   events: [
-    ...SAMPLE_FACTS.events,
+    SAMPLE_FACTS.events[0],
+    { date: "early July 2026", what: "Given co-codamol for the pain at A&E. It made me very sick and dizzy, so I stopped it after three days." },
+    ...SAMPLE_FACTS.events.slice(1),
     { date: "October 2026", what: "Missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist." },
   ],
   desiredOutcome: outcomeSentence([EXPLANATION, SUPPORT, COMPENSATION_CHOICE], ""),

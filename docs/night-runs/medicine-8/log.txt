@@ -1,0 +1,14 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[4s] [elliot] Set out the reporting steps
+[9s] [robin] Found MHRA Yellow Card scheme, where anyone can report a side effect.
+[10s] [iona] co-codamol: Very sick, Dizzy.
+[13s] [elliot] Update after finding details
+[43s] [kit] Filled as far as I could. It still needs: .
+[48s] [elliot] Wrap up the report task
+[51s] [elliot] I found the Yellow Card report page and filled the MHRA report for co-codamol causing sickness and dizziness in early July 2026, stopping after three days. It has been left at the final review step for you to check and s
+
+MEDICINE medicine-2026-11-08T09-10-55-920Z-xbuf 0.8 min
+  regulator: MHRA Yellow Card scheme https://www.gov.uk/report-problem-medicine-medical-device
+  medicine: {"name":"co-codamol","reactions":["Very sick","Dizzy"],"started":"early July 2026","outcome":"unknown","howBad":"Very sick and Dizzy."}
+  form: needs_input, 3 fields, unfilled: none | After fixing what the form rejected, "Next step" may now send the form ("Next step" may send this form: on the page as filled, nothing of this form shows a later step); stopped before pressing it. | https://yellowcard.mhra.gov.uk/report-guide?reportId=e5f12f4f-1712-4e3d-a849-69baa7e4150f&category=medicine&subCategory=&product=CO-CODAMOL
