@@ -341,6 +341,20 @@ export async function startSync(sub: string) {
   }
 }
 
+/**
+ * "Save profile" (2026-11-08): stamps the case as changed now and sends it to the account at once, without waiting for the usual
+ * short delay. Returns how it went: "saved", "error" (kept in this browser, retried later), or "off" (no account saving: a demo case,
+ * or accounts or the database are not set up).
+ */
+export async function saveNow(): Promise<SyncStatus> {
+  const p = read();
+  if (!p) return status;
+  write(p);
+  if (!syncing()) return "off";
+  await flush();
+  return status;
+}
+
 /** The state of saving to the account, for a small label. "off" when accounts or the database are not set up. */
 export function useSyncStatus(): SyncStatus {
   return useSyncExternalStore(

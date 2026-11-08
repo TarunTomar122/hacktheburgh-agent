@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolveRelativeDates } from "./timeLimit";
 import { EFFORT, MODELS, structured } from "./llm";
 import { CaseFacts, emptyFacts, mergeFacts, missingForOnboarding, missingRequired } from "./facts";
 import { inputFor, joinReply, nextTarget, normaliseFacts, parseName, patchFromAnswer, questionFor, validatePatch, type InputSpec, type Target } from "./inputs";
@@ -100,7 +101,8 @@ export async function interviewTurn(messages: ChatMessage[], known: CaseFacts = 
   }
 
   const emailDeclined = asked === "emailRisk" && merged.emailRiskAccepted === false;
-  const facts = normaliseFacts(merged);
+  // "Yesterday" only means something on the day it is said: turn relative dates into calendar dates now, in code (timeLimit.ts).
+  const facts = normaliseFacts({ ...merged, events: resolveRelativeDates(merged.events, new Date()) });
   const target = nextTarget(facts, scope);
   const reply = joinReply(acknowledgement, questionFor(target, facts, { emailDeclined }));
 

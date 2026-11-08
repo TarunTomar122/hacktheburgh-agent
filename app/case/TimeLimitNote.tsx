@@ -24,6 +24,7 @@ export default function TimeLimitNote({ profile, kind, className }: { profile: P
     <Callout tone={TONE[r.status]} title={TITLE[kind][r.status]} className={className}>
       <p>
         {rule} {r.explanation}
+        {r.status === "unclear" && !r.from && " To count it, give the event a month and year in your profile's timeline, then press Save profile."}
       </p>
       <p className="mt-2 text-xs">
         Source:{" "}

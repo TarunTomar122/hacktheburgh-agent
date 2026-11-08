@@ -8,6 +8,15 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Relative dates become calendar dates; "Save profile" button
+
+Om's case said "I had pineapple pizza yesterday": the interview saved the date as the word "yesterday" (it copies the user's wording and is not told today's date), so every time-limit note said "could not be counted".
+- `lib/agent/timeLimit.ts` `resolveRelativeDate(s)`: in code, "today", "yesterday", "last night", "the day before yesterday", "N days/weeks ago" become `YYYY-MM-DD`; "last week" becomes the Monday of the week before (its earliest day); "last month", "N months ago", "this month" become "Month YYYY". Vaguer wording ("a few days ago") and real dates are left alone.
+- `lib/agent/interview.ts`: applied to the timeline on every interview turn, with the server's clock (the day it is said).
+- **Save profile** (top of the Profile page): turns relative dates already saved into calendar dates, counted from the case's `createdAt` (the day of the conversation); works out the path's fit again (`/api/agent/track`); saves to the account at once (`saveNow()` in `lib/profile.ts`, no debounce); says what happened (saved / saved in this browser or tab / could not reach the account). Time limits are counted from the facts whenever a page shows them, so they follow the new dates. The complaint draft is NOT rewritten (it may hold the user's edits).
+- Profile page: the time-limit note for the chosen path under the timeline; the intro no longer says "on this device only". Time-limit notes that cannot count now say how to fix it.
+- `scripts/test-time-limit.ts`: 15 more checks (relative dates), all pass. `tsc` (no errors now) and eslint clean. Not yet seen in a browser.
+
 ### 2026-11-08 - Om + Claude - DONE - Production build no longer type-checks `scripts/`
 
 `npm run build` failed on Om's Mac: Next's type check covered every `.ts` file, including a local, git-ignored `scripts/test-restart-logout.ts` whose `./mock-oidc` import does not exist. `tsconfig.json` now excludes `scripts`. The scripts still run with `tsx`; nothing in `app/` or `lib/` imports them. `tsc --noEmit` now reports no errors. `npm run build` to be re-run on the Mac.

@@ -143,3 +143,55 @@ export function countLimit(kind: LimitKind, eventDates: string[], today: Date = 
       : `The usual 3-year limit ended on ${fmt(deadline)}. It runs from later if you only found out about the harm later; otherwise courts allow late claims only rarely. A solicitor can tell you which applies.`;
   return { ...base, status: "outside", explanation: `${counted} ${late}` };
 }
+
+// ---- Relative dates ("yesterday", "3 weeks ago") turned into calendar dates, in code (2026-11-08). ----
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WORD_NUM: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, "a couple of": 2, couple: 2 };
+const NUM = "(\\d{1,3}|an?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a couple of)";
+
+/**
+ * A relative date as a calendar date, counted from `reference` (the moment the person said it). Day-level phrases become
+ * "YYYY-MM-DD"; month-level ones become "Month YYYY" (the same shapes the timeline uses). "Last week" becomes the Monday of the
+ * week before, its earliest day, so a deadline is never shown later than it is. Vaguer wording ("a few days ago", "a while back")
+ * and anything that already names a date is left as it is (null).
+ */
+export function resolveRelativeDate(input: string, reference: Date): string | null {
+  const s = input.trim().toLowerCase();
+  if (!s || parseEventDate(s)) return null;
+  const y = reference.getFullYear(), m = reference.getMonth(), d = reference.getDate(); // the server's own day (it runs on the presenter's machine)
+  const day = (back: number) => {
+    const t = new Date(y, m, d - back);
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  };
+  const month = (back: number) => {
+    const t = new Date(y, m - back, 1);
+    return `${MONTH_NAMES[t.getMonth()]} ${t.getFullYear()}`;
+  };
+  const n = (w: string) => (/^\d+$/.test(w) ? Number(w) : WORD_NUM[w]);
+  if (/\bday before yesterday\b/.test(s)) return day(2);
+  if (/\b(yesterday|last night)\b/.test(s)) return day(1);
+  if (/^(today|this (morning|afternoon|evening)|tonight|earlier today)\b/.test(s)) return day(0);
+  let r = s.match(new RegExp(`\\b${NUM}\\s+days?\\s+ago\\b`));
+  if (r) return day(n(r[1]));
+  r = s.match(new RegExp(`\\b${NUM}\\s+weeks?\\s+ago\\b`));
+  if (r) return day(7 * n(r[1]));
+  if (/\blast week\b/.test(s)) return day(((reference.getDay() + 6) % 7) + 7); // Monday of the week before
+  r = s.match(new RegExp(`\\b${NUM}\\s+months?\\s+ago\\b`));
+  if (r) return month(n(r[1]));
+  if (/\blast month\b/.test(s)) return month(1);
+  if (/^this month\b/.test(s)) return month(0);
+  return null;
+}
+
+/** The timeline with every relative date it can read turned into a calendar date. Returns the same array when nothing changed. */
+export function resolveRelativeDates<E extends { date: string }>(events: E[], reference: Date): E[] {
+  let changed = false;
+  const out = events.map((e) => {
+    const r = resolveRelativeDate(e.date, reference);
+    if (!r) return e;
+    changed = true;
+    return { ...e, date: r };
+  });
+  return changed ? out : events;
+}
