@@ -20,7 +20,7 @@ export default function StartLink({ className, children = "Start consultation", 
   );
 }
 
-/** Only for someone with a saved case: begin again with a new one (the saved case on this device is replaced, after asking). */
+/** Only for someone with a saved case: begin again with a new one (the saved case is replaced straight away, no popup). */
 export function NewCaseLink({ className }: { className: string }) {
   const has = !!useProfile();
   const router = useRouter();
@@ -29,7 +29,6 @@ export function NewCaseLink({ className }: { className: string }) {
     <button
       className={className}
       onClick={() => {
-        if (!window.confirm("Start a new case? The case saved on this device will be replaced.")) return;
         clearProfile();
         router.push("/start");
       }}
