@@ -90,14 +90,16 @@ export default function CasePage() {
           <>
             <main className="@container min-w-0">
               {stage === "research" ? (
-                !profile.route ? (
-                  // Night plan ("Elliot anywhere"): first the crew works out how the system works where the care happened.
+                !profile.route || "map" in profile.route ? (
+                  // Night plan ("Elliot anywhere"): first the crew works out how the system works where the care happened. It stays here afterwards: the crew's history and the result, with more research on any part.
                   <div className="px-8 py-8">
                     <DiscoveryRun
                       profile={profile}
+                      saved={profile.route && "map" in profile.route ? profile.route.map : undefined}
                       onDone={(map, sample) => {
+                        const first = !profile.route;
                         setRoute({ map, sample });
-                        go("path", true);
+                        if (first) go("path", true);
                       }}
                       onSkip={() => {
                         setRoute({ skipped: true });
@@ -107,7 +109,7 @@ export default function CasePage() {
                   </div>
                 ) : (
                   <div className="mx-auto max-w-6xl space-y-6 px-8 py-8">
-                    {"map" in profile.route ? <RouteMapCard route={profile.route.map} /> : <Callout title="You skipped the research">The next steps use general information instead of what the crew would have found for your place.</Callout>}
+                    <Callout title="You skipped the research">The next steps use general information instead of what the crew would have found for your place.</Callout>
                   </div>
                 )
               ) : stage === "path" ? (

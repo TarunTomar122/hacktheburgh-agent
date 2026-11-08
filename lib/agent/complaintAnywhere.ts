@@ -9,7 +9,7 @@ import { describeInvestigation, describeIssue, investigate, supportFor } from ".
 import type { Emit } from "./planner";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool } from "./crewRun";
 import type { ComplaintResult, CrewId, EvidenceResult, Investigation } from "./plannerTypes";
-import type { RouteMap, RouteStep } from "./routeTypes";
+import { cleanRoute, type RouteMap, type RouteStep } from "./routeTypes";
 import { exploreSite, readPage } from "./workers/explore";
 import { fillForm } from "./workers/fillForm";
 import type { Value, WorkerCtx } from "./workers/types";
@@ -43,7 +43,8 @@ const Limit = z.object({
   include: z.array(z.string()).describe("What the page asks complainants to include, if it says, at most 4"),
 });
 
-export async function runComplaintAnywhere(facts: CaseFacts, route: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<ComplaintResult> {
+export async function runComplaintAnywhere(facts: CaseFacts, routeIn: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<ComplaintResult> {
+  const route = cleanRoute(routeIn); // a sentence saved as a name becomes a short name
   const step = (k: RouteStep["kind"]) => route.steps.find((s) => s.kind === k);
   const body = step("complaint");
   const placeName = [route.place.region, route.place.country].filter(Boolean).join(", ");

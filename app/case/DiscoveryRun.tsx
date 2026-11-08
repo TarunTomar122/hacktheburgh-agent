@@ -57,7 +57,7 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
     const t = PERSONA_PICKER_ENABLED ? readResearchTime(profile.createdAt) : null;
     return (
       <>
-        <RouteMapCard route={saved} />
+        <RouteMapCard route={saved} onRerun={more} />
         {t && (
           <p data-testid="research-time" className="mx-auto mt-6 max-w-6xl text-[12px] text-muted">
             Test build: researched in {minutes(t.ms)}

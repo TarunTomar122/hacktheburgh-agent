@@ -9,7 +9,7 @@ import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 import { findGuidance } from "./guidance";
 import { describeInvestigation, describeIssue, investigate } from "./investigate";
 import type { EvidenceResult, PlannerResult } from "./plannerTypes";
-import type { RouteMap } from "./routeTypes";
+import { cleanRoute, type RouteMap } from "./routeTypes";
 import { readPage } from "./workers/explore";
 import { runQuestionnaire } from "./workers/questionnaire";
 import { searchDirectory } from "./workers/searchDirectory";
@@ -40,7 +40,8 @@ const TOOLS = [
   FINISH_TOOL,
 ];
 
-export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<PlannerResult> {
+export async function runCompensationAnywhere(facts: CaseFacts, routeIn: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<PlannerResult> {
+  const route = cleanRoute(routeIn); // a sentence saved as a name becomes a short name
   const step = (k: RouteMap["steps"][number]["kind"]) => route.steps.find((s) => s.kind === k);
   const placeName = [route.place.region, route.place.country].filter(Boolean).join(", ");
   const firms = new Map<string, FirmFinding>();

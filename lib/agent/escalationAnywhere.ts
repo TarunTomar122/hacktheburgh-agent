@@ -6,7 +6,7 @@ import type { Draft } from "./draft";
 import type { Emit } from "./planner";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit } from "./crewRun";
 import type { CrewId, EscalationInput, EscalationResult, Thought } from "./plannerTypes";
-import type { RouteMap } from "./routeTypes";
+import { cleanRoute, type RouteMap } from "./routeTypes";
 import { isEnactedUrl, vetClaim } from "./evidence-claims";
 import { exploreSite, readPage, type PageReading } from "./workers/explore";
 import { fillForm } from "./workers/fillForm";
@@ -58,7 +58,8 @@ const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/;
 // A postal address in a quote: a number plus a postcode-like token or a street word. Generic, no place in it.
 const POSTAL = /\d.*(?:\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b|\b\d{4,6}\b|street|road|avenue|house|building|floor|square|lane|p\.?o\.? box|postbus|rue|straße|strasse|via|calle|plaza)/i;
 
-export async function runEscalationAnywhere(facts: CaseFacts, route: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string; progress?: EscalationInput } = {}): Promise<EscalationResult> {
+export async function runEscalationAnywhere(facts: CaseFacts, routeIn: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string; progress?: EscalationInput } = {}): Promise<EscalationResult> {
+  const route = cleanRoute(routeIn); // a sentence saved as a name becomes a short name
   const step = (k: RouteMap["steps"][number]["kind"]) => route.steps.find((s) => s.kind === k);
   const esc = step("escalation");
   const provider = step("complaint")?.body ?? "the health provider";

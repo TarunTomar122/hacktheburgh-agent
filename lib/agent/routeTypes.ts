@@ -117,3 +117,16 @@ export function trustOf(step: Pick<RouteStep, "confidence" | "deadlineCheck" | "
   if (step.confidence === "confirmed") return { label: "Solid", why: "Two official sites say it." };
   return { label: "Likely", why: "One official site says it." };
 }
+
+/** Saved research may hold a sentence where an organisation's name belongs: every step's "who" becomes a short name (its publisher, else its site). */
+export function cleanRoute(route: RouteMap): RouteMap {
+  const short = (b: string) => b.trim().length > 0 && b.trim().length <= 40 && !/[.:;]\s/.test(b);
+  return {
+    ...route,
+    steps: route.steps.map((s) => {
+      if (short(s.body)) return s;
+      const src = s.sources.find((x) => x.checked && short(x.publisher ?? "")) ?? s.sources.find((x) => short(x.publisher ?? ""));
+      return { ...s, body: src?.publisher?.trim() || hostOfUrl(s.sources[0]?.url ?? s.url ?? "") || s.kind };
+    }),
+  };
+}

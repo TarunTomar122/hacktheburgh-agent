@@ -281,6 +281,8 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
               </h1>
             ) : state.paused && !question ? (
               <h1 className="rise display mt-1 text-[28px] leading-[1.2] text-ink">Paused. The crew finishes what it is doing, then waits for you.</h1>
+            ) : state.status === "done" && !question ? (
+              <h1 className="rise display mt-1 text-[28px] leading-[1.2] text-ink">The crew has finished. Here is what they found.</h1>
             ) : (
               <h1 key={`${focusCrew}-${task}`} className="rise display mt-1 text-[28px] leading-[1.2] text-ink">
                 {question || (focusCrew === "elliot" && replanned === null) ? `${CREW[focusCrew].name} ${task}` : task.replace(/^./, (c) => c.toUpperCase())}
