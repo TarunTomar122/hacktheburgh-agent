@@ -7,6 +7,7 @@ import { Button, cx } from "../ui";
 import { CrewMark } from "./crew/Crew";
 import { boardParts, type BoardInput, type Part } from "./boardParts";
 import { Quote } from "./CaseRun";
+import { useProfile } from "../../lib/profile";
 
 /**
  * The case as the crew builds it (same look as the research screen): one row per part with one plain line, a word for how
@@ -35,6 +36,7 @@ export default function CaseBoard({ input, onAgain, checkerUrl, next, onFile }: 
           <Button onClick={next.run}>{next.label.startsWith("Check") ? "Review and send" : "Continue"}</Button>
         </div>
       )}
+      {input.result && <BundleDownload />}
       {(onAgain || onFile) && (
         <p className="flex flex-wrap gap-x-5 border-t border-line-soft px-6 py-4 text-[13px] text-muted">
           {onFile && (
@@ -50,6 +52,51 @@ export default function CaseBoard({ input, onAgain, checkerUrl, next, onFile }: 
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * "Download the case bundle (PDF)": one document for a solicitor, built by POST /api/case/bundle from what the app saved for this case
+ * (nothing is looked up again). The case lives in this browser, so it is sent in the request. Shown once the finished case is saved.
+ */
+function BundleDownload() {
+  const profile = useProfile();
+  const [state, setState] = useState<"idle" | "working" | "error">("idle");
+  if (!profile || !profile.legalAid?.result) return null;
+  const download = async () => {
+    setState("working");
+    try {
+      const res = await fetch("/api/case/bundle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ profile }) });
+      if (!res.ok) throw new Error(String(res.status));
+      const file = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "case-bundle.pdf";
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setState("idle");
+    } catch {
+      setState("error");
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-4 border-t border-line-soft px-6 py-4">
+      <div className="min-w-[14rem] flex-1">
+        <p className="text-[12px] text-muted">For a solicitor</p>
+        <p className="text-[13px] leading-5 text-muted">One PDF with your story, the route where you live, the time limits, funding, the evidence and the solicitors, each with its source.</p>
+        {state === "error" && (
+          <p role="alert" className="mt-1 text-[13px] leading-5 text-danger">
+            The PDF could not be made just now. Try again in a moment.
+          </p>
+        )}
+      </div>
+      <Button variant="secondary" size="sm" onClick={download} disabled={state === "working"}>
+        {state === "working" ? "Making the PDF" : "Download the case bundle (PDF)"}
+      </Button>
+    </div>
   );
 }
 
