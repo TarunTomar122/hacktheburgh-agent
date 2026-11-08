@@ -24,21 +24,17 @@ async function WelcomeContent(props: PageProps<"/welcome">) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <div className="shrink-0">
-        <header className="flex h-16 items-center bg-brand px-6 text-white sm:px-8">
-          <Logo />
-        </header>
-        <Stripes />
-      </div>
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16">
-        <div className="fade-up space-y-6">
-          <h1 className="display text-[34px] sm:text-[44px]">
-            Sign up to prepare your case. <span className="text-muted">Log in to carry on with it.</span>
+      <Stripes />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+        <div className="fade-up flex flex-col items-center space-y-7">
+          <Logo className="!h-44 sm:!h-52" />
+          <h1 className="display text-[38px] sm:text-[52px]">
+            <span className="text-brand">Your</span> case, under <span className="text-brand">your</span> control
           </h1>
           <p className="max-w-xl text-[17px] leading-7 text-ink-2">
             Your case is saved to your account, so you can pick it up on any device. The agent fills in forms for you and stops before Submit: you press it yourself.
           </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <a href={`/auth/login?screen_hint=signup&returnTo=${q}`} className="btn-primary !px-7 !py-3 !text-[15px]">
               Sign up
             </a>
