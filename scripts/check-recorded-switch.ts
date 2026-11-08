@@ -62,6 +62,16 @@ const check = (ok: boolean, what: string) => {
   check(secs <= 40, "and it takes 40 seconds or less");
   // Research moves on to "Choose a path" when it is done (as a live run does); the case screen keeps its browsers.
   if (which === "case") check((await tiles.count()) > 0, `the browsers stay on screen afterwards (${await tiles.count()} pictures)`);
+  if (which === "case") {
+    const pdf = page.getByRole("button", { name: "Download PDF" });
+    check(await pdf.isVisible().catch(() => false), "'Download PDF' shows at the top of the finished case");
+    const dl = page.waitForEvent("download", { timeout: 60_000 }).catch(() => null);
+    await pdf.click().catch(() => {});
+    const file = await dl;
+    check(!!file && /\.pdf$/.test(file.suggestedFilename()), `and it downloads the case bundle (${file?.suggestedFilename() ?? "no download"})`);
+    // No failed browser ("Took too long") is shown among the tiles.
+    check((await page.getByText("Took too long").count()) === 0, "no failed browser tiles are shown");
+  }
   await browser.close();
   process.exit(failed ? 1 : 0);
 })().catch((e) => {

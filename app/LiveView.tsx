@@ -808,7 +808,12 @@ export default function LiveView() {
 
       {grid ? (
         <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", inline ? "grid-cols-2 @2xl:grid-cols-4 @5xl:grid-cols-6" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
-          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting" || p.state === "done" || p.pageId.startsWith(KEPT)))).map((p) => {
+          {pages.filter((p) => {
+            const needs = !!ask && (p.label === ask.tab || p.label.startsWith(`${CREW[ask.crew].name} ·`));
+            // A browser whose job failed (timed out, blocked) is left out: the crew already moved on to another route.
+            if (p.state === "failed" && !needs) return false;
+            return !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting" || p.state === "done" || p.pageId.startsWith(KEPT)));
+          }).map((p) => {
             const needs = !!ask && (p.label === ask.tab || p.label.startsWith(`${CREW[ask.crew].name} ·`));
             return (
             <Tile

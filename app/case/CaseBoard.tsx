@@ -17,9 +17,12 @@ export default function CaseBoard({ input, onAgain, checkerUrl, next, onFile }: 
   const parts = boardParts(input);
   return (
     <section aria-label="Your case" className="rounded-card border border-line bg-white">
-      <header className="border-b border-line-soft px-6 py-5">
-        <p className="text-[12px] text-muted">Your case</p>
-        <h2 className="display mt-1 text-[26px] leading-tight text-ink">{input.result ? "Ready for you to check" : "Being prepared"}</h2>
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line-soft px-6 py-5">
+        <div>
+          <p className="text-[12px] text-muted">Your case</p>
+          <h2 className="display mt-1 text-[26px] leading-tight text-ink">{input.result ? "Ready for you to check" : "Being prepared"}</h2>
+        </div>
+        {input.result && <BundleButton result={input.result} />}
       </header>
       <ol className="divide-y divide-line-soft">
         {parts.map((p) => (
@@ -36,7 +39,7 @@ export default function CaseBoard({ input, onAgain, checkerUrl, next, onFile }: 
           <Button onClick={next.run}>{next.label.startsWith("Check") ? "Review and send" : "Continue"}</Button>
         </div>
       )}
-      {input.result && <BundleDownload />}
+      {input.result && <BundleDownload result={input.result} />}
       {(onAgain || onFile) && (
         <p className="flex flex-wrap gap-x-5 border-t border-line-soft px-6 py-4 text-[13px] text-muted">
           {onFile && (
@@ -57,16 +60,20 @@ export default function CaseBoard({ input, onAgain, checkerUrl, next, onFile }: 
 
 /**
  * "Download the case bundle (PDF)": one document for a solicitor, built by POST /api/case/bundle from what the app saved for this case
- * (nothing is looked up again). The case lives in this browser, so it is sent in the request. Shown once the finished case is saved.
+ * (nothing is looked up again). The case lives in this browser, so it is sent in the request. The board's own finished result is
+ * used when the saved case does not have it yet.
  */
-function BundleDownload() {
+function useBundle(result?: PlannerResult | null) {
   const profile = useProfile();
   const [state, setState] = useState<"idle" | "working" | "error">("idle");
-  if (!profile || !profile.legalAid?.result) return null;
+  const saved = profile?.legalAid?.result;
+  const available = !!profile && (!!saved || !!result);
   const download = async () => {
+    if (!profile) return;
     setState("working");
     try {
-      const res = await fetch("/api/case/bundle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ profile }) });
+      const body = saved || !result ? profile : { ...profile, legalAid: { ...profile.legalAid, result } };
+      const res = await fetch("/api/case/bundle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ profile: body }) });
       if (!res.ok) throw new Error(String(res.status));
       const file = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "case-bundle.pdf";
       const url = URL.createObjectURL(await res.blob());
@@ -82,19 +89,43 @@ function BundleDownload() {
       setState("error");
     }
   };
+  return { available, state, download };
+}
+
+/** The PDF button on its own, for the top of the board and of the case file. */
+export function BundleButton({ result }: { result?: PlannerResult | null }) {
+  const b = useBundle(result);
+  if (!b.available) return null;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button variant="secondary" size="sm" onClick={b.download} disabled={b.state === "working"}>
+        {b.state === "working" ? "Making the PDF" : "Download PDF"}
+      </Button>
+      {b.state === "error" && (
+        <p role="alert" className="text-[12px] text-danger">
+          The PDF could not be made just now. Try again.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BundleDownload({ result }: { result?: PlannerResult | null }) {
+  const b = useBundle(result);
+  if (!b.available) return null;
   return (
     <div className="flex flex-wrap items-center gap-4 border-t border-line-soft px-6 py-4">
       <div className="min-w-[14rem] flex-1">
         <p className="text-[12px] text-muted">For a solicitor</p>
         <p className="text-[13px] leading-5 text-muted">One PDF with your story, the route where you live, the time limits, funding, the evidence and the solicitors, each with its source.</p>
-        {state === "error" && (
+        {b.state === "error" && (
           <p role="alert" className="mt-1 text-[13px] leading-5 text-danger">
             The PDF could not be made just now. Try again in a moment.
           </p>
         )}
       </div>
-      <Button variant="secondary" size="sm" onClick={download} disabled={state === "working"}>
-        {state === "working" ? "Making the PDF" : "Download the case bundle (PDF)"}
+      <Button variant="secondary" size="sm" onClick={b.download} disabled={b.state === "working"}>
+        {b.state === "working" ? "Making the PDF" : "Download the case bundle (PDF)"}
       </Button>
     </div>
   );

@@ -9,7 +9,7 @@ import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip, { routeSteps } from "./crew/StepStrip";
 import AutoStart, { autoStarted } from "./AutoStart";
-import CaseBoard from "./CaseBoard";
+import CaseBoard, { BundleButton } from "./CaseBoard";
 import FirmResults from "./FirmResults";
 import InvestigationList from "./Investigation";
 import { ScoreRow, whyFor } from "./scoreParts";
@@ -934,7 +934,10 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <header>
-        <h1 className="display text-[40px] text-ink">Your case is ready</h1>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <h1 className="display text-[40px] text-ink">Your case is ready</h1>
+          <BundleButton />
+        </div>
         {first && <p className="mt-3 max-w-3xl font-serif text-[18px] leading-7 text-ink-2">{first}</p>}
         {rest && (
           <>
