@@ -15,6 +15,46 @@ const NONE = "none";
 const MIN_CONFIDENCE = 0.6; // below this, a non-"none" choice is treated as unsure. "none" is not gated: it only ever means "leave it".
 const AGREE_PROBABILITY = 0.8;
 const MAX_NAV_CHOICES = 60;
+const MAX_ACTION_RETRIES = 2;
+
+const OPTIONAL_TAG = /\s*\(optional\)\s*/gi;
+
+/**
+ * When the model cannot go on and nothing specific is unresolved: which fields on this page need information we do not have?
+ * The model only CHOOSES from the page's own unanswered fields (D21). Returns their labels (most likely first, at most 3), or []
+ * when it says nothing is missing. Replaces a vague "this page needs something" question that the user could not answer (Lea, 2026-11-08).
+ */
+async function whatIsMissing(input: string, obs: Observation, stats: DecisionRunStats): Promise<string[]> {
+  const isEmpty = (e: El) => e.value.trim() === "" || PLACEHOLDER.test(e.value.trim());
+  const labels: string[] = [];
+  const boxes = new Set<string>(); // tick boxes are asked as yes/no, so the answer can only ever tick what the user agreed to
+  const tidy = (l: string) => l.replace(OPTIONAL_TAG, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+  for (const e of obs.elements) {
+    if (e.disabled || !e.label.trim()) continue;
+    if ((e.kind === "text" || e.kind === "textarea" || e.kind === "select") && isEmpty(e)) labels.push(e.label);
+    else if (e.kind === "checkbox" && !e.checked) { labels.push(e.label); boxes.add(tidy(e.label)); }
+  }
+  const groups = new Map<string, El[]>();
+  for (const e of obs.elements) if (e.kind === "radio" && !e.disabled) groups.set(e.name, [...(groups.get(e.name) ?? []), e]);
+  for (const radios of groups.values()) if (!radios.some((r) => r.checked)) labels.push(radios[0].group || radios[0].name);
+  const choices = uniq(labels.map(tidy).filter(Boolean)).slice(0, 40);
+  if (choices.length === 0) return [];
+  const { answers, usage, ms } = await decide(input, [
+    {
+      type: "choice",
+      name: "missing",
+      instructions:
+        `The assistant could not continue on this page. Which unanswered item needs information that the SAVED VALUES do not contain, so the user must be asked? ` +
+        `Answer "${NONE}" if nothing needed is missing and the page only needs its next or continue button.`,
+      choices: [...choices.map((c) => ({ value: c })), { value: NONE, description: "Nothing needed is missing" }],
+    },
+  ]);
+  stats.calls++; stats.ms += ms; stats.inputTokens += usage.input_tokens;
+  const a = answers.find((x) => x.name === "missing");
+  if (!a || a.type !== "choice" || a.choice === NONE) return [];
+  const alsoLikely = a.probabilities.filter((p) => p.value !== NONE && p.value !== a.choice && p.probability >= 0.2).sort((x, y) => y.probability - x.probability).map((p) => p.value);
+  return [a.choice, ...alsoLikely].slice(0, 3).map((l) => (boxes.has(l) ? `Do you agree to "${l}"? (yes or no)` : l));
+}
 
 export type DecisionRunStats = { calls: number; ms: number; inputTokens: number };
 export type DecisionRun = BrowserRun & { stats: DecisionRunStats };
@@ -40,7 +80,23 @@ export async function runDecisionAgent(opts: {
   const byKey = new Map(values.filter((v) => v.value.trim()).map((v) => [v.key, v]));
   const stats: DecisionRunStats = { calls: 0, ms: 0, inputTokens: 0 };
   const attempted = new Set<string>(); // "kind:name:label" already tried, so a stubborn field cannot loop forever
+  const failures = new Map<string, number>(); // actions that threw (field redrawn, not ready), per field
+  const lookedAgain = new Set<string>(); // pages re-observed once before asking the user
+  const movedOnFrom = new Set<string>(); // pages left with a next/continue control because nothing was missing (once each, so it cannot loop)
+  const sameClicks = new Map<string, number>(); // page + control -> times clicked, to catch a site that keeps refusing the same click
   let unsure: string[] = [];
+  /**
+   * An action threw. Up to MAX_ACTION_RETRIES times, forget the attempt so the field is tried again on a fresh look; after that, give up and
+   * ask the user. Returns true while it will be retried. Run 2026-11-08 00:40 (Yellow Card): a fill timed out and the same step went on to
+   * click "Next step" with the field empty.
+   */
+  const retryLater = (sig: string, label: string, res: string): boolean => {
+    const n = (failures.get(sig) ?? 0) + 1;
+    failures.set(sig, n);
+    if (n <= MAX_ACTION_RETRIES) { attempted.delete(sig); return true; }
+    unsure.push(`${label} (${res})`);
+    return false;
+  };
 
   const valuesText = [...byKey.values()].map((v) => `- ${v.key} (${v.description}): ${JSON.stringify(v.value.length > 120 ? v.value.slice(0, 120) + "…" : v.value)}`).join("\n");
   const result = (status: BrowserRun["status"], summary: string, step: number, extra: Partial<BrowserRun> = {}): DecisionRun => ({
@@ -66,6 +122,7 @@ export async function runDecisionAgent(opts: {
 
     // 1) Fill, select, tick what the model chose.
     let acted = 0;
+    let failed = 0; // actions that threw and will be retried
     for (const f of plan.fields) {
       const a = byName.get(f.q);
       attempted.add(f.sig);
@@ -75,7 +132,7 @@ export async function runDecisionAgent(opts: {
       const res = await applyChoice(page, f.el, a.choice, byKey);
       emit({ type: "action", step, tool: f.el.kind === "text" || f.el.kind === "textarea" ? "fill" : f.el.kind === "select" ? "select" : "check", args: { id: f.el.id, label: f.el.label.slice(0, 40), choice: a.choice, confidence: +a.confidence.toFixed(2) }, result: res });
       if (res === "ok") acted++;
-      else unsure.push(`${f.el.label} (${res})`);
+      else if (retryLater(f.sig, f.el.label, res)) failed++;
     }
     for (const g of plan.groups) {
       const a = byName.get(g.q);
@@ -89,6 +146,7 @@ export async function runDecisionAgent(opts: {
       const res = await tickRadio(page, el);
       emit({ type: "action", step, tool: "check", args: { id: el.id, label: el.label.slice(0, 40), group: g.label.slice(0, 40), confidence: +a.confidence.toFixed(2) }, result: res });
       if (res === "ok") acted++;
+      else if (retryLater(g.sig, g.label, res)) failed++;
     }
     for (const c of plan.checks) {
       const a = byName.get(c.q);
@@ -99,8 +157,15 @@ export async function runDecisionAgent(opts: {
       const res = await tickCheckbox(page, c.el);
       emit({ type: "action", step, tool: "check", args: { id: c.el.id, label: c.el.label.slice(0, 40), probability: +p.toFixed(2) }, result: res });
       if (res === "ok") acted++;
+      else if (retryLater(c.sig, c.el.label, res)) failed++;
     }
     if (acted > 0) { await page.waitForTimeout(200); continue; } // page changed: look again
+    // Something threw and will be retried: never navigate in the same step, look at the page again first.
+    if (failed > 0) {
+      emit({ type: "status", message: `A field did not respond (the page may still be loading). Looking again before moving on.` });
+      await page.waitForTimeout(1000);
+      continue;
+    }
 
     // 2) Nothing left to fill. Follow the model's navigation choice.
     const nav = byName.get("nav");
@@ -121,7 +186,32 @@ export async function runDecisionAgent(opts: {
         unsure = [];
         continue;
       }
-      return result("needs_input", "The model says it needs more information.", step, { unfilled: unsure, question: `I need more information to continue: ${unsure.join("; ") || "unclear what to do next"}` });
+      if (unsure.length) return result("needs_input", "Some fields could not be filled from the saved values.", step, { unfilled: unsure, question: `I need more information to continue: ${unsure.join("; ")}` });
+      // Nothing specific is unresolved. First look again once: the page may still have been loading (run 2026-11-08 01:04 looked 9 ms
+      // after the click, with the site's carried-over details already filled).
+      // A page is its URL plus its headings: some sites keep one URL for every step (Yellow Card's /new-report).
+      const pageKey = `${obs.url}|${obs.headings.join("|")}`;
+      if (!lookedAgain.has(pageKey)) {
+        lookedAgain.add(pageKey);
+        emit({ type: "status", message: "Not sure yet what this page needs. Looking again once it has loaded." });
+        await page.waitForTimeout(1500);
+        continue;
+      }
+      // Then ask the model WHICH field is missing, so the user is asked about that field by name (answers come back as saved values, D33).
+      const missing = await whatIsMissing(input, obs, stats);
+      if (missing.length) return result("needs_input", "The form asks for something the saved values do not have.", step, { unfilled: missing, question: `The form asks for: ${missing.join("; ")}` });
+      // Nothing missing after all: move on with any allowed next/continue control (some sites use a plain button, not a submit).
+      const onward = opts.advance ? obs.elements.find((e) => (e.kind === "submit" || e.kind === "button" || e.kind === "link") && !e.disabled && opts.advance!.test(e.label.trim())) : undefined;
+      if (onward && !movedOnFrom.has(pageKey)) {
+        movedOnFrom.add(pageKey);
+        await page.locator(`[data-aid="${onward.id}"]`).click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(700);
+        emit({ type: "action", step, tool: "click", args: { id: onward.id, label: onward.label.slice(0, 40), reason: "nothing missing on this page" }, result: "ok" });
+        continue;
+      }
+      // Truly stuck: say so plainly, with no question the user cannot answer (the step shows "Take control" and "Try again").
+      const where = obs.headings.filter((h) => h.trim()).slice(0, 2).join(" · ") || obs.title;
+      return result("needs_input", `Stuck on "${where}".`, step, { unfilled: [], question: `We could not work out what the page "${where}" still needs. Use "Take control" in the browser panel to look, or try again.` });
     }
     const id = Number(nav.choice.replace("click:", ""));
     const el = obs.elements.find((e) => e.id === id);
@@ -131,6 +221,17 @@ export async function runDecisionAgent(opts: {
       return result("needs_input", "Some fields on this page could not be filled from the saved values.", step, { unfilled: unsure, question: `I could not fill: ${unsure.join("; ")}. Can you help with these?` });
     }
     if (!el || (el.kind === "submit" && !opts.allowSubmit && !opts.advance?.test(el.label.trim()))) return finish(page, opts, stats, step, unsure);
+    // The same click on the same, unchanged page a third time means the site is refusing it (a required field, an error): stop and ask what
+    // is missing instead of clicking until the steps run out (run 2026-11-08 01:19 pressed "Next step" 24 times).
+    const clickKey = `${obs.url}|${obs.headings.join("|")}|${el.label}`;
+    const clicks = (sameClicks.get(clickKey) ?? 0) + 1;
+    sameClicks.set(clickKey, clicks);
+    if (clicks > 2) {
+      const missing = await whatIsMissing(input, obs, stats);
+      const where = obs.headings.filter((h) => h.trim()).slice(0, 2).join(" · ") || obs.title;
+      if (missing.length) return result("needs_input", "The form asks for something the saved values do not have.", step, { unfilled: missing, question: `The form asks for: ${missing.join("; ")}` });
+      return result("needs_input", `Stuck on "${where}".`, step, { unfilled: [], question: `The page "${where}" did not accept "${el.label.trim()}" and we could not tell why. Use "Take control" in the browser panel to look, or try again.` });
+    }
     try {
       await pointAt(page, page.locator(`[data-aid="${el.id}"]`));
       await page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 });
@@ -266,6 +367,16 @@ async function tickCheckbox(page: Page, el: El): Promise<string> {
     try { await loc.check({ timeout: 4000 }); } catch { await loc.check({ force: true, timeout: 4000 }); }
     return "ok";
   } catch (e) {
+    // Last resort, only after both attempts above failed: some sites park the real box off-screen and draw their own
+    // (Yellow Card privacy box, 2026-11-07: "Element is outside of the viewport"). Clicking its label is what a person does.
+    const viaLabel = await loc
+      .evaluate((x) => {
+        const box = x as HTMLInputElement;
+        box.labels?.[0]?.click();
+        return box.checked;
+      })
+      .catch(() => false);
+    if (viaLabel) return "ok";
     return `error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
   }
 }

@@ -4,7 +4,7 @@ import { missingForOnboarding, missingRequired, type CaseFacts } from "../../lib
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, useDemo, useSyncStatus, type Profile } from "../../lib/profile";
-import { TRACKS, type TrackId } from "../../lib/agent/track";
+import { TRACK_IDS, TRACKS, type TrackId } from "../../lib/agent/track";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
@@ -255,10 +255,10 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
       </section>
     );
   }
-  const other: TrackId = chosen === "complaint" ? "compensation" : "complaint";
+  const others = TRACK_IDS.filter((t) => t !== chosen);
   const emailMode = chosen === "complaint" && profile.track?.complaintMode === "email";
-  const fit = emailMode ? undefined : rec?.tracks[chosen].fit;
-  const otherFit = rec?.tracks[other].fit;
+  // Recommendations saved before the Yellow Card track have no score for it, so every lookup is optional.
+  const fit = emailMode ? undefined : rec?.tracks[chosen]?.fit;
   return (
     <section className="space-y-4">
       <SectionTitle>Your path</SectionTitle>
@@ -277,17 +277,23 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
             setTrack({ chosen: "complaint", complaintMode: "email" });
             onSwitched?.(1);
           }}>Ask for an explanation or apology</Button>}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setTrack({ chosen: other });
-              onSwitched?.(TRACKS[other].steps[0]);
-            }}
-          >
-            Switch to {TRACKS[other].title.toLowerCase()}
-            {otherFit !== undefined && ` (${otherFit}% fit)`}
-          </Button>
+          {others.map((other: TrackId) => {
+            const otherFit = rec?.tracks[other]?.fit;
+            return (
+              <Button
+                key={other}
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setTrack({ chosen: other });
+                  onSwitched?.(TRACKS[other].steps[0]);
+                }}
+              >
+                Switch to {TRACKS[other].title.toLowerCase()}
+                {otherFit !== undefined && ` (${otherFit}% fit)`}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </section>

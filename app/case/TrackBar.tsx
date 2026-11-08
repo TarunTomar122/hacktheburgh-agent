@@ -30,7 +30,7 @@ export function Tick({ done }: { done: boolean }) {
 export default function TrackBar({ profile, active, onSelect }: { profile: Profile; active: number; onSelect: (n: number) => void }) {
   const chosen = profile.track!.chosen!;
   const t = TRACKS[chosen];
-  const fit = profile.track?.rec?.tracks[chosen].fit;
+  const fit = profile.track?.rec?.tracks[chosen]?.fit; // optional: older saved recommendations have no Yellow Card score
   const ms = milestones(profile).filter((m) => t.steps.includes(m.step));
   const { done, total, pct, next } = summarise(ms);
   const ombudsmanOpen = profile.ombudsman?.unlocked === true;

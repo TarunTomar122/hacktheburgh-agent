@@ -6,6 +6,7 @@ import type { ChatMessage } from "./agent/chat";
 import type { Draft } from "./agent/draft";
 import { emptyFacts, type CaseFacts } from "./agent/facts";
 import type { SpsoAnswers } from "./agent/spsoAnswers";
+import type { YellowCardAnswers } from "./agent/yellowCardAnswers";
 import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord } from "./agent/enquiryTypes";
 import type { TrackId, TrackRecommendation } from "./agent/track";
@@ -34,7 +35,9 @@ export type Profile = {
   /** Step 2 (ombudsman). Opens after the NHS replies; answers are asked there, not at onboarding (D29). Missing in older saved profiles. */
   ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers> };
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
-  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; skipped?: number[] };
+  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; ycFilled?: boolean; ycSent?: boolean; skipped?: number[] };
+  /** Step 6 (Yellow Card, proposed): what is being reported, asked on the step only (D33). */
+  yellowCard?: Partial<YellowCardAnswers>;
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
   /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
@@ -45,7 +48,8 @@ export type Profile = {
   enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
   enquiries?: EnquiryRecord[];
   /** D42: the recommendation shown after onboarding, and the track the user chose (null until they choose). */
-  track?: { chosen: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal" };
+  /** `wanted` (D80): the paths ticked in onboarding when there were several; the suggestion page only offers those. */
+  track?: { chosen: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal"; wanted?: TrackId[] };
   complaintEmail?: ComplaintEmail;
   createdAt: string;
   updatedAt: string;
@@ -353,6 +357,11 @@ export function setOmbudsman(patch: { unlocked?: boolean; answers?: Partial<Spso
   write({ ...p, ombudsman: { unlocked: patch.unlocked ?? cur.unlocked, answers: patch.answers ? { ...cur.answers, ...patch.answers } : cur.answers } });
 }
 
+export function setYellowCard(patch: Partial<YellowCardAnswers>) {
+  const p = read();
+  if (p) write({ ...p, yellowCard: { ...p.yellowCard, ...patch } });
+}
+
 /** Demo (D60): the user skipped this step, so every milestone of it counts as done. */
 export function skipStep(step: number) {
   const p = read();
@@ -398,11 +407,11 @@ export function setComplaintEmail(draft: ComplaintEmail) {
   if (p) write({ ...p, complaintEmail: draft });
 }
 
-export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal" }) {
+export function setTrack(patch: { chosen?: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal"; wanted?: TrackId[] }) {
   const p = read();
   if (!p) return;
   const cur = p.track ?? { chosen: null };
-  write({ ...p, track: { chosen: patch.chosen === undefined ? cur.chosen : patch.chosen, rec: patch.rec ?? cur.rec, complaintMode: patch.complaintMode ?? (patch.chosen !== undefined ? "formal" : cur.complaintMode) } });
+  write({ ...p, track: { chosen: patch.chosen === undefined ? cur.chosen : patch.chosen, rec: patch.rec ?? cur.rec, complaintMode: patch.complaintMode ?? (patch.chosen !== undefined ? "formal" : cur.complaintMode), wanted: patch.wanted ?? cur.wanted } });
 }
 
 export function setEnquiry(patch: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean }) {

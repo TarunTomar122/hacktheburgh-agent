@@ -353,5 +353,42 @@ Numbers and sources (all shown on screen as estimates): the ombudsman does not n
 
 **D78 · 2026-11-08 · Om (asked), Claude (built) · decided**
 **A test-only login bypass, and a fix for big cases never saving.** (1) Om hates logging in again and again while testing. With `DEV_LOGIN=1` in `.env.local` (already added on Om's Mac; ignored in production builds), `/welcome` shows a small "Dev: skip login (test only)" link. It goes to `/dev-login`, which sets an httpOnly cookie and signs you in as a fixed fake user (`sub` `dev|local`, name "Dev tester", email `dev@example.invalid` or `DEV_LOGIN_EMAIL`), no Auth0 round trip. Everything that reads the session (`lib/auth0.ts` `sessionUser()`, `proxy.ts`, `/api/profile`, `/welcome`) accepts it; Log out drops the cookie and returns to `/welcome`. The cookie only matches the dev server that set it, so restarting `npm run dev` signs you out (D77). The dev user's case saves to the database under `dev|local` like any account. **Risk:** never set `DEV_LOGIN=1` where other people can reach the server (for example a public tunnel to `npm run dev`); remove the line from `.env.local` before demo day. (2) `lib/profile.ts` sent every save with `keepalive: true`, which browsers refuse above 64 KiB (checked in Chromium: a 70 KB PUT throws, a 40 KB one works). A case carrying a full agent run could pass that, so it never saved (header stuck on "error", retrying every 8 s). Now `keepalive` is used only below 60,000 bytes.
+**D79 · 2026-11-07 · Lea (asked), Claude (built on branch `feature/yellow-card`) · proposed, not merged**
+**A third track: "Report a medicine problem" (MHRA Yellow Card), alongside the two in D42, which stay unchanged.**
+- **Onboarding:** the outcome question gets two more boxes: "Report a side effect from a medicine or vaccine" and "Report a faulty or fake medicine, prescription item or device".
+- **Recommendation:** the track's fit is 60 points if either box is ticked, plus up to 40 from a third story signal ("is this mainly about a medicine, vaccine or device?", Decisions API). The highest fit wins; ties keep the order complaint, compensation, Yellow Card. Fit is still never a chance of success. Recommendations saved before this have no Yellow Card score and are fetched again.
+- **Step 6, "Yellow Card report"** (numbered 6 so steps 1-5 keep their numbers): asks only what the site needs: what kind of report, the product name, what happened, and the MHRA privacy agreement.
+  - The agent types the product into the site's search. The model *chooses* the matching suggestion (D21).
+  - It presses "Start report" and fills the pages with `runDecisionAgent`.
+  - It never registers, sets a password, submits or sends. Those elements are filtered out before the model sees them.
+  - The user checks the report and sends it themselves.
+- **New demo persona:** Isla Grant (fictional), with a reaction to amoxicillin.
 
-<!-- Add new entries above this line. Next number: D79 -->
+Why: Lea wants the app to be multi-purpose within the medical topic, and the Yellow Card form adds kinds of interaction we lacked: a search box with suggestions, a branching start page, and a sign-up offer to decline.
+**Limits:**
+- Pages after `/about-you` were never seen.
+- The guessed final-page address (`stopAtUrl`) is untested. The filter on submit, send and register labels is the real guard.
+- Not run end to end. `tsc`, `eslint` and the bench task were not run here, because Node is not on this machine's PATH.
+
+**D80 · 2026-11-08 · Lea (asked), Claude (built on branch `feature/yellow-card`) · proposed, not merged. Partly supersedes D76**
+**The onboarding "What would you like help with?" question is a tick-list again, not a single choice.**
+- **Why:** Lea: someone may want compensation *and* to complain or report a medicine.
+- **Options:** the four `HELP_ROUTES` (compensation, NHS complaint, side effect, faulty or fake product), "Anything else (optional)", and "I'm not sure yet: suggest a path for me".
+- **Where it leads:**
+  - One path ticked: straight to it, as in D76.
+  - Several: the suggestion page offers only the ticked paths (`track.wanted`), with the best fit first. The others are labelled "You ticked this too", with no fit score: the NHS complaint stores no outcome sentence (D76), so its score would read 0%.
+  - None, or "not sure": the full suggestion page.
+- The app still works on one path at a time (D42); the user switches from the profile.
+- **Tell Om:** this reverses D76's single choice. D76's removal of the apology route is kept.
+
+**Also: the agent engine asks instead of guessing** (`lib/agent/decisionAgent.ts`, Tarun's area; `npm run bench` not rerun):
+1. An action that throws is retried on a fresh look (at most twice), and the engine never navigates in the same step.
+2. When the model wants to ask but nothing specific is unresolved:
+   - it first looks again once (the page may still be loading)
+   - then it asks the model which of the page's own unanswered fields is missing (a choice, D21) and asks the user about those fields by name; a tick box is asked as 'Do you agree to "X"? (yes or no)'
+   - if nothing is missing, it presses the allowed next or continue control once
+   - otherwise it says plainly where it is stuck, with no answer box
+3. The same click on the same unchanged page a third time stops and asks what is missing.
+4. A yes to a tick-box question becomes plain agreement in `extra.ts`, so the box is ticked only because the user agreed.
+
+<!-- Add new entries above this line. Next number: D81 -->

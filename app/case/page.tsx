@@ -20,6 +20,7 @@ import ContactLawyersStep from "./ContactLawyersStep";
 import { milestones } from "./progress";
 import StepAside from "./StepAside";
 import UnsupportedComplaint from "./UnsupportedComplaint";
+import YellowCardStep from "./YellowCardStep";
 import { supportsLothian } from "../../lib/agent/complaintScope";
 
 export default function CasePage() {
@@ -92,7 +93,9 @@ export default function CasePage() {
             ) : (
               <div className="mx-auto grid max-w-6xl gap-12 px-8 py-10 @4xl:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="min-w-0">
-                  {active === 2 ? (
+                  {active === 6 ? (
+                    <YellowCardStep profile={profile} />
+                  ) : active === 2 ? (
                     <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
                   ) : active === 4 ? (
                     <ContactLawyersStep profile={profile} onBack={() => setActive(3)} />

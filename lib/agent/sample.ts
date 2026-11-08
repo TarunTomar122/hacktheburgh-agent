@@ -3,7 +3,7 @@
 import type { ChatMessage } from "./chat";
 import type { Draft } from "./draft";
 import type { CaseFacts } from "./facts";
-import { COMPENSATION_CHOICE, OUTCOME_CHOICES, outcomeSentence } from "./inputs";
+import { COMPENSATION_CHOICE, OUTCOME_CHOICES, outcomeSentence, SIDE_EFFECT_CHOICE } from "./inputs";
 
 export const SAMPLE_FACTS: CaseFacts = {
   complainingFor: "me",
@@ -58,7 +58,7 @@ export const SAMPLE_SPSO = {
 
 const [EXPLANATION, APOLOGY, CHANGES, SUPPORT] = OUTCOME_CHOICES;
 
-export type DemoPersona = { id: "complaint" | "compensation"; name: string; label: string; blurb: string; facts: CaseFacts; draft: Draft; messages: ChatMessage[] };
+export type DemoPersona = { id: "complaint" | "compensation" | "yellowcard"; name: string; label: string; blurb: string; facts: CaseFacts; draft: Draft; messages: ChatMessage[] };
 
 /** Persona A: short-lived harm, wants answers not money. Should be recommended "Make a complaint" (D42). */
 const CALLUM: CaseFacts = {
@@ -102,6 +102,30 @@ const AILSA_B: CaseFacts = {
   desiredOutcome: outcomeSentence([EXPLANATION, SUPPORT, COMPENSATION_CHOICE], ""),
 };
 
+/** Persona C (proposed, feature/yellow-card): a reaction to a prescribed antibiotic, wants it reported. Should be recommended "Report a medicine problem". */
+const ISLA: CaseFacts = {
+  complainingFor: "me",
+  title: "Ms",
+  firstName: "Isla",
+  lastName: "Grant",
+  address: "7 Demo Lane, Edinburgh",
+  postcode: "EH1 1AA",
+  phone: "07700 900789",
+  email: "isla.grant@example.com",
+  preferredContact: "Email",
+  incidentLocation: "GP surgery",
+  incidentSummary:
+    "My GP prescribed amoxicillin capsules for a chest infection. On the third day I came out in an itchy rash all over my body and my lips swelled. The pharmacist told me to stop taking them and it cleared up after a week.",
+  events: [
+    { date: "10 October 2026", what: "Started amoxicillin capsules prescribed by my GP for a chest infection." },
+    { date: "12 October 2026", what: "Itchy rash all over my body and swollen lips. Stopped the capsules on the pharmacist's advice." },
+    { date: "19 October 2026", what: "The rash had cleared." },
+  ],
+  desiredOutcome: outcomeSentence([CHANGES, SIDE_EFFECT_CHOICE], ""),
+  emailRiskAccepted: null,
+  medicalRecords: null,
+};
+
 export const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: "complaint",
@@ -120,5 +144,15 @@ export const DEMO_PERSONAS: DemoPersona[] = [
     facts: AILSA_B,
     draft: SAMPLE_DRAFT,
     messages: SAMPLE_MESSAGES,
+  },
+  {
+    id: "yellowcard",
+    name: "Isla Grant",
+    label: "Demo: Yellow Card",
+    blurb: "Rash and swollen lips from a prescribed antibiotic, now recovered. Wants it reported so it is looked into.",
+    facts: ISLA,
+    // No complaint is written on this track; the draft is only here because every persona carries one.
+    draft: { details: ISLA.incidentSummary ?? "", location: "GP surgery", outcome: ISLA.desiredOutcome ?? "" },
+    messages: [{ role: "agent", content: "Demo patient loaded (Isla Grant, fictional). No interview took place, so there is no conversation to show." }],
   },
 ];

@@ -1,7 +1,7 @@
 export type StepState = "ready" | "locked" | "soon";
 
 /** Which path a step belongs to. D42 shows one track at a time ("answers" = complaint track); see lib/agent/track.ts. */
-export type Track = "answers" | "compensation" | "end";
+export type Track = "answers" | "compensation" | "yellowcard" | "end";
 
 export type Step = { n: number; title: string; blurb: string; state: StepState; track: Track; help: string };
 
@@ -12,4 +12,6 @@ export const STEPS: Step[] = [
   { n: 3, title: "Prepare your case", blurb: "Legal aid, solicitors, evidence", state: "ready", track: "compensation", help: "Elliot's crew checks legal aid, finds and checks solicitors who act for patients, gathers the medical evidence and fills the firms' enquiry forms, one step at a time. Nothing is sent without your OK." },
   { n: 4, title: "Contact lawyers", blurb: "Send your enquiry", state: "ready", track: "compensation", help: "We send a short enquiry to the solicitors you picked, on their own websites. You check each one before it goes." },
   { n: 5, title: "Your case file", blurb: "Coming soon", state: "soon", track: "end", help: "Everything about your case in one place." },
+  // Numbered 6 so steps 1-5 keep their numbers (saved progress and D-entries refer to them).
+  { n: 6, title: "Yellow Card report", blurb: "Report a medicine or device problem", state: "ready", track: "yellowcard", help: "We fill in the Yellow Card form, the UK scheme for reporting side effects and faulty or fake medicines and medical devices to the regulator (MHRA). You check it there and send it yourself." },
 ];

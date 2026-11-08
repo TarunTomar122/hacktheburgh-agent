@@ -30,6 +30,79 @@ Removed the black technical activity log from the ombudsman screen at the user's
 
 ### 2026-11-07 - Luigi + Codex - Tighten welcome-screen spacing
 Reduced the gaps before the name input, submit button and reassurance text, and balanced the form's top/bottom padding. Retained existing typography and design tokens. Checked desktop (1280x800) and mobile (390x844) screenshots in an isolated browser; no mobile horizontal overflow. TypeScript and lint passed. Local change, not pushed.
+### 2026-11-07 · Lea + Claude · IN PROGRESS (branch `feature/yellow-card`, pushed 2026-11-08, not merged) · Yellow Card track (D79, proposed)
+Added a third track and step 6, which fills the MHRA Yellow Card report and stops before it is sent (see D79).
+- **Probed by hand (in-app browser, nothing sent):**
+  - **Home page:** a product search whose suggestions are `role=option` items (e.g. 10+ amoxicillin products), then a "Start report" button.
+  - **`/report-guide`:** two dropdowns. "Member of the public / Healthcare professional", then "A suspected side effect / fake product / defective product".
+  - **`/about-you`:**
+    - who it relates to (You / Consumer / Your child / Someone else)
+    - title, first and last name, email (required)
+    - an address search and optional address lines
+    - postcode (required)
+    - an optional phone number with a long country-code list
+    - a contact-method checkbox
+    - a required privacy checkbox
+    - an optional "Set Password" with a Register button, and "Continue without registering"
+  - Not seen beyond `/about-you`.
+- **Tried and failed:**
+  - `node` is not on the PATH and there is no `node_modules` in this checkout, so `tsc`, `eslint`, `npm run bench -- --only yellowcard` and the app could not be run here.
+  - The first scripted probe was blocked for the same reason; I used the in-app browser instead.
+- **Not checked:** anything at runtime. The code follows the step 2 (SPSO) pattern line for line where it can.
+- **First runs by Lea (WSL), 2026-11-07:**
+  - The Chromium launch failed on missing `libnspr4.so`; fixed with `npx playwright install-deps chromium`.
+  - Then "OPENAI_API_KEY is not set"; fixed by adding `.env.local`.
+  - Then the product pick worked (the model chose "PEPTO-BISMOL" from 4 suggestions, confidence 1). But the engine looked at `/report-guide` 46 ms after the address changed, before the app had drawn the dropdown. It saw nothing to do and reported a false "ready".
+  - **Fix:** wait for a dropdown with options before starting. When the engine "finishes" on an early page (home, `/report-guide`, `/about-you`), look again up to twice, then report `incomplete` instead of ready.
+  - Also removed the "open the Yellow Card site yourself" link (Lea).
+- **Runs by Claude, 2026-11-08 00:00-00:11** (dev server in WSL, Isla demo patient, in-app browser; nothing sent):
+  - **Stale code found:** edits made from Windows were not picked up by `next dev` running in WSL on `/mnt/c`, even with polling. The compiled chunk in `.next/` still had the old engine. **After every edit: stop the server, delete `.next`, start again.** This probably explains Lea's "asks again / sent back to the profile" run, which used code older than described. That run was not reproduced with the demo patient.
+  - **Product pick:** "amoxicillin" gave 19 maker-specific entries, and the model said "none". Fixed: an exact match is taken first. Otherwise the model is asked for the plainest entry, accepted unless "none" is at least 0.5 likely. It now picks e.g. "GENERICS UK AMOXICILLIN".
+  - **`/report-guide`:** both dropdowns answered, Next step pressed.
+  - **`/about-you`:**
+    - All fields filled.
+    - **The privacy box** is a 0x0, opacity-0 input inside a styled label, so `check()` and `check({force})` fail ("outside of the viewport"). **Engine change in `decisionAgent.ts` `tickCheckbox`:** after both attempts fail, click the box's label and confirm it is ticked. Existing forms are unaffected; this only runs where they used to fail. Tarun's area: bench not rerun.
+    - The safety filter hid "Continue without registering"; fixed with a negative lookbehind.
+    - The site rejects phone numbers with spaces ("Only digits are accepted"), and the engine pressed Continue 26 times without reading the error (plan gap A). Fixed for this site by sending digits only.
+  - **`/new-report` step 1 of 4, "Whose side effect":** at least one of initials, sex or age is required. Initials are now derived in code. The first fill timed out (the app redraws the form after loading); the runner now looks again, at most twice.
+  - **`/new-report` step 2 of 4, "Side effects" (reached, not done):**
+    - reactions are added one at a time via an "Add" button (opens something not yet seen)
+    - 10 severity checkboxes, from "Not serious" to "Life threatening"
+    - an optional description box ("do not add identifiable patient information")
+    - a dropdown "Do you think this reaction occurred as a result of a mistake … prescription, dosing, dispensing or administration?"
+    - The agent stopped here and asked what to do. Steps 3 and 4 are still unseen.
+- **2026-11-08 00:40-00:52, after Lea's report "it fills in something random after an error instead of asking":**
+  - **Merged `main`** (11 commits: Auth0, Tiger Data D75, onboarding routes D76, email route D73).
+    - Conflicts resolved in `ProfileTab.tsx`, `TrackChoice.tsx`, `DECISIONS.md` and `PROGRESS.md`. Both sides were kept.
+    - **Our decision was renumbered D79** (first D77; Luigi took D73, then Om took D77 and D78).
+    - **D76 replaced the outcome checklist with a single "What would you like help with?" choice.** The two Yellow Card options are now two more `HELP_ROUTES` ("Report a side effect from a medicine", "Report a faulty or fake medicine or device"). Like D76's routes, they choose the track directly, and they store the matching outcome sentence so `track.ts` agrees.
+    - `package-lock.json` had only WSL npm noise (`libc` fields dropped), so it was restored.
+  - **Cause, from Lea's run log:** the "Patient initials" fill timed out (the app redraws the form), and **in the same step the engine clicked "Next step"**. Its guard against advancing with unresolved fields only covered `submit` buttons. Then on step 2 it ended with "unclear what to do next" and a dead-end "Try again".
+  - **Engine changes (`decisionAgent.ts`, Tarun's area; bench not rerun):**
+    1. An action that throws is retried on a fresh look, at most twice per field, and the engine never navigates in the same step. After that, the field is asked about.
+    2. When the model says "ask the user" and nothing specific is unresolved, the engine asks for the page's empty fields not marked "(Optional)", or one plain question naming the page, instead of an empty question.
+  - `observe.ts`: labels are kept to 240 characters, not 140, so a long form question shown to the user is not cut off.
+  - **Verified live (Isla demo, nothing sent):**
+    - Step 1 retried the initials and filled them before pressing Next.
+    - Step 2 asked "Do you think this reaction occurred as a result of a mistake…?". Answered "No"; the next run set that dropdown (confidence 1), then asked about the rest of the "Side effects" page (the reactions, entered through "Add").
+  - `tsc` passes after `npx next typegen` (the generated route types were older than `main`'s new `/welcome` page). `eslint .` is clean.
+  - **Not done:** the "Add" reaction dialog, report steps 3-4, and the final check page.
+- **2026-11-08 01:00-01:24, Lea:** "can only pick one option" and "it never says what it does not have" (D80). Pulled first: `main` had no new commits.
+  - **Lea's run (01:04):** the faulty-product branch looked at "Step 1 of 2 · Personal Details" 9 ms after the click. The site had already carried the details over, so nothing looked empty, and the engine fell back to the vague page-level question added the night before.
+  - **Fixed** as in D80:
+    - a tick-list in onboarding
+    - the engine looks again, then asks for named fields, then moves on or says where it is stuck
+    - a limit on repeated clicks
+    - a yes to a tick-box question counts as agreement
+  - **Verified live** (in-app browser, WSL dev server, fictional data, nothing sent):
+    - **Onboarding:** with three options ticked, the review lists all three, and the suggestion page says "You asked for help with 3 things" and offers only those.
+    - **Faulty product, "covid 19":**
+      - The agent looked again, then asked 'Do you agree to "Terms and conditions"? (yes or no)'. The page really does require it: "Field is required" in the screenshot.
+      - Before the `extra.ts` change, the "yes" did not tick the box, and the agent pressed "Next step" 24 times (the reason for the repeat limit). After it: ticked (probability 1), moved to "Step 2 of 2", filled the defect details from the story.
+      - Then it asked "Is sample available for MHRA arranged testing?" and "Has the supplier been contacted?".
+  - `tsc` and `eslint .` are clean.
+  - **Not checked:** the NHS, SPSO and step 4 forms with the engine changes (`npm run bench` not rerun); the full report up to its final page.
+
 
 ### 2026-11-07 - Luigi + Codex - Edit the final onboarding summary
 Added Edit details before starting the case: names, treatment location, story, desired outcome, contact details and dated timeline events can be corrected, added or removed. Changes stay in a local editor until Save changes; Cancel discards them. Required fields, dates and contact formats are validated; the start button is hidden during editing. Verified in an isolated browser using a mocked interview and fictional data: cancel, rejected empty first name, corrected story/timeline, and persisted facts after starting the case. The first test found textarea accessible labels included content; explicit labels fixed this. A test selector also matched Next's route announcer and was narrowed. TypeScript and lint passed. No real model calls or submissions in the editor test. User subsequently authorized push; final fetch/pull found main up to date and no conflicts.
@@ -379,6 +452,8 @@ Add a row whenever docs, code, reality or two people's work disagree. Keep rows 
 
 | # | Date | Found by | What disagrees | Status |
 |---|---|---|---|---|
+| 15 | 2026-11-08 | Lea + Claude | Branch `feature/yellow-card` changes the shared browser engine (`lib/agent/decisionAgent.ts`, `observe.ts`, `extra.ts`; Tarun's area, D80): retries, "ask by field name", the repeat-click limit, longer labels. `AGENTS.md` asks for `npm run bench` before such changes; it was **not rerun**, so the NHS, SPSO and step 4 forms are unchecked with them. | open: run `npm run bench` before merging into `main` |
+| 14 | 2026-11-08 | Lea + Claude | D80 (branch `feature/yellow-card`) makes the onboarding "What would you like help with?" question a tick-list again, reversing D76's single choice (Om). | open: Om to agree before merging |
 | 13 | 2026-11-07 | Claude | D74 said a case is stored in the browser only. D75 now also stores it in Tiger Data for signed-in people; `docs/PROJECT.md` and the Profile tab copy updated. In-case demo shortcuts still write sample data to a real saved case. | open |
 | 12 | 2026-11-07 | Claude | `AGENTS.md` item 7 says "No logins". That was written for the agent (it signs in to no site, D4) but reads as if the app has none. D74 adds accounts for the people using the app. `AGENTS.md` not edited (shared file). | open |
 | 10 | 2026-11-07 | Lea + Claude | The step 4 run (Tarun + Claude, D46 entry above) reports "Balfour + Manson had no online form". A manual probe the same day found a general enquiry form at `https://www.balfour-manson.co.uk/contact-us/` (name, phone, email, "Nature of Enquiry", location, consent checkbox, invisible reCAPTCHA v3), linked from its medical negligence page as "Fill in our enquiry form". Possibly the agent's harder look did not reach it, or the fixture's website URL differs. Not investigated. | open |

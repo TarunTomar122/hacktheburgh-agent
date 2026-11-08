@@ -4,6 +4,7 @@
 // testable. The model is only used to read free text (the story, or anything typed in the
 // interview script) and to add one short acknowledgement. See D28.
 import type { CaseFacts } from "./facts";
+import type { TrackId } from "./track";
 
 export type Target = "name" | "story" | "details" | "who" | "contact" | "contactMethod" | "emailRisk" | "outcome" | "done";
 
@@ -30,15 +31,37 @@ export const OUTCOME_CHOICES = [
   "Changes so it does not happen to someone else",
   "Treatment or support to put things right",
   "Compensation for what happened",
+  "Report a side effect from a medicine or vaccine",
+  "Report a faulty or fake medicine, prescription item or device",
 ] as const;
 /** Ticking this points towards the compensation track (D42). */
 export const COMPENSATION_CHOICE = "Compensation for what happened";
+/** Ticking either of these points towards the Yellow Card track (proposed, feature/yellow-card). Their first 18 characters must stay distinct: goalsFrom matches on them. */
+export const SIDE_EFFECT_CHOICE = "Report a side effect from a medicine or vaccine";
+export const FAULTY_PRODUCT_CHOICE = "Report a faulty or fake medicine, prescription item or device";
 
 export const HELP_ROUTES = [
   { label: "Ask for compensation", value: "compensation" },
   { label: "File an NHS complaint", value: "formal" },
+  // Yellow Card track (D79, proposed): each stores its outcome sentence, so the recommendation (track.ts) points the same way.
+  { label: "Report a side effect from a medicine", value: "side_effect" },
+  { label: "Report a faulty or fake medicine or device", value: "faulty_product" },
 ] as const;
+const ROUTE_OUTCOME: Record<(typeof HELP_ROUTES)[number]["value"], string> = {
+  compensation: COMPENSATION_CHOICE + ".",
+  formal: "",
+  side_effect: SIDE_EFFECT_CHOICE + ".",
+  faulty_product: FAULTY_PRODUCT_CHOICE + ".",
+};
 export type HelpRoute = (typeof HELP_ROUTES)[number]["value"];
+
+/** Which path each option leads to. Several options can be ticked (D80); the case still works on one path at a time (D42). */
+export const ROUTE_TRACK: Record<HelpRoute, TrackId> = { compensation: "compensation", formal: "complaint", side_effect: "yellowcard", faulty_product: "yellowcard" };
+
+/** The ticked labels from the checklist, as routes, in the list's order. */
+export function routesFromLabels(labels: readonly string[]): HelpRoute[] {
+  return HELP_ROUTES.filter((r) => labels.includes(r.label)).map((r) => r.value);
+}
 
 const blank = (v: string | null | undefined) => v === null || v === undefined || v.trim() === "";
 
@@ -259,7 +282,8 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         disclaimer: EMAIL_DISCLAIMER,
       };
     case "outcome":
-      return { kind: "choice", target, options: [...HELP_ROUTES] };
+      // A tick-list, not a single choice (D80): someone may want compensation and also to complain or report a medicine.
+      return { kind: "checklist", target, options: HELP_ROUTES.map((r) => r.label), otherLabel: "Anything else you would like (optional)", noneLabel: "I'm not sure yet: suggest a path for me" };
     case "done":
       return { kind: "none", target };
   }
@@ -289,7 +313,7 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
     case "emailRisk":
       return "Email is quick, but it is not completely private. A message could, rarely, reach the wrong person or go missing, and NHS Lothian cannot take responsibility if that happens. Are you happy to be contacted by email on that basis?";
     case "outcome":
-      return "What would you like help with?";
+      return "What would you like help with? Tick all that apply.";
     case "done":
       return `Thank you${name ? `, ${name}` : ""}. I have what I need. Please check everything below. You can change any of it later in your profile. Nothing has been sent to the NHS yet.`;
   }
@@ -349,9 +373,16 @@ export function patchFromAnswer(
     }
     case "outcome": {
       const route = HELP_ROUTES.find((option) => option.value === answer.value);
-      if (route) return { desiredOutcome: route.value === "compensation" ? COMPENSATION_CHOICE + "." : "" };
+      if (route) return { desiredOutcome: ROUTE_OUTCOME[route.value] }; // single-choice answers from before D80
       if (answer.none === true) return { desiredOutcome: "" };
       const chosen = Array.isArray(answer.chosen) ? answer.chosen : [];
+      const routes = routesFromLabels(chosen);
+      if (routes.length > 0) {
+        // Each ticked route stores its own outcome sentence ("" for the NHS complaint, as in D76), then anything typed.
+        const extra = s("other");
+        const parts = [...routes.map((r) => ROUTE_OUTCOME[r]).filter(Boolean), extra ? (/[.!?]$/.test(extra) ? extra : extra + ".") : ""];
+        return { desiredOutcome: parts.filter(Boolean).join(" ") };
+      }
       return { desiredOutcome: outcomeSentence(chosen, s("other")) };
     }
     default:

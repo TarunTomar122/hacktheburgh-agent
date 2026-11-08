@@ -22,7 +22,8 @@ export default function AgentAsk({ result, busy, onAnswer }: { result: DoneEvent
     return (
       <section className="rounded-card border border-line bg-white p-6">
         <Eyebrow>The agent stopped part-way</Eyebrow>
-        <p className="mt-1 text-sm text-ink-2">It was not sure how to continue on one page. Nothing has been sent.</p>
+        {/* The engine says which page it got stuck on when it knows (D80); otherwise the general line. */}
+        <p className="mt-1 text-sm text-ink-2">{result.question ?? "It was not sure how to continue on one page."} Nothing has been sent.</p>
         <Button size="sm" className="mt-3" disabled={busy} onClick={() => onAnswer([])}>
           Try again
         </Button>
