@@ -56,6 +56,7 @@ How to work:
 - First find who runs the hospital (it may be a board, trust, district, state agency or company) and PROVE it with a source on the hospital's or provider's own site; check whether the care was public or private, because the routes differ. Then its complaint process, then the independent body above it.
 - Discover how the routes depend on each other, not just a list: what must happen first (requires), when a route applies at all (applies_if), what the alternatives are, and what facts we would still need from the patient (missing). Systems differ: some have no-fault schemes, redress schemes or conciliation bodies instead of court. Do not assume the shape of any other country.
 - Deadlines and stages: take them from the national rules (the regulations or the health service's own national guidance) AND the provider's current page. A page of a different organisation (even a related one) does not set this provider's deadline. If the provider's page and the national rules differ, say so.
+- Laws change: for any statute or regulation use the current, amended (consolidated or revised) text, never the as-enacted original; if a page is the original, find the revised version before recording a period.
 - Sources can be out of date (schemes get renamed, limits change). When two sources disagree, prefer the body's own current page over third parties and the newer over the older; record the conflict in "what" ("X's page still says ...").
 - When what you read contradicts your plan or your memory, say so with update_plan (drop or replace the step) and follow what the official page says.
 - For complaint and escalation, go all the way to the actual online form with explore_site (want: form) and report its fields or the wall that stops it. The patient will use it.
@@ -230,7 +231,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             };
             const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s) && !/\/(enacted|as-enacted|original)(\/|$)|\bas enacted\b/i.test(String(s.url)), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
-            const checkedText = sources.filter((x) => x.checked).map((x) => normText(x.quote)).join(" ");
+            // Law as originally enacted is not today's rule (amended since): its numbers back nothing.
+            const checkedText = sources.filter((x) => x.checked && !/\/(enacted|as-enacted|original)(\/|$)|\bas enacted\b/i.test(x.url)).map((x) => normText(x.quote)).join(" ");
             // Numbers count with their unit ("12 months" does not back "12 days"); number words too ("six months").
             const NUM = /(\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty)\s*(working days?|days?|weeks?|months?|years?|%|per ?cent|£|€|\$)?/gi;
             // Numbers count only as whole tokens with their unit ("12 years" does not back "2 years"; "30 days" does not back "0 days").
