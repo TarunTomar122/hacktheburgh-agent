@@ -1,0 +1,38 @@
+{"t":2828,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"how to make a complaint about hospital care Royal Infirmary of Edinburgh Edinburgh Scotland United Kingdom"}
+{"t":2835,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"independent review or ombudsman if a hospital complaint is not resolved Scotland United Kingdom"}
+{"t":2841,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"how to claim compensation for medical negligence harm from hospital care Scotland United Kingdom"}
+{"t":2850,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"legal aid or funding for a clinical negligence claim Scotland United Kingdom"}
+{"t":2856,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"official register to find a medical negligence solicitor or lawyer Scotland United Kingdom"}
+{"t":2862,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"national body that publishes clinical guidelines for doctors Scotland United Kingdom"}
+{"t":2868,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"free independent patient advocacy or advice service for complaints about care Scotland United Kingdom"}
+{"t":2873,"agent":"elliot","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"how to request a copy of your medical records from a hospital Royal Infirmary of Edinburgh Scotland United Kingdom"}
+{"t":7706,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://pass-scotland.org.uk/resources/health-boards/","ms":153}
+{"t":7728,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.nhsinform.scot/care-support-and-rights/health-rights/feedback-and-complaints/feedback-complaints-and-your-rights/","ms":227}
+{"t":7764,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.citizensadvice.org.uk/scotland/health/nhs-healthcare-s/nhs-complaints-s/","ms":213}
+{"t":9918,"agent":"robin","via":"api","kind":"search","reason":"Linkup search API","url":"site:spso.org.uk NHS complaints Scotland independent review time limit how to complain","ms":1511}
+{"t":10131,"agent":"nell","via":"api","kind":"search","reason":"Linkup search API","url":"site:slab.org.uk clinical negligence legal aid Scotland adults","ms":1205}
+{"t":10233,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.citizensadvice.org.uk/scotland/health/nhs-healthcare-s/nhs-complaints-s/","ms":50}
+{"t":10454,"agent":"robin","via":"browser","kind":"page","reason":"the page is built by scripts (almost no text without a browser)","url":"https://www.mygov.scot/nhs-complaints","ms":2902}
+{"t":10841,"agent":"nell","via":"api","kind":"search","reason":"Linkup search API","url":"site:scotcourts.gov.uk speculative fee agreement Scotland clinical negligence legal aid","ms":1221}
+{"t":11312,"agent":"nell","via":"api","kind":"search","reason":"Linkup search API","url":"site:slab.org.uk clinical negligence advice Scotland free advice","ms":1313}
+{"t":11356,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.avma.org.uk/help-advice/additional-sources-of-help/","ms":886}
+{"t":11834,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.careinfoscotland.scot/topics/your-rights/patient-advice-and-support-service/","ms":1826}
+{"t":12523,"agent":"iona","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.gov.scot/publications/foi-202100152341/","ms":186}
+{"t":13760,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://pass-scotland.org.uk/resources/documents/request-access-to-medical-records/","ms":124}
+{"t":16791,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.avma.org.uk/resource/your-rights/","ms":593}
+{"t":18899,"agent":"robin","via":"browser","kind":"page","reason":"the site refused a plain request (403), a bot check","url":"https://www.nhsbsa.nhs.uk/who-can-join-scheme-and-how-apply/requesting-medical-records","ms":4425}
+{"t":19056,"agent":"robin","via":"browser","kind":"page","reason":"the page is built by scripts (almost no text without a browser)","url":"https://pass-scotland.org.uk/how-we-can-help/medical-negligence-claims/","ms":8156}
+{"t":19190,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.spso.org.uk/how-to-complain-about-public-service","ms":185}
+{"t":19386,"agent":"robin","via":"browser","kind":"page","reason":"the site answered 404","url":"https://www.nhslothian.scot/YourRights/DataProtection/Pages/Subject-Access-Requests.aspx","ms":6787}
+{"t":19390,"agent":"robin","via":"browser","kind":"page","reason":"the page is built by scripts (mostly code, little text)","url":"https://www.nhslothian.scot/yourrights/data-protection-privacy/requests-for-personal-information-including-medical-records-subject-access-requests/","ms":5781}
+{"t":19917,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.spso.org.uk/difficulties-and-delays-the-complaints-process","ms":441}
+{"t":20954,"agent":"robin","via":"fetch","kind":"page","reason":"a PDF, read directly","url":"https://www.spso.org.uk/sites/spso/files/leaflets/InfoNHSScotland.pdf","ms":1690}
+{"t":21824,"agent":"nell","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.slab.org.uk/new-to-legal-aid/guide-to-legal-advice-and-legal-aid/","ms":605}
+{"t":22239,"agent":"nell","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.slab.org.uk/new-to-legal-aid/information-on-legal-aid-in-scotland/","ms":1210}
+{"t":22257,"agent":"nell","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.scotcourts.gov.uk/coming-to-court/general-information-for-attending-court/how-to-get-a-solicitor-or-legal-advice/","ms":394}
+{"t":23277,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.nhsinform.scot/care-support-and-rights/health-rights/feedback-and-complaints/making-a-complaint-about-your-nhs-care-or-treatment/","ms":656}
+{"t":25181,"agent":"robin","via":"api","kind":"search","reason":"Linkup search API","url":"site:legislation.gov.uk Scotland personal injury three years knowledge Prescription and Limitation (Scotland) Act 1973 section 17","ms":1631}
+{"t":28469,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.legislation.gov.uk/ukpga/1973/52/section/17","ms":489}
+{"t":28510,"agent":"robin","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.avma.org.uk/get-support-and-advice/making-a-legal-claim-for-compensation/","ms":530}
+{"t":30884,"agent":"nell","via":"api","kind":"search","reason":"Linkup search API","url":"site:slab.org.uk speculative fee agreement Scotland legal aid clinical negligence","ms":1211}
+{"t":32275,"agent":"robin","via":"browser","kind":"page","reason":"a plain request failed (network or certificate)","url":"https://my.avma.org.uk/find-a-solicitor/","ms":20911}

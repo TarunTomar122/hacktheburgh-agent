@@ -45,42 +45,54 @@ async function glide(p: Page, to: number, ms = 2500) {
   await glide(page, 900, 3000);
   await pause(page, 1500);
 
-  // Research, played back from her recorded run
+  // Research: it starts live by itself; a few seconds in, switch to her recorded run (about 10 seconds, browsers and all)
   await page.goto(`${BASE}/case?step=research`);
-  await page.getByText("Play a recorded run, fast").waitFor({ timeout: 60000 });
-  await pause(page, 1500);
-  await page.getByText("Play a recorded run, fast").click();
-  await page.waitForURL(/step=path/, { timeout: 240000 }).catch(() => {});
+  const useRec = page.getByRole("button", { name: "Use the recorded run" });
+  await useRec.waitFor({ timeout: 90000 });
+  await pause(page, 5000);
+  await useRec.click();
+  await page.waitForURL(/step=path/, { timeout: 120000 }).catch(() => {});
   await pause(page, 2500);
   await glide(page, 700, 3000);
+  await pause(page, 1000);
 
   // Choose the compensation path
   const cont = page.getByRole("button", { name: /Continue: claim compensation/i });
   if (await cont.count()) await cont.click();
   else await page.getByRole("button", { name: /Choose this instead/ }).click().catch(() => {});
-  await pause(page, 3000);
+  await pause(page, 2000);
 
-  // Prepare your case, played back
+  // Prepare your case: starts live, then the recorded run plays in about 20 seconds
   if (!/step=3/.test(page.url())) await page.goto(`${BASE}/case?step=3`);
-  const play = page.getByText("Play a recorded run, fast");
-  await play.waitFor({ timeout: 60000 }).catch(() => {});
-  if (await play.count()) {
-    await play.click();
-    await page.waitForFunction(() => document.body.innerText.includes("Ready for you to check"), null, { timeout: 300000 }).catch(() => {});
+  const useRec3 = page.getByRole("button", { name: "Use the recorded run" });
+  await useRec3.waitFor({ timeout: 90000 }).catch(() => {});
+  await pause(page, 5000);
+  if (await useRec3.count()) {
+    await useRec3.click();
+    // Follow the browsers while the crew works
+    await pause(page, 3000);
+    await glide(page, 900, 2500);
+    await pause(page, 6000);
+    await glide(page, 0, 2000);
+    await page.waitForFunction(() => document.body.innerText.includes("Ready for you to check"), null, { timeout: 120000 }).catch(() => {});
     await pause(page, 2500);
-    await page.getByRole("button", { name: /Enquiries/ }).first().click().catch(() => {});
+    await glide(page, 600, 3000);
     await pause(page, 2500);
-    await glide(page, 1400, 3500);
-    await pause(page, 2000);
+    await glide(page, 1300, 3000);
+    await pause(page, 2500);
   }
 
-  // The judges' page
+  // The judges' page: one recorded journey as a story
   await page.goto(`${BASE}/insights`);
-  await page.getByText("Four models, one crew").first().waitFor({ timeout: 90000 }).catch(() => {});
-  await pause(page, 2000);
-  for (const y of [900, 1800, 2700, 3600]) {
+  await page.getByText("How the crew did it").first().waitFor({ timeout: 90000 }).catch(() => {});
+  await pause(page, 3000);
+  await glide(page, 600, 2500);
+  await pause(page, 1500);
+  await page.locator("details summary").filter({ hasText: "Robin" }).first().click().catch(() => {});
+  await pause(page, 3000);
+  for (const y of [1500, 2300, 3100, 3900]) {
     await glide(page, y, 2500);
-    await pause(page, 1200);
+    await pause(page, 1500);
   }
   await context.close();
   await browser.close();

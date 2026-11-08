@@ -531,7 +531,8 @@ export function usePlannerRun(scope?: RunScope) {
   }, [accessCount]);
   /** Demo: a live step is taking too long. Stop it and play the recorded run for this place instead, in about 20 seconds, browsers and all. */
   const switchToRecording = useCallback(
-    async (opts: { place?: string; flow?: "compensation" | "complaint" | "discovery" | "medicine" } = {}) => {
+    // toEnd: straight to the recording's finished result, everything filled in ("Finish now" in the demo bar).
+    async (opts: { place?: string; flow?: "compensation" | "complaint" | "discovery" | "medicine"; toEnd?: boolean } = {}) => {
       const live = runIdRef.current;
       runIdRef.current = undefined;
       await replay({ ...opts, fast: true });

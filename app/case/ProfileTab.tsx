@@ -82,7 +82,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
           <SectionTitle>About you</SectionTitle>
           <div className="grid grid-cols-2 gap-x-5 gap-y-5">
             <Field label="Title">
-              <select className={selectControl} autoComplete="honorific-prefix" value={text("title")} onChange={(e) => set("title")(e.target.value)}>
+              <select className={selectControl} autoComplete="off" value={text("title")} onChange={(e) => set("title")(e.target.value)}>
                 <option value="">Not given</option>
                 {/* keep a title that was typed earlier or came from the interview, even if it is not in the list */}
                 {text("title") && !(TITLES as readonly string[]).includes(text("title")) && <option value={text("title")}>{text("title")}</option>}
@@ -103,7 +103,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
             <Field label="Address" className="col-span-2">
               <input
                 className={input}
-                autoComplete="street-address"
+                autoComplete="off"
                 value={text("address")}
                 onChange={(e) => set("address")(e.target.value)}
                 onBlur={(e) => {
@@ -119,7 +119,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
             <Field label={uk === true ? "Postcode" : "Postcode (if you have one)"} problem={f.postcode ? postcodeProblem(f.postcode, uk) : null}>
               <input
                 className={input}
-                autoComplete="postal-code"
+                autoComplete="off"
                 autoCapitalize="characters"
                 maxLength={uk === true ? 8 : 12}
                 value={text("postcode")}
@@ -128,10 +128,10 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
               />
             </Field>
             <Field label="Telephone" problem={f.phone ? phoneProblem(f.phone, uk) : null}>
-              <input type="tel" inputMode="tel" autoComplete="tel" className={input} value={text("phone")} onChange={(e) => set("phone")(e.target.value)} />
+              <input type="tel" inputMode="tel" autoComplete="off" className={input} value={text("phone")} onChange={(e) => set("phone")(e.target.value)} />
             </Field>
             <Field label="Email" className="col-span-2" problem={f.email ? emailProblem(f.email) : null}>
-              <input type="email" inputMode="email" autoComplete="email" className={input} value={text("email")} onChange={(e) => set("email")(e.target.value)} />
+              <input type="email" inputMode="email" autoComplete="off" className={input} value={text("email")} onChange={(e) => set("email")(e.target.value)} />
             </Field>
             <Field label="Complaint is about">
               <select className={selectControl} value={f.complainingFor ?? ""} onChange={(e) => set2("complainingFor", (e.target.value || null) as CaseFacts["complainingFor"])}>

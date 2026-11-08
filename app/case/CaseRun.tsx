@@ -127,7 +127,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
           return skip(crew);
         }}
         onRetry={() => go()}
-        onRecorded={hasDemo ? () => switchToRecording({ place }) : undefined}
+        onRecorded={hasDemo ? (toEnd) => switchToRecording({ place, toEnd }) : undefined}
         currency={routeMap ? currencyOf(routeMap.place.country) : undefined}
         main={
           <CaseBoard
@@ -231,7 +231,7 @@ type RunState = ReturnType<typeof usePlannerRun>["state"];
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
-export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, onRecorded, kit = COMPENSATION_KIT, currency = "£", main }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; /** demo: stop the live run and play the recorded one for this place, fast */ onRecorded?: () => void; kit?: CrewKit; currency?: string; main?: React.ReactNode }) {
+export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, onRecorded, kit = COMPENSATION_KIT, currency = "£", main }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; /** demo: stop the live run and play the recorded one for this place, fast (toEnd: straight to its finished result) */ onRecorded?: (toEnd?: boolean) => void; kit?: CrewKit; currency?: string; main?: React.ReactNode }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   // The clock stops while the run is paused: it adds each second to the total only when not paused, so a pause never counts.
@@ -305,14 +305,16 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, onRecorde
   // Who is in focus: the crew member in the spotlight; between steps, Elliot deciding what's next.
   const spot = state.spotlight;
   const lastPlan = state.says.findLast((x) => x.kind === "plan");
-  const replanned = useFresh(lastPlan?.replan ? lastPlan.i : null, 6000);
+  const replanFresh = useFresh(lastPlan?.replan ? lastPlan.i : null, 6000);
+  // The screen can switch runs (a recording replaces the live run) while the "changed the plan" moment is still showing.
+  const replanned = lastPlan ? replanFresh : null;
   const focusCrew: CrewId = question ? (question.crew ?? "elliot") : replanned !== null ? "elliot" : spot && state.crew[spot.crew]?.state !== "idle" ? spot.crew : "elliot";
   const one = (t: string) => t.replace(/[.;:,]$/, "");
   const task = question
     ? "needs one detail from you"
     : focusCrew === "elliot"
       ? replanned !== null
-        ? one(lastPlan!.text)
+        ? one(lastPlan?.text ?? "")
         : state.crew.elliot?.state === "working" && state.crew.elliot.note
           ? `is ${lowerFirst(state.crew.elliot.note)}`
           : lastPlan
@@ -415,10 +417,10 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, onRecorde
               </DemoButton>
             );
           })}
-          <DemoButton disabled={state.skipped.includes("all")} onClick={() => onSkip("all")}>
+          <DemoButton disabled={state.skipped.includes("all")} onClick={() => (onRecorded && !state.demo ? onRecorded(true) : onSkip("all"))}>
             {state.skipped.includes("all") ? "Wrapping up" : "Finish now"}
           </DemoButton>
-          {onRecorded && !state.demo && <DemoButton onClick={onRecorded}>Use the recorded run</DemoButton>}
+          {onRecorded && !state.demo && <DemoButton onClick={() => onRecorded()}>Use the recorded run</DemoButton>}
         </DemoBar>
       )}
 

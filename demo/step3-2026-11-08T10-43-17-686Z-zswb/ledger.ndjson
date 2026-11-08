@@ -1,0 +1,65 @@
+{"t":4771,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":3705,"outTok":241,"ms":4170,"data":["place","health"],"agent":"elliot"}
+{"t":7947,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":3960,"outTok":182,"ms":3175,"data":["place","health"],"agent":"elliot"}
+{"t":9946,"where":"cloud","task":"find_firms","model":"gpt-5.4-mini","inTok":1381,"outTok":141,"ms":1980,"data":[],"agent":"robin"}
+{"t":10181,"where":"cloud","task":"investigate_queries_decision","model":"gpt-5.4-mini","inTok":315,"outTok":139,"ms":2128,"data":[],"agent":"iona"}
+{"t":11502,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":6524,"outTok":123,"ms":1822,"data":["health"],"agent":"iona"}
+{"t":13234,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":4487,"outTok":232,"ms":3286,"data":["place","health"],"agent":"elliot"}
+{"t":14046,"where":"cloud","task":"investigate_pick_decision","model":"gpt-5.4-mini","inTok":983,"outTok":72,"ms":1820,"data":[],"agent":"iona"}
+{"t":14410,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":11948,"outTok":269,"ms":2475,"data":["health"],"agent":"iona"}
+{"t":15475,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":4733,"outTok":125,"ms":2236,"data":["place","health"],"agent":"elliot"}
+{"t":15747,"where":"cloud","task":"guidance_source","model":"gpt-5.4-mini","inTok":193,"outTok":19,"ms":1334,"data":[],"agent":"iona"}
+{"t":15844,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":566,"outTok":0,"ms":148,"data":["place"],"agent":"robin"}
+{"t":15922,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":7006,"outTok":208,"ms":1780,"data":["health"],"agent":"iona"}
+{"t":15934,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":269,"outTok":0,"ms":136,"data":["place"],"agent":"robin"}
+{"t":16083,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1681,"outTok":0,"ms":150,"data":["place"],"agent":"robin"}
+{"t":16289,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1869,"outTok":0,"ms":157,"data":["place"],"agent":"robin"}
+{"t":17033,"where":"local","task":"patient_age_band","model":"local:qwen3:8b","inTok":435,"outTok":39,"ms":1286,"data":["health"],"agent":"iona"}
+{"t":17240,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":542,"outTok":0,"ms":130,"data":["place"],"agent":"robin"}
+{"t":17468,"where":"cloud","task":"directory_search_form","model":"gpt-5.4-mini","inTok":1359,"outTok":138,"ms":1939,"data":["place"],"agent":"robin"}
+{"t":18585,"where":"cloud","task":"explore_judge","model":"gpt-5.4-mini","inTok":3176,"outTok":244,"ms":2336,"data":[],"agent":"nell"}
+{"t":19225,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1805,"outTok":0,"ms":125,"data":["place"],"agent":"robin"}
+{"t":20148,"where":"cloud","task":"investigate_judge_decision","model":"gpt-5.4","inTok":688,"outTok":302,"ms":4224,"data":[],"agent":"iona"}
+{"t":20399,"where":"local","task":"guidance_applicability","model":"local:qwen3:8b","inTok":426,"outTok":106,"ms":3365,"data":["health"],"agent":"iona"}
+{"t":20412,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":329,"outTok":0,"ms":129,"data":["place"],"agent":"robin"}
+{"t":20955,"where":"cloud","task":"directory_search_form","model":"gpt-5.4-mini","inTok":1385,"outTok":208,"ms":2747,"data":["place"],"agent":"robin"}
+{"t":22473,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1848,"outTok":0,"ms":299,"data":["place"],"agent":"robin"}
+{"t":24514,"where":"cloud","task":"investigate_judge_decision","model":"gpt-5.4","inTok":688,"outTok":290,"ms":4365,"data":[],"agent":"iona"}
+{"t":25863,"where":"cloud","task":"directory_search_form","model":"gpt-5.4-mini","inTok":1474,"outTok":108,"ms":1744,"data":["place"],"agent":"robin"}
+{"t":26669,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":5020,"outTok":306,"ms":4145,"data":["place","health"],"agent":"elliot"}
+{"t":27282,"where":"cloud","task":"explore_judge","model":"gpt-5.4-mini","inTok":2932,"outTok":252,"ms":2679,"data":[],"agent":"nell"}
+{"t":28139,"where":"local","task":"care_comparison","model":"local:qwen3:8b","inTok":591,"outTok":254,"ms":7739,"data":["health"],"agent":"iona"}
+{"t":28753,"where":"cloud","task":"directory_search_form","model":"gpt-5.4-mini","inTok":1500,"outTok":144,"ms":2194,"data":["place"],"agent":"robin"}
+{"t":30348,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":5230,"outTok":252,"ms":3676,"data":["place","health"],"agent":"elliot"}
+{"t":33723,"where":"cloud","task":"directory_search_form","model":"gpt-5.4-mini","inTok":1519,"outTok":159,"ms":1905,"data":["place"],"agent":"robin"}
+{"t":34079,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":5531,"outTok":271,"ms":3730,"data":["place","health"],"agent":"elliot"}
+{"t":36693,"where":"cloud","task":"explore_judge","model":"gpt-5.4-mini","inTok":2806,"outTok":233,"ms":2283,"data":[],"agent":"nell"}
+{"t":36704,"where":"cloud","task":"directory_search_form","model":"gpt-5.4-mini","inTok":1545,"outTok":171,"ms":2302,"data":["place"],"agent":"robin"}
+{"t":36865,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":5816,"outTok":113,"ms":2786,"data":["place","health"],"agent":"elliot"}
+{"t":37247,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1574,"outTok":0,"ms":188,"data":["place"],"agent":"robin"}
+{"t":40125,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":460,"outTok":0,"ms":165,"data":["place"],"agent":"robin"}
+{"t":46230,"where":"cloud","task":"questionnaire_page","model":"gpt-5.4-mini","inTok":1830,"outTok":123,"ms":2148,"data":[],"agent":"nell"}
+{"t":47178,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":5962,"outTok":362,"ms":4929,"data":["place","health"],"agent":"elliot"}
+{"t":49799,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":6338,"outTok":134,"ms":2620,"data":["place","health"],"agent":"elliot"}
+{"t":50720,"where":"cloud","task":"questionnaire_page","model":"gpt-5.4-mini","inTok":2431,"outTok":391,"ms":2838,"data":[],"agent":"nell"}
+{"t":52943,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1816,"outTok":0,"ms":266,"data":["place"],"agent":"robin"}
+{"t":56714,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1761,"outTok":0,"ms":141,"data":["place"],"agent":"robin"}
+{"t":57761,"where":"cloud","task":"questionnaire_page","model":"gpt-5.4-mini","inTok":2461,"outTok":374,"ms":3017,"data":[],"agent":"nell"}
+{"t":58917,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":615,"outTok":0,"ms":322,"data":["place"],"agent":"robin"}
+{"t":66414,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1721,"outTok":0,"ms":242,"data":["place"],"agent":"robin"}
+{"t":70860,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":8693,"outTok":287,"ms":4397,"data":["place","health"],"agent":"elliot"}
+{"t":72870,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":8994,"outTok":55,"ms":2008,"data":["place","health"],"agent":"elliot"}
+{"t":75710,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":9087,"outTok":178,"ms":2836,"data":["place","health"],"agent":"elliot"}
+{"t":77930,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":9279,"outTok":101,"ms":2220,"data":["place","health"],"agent":"elliot"}
+{"t":84765,"where":"local","task":"enquiry_draft","model":"local:qwen3:8b","inTok":818,"outTok":248,"ms":6832,"data":["health","identity"],"agent":"kit"}
+{"t":87823,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":2719,"outTok":0,"ms":223,"data":[],"agent":"kit"}
+{"t":88274,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1323,"outTok":0,"ms":207,"data":[],"agent":"kit"}
+{"t":89889,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":3536,"outTok":0,"ms":170,"data":[],"agent":"kit"}
+{"t":90303,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":2152,"outTok":0,"ms":163,"data":[],"agent":"kit"}
+{"t":92673,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":258,"outTok":0,"ms":132,"data":["identity"],"agent":"kit"}
+{"t":100939,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":216,"outTok":0,"ms":193,"data":["identity"],"agent":"kit"}
+{"t":113865,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1021,"outTok":0,"ms":195,"data":["identity"],"agent":"kit"}
+{"t":121898,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":1006,"outTok":0,"ms":209,"data":["identity"],"agent":"kit"}
+{"t":133145,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":9489,"outTok":50,"ms":2292,"data":["place","health"],"agent":"elliot"}
+{"t":140810,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":5041,"outTok":0,"ms":345,"data":[],"agent":"kit"}
+{"t":141233,"where":"cloud","task":"decisions","model":"gpt-6-luna","inTok":2492,"outTok":0,"ms":167,"data":[],"agent":"kit"}
+{"t":144434,"where":"cloud","task":"step3 planner","model":"gpt-5.4","inTok":9570,"outTok":124,"ms":3151,"data":["place","health"],"agent":"elliot"}

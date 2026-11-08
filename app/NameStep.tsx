@@ -48,7 +48,7 @@ export default function NameStep({
         ref={input}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        autoComplete="name"
+        autoComplete="off"
         maxLength={80}
         placeholder="Type your name here"
         aria-describedby={error ? "name-error" : undefined}

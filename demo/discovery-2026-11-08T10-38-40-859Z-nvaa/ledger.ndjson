@@ -1,0 +1,70 @@
+{"t":2818,"where":"cloud","task":"discovery planner","model":"gpt-5.4-mini","inTok":2447,"outTok":183,"ms":2280,"data":["place","health"],"agent":"elliot"}
+{"t":7469,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":2998,"outTok":296,"ms":4595,"data":["place"],"agent":"robin"}
+{"t":8358,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":3110,"outTok":123,"ms":5484,"data":["place"],"agent":"robin"}
+{"t":8874,"where":"cloud","task":"discovery nell","model":"gpt-5.4-mini","inTok":3042,"outTok":190,"ms":6000,"data":[],"agent":"nell"}
+{"t":8912,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":2866,"outTok":226,"ms":6038,"data":["place"],"agent":"robin"}
+{"t":9191,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":2932,"outTok":214,"ms":6317,"data":["place"],"agent":"robin"}
+{"t":9277,"where":"cloud","task":"discovery iona","model":"gpt-5.4-mini","inTok":2861,"outTok":302,"ms":6403,"data":["health"],"agent":"iona"}
+{"t":9567,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":3119,"outTok":193,"ms":1860,"data":["place"],"agent":"robin"}
+{"t":9947,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":2991,"outTok":364,"ms":7073,"data":["place"],"agent":"robin"}
+{"t":9951,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":4837,"outTok":367,"ms":2186,"data":["place"],"agent":"robin"}
+{"t":10170,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":2942,"outTok":435,"ms":7296,"data":["place"],"agent":"robin"}
+{"t":10425,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":3200,"outTok":300,"ms":2696,"data":["place"],"agent":"robin"}
+{"t":11946,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":698,"outTok":295,"ms":2375,"data":["place"],"agent":"robin"}
+{"t":12292,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":4839,"outTok":237,"ms":2058,"data":["place"],"agent":"robin"}
+{"t":12555,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":687,"outTok":221,"ms":2058,"data":["place"],"agent":"robin"}
+{"t":12617,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":4436,"outTok":294,"ms":2673,"data":["place"],"agent":"robin"}
+{"t":13134,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":832,"outTok":388,"ms":3181,"data":["place"],"agent":"robin"}
+{"t":13337,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":746,"outTok":353,"ms":2911,"data":["place"],"agent":"robin"}
+{"t":13539,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":4152,"outTok":210,"ms":2183,"data":["place"],"agent":"robin"}
+{"t":13592,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":3141,"outTok":203,"ms":1757,"data":["place"],"agent":"robin"}
+{"t":14418,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":1753,"outTok":170,"ms":1894,"data":["health"],"agent":"iona"}
+{"t":14550,"where":"cloud","task":"discovery nell","model":"gpt-5.4-mini","inTok":7060,"outTok":325,"ms":3228,"data":[],"agent":"nell"}
+{"t":15460,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":693,"outTok":277,"ms":2901,"data":["place"],"agent":"robin"}
+{"t":15856,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":726,"outTok":191,"ms":2263,"data":["place"],"agent":"robin"}
+{"t":16151,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":1095,"outTok":292,"ms":2390,"data":["place"],"agent":"robin"}
+{"t":16521,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":734,"outTok":242,"ms":2101,"data":["health"],"agent":"iona"}
+{"t":16979,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":724,"outTok":461,"ms":3438,"data":["place"],"agent":"robin"}
+{"t":19061,"where":"cloud","task":"discovery iona","model":"gpt-5.4-mini","inTok":3518,"outTok":293,"ms":2539,"data":["health"],"agent":"iona"}
+{"t":19147,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":792,"outTok":290,"ms":2994,"data":["place"],"agent":"robin"}
+{"t":19212,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":8750,"outTok":203,"ms":2419,"data":["place"],"agent":"robin"}
+{"t":19785,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":4670,"outTok":695,"ms":4324,"data":["place"],"agent":"robin"}
+{"t":20122,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":3860,"outTok":416,"ms":3143,"data":["place"],"agent":"robin"}
+{"t":20978,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":721,"outTok":206,"ms":1843,"data":["place"],"agent":"robin"}
+{"t":21099,"where":"cloud","task":"discovery iona","model":"gpt-5.4-mini","inTok":3827,"outTok":89,"ms":2010,"data":["health"],"agent":"iona"}
+{"t":21175,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":3106,"outTok":162,"ms":1984,"data":["place"],"agent":"robin"}
+{"t":21749,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":698,"outTok":403,"ms":2535,"data":["place"],"agent":"robin"}
+{"t":21813,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":1703,"outTok":252,"ms":2368,"data":["place"],"agent":"robin"}
+{"t":21894,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":5606,"outTok":144,"ms":2105,"data":["place"],"agent":"robin"}
+{"t":22150,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":4292,"outTok":79,"ms":2026,"data":["place"],"agent":"robin"}
+{"t":22471,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":2012,"outTok":284,"ms":2553,"data":["place"],"agent":"robin"}
+{"t":23197,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":2932,"outTok":216,"ms":2242,"data":["place"],"agent":"robin"}
+{"t":23486,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":3678,"outTok":80,"ms":1736,"data":["place"],"agent":"robin"}
+{"t":23985,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":735,"outTok":383,"ms":3004,"data":["place"],"agent":"robin"}
+{"t":24076,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":1856,"outTok":186,"ms":2252,"data":[],"agent":"nell"}
+{"t":24115,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":741,"outTok":258,"ms":2297,"data":["place"],"agent":"robin"}
+{"t":24316,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":4329,"outTok":175,"ms":2059,"data":[],"agent":"nell"}
+{"t":24767,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":2674,"outTok":216,"ms":2527,"data":[],"agent":"nell"}
+{"t":26110,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":686,"outTok":116,"ms":2033,"data":[],"agent":"nell"}
+{"t":26382,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":730,"outTok":455,"ms":3184,"data":["place"],"agent":"robin"}
+{"t":26410,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":4358,"outTok":378,"ms":3132,"data":["place"],"agent":"robin"}
+{"t":26741,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":794,"outTok":525,"ms":4264,"data":["place"],"agent":"robin"}
+{"t":27026,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":711,"outTok":238,"ms":2258,"data":[],"agent":"nell"}
+{"t":27517,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":716,"outTok":393,"ms":3200,"data":[],"agent":"nell"}
+{"t":27624,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":4273,"outTok":429,"ms":3507,"data":["place"],"agent":"robin"}
+{"t":27918,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":5266,"outTok":184,"ms":2724,"data":["place"],"agent":"robin"}
+{"t":28765,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":797,"outTok":275,"ms":2352,"data":["place"],"agent":"robin"}
+{"t":29611,"where":"cloud","task":"discovery nell","model":"gpt-5.4-mini","inTok":8160,"outTok":135,"ms":2092,"data":[],"agent":"nell"}
+{"t":29876,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":4718,"outTok":101,"ms":2248,"data":["place"],"agent":"robin"}
+{"t":31170,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":5506,"outTok":285,"ms":2659,"data":["place"],"agent":"robin"}
+{"t":31221,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":4134,"outTok":244,"ms":2752,"data":["place"],"agent":"robin"}
+{"t":32283,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":695,"outTok":232,"ms":11107,"data":["place"],"agent":"robin"}
+{"t":33691,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":809,"outTok":279,"ms":2469,"data":["place"],"agent":"robin"}
+{"t":34743,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":749,"outTok":528,"ms":3572,"data":["place"],"agent":"robin"}
+{"t":35139,"where":"cloud","task":"read_page","model":"gpt-5.4-mini","inTok":1180,"outTok":338,"ms":2830,"data":["place"],"agent":"robin"}
+{"t":36002,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":5514,"outTok":593,"ms":3719,"data":["place"],"agent":"robin"}
+{"t":37884,"where":"cloud","task":"auto_record","model":"gpt-5.4-mini","inTok":781,"outTok":255,"ms":2740,"data":["place"],"agent":"robin"}
+{"t":41788,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":3868,"outTok":482,"ms":3903,"data":["place"],"agent":"robin"}
+{"t":43880,"where":"cloud","task":"discovery robin","model":"gpt-5.4-mini","inTok":4410,"outTok":72,"ms":2090,"data":["place"],"agent":"robin"}
+{"t":46525,"where":"cloud","task":"discovery planner","model":"gpt-5.4-mini","inTok":2771,"outTok":275,"ms":2643,"data":["place","health"],"agent":"elliot"}
+{"t":49251,"where":"cloud","task":"route_takeaways","model":"gpt-5.4-mini","inTok":1595,"outTok":397,"ms":2724,"data":["place","health"],"agent":"elliot"}

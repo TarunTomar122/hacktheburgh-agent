@@ -35,7 +35,8 @@ const flowOf = (id: string): Flow => FLOW.find(([re]) => re.test(id))?.[1] ?? "o
 type Ev = { t: number; e: Record<string, unknown> & { type: string } };
 const cache = new Map<string, { mtime: number; run: RunSummary | null }>();
 
-function readRun(dir: string, id: string): RunSummary | null {
+/** One run folder (in .runs/ or a recording in demo/), summarised. */
+export function readRun(dir: string, id: string): RunSummary | null {
   const file = path.join(dir, "events.ndjson");
   if (!existsSync(file)) return null;
   const mtime = Math.max(...[file, path.join(dir, "access.ndjson"), path.join(dir, "ledger.ndjson")].filter(existsSync).map((f) => statSync(f).mtimeMs));

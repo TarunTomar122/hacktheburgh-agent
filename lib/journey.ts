@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { allRuns, type RunSummary } from "./insights";
+import { allRuns, readRun, type RunSummary } from "./insights";
 
 /**
  * One real journey for the judges' page (app/insights): a Research run and the Prepare-your-case run that followed it,
@@ -28,8 +28,13 @@ export type Journey = {
 };
 
 type Ev = { t: number; e: { type: string } & Record<string, unknown> };
+/** A run's folder: the recording in demo/ when there is one (it never changes), else the run on this machine. */
+const dirOf = (id: string) => {
+  const rec = path.join(process.cwd(), "demo", id);
+  return existsSync(path.join(rec, "events.ndjson")) ? rec : path.join(process.cwd(), ".runs", id);
+};
 function events(id: string): Ev[] {
-  const f = path.join(process.cwd(), ".runs", id, "events.ndjson");
+  const f = path.join(dirOf(id), "events.ndjson");
   if (!existsSync(f)) return [];
   return readFileSync(f, "utf8")
     .split("\n")
@@ -51,6 +56,17 @@ function parseShot(file: string): { crew: Crew; site: string; action: string } |
   // a site named by its address ("nhslothian-scot") reads as one ("nhslothian.scot"); a named site keeps its words
   const site = /^[a-z0-9-]+$/.test(m[2]) ? m[2].replace(/-/g, ".") : m[2].replace(/-/g, " ");
   return { crew, site, action: m[3] };
+}
+
+/**
+ * The journey /insights tells: one fixed recording (Ailsa's research and case, saved in demo/ with their screenshots, access
+ * log and model ledger), so the page always shows the same full story. Falls back to the newest journey on this machine.
+ */
+export const PINNED = { research: "discovery-2026-11-08T10-38-40-859Z-nvaa", case: "step3-2026-11-08T10-43-17-686Z-zswb" };
+export function pinnedJourney(): Journey | null {
+  const research = readRun(dirOf(PINNED.research), PINNED.research);
+  const kase = readRun(dirOf(PINNED.case), PINNED.case);
+  return research && kase ? build(research, kase) : latestJourney();
 }
 
 /** The newest finished Prepare-your-case run that had a Research run just before it (same patient session). */
@@ -93,7 +109,7 @@ function build(research: RunSummary, kase: RunSummary): Journey {
         if (q.status === "ready_to_send") ready.set(q.firmName, { firm: q.firmName, fields: q.filled.length, url: q.formUrl ?? "" });
       }
     }
-    const dir = path.join(process.cwd(), ".runs", run.id);
+    const dir = dirOf(run.id);
     const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".jpg")).sort() : [];
     for (const f of files) {
       const p = parseShot(f);

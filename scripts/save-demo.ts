@@ -31,6 +31,8 @@ place ||= "Scotland";
 const to = path.join("demo", run);
 mkdirSync(to, { recursive: true });
 copyFileSync(path.join(from, "events.ndjson"), path.join(to, "events.ndjson"));
+// The access log and the model ledger too, so /insights can tell the run in full from the recording alone.
+for (const f of ["access.ndjson", "ledger.ndjson"]) if (existsSync(path.join(from, f))) copyFileSync(path.join(from, f), path.join(to, f));
 const shots = readdirSync(from).filter((f) => f.endsWith(".jpg"));
 for (const f of shots) copyFileSync(path.join(from, f), path.join(to, f));
 const flow = run.split("-")[0];

@@ -1,0 +1,25 @@
+{"t":7954,"agent":"robin","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"medical negligence solicitors Edinburgh"}
+{"t":7958,"agent":"robin","via":"cache","kind":"search","reason":"the same search from an earlier run","url":"medical negligence claims lawyers Scotland United Kingdom no win no fee"}
+{"t":9343,"agent":"iona","via":"api","kind":"search","reason":"Linkup search API","url":"gov.scot guideline suspected scaphoid fracture after fall on outstretched hand with initial normal wrist X-ray recommendation Scotland, United Kingdom","ms":1274}
+{"t":9422,"agent":"iona","via":"api","kind":"search","reason":"Linkup search API","url":"site:gov.scot suspected scaphoid fracture after fall on outstretched hand with initial normal wrist X-ray recommendation","ms":1361}
+{"t":9436,"agent":"iona","via":"api","kind":"search","reason":"Linkup search API","url":"suspected scaphoid fracture after fall on outstretched hand with initial normal wrist X-ray clinical guideline recommendation Scotland, United Kingdom","ms":1360}
+{"t":9678,"agent":"iona","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.gov.scot/publications/annual-report-2013-reporting-quality-efficiency-support-team-1-april-2012-31-march-2013/pages/6/","ms":230}
+{"t":9947,"agent":"robin","via":"api","kind":"search","reason":"found 8 law firms by search, no browser","url":"medical negligence solicitors Edinburgh"}
+{"t":11933,"agent":"iona","via":"fetch","kind":"page","reason":"a plain page","url":"https://he.patient.info/bones-joints-muscles/scaphoid-wrist-fracture","ms":429}
+{"t":12216,"agent":"iona","via":"api","kind":"search","reason":"Linkup search API","url":"Scottish Public Services Ombudsman scaphoid fracture Royal Infirmary of Edinburgh NHS inform","ms":2029}
+{"t":14140,"agent":"iona","via":"fetch","kind":"page","reason":"a plain page","url":"https://www.spso.org.uk/outcome/upheld-recommendations?page=122","ms":94}
+{"t":16084,"agent":"robin","via":"fetch","kind":"firm","reason":"checked 2 pages of their site without a browser","url":"https://www.digbybrown.co.uk","ms":519}
+{"t":16290,"agent":"robin","via":"fetch","kind":"firm","reason":"checked 2 pages of their site without a browser","url":"https://www.thompsons-scotland.co.uk","ms":728}
+{"t":20865,"agent":"robin","via":"fetch","kind":"firm","reason":"checked 3 pages of their site without a browser","url":"https://www.landmmedilaw.com","ms":5301}
+{"t":22523,"agent":"robin","via":"browser","kind":"firm","reason":"their home page: a plain request failed (network or certificate)","url":"https://joneswhyte.co.uk","ms":6960}
+{"t":36755,"agent":"robin","via":"browser","kind":"task","reason":"searched the lawyer register with its own search filters (its search box)","url":"https://pass-scotland.org.uk/how-we-can-help/medical-negligence-claims/"}
+{"t":42248,"agent":"robin","via":"browser","kind":"firm","reason":"the plain page did not clearly say they act for patients, so the browser looks properly","url":"https://www.andersonstrathern.co.uk","ms":5324}
+{"t":51214,"agent":"robin","via":"api","kind":"search","reason":"Linkup search API","url":"Law Society of Scotland solicitor finder medical negligence Edinburgh directory","ms":1343}
+{"t":52495,"agent":"robin","via":"api","kind":"search","reason":"Linkup search API","url":"AvMA Scotland solicitor search medical negligence","ms":1225}
+{"t":56762,"agent":"robin","via":"browser","kind":"firm","reason":"the plain page did not clearly say they act for patients, so the browser looks properly","url":"https://www.harpermacleod.co.uk","ms":4206}
+{"t":57803,"agent":"nell","via":"browser","kind":"task","reason":"answered the place's own eligibility checker (4 questions; each answer changes the next question)","url":"https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/"}
+{"t":66462,"agent":"robin","via":"browser","kind":"firm","reason":"their home page: a plain request failed (network or certificate)","url":"https://www.slatergordon.co.uk","ms":13905}
+{"t":88310,"agent":"kit","via":"browser","kind":"task","reason":"filled Thompsons Scotland's enquiry form (7 fields) and stopped before Send","url":"https://www.thompsons-scotland.co.uk/medical-product-claims/medical-negligence"}
+{"t":90369,"agent":"kit","via":"browser","kind":"task","reason":"filled Slater + Gordon's enquiry form (4 fields) and stopped before Send","url":"https://www.slatergordon.co.uk/medical-negligence/"}
+{"t":130852,"agent":"kit","via":"browser","kind":"task","reason":"looked for L&M MediLaw's enquiry form in the browser and found none","url":"https://www.landmmedilaw.com"}
+{"t":141282,"agent":"kit","via":"browser","kind":"task","reason":"filled Jones Whyte's enquiry form (6 fields) and stopped before Send","url":"https://joneswhyte.co.uk/"}

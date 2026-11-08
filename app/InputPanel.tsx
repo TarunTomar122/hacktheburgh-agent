@@ -78,7 +78,7 @@ function FreeText({
         <input
           id={id}
           autoFocus
-          autoComplete={spec.autoComplete}
+          autoComplete="off"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={spec.placeholder}
@@ -194,7 +194,7 @@ function FormInput({
       break;
     case "select":
       control = (
-        <select id={id} className="field" autoComplete={f.autoComplete} value={value} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="field" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">Select</option>
           {f.options?.map((o) => (
             <option key={o} value={o}>
@@ -212,7 +212,7 @@ function FormInput({
             id={id}
             type={type}
             inputMode={f.kind === "tel" ? "tel" : f.kind === "email" ? "email" : undefined}
-            autoComplete={f.autoComplete}
+            autoComplete="off"
             autoCapitalize={f.kind === "postcode" ? "characters" : undefined}
             autoFocus={autoFocus}
             list={f.suggestions ? `${id}-list` : undefined}

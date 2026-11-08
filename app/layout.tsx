@@ -4,6 +4,7 @@ import "./globals.css";
 import { currentAccount } from "../lib/auth0";
 import { AccountProvider } from "./AccountMenu";
 import LiveView from "./LiveView";
+import NoAutofill from "./NoAutofill";
 
 export const metadata: Metadata = {
   title: "Elliot",
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
+        <NoAutofill />
         <Suspense fallback={null}>
           <Accounts>{children}</Accounts>
         </Suspense>

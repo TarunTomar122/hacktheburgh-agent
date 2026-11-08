@@ -34,7 +34,7 @@ export default function MedicineRun({ profile, route }: { profile: Profile; rout
   const live = state.status === "running" || state.says.length > 0;
   if (live) {
     const r = state.medicine;
-    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={go} onRecorded={hasDemo ? () => switchToRecording({ flow: "medicine", place }) : undefined} kit={KIT} main={<Board report={r ?? null} running={state.status === "running"} />} />;
+    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={go} onRecorded={hasDemo ? (toEnd) => switchToRecording({ flow: "medicine", place, toEnd }) : undefined} kit={KIT} main={<Board report={r ?? null} running={state.status === "running"} />} />;
   }
   const where = [profile.facts.region, profile.facts.country].filter(Boolean).join(", ");
   return (

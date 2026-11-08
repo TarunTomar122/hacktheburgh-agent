@@ -97,7 +97,7 @@ function FreeText({
           className="big-input max-h-[60vh] overflow-y-auto !text-[22px] !leading-9 sm:!text-[26px]"
         />
       ) : (
-        <input id={id} autoFocus autoComplete={spec.autoComplete} value={text} onChange={(e) => setText(e.target.value)} placeholder={spec.placeholder} className="big-input" />
+        <input id={id} autoFocus autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder={spec.placeholder} className="big-input" />
       )}
       <ErrorLine message={error} />
       <OkRow disabled={!text.trim()} busy={busy} onDemo={() => setText(multi ? demoStory() : demoName())} hint={multi ? <span className="hidden text-[13px] text-muted sm:inline">Enter sends. Shift + Enter starts a new line.</span> : undefined} />
@@ -202,7 +202,7 @@ function StageForm({
           type={type}
           autoFocus
           inputMode={f.kind === "tel" ? "tel" : f.kind === "email" ? "email" : undefined}
-          autoComplete={f.autoComplete}
+          autoComplete="off"
           autoCapitalize={f.kind === "postcode" ? "characters" : undefined}
           list={f.suggestions ? `${id}-list` : undefined}
           placeholder={f.placeholder ?? (f.kind === "email" ? "name@example.com" : f.kind === "postcode" || f.kind === "tel" ? "" : "Type your answer here")}

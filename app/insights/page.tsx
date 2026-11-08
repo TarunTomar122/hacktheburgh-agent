@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { allRuns, type Flow } from "../../lib/insights";
-import { latestJourney } from "../../lib/journey";
+import { pinnedJourney } from "../../lib/journey";
 import Story from "./Story";
 import { DECISION_MODEL } from "../../lib/agent/decisions";
 import { MODELS } from "../../lib/agent/llm";
@@ -90,7 +90,7 @@ export default function Insights() {
 async function Dashboard() {
   await connection();
   const runs = allRuns();
-  const j = latestJourney();
+  const j = pinnedJourney();
   // One recent cohort for web access, including unfinished runs, so slow runs are not silently discarded.
   const scope = runs.slice(0, 25);
   const access = scope.flatMap((r) => r.access);
