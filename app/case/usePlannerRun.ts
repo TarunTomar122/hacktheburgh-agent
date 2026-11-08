@@ -69,7 +69,7 @@ const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], cr
  * event. Coming back, the hook attaches to the run: every event so far arrives at once, then the live tail, so the screen
  * lands on the crew's current stage. Leaving only detaches; a new run (or an explicit cancel) is the only thing that stops one.
  */
-export type RunScope = { scope: "case" | "complaint" | "discovery" | "escalation" | "medicine"; caseId: string };
+export type RunScope = { scope: "case" | "complaint" | "discovery" | "escalation" | "medicine" | "compare"; caseId: string };
 type Stored = { runId: string; flow: string; startedAt: number; status: "running" | "done" | "error"; seen?: boolean; endedAt?: number; terminal?: PlannerEvent };
 const storeKey = (sc: RunScope) => `elliot-run-v1:${sc.caseId}:${sc.scope}`;
 const slotOf = (sc?: RunScope) => (sc ? `${sc.caseId}:${sc.scope}` : undefined);

@@ -120,7 +120,7 @@ async function Dashboard() {
   return (
     <main className="mx-auto max-w-6xl space-y-16 px-6 py-10 sm:px-10 sm:py-14">
       <header>
-        <div className="mb-10 flex items-center justify-between text-xs text-muted"><Link href="/" className="font-medium text-brand hover:underline">Elliot / for judges</Link><span>Inside the system</span></div>
+        <div className="mb-10 flex items-center justify-between text-xs text-muted"><Link href="/" className="font-medium text-brand hover:underline">Elliot / for judges</Link><Link href="/compare" className="font-medium text-brand hover:underline">One story, four countries →</Link></div>
         <p className="mb-4 text-xs uppercase tracking-widest text-muted">Harmed by care. Faced with a maze.</p>
         <h1 className="display max-w-3xl text-5xl text-ink sm:text-6xl">One patient.<br />A crew on their side.</h1>
         <p className="mt-5 max-w-xl text-base leading-7 text-ink-2">Elliot finds the local route from medical harm to help, wherever the patient lives.</p>
