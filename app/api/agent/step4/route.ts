@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { busyResponse, claimAgentRun } from "../../../../lib/agentLock";
 import { runEnquiries } from "../../../../lib/agent/enquiry";
 import { MAX_ENQUIRIES } from "../../../../lib/agent/enquiryTypes";
 import { CaseFacts } from "../../../../lib/agent/facts";
@@ -20,11 +21,14 @@ const Body = z.object({
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request", detail: parsed.error.message }, { status: 400 });
+  // One run at a time (lib/agentLock.ts). Released when the run ends or when the page stops listening (refresh, restart).
+  const claim = claimAgentRun("filling the firms' enquiry forms");
+  if ("busy" in claim) return busyResponse(claim.busy);
   const enc = new TextEncoder();
   let closed = false;
   const stream = new ReadableStream({
     cancel() {
-      closed = true;
+      closed = true; claim.release();
     },
     async start(controller) {
       const send = (o: unknown) => {
@@ -36,6 +40,7 @@ export async function POST(req: Request) {
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
       } finally {
+        claim.release();
         // Approval can still log through this callback after the response ends.
         if (!closed) {
           closed = true;

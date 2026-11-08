@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { busyResponse, claimAgentRun } from "../../../../lib/agentLock";
 import { runStep3 } from "../../../../lib/agent/legalAid";
 import { Funding, fundingMissing } from "../../../../lib/agent/legalAidTypes";
 
@@ -13,11 +14,14 @@ export async function POST(req: Request) {
   const missing = fundingMissing(parsed.data.funding);
   if (missing.length) return Response.json({ error: `Still needed: ${missing.join(", ")}` }, { status: 400 });
 
+  // One run at a time (lib/agentLock.ts). Released when the run ends or when the page stops listening (refresh, restart).
+  const claim = claimAgentRun("checking legal aid and law firms");
+  if ("busy" in claim) return busyResponse(claim.busy);
   const enc = new TextEncoder();
   let cancelled = false;
   const stream = new ReadableStream({
     cancel() {
-      cancelled = true;
+      cancelled = true; claim.release();
     },
     async start(controller) {
       const send = (o: unknown) => {
@@ -28,6 +32,7 @@ export async function POST(req: Request) {
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
       } finally {
+        claim.release();
         if (!cancelled) controller.close();
       }
     },

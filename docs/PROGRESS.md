@@ -8,6 +8,15 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - One agent run at a time
+
+A double click, or starting a second step while one was filling, started a second hidden browser that ran unseen for up to 15 minutes.
+- New `lib/agentLock.ts`: the routes that launch Elliot's browser (`step1`, `step2`, `yellowcard`, `step3`, `step4`, `plan`) claim the run; a second start gets 409 "Elliot is already <doing X>. Wait for that to finish, then try again." (shown as the step's error).
+- **Compensation crew unaffected:** one claim per request, and the crew's parallel tabs (and step 4's one tab per firm) all run inside one request. `plan/answer`, `plan/skip`, `plan/demo`, `step4/send`, `step4/draft`, `step4/edit` do not claim.
+- The claim is released when the run ends or when the page stops listening (refresh, restart), so a restart is never blocked; the old run is not stopped (as before). Stale claims expire after 20 minutes.
+- Not done, on purpose: closing the browser when the page goes away (the crew cancels its own request on restart; too risky before the freeze).
+- Lock logic tested with Node; `tsc` and eslint clean. Not yet tried in the app.
+
 ### 2026-11-08 - Om + Claude - DONE - Time-limit notes on steps 1, 2, 3 and 4 (D85)
 
 Added the ombudsman (12 months) and court-claim (3 years) counts to `lib/agent/timeLimit.ts` (`countLimit`, `LIMITS`) and made `TimeLimitNote` take a `kind`. Shown on step 1 (NHS), step 2 (active and locked), the step 3 intro and step 4. Demo persona: NHS close (1 January 2027), ombudsman in time (1 July 2027), claim in time (1 July 2029). `scripts/test-time-limit.ts` now 28 checks, all pass; `tsc` and eslint clean. Not yet seen in a browser.
