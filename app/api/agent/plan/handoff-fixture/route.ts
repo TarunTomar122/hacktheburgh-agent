@@ -25,19 +25,19 @@ export async function POST(req: Request) {
     const tab = "Kit · Complaint form";
     const crewState = (id: import("../../../../../lib/agent/plannerTypes").CrewId, state: "idle" | "working" | "waiting" | "done", note: string) => emit({ type: "crew", id, state, note });
     try {
-      emit({ type: "spotlight", crew: "kit", tab });
-      crewState("kit", "working", "Opening the page");
+      emit({ type: "spotlight", crew: "robin", tab });
+      crewState("robin", "working", "Opening the page");
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
       setPageMeta(page, { label: tab, color: CREW.kit.color, state: "working", note: "Opening the page" });
       const wall = (await detectWall(page)) ?? { kind: "login" as const, detail: "It asks to sign in first", url: page.url() };
-      const note = Object.assign((s: string) => crewState("kit", "working", s), { log: async () => {} }) as Note;
+      const note = Object.assign((s: string) => crewState("robin", "working", s), { log: async () => {} }) as Note;
       await gateWall(
         {
           page,
           note,
           track: { bump() {} },
-          step: { flow: "discovery", crew: "kit" },
-          handoff: (w, why) => performHandoff({ runId, emit, tab, page, wall: w, why, step: { flow: "discovery", crew: "kit" }, crewState }),
+          step: { flow: "escalation", crew: "robin" },
+          handoff: (w, why) => performHandoff({ runId, emit, tab, page, wall: w, why, step: { flow: "escalation", crew: "robin" }, crewState }),
         },
         wall,
         async () => (await detectWall(page)) ?? null,

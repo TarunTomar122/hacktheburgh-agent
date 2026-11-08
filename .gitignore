@@ -47,3 +47,4 @@ next-env.d.ts
 
 # Night-run videos are large; kept locally (docs/night-runs/<run>/video)
 docs/night-runs/*/video/
+.next-handoff/

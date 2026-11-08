@@ -18,10 +18,10 @@ import { usePlannerRun } from "./usePlannerRun";
  * route map, which the later steps use.
  */
 
-const ROLES: Partial<Record<CrewId, string>> = { elliot: "Leads the search", robin: "Finds the rules and forms", iona: "Finds the guidance", nell: "Finds the money" };
+const ROLES: Partial<Record<CrewId, string>> = { elliot: "Leads the search", robin: "Finds the rules", iona: "Finds the guidance", nell: "Finds the money" };
 const KIT: CrewKit = { workers: ["robin", "iona", "nell"], role: (id) => ROLES[id] ?? CREW[id].role };
 const STEPS: Step[] = [
-  { crew: ["robin"], title: "Find the rules", line: "Who to complain to, who checks it, and the real forms" },
+  { crew: ["robin"], title: "Find the rules", line: "Who to complain to, who checks it, how claims work" },
   { crew: ["iona"], title: "Find the guidance", line: "What doctors there are told to do" },
   { crew: ["nell"], title: "Find the money", line: "How help can be paid for" },
 ];

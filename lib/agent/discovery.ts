@@ -50,7 +50,7 @@ const TOOLS = [
 
 const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real pages and online forms they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. You can only open pages this run found: a search result, or a link or path on a page already opened.
 The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply (countries with several systems, like the UK nations, Australian or US states, differ).
-Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for). Robin also finds the actual online forms: goes through a site to the form and reads its fields; never fills anything here.
+Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for). Robin also looks for the online complaint form where it is quick to find (one or two attempts per body); the form itself is not the goal here, and if it is hidden, blocked or needs a login, note that in "wall" and move on. Never ask the patient to sign in. Never fill anything here.
 Find, for this place: ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
 How to work:
 - Start with update_plan. Give different crew members jobs in the SAME turn so they work at the same time (one tool call each); one member's calls run in order.

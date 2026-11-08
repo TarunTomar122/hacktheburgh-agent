@@ -138,6 +138,8 @@ export async function gateWall(ctx: WorkerCtx, wall: Wall, recheck: () => Promis
   if (!isHandoffKind(wall.kind)) return { go: false, wall };
   // A form already on the page is not blocked by a header login. Do not ask, and do not call the model.
   if (await pageHasUsableForm(ctx.page)) return { go: true, open: true };
+  // Research never stops for you: a wall is noted on the route and the crew moves on. You are asked only when there is a case to work on (complaint, review, compensation).
+  if ((ctx.step ?? boundStep(ctx.page))?.flow === "discovery") return { go: false, wall };
   const offer = ctx.handoff ?? boundHandoff(ctx.page);
   if (!offer) return { go: false, wall };
   if (handoffWaitMs() <= 0 && !ctx.judge) return { go: false, wall };

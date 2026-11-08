@@ -389,7 +389,7 @@ async function uiCheck(origin: string) {
     await page.locator("[data-needs-you='1']").click();
     await page.waitForSelector("[data-handoff-modal='1']", { timeout: 8000 });
     const modalText = (await page.locator("[data-handoff-modal='1']").innerText()).replace(/\s+/g, " ");
-    check(modalText.includes("reach the complaint form"), "the modal's line matches discovery");
+    check(modalText.includes("ombudsman"), "the modal's line matches the escalation step");
     check(/127\.0\.0\.1|localhost/.test(modalText), "the modal names the site");
     check((await page.getByRole("button", { name: "I've signed in, continue" }).count()) === 1, "continue button");
     check((await page.getByRole("button", { name: "Skip this step" }).count()) === 1, "skip button");
