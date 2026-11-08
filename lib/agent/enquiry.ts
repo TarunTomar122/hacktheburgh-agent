@@ -264,8 +264,10 @@ export async function fillOne(
     // hideValues: the decision model sees value names, never the patient's story or contact details (Cursor round 3).
     run = await runDecisionAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 6, onEvent, hideValues: true });
   } catch (e) {
-    // Recovery (D46): the Decisions API is down or overloaded. Switch to the backup engine (tool-calling model) and carry on.
+    // Recovery (D46): the Decisions API is down or overloaded. The backup engine sees the patient's values, so it runs
+    // only when the user has allowed a cloud fallback (privacy, Codex round 4); otherwise stop honestly.
     const why = (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120);
+    if (process.env.ALLOW_CLOUD_FALLBACK !== "1") throw new Error(`The form service is unavailable (${why}); nothing was typed or sent`);
     note("Main engine unavailable; switching to the backup engine");
     await note.log("recover", `The decision service failed (${why}). Switched to the backup engine to fill the form.`);
     run = await runBrowserAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 10, onEvent });

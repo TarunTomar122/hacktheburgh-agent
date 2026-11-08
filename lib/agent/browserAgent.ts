@@ -137,6 +137,9 @@ export async function runBrowserAgent(opts: {
   return { status: "max_steps", summary: "Ran out of steps before the form was complete.", unfilled, steps: maxSteps, stats };
 }
 
+/** Same list as decisionAgent: a button or link with such a label is never clicked without allowSubmit (Codex round 4). */
+const SENDS_RE = /\b(send|submit|confirm|finish|complete|pay|apply|sign|register|post|book|request (a )?call ?back|enviar|envoyer|valider|absenden|senden|abschicken|bestätigen|invia|conferma|verzenden|versturen|skicka|skick|wyślij|odeslat)\b|^(go|ok|done|continue to payment)$/i;
+
 async function execute(page: Page, obs: Observation, tool: string, args: Record<string, unknown>, allowCheckboxes: boolean, allowSubmit: boolean): Promise<string> {
   const el: El | undefined = obs.elements.find((e) => e.id === args.id);
   if (!el) return `error: no element with id ${String(args.id)} on the current page`;
@@ -168,7 +171,7 @@ async function execute(page: Page, obs: Observation, tool: string, args: Record<
         return "ok";
       case "click":
         // Hard rule in code, not a prompt: the agent can never submit.
-        if (el.kind === "submit" && !allowSubmit) return "BLOCKED: submitting needs human approval. Do not click it. Call finish when the form is filled.";
+        if ((el.kind === "submit" || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim()))) && !allowSubmit) return "BLOCKED: this would send or submit; that needs human approval. Do not click it. Call finish when the form is filled.";
         await loc.click({ timeout: 5000 });
         await page.waitForTimeout(500);
         return "ok";

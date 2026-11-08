@@ -143,7 +143,10 @@ export async function runDecisionAgent(opts: {
       emit({ type: "status", message: `Not advancing: ${unsure.join("; ")}` });
       return result("needs_input", "Some fields on this page could not be filled from the saved values.", step, { unfilled: unsure, question: `I could not fill: ${unsure.join("; ")}. Can you help with these?` });
     }
-    if (!el || (el.kind === "submit" && !opts.allowSubmit && !opts.advance?.test(el.label.trim()))) return finish(page, opts, stats, step, unsure);
+    // Without allowSubmit, code refuses anything that could send: a real submit, OR any button or link whose label means
+    // send / submit / confirm / pay / apply / sign (JavaScript "Send enquiry" buttons are type=button, Codex round 4).
+    const sends = !!el && (el.kind === "submit" || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim())));
+    if (!el || (sends && !opts.allowSubmit && !(el.kind === "submit" && opts.advance?.test(el.label.trim()) && !SENDS_RE.test(el.label.trim())))) return finish(page, opts, stats, step, unsure);
     try {
       await pointAt(page, page.locator(`[data-aid="${el.id}"]`));
       await page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 });
@@ -156,6 +159,9 @@ export async function runDecisionAgent(opts: {
   }
   return result("max_steps", "Ran out of steps.", maxSteps, { unfilled: unfilledRequired(await observe(page)) });
 }
+
+/** Labels that send something, in several languages. A button with such a label is never clicked without allowSubmit. */
+const SENDS_RE = /\b(send|submit|confirm|finish|complete|pay|apply|sign|register|post|book|request (a )?call ?back|enviar|envoyer|valider|absenden|senden|abschicken|bestätigen|invia|conferma|verzenden|versturen|skicka|skick|wyślij|odeslat)\b|^(go|ok|done|continue to payment)$/i;
 
 /** Ends the run, verifying against the live page (code decides, not the model). */
 async function finish(page: Page, opts: { allowCheckboxes?: boolean }, stats: DecisionRunStats, step: number, unsure: string[]): Promise<DecisionRun> {

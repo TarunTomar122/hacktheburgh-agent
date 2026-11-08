@@ -115,7 +115,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               calculatorText = r.value.result;
               verdict = /\b(not (likely|eligible)|unlikely|ineligible|disqualif\w*|do(es)? not qualify|not qualify|cannot get|can't get|won't get)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
               kit.finding(`${f.body}: ${short(r.value.result, 120)}`, url, "nell");
-              return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nAnswers: ${r.value.answers.map((x) => `${x.question} = ${x.answer} (${x.source})`).join("; ")}`;
+              return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nThe checker asked ${r.value.answers.length} question(s); the patient's answers stay on their device.`;
             }
             const r = await kit.inTab(thought, "nell", short(f?.body ?? "Funding", 26), (p, note) => readPage({ page: p, note, track: kit.track }, url, "Can an adult get legal aid for a clinical negligence (medical negligence) claim here? Is no win no fee allowed, with any cap? Is there free legal advice in any scheme?"), 90_000);
             if (!r.ok) return `Could not read the funding rules: ${r.error}`;
