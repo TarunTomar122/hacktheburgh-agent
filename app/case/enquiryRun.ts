@@ -116,7 +116,7 @@ export async function sendEnquiry(firmId: string, consents: string[], current: E
 
 function fixtureMessage(f: CaseFacts, legalAid: LegalAidSummary): EnquiryMessage {
   const name = [f.firstName, f.lastName].filter(Boolean).join(" ");
-  const funding = legalAid?.route === "legal_aid" ? "SLAB's calculator suggests I may qualify financially for civil legal aid." : "I would like to know whether you could take this on a no win no fee basis.";
+  const funding = legalAid?.route === "legal_aid" ? "A legal aid check suggests I may qualify financially for civil legal aid." : "I would like to know whether you could take this on a no win no fee basis.";
   return {
     subject: "Enquiry: possible medical negligence (missed fracture)",
     body: `Dear Sir or Madam,\n\nMy name is ${name}. ${f.incidentSummary ?? ""}\n\nI would like advice on whether I may have a claim for medical negligence. ${funding}\n\nYou can reach me at ${f.email ?? ""} or ${f.phone ?? ""}.\n\nKind regards,\n${name}`,

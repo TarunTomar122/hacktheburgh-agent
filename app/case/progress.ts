@@ -11,18 +11,26 @@ export type Milestone = { step: number; label: string; done: boolean };
  *  - self-reported by the user ("I've sent it"), because we cannot see them press Send in the other window.
  * Step 5 is not built and step 4 cannot send yet, so those milestones cannot be done yet. The percentage counts them, so it never reaches 100% early.
  */
+/** A short body name from the research, or the fallback when the research left a sentence (or nothing). */
+const nameOf = (p: Profile, kind: "complaint" | "escalation", fallback: string) => {
+  const b = p.route && "map" in p.route ? p.route.map.steps.find((s) => s.kind === kind)?.body?.trim() : undefined;
+  return b && b.length <= 40 && !/[.:;]/.test(b) ? b : fallback;
+};
+
 export function milestones(p: Profile): Milestone[] {
   const g = p.progress ?? {};
+  const first = nameOf(p, "complaint", p.route && "map" in p.route ? "the hospital" : "NHS Lothian"); // the body the research found for this place
+  const second = nameOf(p, "escalation", p.route && "map" in p.route ? "the independent body" : "the ombudsman");
   const skipped = g.skipped ?? []; // steps the user skipped in the demo (D60)
   return [
     { step: 1, label: "Your details are complete", done: missingRequired(p.facts).length === 0 },
     { step: 1, label: "Complaint written", done: !!p.draft?.details.trim() },
-    { step: 1, label: "NHS form filled in and checked", done: g.nhsFilled === true },
-    { step: 1, label: "Complaint sent to NHS Lothian", done: g.nhsSent === true },
-    { step: 2, label: "NHS Lothian's final reply received", done: p.ombudsman?.unlocked === true },
-    { step: 2, label: "Ombudsman form filled in and checked", done: g.spsoFilled === true },
-    { step: 2, label: "Complaint sent to the ombudsman", done: g.spsoSent === true },
-    { step: 3, label: "Money questions answered", done: !!p.legalAid && fundingMissing(p.legalAid.funding).length === 0 },
+    { step: 1, label: "Complaint form filled in and checked", done: g.nhsFilled === true },
+    { step: 1, label: `Complaint sent to ${first}`, done: g.nhsSent === true },
+    { step: 2, label: `${first}'s final reply received`, done: p.ombudsman?.unlocked === true },
+    { step: 2, label: `${second} form filled in and checked`, done: g.spsoFilled === true },
+    { step: 2, label: `Complaint sent to ${second}`, done: g.spsoSent === true },
+    { step: 3, label: "Your income and savings entered", done: !!p.legalAid && fundingMissing(p.legalAid.funding).length === 0 },
     // Sample (fixture) results never count: they are not a real check.
     { step: 3, label: "Legal aid checked", done: !!p.legalAid?.result && !p.legalAid.sample },
     { step: 3, label: "Lawyers shortlisted", done: !!p.legalAid?.result && !p.legalAid.sample && p.legalAid.result.shortlist.length > 0 },

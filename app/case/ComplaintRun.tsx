@@ -238,12 +238,12 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
             <div className="space-y-3">
               <span className={cx("inline-block rounded-[4px] px-2 py-0.5 text-[12px] font-medium", limit.cls)}>{limit.label}</span>
               <p className="text-[15px] leading-6 text-ink">{run.timeLimit.explanation}</p>
-              <Quote source="Citizens Advice Scotland" href={run.timeLimit.url} inline>
+              <Quote source={(() => { try { return new URL(run.timeLimit.url).hostname.replace(/^www\./, ""); } catch { return "the source"; } })()} href={run.timeLimit.url} inline>
                 {run.timeLimit.limit}
               </Quote>
             </div>
           ) : (
-            <p className="text-[15px] leading-6 text-ink">Robin did not check the time limit this time. Citizens Advice Scotland explains it on its page about NHS complaints.</p>
+            <p className="text-[15px] leading-6 text-ink">Robin did not check the time limit this time. The body's own complaints page says how long you have.</p>
           )}
         </Row>
 
