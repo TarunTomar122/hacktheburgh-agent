@@ -217,7 +217,7 @@ async function Dashboard() {
         </div>
         <div className="mt-8 overflow-x-auto rounded-card border border-line">
           <table className="w-full min-w-[34rem] text-left text-sm">
-            <thead className="bg-subtle text-xs uppercase tracking-widest text-muted"><tr><th className="px-4 py-3 font-normal">Model</th><th className="px-4 py-3 font-normal">Where</th><th className="px-4 py-3 text-right font-normal">Calls</th><th className="px-4 py-3 text-right font-normal">Tokens in</th><th className="px-4 py-3 text-right font-normal">Tokens out</th><th className="px-4 py-3 text-right font-normal">Estimated cost</th></tr></thead>
+            <thead className="bg-subtle text-sm text-muted"><tr><th className="px-4 py-3 font-normal">Model</th><th className="px-4 py-3 font-normal">Where</th><th className="px-4 py-3 text-right font-normal">Calls</th><th className="px-4 py-3 text-right font-normal">Tokens in</th><th className="px-4 py-3 text-right font-normal">Tokens out</th><th className="px-4 py-3 text-right font-normal">Estimated cost</th></tr></thead>
             <tbody className="divide-y divide-line-soft">
               {modelRows.map((m) => <tr key={m.model}><td className="px-4 py-3 text-ink">{modelLabel(m.model)}</td><td className="px-4 py-3 text-ink-2">{m.where === "local" ? "On this Mac" : "Cloud"}</td><td className="px-4 py-3 text-right tabular-nums text-ink-2">{m.calls}</td><td className="px-4 py-3 text-right tabular-nums text-ink-2">{tokens(m.inTok)}</td><td className="px-4 py-3 text-right tabular-nums text-ink-2">{tokens(m.outTok)}</td><td className="px-4 py-3 text-right tabular-nums text-ink">{m.cost === null ? "Not priced" : m.cost === 0 ? "Free" : usd(m.cost)}</td></tr>)}
             </tbody>

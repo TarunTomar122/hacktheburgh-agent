@@ -33,7 +33,6 @@ export default function NameStep({
 
   return (
     <form onSubmit={submit} className="fade-up flex flex-1 flex-col justify-center pb-16" aria-labelledby="name-question">
-      <p className="eyebrow mb-5">Welcome</p>
       <h1 id="name-question" className="display text-[42px] sm:text-[52px]">
         First, what should I <span className="hl-blue">call you</span>?
       </h1>

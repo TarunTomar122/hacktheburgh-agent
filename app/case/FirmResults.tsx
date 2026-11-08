@@ -283,7 +283,7 @@ function FirmTile({ firm, top, selected, locked, onToggle, onOpen }: { firm: Fir
           <input type="checkbox" className="size-4 accent-brand" checked={selected} disabled={locked} onChange={onToggle} aria-label={`Select ${firm.name}`} />
           Select
         </label>
-        {top && <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-white">Top pick</span>}
+        {top && <span className="rounded-full bg-ink px-2 py-0.5 text-[12px] font-medium text-white">Top pick</span>}
       </div>
       <div className="flex items-start gap-3">
         <FitRing fit={fitOf(firm)} size={52} />
@@ -325,7 +325,7 @@ function FirmModal({ firm, top, selected, locked, onToggle, onClose, onTrace }: 
         <header className="flex items-start gap-5 border-b border-line-soft p-6">
           <FitRing fit={fitOf(firm)} size={76} />
           <div className="min-w-0 flex-1">
-            {top && <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-white">Top pick</span>}
+            {top && <span className="rounded-full bg-ink px-2 py-0.5 text-[12px] font-medium text-white">Top pick</span>}
             <h2 className="display mt-1.5 text-[26px] text-ink">{firm.name}</h2>
             <p className="text-sm text-muted">
               {firm.town}

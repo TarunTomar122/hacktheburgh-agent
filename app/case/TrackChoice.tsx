@@ -67,14 +67,14 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
         <div className="flex items-center gap-6 border-b border-line-soft p-6">
           <FitRing fit={rec.tracks[best].fit} size={104} title="How well this track fits what you told us. Not a chance of success." />
           <div className="min-w-0">
-            <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">What you can get</div>
+            <div className="text-[13px] font-medium text-muted">What you can get</div>
             <p className="mt-1 text-[17px] leading-6 text-ink">{TRACKS[best].gets}</p>
             <p className="mt-2 text-xs text-muted">Fit is how well this matches what you told us. It is not a chance of winning.</p>
           </div>
         </div>
         <div className="grid gap-8 p-6 sm:grid-cols-[1fr_220px]">
           <div>
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Why we suggest it</div>
+            <div className="mb-2 text-[13px] font-medium text-muted">Why we suggest it</div>
             <ul>
               {rec.tracks[best].reasons.map((r) => (
                 <CheckRow key={r.label} row={r} />
@@ -82,7 +82,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
             </ul>
           </div>
           <div>
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">What happens next</div>
+            <div className="mb-2 text-[13px] font-medium text-muted">What happens next</div>
             <ol className="space-y-2">
               {steps(best).map((s, i) => (
                 <li key={s.n} className="flex gap-3 text-[14px] leading-5">

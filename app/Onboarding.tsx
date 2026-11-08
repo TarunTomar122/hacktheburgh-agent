@@ -137,7 +137,7 @@ export default function Onboarding() {
             <LogoLink />
             <span className="hidden h-7 w-px bg-white/30 sm:block" aria-hidden />
             <div className="hidden leading-tight sm:block">
-              <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/70">{facts.firstName ? "Case for" : "Getting started"}</div>
+              <div className="text-[12px] font-medium text-white/70">{facts.firstName ? "Case for" : "Getting started"}</div>
               <div className="text-sm font-medium">{[facts.firstName, facts.lastName].filter(Boolean).join(" ") || "Preparing your case"}</div>
             </div>
           </div>
@@ -178,7 +178,6 @@ export default function Onboarding() {
             <NameStep value={nameDraft} onChange={setNameDraft} busy={thinking} error={error} onSubmit={onFree} />
           ) : done ? (
             <div className="fade-up my-auto space-y-5 py-10">
-              <p className="eyebrow">All done</p>
               <h1 className="display text-[34px] sm:text-[42px]">
                 Here is what I have. <span className="text-muted">You can change any of it later in your Profile.</span>
               </h1>

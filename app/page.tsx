@@ -222,7 +222,7 @@ function Product() {
             {/* live agent view */}
             <div className="flex flex-col gap-5 bg-night p-6 sm:p-9">
               <div className="flex items-center justify-between text-xs text-night-meta">
-                <span className="font-medium uppercase tracking-[0.1em]">Robin&apos;s browser</span>
+                <span className="font-medium">Robin&apos;s browser</span>
                 <span>3 agents · 11 pages read</span>
               </div>
 
@@ -271,7 +271,7 @@ function Product() {
 function FormField({ label, value, focus }: { label: string; value: string; focus?: boolean }) {
   return (
     <div>
-      <div className="mb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{label}</div>
+      <div className="mb-1 text-[13px] font-medium text-muted">{label}</div>
       <div className={cx("rounded-ctl border bg-white px-3 py-2 text-[14px]", focus ? "border-brand ring-4 ring-brand-soft" : "border-line")}>
         {value}
         {focus && <span className="soft-pulse ml-0.5 inline-block h-4 w-px translate-y-0.5 bg-brand" aria-hidden />}
@@ -328,7 +328,7 @@ function Crew() {
               </div>
               <div className="flex flex-1 flex-col gap-1.5 p-5">
                 <div className="display text-[24px]">{c.name}</div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">{c.role}</div>
+                <div className="text-[13px] font-medium text-muted">{c.role}</div>
                 <p className="mt-2 text-sm leading-6 text-ink-2">{c.line}</p>
               </div>
             </div>
@@ -364,7 +364,7 @@ function Proof() {
           </div>
         </div>
         <div className="rounded-card bg-white p-7 text-ink">
-          <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Time limit to complain</div>
+          <div className="text-[13px] font-medium text-muted">Time limit to complain</div>
           <div className="display mt-2 text-[30px]">12 months from the event, or from when you found out</div>
           <blockquote className="mt-5 rounded-ctl bg-paper px-5 py-4 font-serif text-[17px] leading-7 text-ink">
             “A complaint should be made within 12 months of the date of the incident, or within 12 months of becoming aware of it.”

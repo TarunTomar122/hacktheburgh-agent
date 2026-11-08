@@ -207,7 +207,7 @@ function Column({ col, mode, go, onDone, onAnswers }: { col: Col; mode: Mode; go
 }
 
 function Group({ title }: { title: string }) {
-  return <li className="bg-subtle px-5 py-1.5 text-[11px] uppercase tracking-widest text-muted">{title}</li>;
+  return <li className="bg-subtle px-5 py-1.5 text-[13px] text-muted">{title}</li>;
 }
 
 function Row({ label, value, sub, step, settled }: { label: string; value?: string; sub?: string; step?: RouteStep; /** the run for this row has finished: an empty row is "not found", not "still looking" */ settled?: boolean }) {

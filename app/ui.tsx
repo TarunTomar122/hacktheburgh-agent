@@ -12,9 +12,9 @@ export const cx = (...parts: (string | false | null | undefined)[]) => parts.fil
 
 /* ---------- text ---------- */
 
-/** Small letter-spaced uppercase label (Wordsmith's "MAIN CRITERION" style). */
+/** Small quiet label, in sentence case. */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("text-[11px] font-medium uppercase tracking-[0.1em] text-muted", className)}>{children}</div>;
+  return <div className={cx("text-[13px] font-medium text-muted", className)}>{children}</div>;
 }
 
 /**
@@ -76,7 +76,7 @@ export const selectControl = control + " select";
 export function Field({ label, hint, problem, children, className }: { label: ReactNode; hint?: ReactNode; problem?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <label className={cx("block space-y-1.5", className)}>
-      <span className="block text-[11px] font-medium uppercase tracking-[0.1em] text-muted">{label}</span>
+      <span className="block text-[13px] font-medium text-muted">{label}</span>
       {children}
       {hint && <span className="block text-xs text-muted">{hint}</span>}
       {problem && <span className="block text-xs text-danger">{problem}</span>}

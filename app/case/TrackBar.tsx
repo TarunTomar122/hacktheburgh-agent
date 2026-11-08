@@ -153,7 +153,7 @@ export default function TrackBar({ profile, stage, onSelect }: { profile: Profil
               )}
               {t && STEPS_.filter((s) => t.steps.includes(s.n)).map((s) => (
                 <div key={s.n} className="mb-3 last:mb-0">
-                  <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">{s.title}</div>
+                  <div className="mb-1.5 text-[13px] font-medium text-muted">{s.title}</div>
                   <ul className="space-y-1.5">
                     {ms
                       .filter((m) => m.step === s.n)

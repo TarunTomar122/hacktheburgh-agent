@@ -12,7 +12,7 @@ export default function Header({ name, profileOpen, incomplete, stripes = true, 
           <LogoLink />
           <span className="h-7 w-px bg-white/30" aria-hidden />
           <div className="leading-tight">
-            <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/70">Case for</div>
+            <div className="text-[12px] font-medium text-white/70">Case for</div>
             <div className="text-sm font-medium">{name}</div>
           </div>
         </div>

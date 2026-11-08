@@ -688,7 +688,7 @@ function Event({ s, steps, runId, onTrace, compact, needsYou }: { s: Say; steps:
       <li className="flex gap-2">
         {time}
         <div className={cx("border-l-2 pl-3", s.replan ? "border-amber" : "border-brand")}>
-          <div className={cx("text-[11px] font-medium uppercase tracking-[0.1em]", s.replan ? "text-amber" : "text-brand")}>{s.replan ? "Changed the plan" : "Plan"}</div>
+          <div className={cx("text-[13px] font-medium", s.replan ? "text-amber" : "text-brand")}>{s.replan ? "Changed the plan" : "Plan"}</div>
           <p className="text-[14px] leading-6 text-ink">{s.text}</p>
         </div>
       </li>
@@ -707,7 +707,7 @@ function Event({ s, steps, runId, onTrace, compact, needsYou }: { s: Say; steps:
       <li className="flex gap-2">
         {time}
         <div className="rounded-card bg-paper p-3">
-          <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-2">Elliot&apos;s summary</div>
+          <div className="text-[13px] font-medium text-ink-2">Elliot&apos;s summary</div>
           <p className="mt-1 font-serif text-[15px] leading-6 text-ink">{s.text}</p>
         </div>
       </li>

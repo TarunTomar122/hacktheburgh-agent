@@ -25,7 +25,6 @@ export default function DevSearch() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-10">
       <div>
-        <div className="eyebrow mb-3">Developer tools</div>
         <h1 className="display text-4xl">
           Browser <span className="hl-violet">agent</span>
         </h1>

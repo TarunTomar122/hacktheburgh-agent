@@ -152,7 +152,7 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
               </div>
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={cx("rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]", KIND[s.kind].cls)}>{KIND[s.kind].label}</span>
+                  <span className={cx("rounded px-1.5 py-0.5 text-[12px] font-medium", KIND[s.kind].cls)}>{KIND[s.kind].label}</span>
                   <span className="text-[12px] font-medium" style={{ color: s.color }}>
                     {s.agent}
                   </span>
