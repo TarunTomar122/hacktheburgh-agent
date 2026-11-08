@@ -66,6 +66,7 @@ export type RouteStep = {
   how: "online_form" | "email" | "post" | "phone" | "login_required" | "court" | "unknown";
   url?: string; // the page or form the crew found
   wall?: string; // "needs a login", "CAPTCHA", "phone or post only"
+  handedOff?: boolean; // the patient signed in on this page, and the crew carried on
   points?: string[]; // up to 6 key facts for the patient: time limits, stages and response times, caps, conditions, costs (each backed by a source)
   requires?: string[]; // what must happen first, in the source's terms ("the hospital's final response")
   appliesIf?: string; // when this route applies at all ("public hospital care", "harm worth more than ...")

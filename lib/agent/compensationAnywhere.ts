@@ -80,21 +80,21 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
       },
       describe: (name, a, out) => {
         const f = firms.get(String(a.firm_id ?? ""));
-        if (name === "check_funding") return fundingQuote ? `${fundingSource}: "${short(fundingQuote.quote, 200)}"` : short(out, 200);
-        if (name === "search_register") return short(out.split("\n")[0], 200);
+        if (name === "check_funding") return fundingQuote ? `${fundingSource}: "${fundingQuote.quote}"` : out;
+        if (name === "search_register") return out.split("\n")[0];
         if (name === "web_search") {
           const hits = [...out.matchAll(/^\d+\. (.*?) — (\S+)/gm)];
-          return hits.length ? `${hits.length} results for "${short(String(a.query ?? ""), 60)}". Top: ${host(hits[0][2])}.` : "No useful results.";
+          return hits.length ? `${hits.length} results for "${String(a.query ?? "")}". Top: ${host(hits[0][2])}.` : "No useful results.";
         }
-        if (name === "read_scheme" && scheme) return `${scheme.body}: ${short(scheme.text, 220)}`;
+        if (name === "read_scheme" && scheme) return `${scheme.body}: ${scheme.text}`;
         if (name === "check_firm" && f) return f.excluded ? `Ruled out ${f.name}: ${f.excluded}.` : `Checked ${f.name} on its own website.`;
         if (name === "fill_enquiry") {
           const e = enquiries.get(String(a.firm_id ?? ""));
-          return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry filled. Waiting for your OK before anything is sent.` : `${e.firmName}: ${e.note}`) : short(out, 200);
+          return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry filled. Waiting for your OK before anything is sent.` : `${e.firmName}: ${e.note}`) : out;
         }
-        if (name === "investigate" && proof.investigation) return proof.investigation.items.length ? `Found ${proof.investigation.items.length} official ${proof.investigation.items.length === 1 ? "item" : "items"}. ${proof.investigation.items[0].publisher}: "${short(proof.investigation.items[0].quote, 140)}"` : "I looked on the official sites and found no published decisions to cite.";
-        if (name === "find_guidance" && proof.guideline?.points.length) return `${proof.guideline.name}: "${short(proof.guideline.points[0].text, 160)}"`;
-        return short(out.split("\n")[0], 200);
+        if (name === "investigate" && proof.investigation) return proof.investigation.items.length ? `Found ${proof.investigation.items.length} official ${proof.investigation.items.length === 1 ? "item" : "items"}. ${proof.investigation.items[0].publisher}: "${proof.investigation.items[0].quote}"` : "I looked on the official sites and found no published decisions to cite.";
+        if (name === "find_guidance" && proof.guideline?.points.length) return `${proof.guideline.name}: "${proof.guideline.points[0].text}"`;
+        return out.split("\n")[0];
       },
       exec: async (call, a, thought, kit) => {
         const s = (k: string) => (typeof a[k] === "string" ? (a[k] as string) : "");
@@ -117,7 +117,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               fundingSource = f.body;
               calculatorText = r.value.result;
               verdict = /\b(not (likely|eligible)|unlikely|ineligible|disqualif\w*|do(es)? not qualify|not qualify|cannot get|can't get|won't get)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
-              kit.finding(`${f.body}: ${short(r.value.result, 120)}`, url, "nell");
+              kit.finding(`${f.body}: ${r.value.result}`, url, "nell");
               return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nThe checker asked ${r.value.answers.length} question(s); the patient's answers stay on their device.`;
             }
             const r = await kit.inTab(thought, "nell", short(f?.body ?? "Funding", 26), (p, note) => readPage({ page: p, note, track: kit.track }, url, "Can an adult get legal aid for a clinical negligence (medical negligence) claim here? Is no win no fee allowed, with any cap? Is there free legal advice in any scheme?"), 90_000);
@@ -126,7 +126,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             fundingSource = f?.body ?? r.value.title;
             calculatorText = r.value.answer;
             verdict = /not (available|in scope|covered)|no longer|unlikely/i.test(r.value.answer) ? "unlikely" : "unknown";
-            kit.finding(`${fundingSource}: ${short(r.value.answer, 120)}`, r.value.url, "nell");
+            kit.finding(`${fundingSource}: ${r.value.answer}`, r.value.url, "nell");
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ")}`;
           }
           case "read_scheme": {
@@ -148,7 +148,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             if (!r.ok) return `Could not read the scheme: ${r.error}`;
             const q = r.value.quotes.find((x) => x.checked);
             scheme = { body: c?.body ?? r.value.title, text: r.value.answer, quote: q, url: r.value.url };
-            kit.finding(`${scheme.body}: ${short(r.value.answer, 140)}`, r.value.url, "robin");
+            kit.finding(`${scheme.body}: ${r.value.answer}`, r.value.url, "robin");
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((x) => x.checked).map((x) => `"${x.quote}"`).join(" | ")}`;
           }
           case "web_search": {

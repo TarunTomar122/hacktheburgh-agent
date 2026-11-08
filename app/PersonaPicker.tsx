@@ -260,11 +260,11 @@ function PersonaCard({ p, selected, tabbable, onPick }: { p: Persona; selected: 
       <span className="flex items-center gap-3">
         <Tile p={p} />
         <span className="min-w-0">
-          <span className="block truncate text-[15px] font-medium text-ink">{p.name}</span>
-          <span className="block truncate text-[13px] text-muted">{p.place}</span>
+          <span className="block text-[15px] font-medium text-ink">{p.name}</span>
+          <span className="block text-[13px] text-muted">{p.place}</span>
         </span>
       </span>
-      <span className="line-clamp-3 text-[13px] leading-5 text-ink-2">{p.blurb}</span>
+      <span className="text-[13px] leading-5 text-ink-2">{p.blurb}</span>
       <span className="mt-auto text-[12px] font-medium leading-4" style={{ color: GROUP_COLOR[p.group] }}>
         {p.tests}
       </span>
@@ -319,16 +319,15 @@ function Preview({ p, replacing, previewRef, onBack, onClose, onStart }: { p: Pe
           <Item label="Treated at">{f.incidentLocation}</Item>
           <Item label="Timeline">
             <ul className="space-y-2">
-              {f.events.slice(0, 3).map((e, i) => (
-                <li key={i} className="line-clamp-2 leading-5">
+              {f.events.map((e, i) => (
+                <li key={i} className="leading-5">
                   <span className="font-medium text-ink">{e.date}</span> <span className="text-ink-2">{e.what}</span>
                 </li>
               ))}
-              {f.events.length > 3 && <li className="text-muted">and {f.events.length - 3} more</li>}
             </ul>
           </Item>
           <Item label="Would like">
-            <span className="line-clamp-3 text-ink-2">{f.desiredOutcome}</span>
+            <span className="text-ink-2">{f.desiredOutcome}</span>
           </Item>
         </dl>
 

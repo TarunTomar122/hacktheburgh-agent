@@ -1,4 +1,4 @@
-import { waiting } from "./planner";
+import { dropHandoffs, dropPause, waiting } from "./planner";
 import type { PlannerEvent } from "./plannerTypes";
 import { cancelRunWork } from "./runControl";
 
@@ -95,6 +95,8 @@ export function cancelRun(runId: string): boolean {
   if (!r || r.status !== "running") return false;
   cancelRunWork(runId);
   for (const [, resolve] of waiting.get(runId) ?? []) resolve(null);
+  dropPause(runId);
+  dropHandoffs(runId);
   const stopped: Rec = { t: Date.now() - r.startedAt, e: { type: "error", message: "The run was stopped" } };
   r.events.push(stopped);
   for (const l of [...r.listeners]) l(stopped);

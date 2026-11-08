@@ -4,6 +4,8 @@ import { dismissCookies } from "../../browser";
 import { decide, type DAnswer, type DQuestion } from "../decisions";
 import { ANY_PLACEHOLDER, labelDuplicates, matchOption, redactObservation, runDecisionAgent } from "../decisionAgent";
 import { formatObservation, observe, PLACEHOLDER, type El, type Observation } from "../observe";
+import { gateWall } from "../handoff";
+import { tookHandoff } from "../handoffQuiet";
 import { auditControl, followLink, linkVerdict, pageHasAnswers, withoutSends } from "../pressGuard";
 import type { Value, Wall, WorkerCtx } from "./types";
 
@@ -31,6 +33,7 @@ export type FillFormResult = {
   finalSubmitLabel?: string;
   wall?: Wall;
   summary: string;
+  handedOff?: boolean;
 };
 export type FillFormOpts = { goal: string; values: Value[]; maxPages?: number; allowConsent?: (label: string) => boolean };
 
@@ -299,10 +302,33 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
 
   const log = (kind: Parameters<WorkerCtx["note"]["log"]>[0], text: string, extra?: Parameters<WorkerCtx["note"]["log"]>[2]) => note.log(kind, text, extra).catch(() => {});
   const done = async (r: Omit<FillFormResult, "pages" | "consents" | "unfilled"> & { unfilled?: string[] }): Promise<FillFormResult> => {
-    const out: FillFormResult = { ...r, pages, consents: [...consents], unfilled: [...new Set(r.unfilled ?? unfilled)] };
+    const out: FillFormResult = { ...r, pages, consents: [...consents], unfilled: [...new Set(r.unfilled ?? unfilled)], ...(tookHandoff(page) ? { handedOff: true } : {}) };
     await log(r.status === "ready_to_submit" ? "check" : "recover", r.summary, { shot: true, detail: out.unfilled.length ? `Still needed: ${out.unfilled.join("; ")}` : out.consents.length ? `Left for you to tick: ${out.consents.join("; ")}` : undefined });
-    note(r.status === "ready_to_submit" ? `Stopped before "${r.finalSubmitLabel ?? "Submit"}"` : r.status === "needs_input" ? "Needs an answer from you" : r.status === "blocked" ? `Stopped: ${r.wall?.kind ?? "wall"}` : "Could not finish the form");
+    const leftStaff = r.wall?.kind === "dead_end" && /does not help the patient/.test(r.wall.detail);
+    note(r.status === "ready_to_submit" ? `Stopped before "${r.finalSubmitLabel ?? "Submit"}"` : r.status === "needs_input" ? "Needs an answer from you" : leftStaff ? "Left a staff sign-in" : r.status === "blocked" ? `Stopped: ${r.wall?.kind ?? "wall"}` : "Could not finish the form");
     return out;
+  };
+  /** A login or human check: ask only when it helps the patient. "go" means the same page is clear and the loop should read it again. */
+  const hold = async (wall: Wall): Promise<Wall | "go" | "open" | "quiet"> => {
+    const g = await gateWall(ctx, wall, async () => {
+      const s = await scanPage(page);
+      if (s.botCheck) return { kind: "bot_check", detail: "The site shows a human-verification page", url: page.url() };
+      if (s.login) return { kind: "login", detail: s.loginDetail, url: page.url() };
+      if (s.captcha) return { kind: "captcha", detail: s.captchaDetail, url: page.url() };
+      return null;
+    });
+    if (g.go && g.open) return "open";
+    if (g.go) {
+      note("Back to work");
+      return "go";
+    }
+    return g.quiet ? "quiet" : g.wall;
+  };
+  const afterHold = (h: Wall | "go" | "open" | "quiet", blocked: { wall: Wall; summary: string }): Promise<FillFormResult> | "again" | "open" => {
+    if (h === "open") return "open";
+    if (h === "go") return "again";
+    if (h === "quiet") return done({ status: "failed", wall: { kind: "dead_end", detail: "This sign-in does not help the patient, so it was left.", url: page.url() }, summary: "Left this sign-in. It does not help with your complaint." });
+    return done({ status: "blocked", wall: blocked.wall, summary: blocked.summary });
   };
 
   try {
@@ -315,9 +341,17 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
         await page.waitForTimeout(8000);
         await settle(page);
         scan = await scanPage(page);
-        if (scan.botCheck) return done({ status: "blocked", wall: { kind: "bot_check", detail: "The site shows a human-verification page", url: page.url() }, summary: "The site asks to verify a human before showing the form. Handing over to you." });
+        if (scan.botCheck) {
+          const next = await afterHold(await hold({ kind: "bot_check", detail: "The site shows a human-verification page", url: page.url() }), { wall: { kind: "bot_check", detail: "The site shows a human-verification page", url: page.url() }, summary: "The site asks to verify a human before showing the form." });
+          if (next === "again") { pageNo--; continue; }
+          if (next !== "open") return next;
+        }
       }
-      if (scan.login) return done({ status: "blocked", wall: { kind: "login", detail: scan.loginDetail, url: page.url() }, summary: "The form needs you to sign in or create an account. Handing over to you; nothing was typed." });
+      if (scan.login) {
+        const next = await afterHold(await hold({ kind: "login", detail: scan.loginDetail, url: page.url() }), { wall: { kind: "login", detail: scan.loginDetail, url: page.url() }, summary: "The form needs you to sign in or create an account. Nothing was typed." });
+        if (next === "again") { pageNo--; continue; }
+        if (next !== "open") return next;
+      }
       if (scan.payment) return done({ status: "blocked", wall: { kind: "payment", detail: scan.paymentDetail, url: page.url() }, summary: "The form asks for a payment. Stopped; payments are yours to make." });
       if (scan.sideLogins) await log("check", `Left the "sign in to resume" box alone (${scan.sideLogins}); filling the form as a new complaint`);
 
@@ -332,7 +366,11 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
         await page.goto(scan.iframeForms[0], { waitUntil: "domcontentloaded" });
         continue;
       }
-      if (scan.captcha && !obs.elements.some(fillable)) return done({ status: "blocked", wall: { kind: "captcha", detail: scan.captchaDetail, url: page.url() }, summary: "A CAPTCHA stands before the form. Handing over to you; it is never bypassed." });
+      if (scan.captcha && !obs.elements.some(fillable)) {
+        const next = await afterHold(await hold({ kind: "captcha", detail: scan.captchaDetail, url: page.url() }), { wall: { kind: "captcha", detail: scan.captchaDetail, url: page.url() }, summary: "A CAPTCHA stands before the form. It was not bypassed." });
+        if (next === "again") { pageNo--; continue; }
+        if (next !== "open") return next;
+      }
 
       const options = optionCheckboxes(obs);
       const view = await classify(page, obs, opts.goal, [...values, ...variants], options, scan);
@@ -361,7 +399,7 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
         }
         const pending = await handleConsents(obs, options);
         if (pending.length) return done({ status: "needs_input", unfilled: [...unfilled, ...pending.map((p) => `Your agreement: ${p}`)], summary: `To start the form you must agree to: "${short(pending[0], 120)}". That is your decision.` });
-        note(`Opening "${short(view.forward.label, 40)}"`);
+        note(`Opening "${view.forward.label}"`);
         await clickForward(page, view.forward, "start");
         continue;
       }
@@ -381,7 +419,11 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       }
       if (missingHere.length) return done({ status: "needs_input", summary: `Page ${pages.length} needs ${missingHere.length} answer${missingHere.length === 1 ? "" : "s"} we do not have; stopped before moving on.` });
       if (pending.length) return done({ status: "needs_input", unfilled: [...unfilled, ...pending.map((p) => `Your agreement: ${p}`)], summary: `Page ${pages.length} needs your agreement ("${short(pending[0], 100)}") before the form can move on. That box is yours to tick.` });
-      if (scan.captcha) return done({ status: "blocked", wall: { kind: "captcha", detail: scan.captchaDetail, url: page.url() }, summary: "This page has a CAPTCHA before the next step. Filled what was there and handed over to you." });
+      if (scan.captcha) {
+        const next = await afterHold(await hold({ kind: "captcha", detail: scan.captchaDetail, url: page.url() }), { wall: { kind: "captcha", detail: scan.captchaDetail, url: page.url() }, summary: "A CAPTCHA stands before the next step. It was not bypassed." });
+        if (next === "again") { pageNo--; continue; }
+        if (next !== "open") return next;
+      }
 
       // The verdict again, on the live page, immediately before the click: never one from before the page was filled.
       const live = await liveForwardVerdict(page, view2.forward);
@@ -390,7 +432,7 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
         return stopAtFinal({ ...view2, final: true, finalWhy: live.final }, live.fwd?.label ?? view2.forward.label, unfilled.length ? "Filled what we could" : "Filled the form", scan);
       }
       // Move on, then check the page did not answer with validation errors.
-      note(`Clicking "${short(live.fwd.label, 40)}"`);
+      note(`Clicking "${live.fwd.label}"`);
       const sigBefore = fieldSig(obs);
       await clickForward(page, live.fwd, "next");
       const fixed = await recoverErrors(sigBefore, live.fwd);
@@ -579,7 +621,7 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       asked.add(k);
       const label = cleanLabel(m.label);
       if (!ctx.ask) { unfilled.push(label); await log("check", `"${short(label)}" is required and we have no answer for it`); continue; }
-      note(`Asking you: ${short(label, 50)}`);
+      note(`Asking you: ${label}`);
       await log("decide", `"${short(label)}" is required and none of your saved answers fits; asking you`);
       const answer = await ctx.ask({
         agent: "Kit", crew: "kit",

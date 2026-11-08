@@ -77,6 +77,81 @@ export function skipCrew(runId: string, crew: CrewId | "all"): boolean {
   return true;
 }
 
+/* ------------------------------------------------------------------ pause from the user, by run */
+
+type PauseState = { paused: boolean; resume: (() => void)[]; emit: Emit };
+const pg = globalThis as typeof globalThis & { __plannerPauses?: Map<string, PauseState> };
+export const pauses = (pg.__plannerPauses ??= new Map());
+
+export function trackPause(runId: string, emit: Emit) {
+  pauses.set(runId, { paused: false, resume: [], emit });
+}
+
+/** Ends a run's pause for good (the run finished or was cancelled), so nothing stays waiting. */
+export function dropPause(runId: string) {
+  const st = pauses.get(runId);
+  pauses.delete(runId);
+  for (const fn of st?.resume ?? []) fn();
+}
+
+/** Called by POST /api/agent/plan/pause. Work already under way finishes; nothing new starts until resumed. */
+export function setPaused(runId: string, paused: boolean): boolean {
+  const st = pauses.get(runId);
+  if (!st) return false;
+  if (st.paused === paused) return true;
+  st.paused = paused;
+  st.emit({ type: "paused", paused });
+  if (!paused) for (const fn of st.resume.splice(0)) fn();
+  return true;
+}
+
+/** Waits here while the run is paused. */
+export function untilResumed(runId: string): Promise<void> {
+  const st = pauses.get(runId);
+  if (!st?.paused) return Promise.resolve();
+  return new Promise((r) => st.resume.push(r));
+}
+
+/* ------------------------------------------------------------------ hand-offs (the patient signs in; the tab stays open) */
+
+type HandoffAction = "continue" | "skip";
+const hg = globalThis as typeof globalThis & { __plannerHandoffs?: Map<string, Map<string, (a: HandoffAction) => void>> };
+export const handoffs = (hg.__plannerHandoffs ??= new Map());
+
+/** Called by POST /api/agent/plan/handoff. */
+export function resolveHandoff(runId: string, id: string, action: HandoffAction): boolean {
+  const fn = handoffs.get(runId)?.get(id);
+  if (!fn) return false;
+  handoffs.get(runId)!.delete(id);
+  fn(action);
+  return true;
+}
+
+/** End every open hand-off for a run (cancel, or the run finishing). */
+export function dropHandoffs(runId: string) {
+  const map = handoffs.get(runId);
+  if (!map) return;
+  for (const fn of map.values()) fn("skip");
+  handoffs.delete(runId);
+}
+
+export function waitHandoff(runId: string, id: string, ms: number): Promise<"continued" | "skipped" | "timeout"> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (o: "continued" | "skipped" | "timeout") => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      handoffs.get(runId)?.delete(id);
+      resolve(o);
+    };
+    const timer = setTimeout(() => finish("timeout"), Math.max(0, ms));
+    const map: Map<string, (a: string) => void> = handoffs.get(runId) ?? new Map();
+    handoffs.set(runId, map);
+    map.set(id, (a) => finish(a === "continue" ? "continued" : "skipped"));
+  });
+}
+
 /* ------------------------------------------------------------------ small helpers */
 
 /** At most `n` browser tools at once; the rest wait their turn. */
@@ -214,7 +289,7 @@ const ENGINES = [
 const engineCooldown = new Map<string, number>(); // engine -> walled until (ms)
 
 async function searchEngines(page: Page, query: string, note: Note, track: Tracker): Promise<{ title: string; url: string; snippet: string }[]> {
-  note(`Searching: ${short(query, 50)}`);
+  note(`Searching: ${query}`);
   const walled = async () => /captcha|verify(ing)? you('| a)?re? (not )?(a )?(human|bot|robot)|not a bot|unusual traffic|are you a robot|drag the slider/i.test(await page.evaluate(() => document.body.innerText.slice(0, 3000)).catch(() => ""));
   const engines = ENGINES.filter((e) => (engineCooldown.get(e.name) ?? 0) < Date.now());
   for (const engine of engines.length ? engines : ENGINES) {
@@ -390,13 +465,13 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
   const key = query.toLowerCase().replace(/\s+/g, " ").trim();
   const hit = searchCache.get(key);
   if (hit && Date.now() - hit.at < 20 * 60 * 1000) {
-    note(`Already searched: ${short(query, 40)}`);
+    note(`Already searched: ${query}`);
     const r = await hit.hits.catch(() => null);
     if (r?.length) return r;
   }
   const saved = diskGet(key);
   if (saved) {
-    note(`Searched before: ${short(query, 40)}`);
+    note(`Searched before: ${query}`);
     await note.log("read", `Saved search "${query}": ${saved.length} results (from an earlier run)`, { detail: saved.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}`).join("\n") });
     searchCache.set(key, { at: Date.now(), hits: Promise.resolve(saved) });
     return saved;
@@ -429,7 +504,7 @@ const Reading = z.object({
 });
 
 async function visit(page: Page, url: string, question: string, note: Note) {
-  note(`Opening ${short(new URL(url).hostname.replace(/^www\./, ""), 40)}`);
+  note(`Opening ${new URL(url).hostname.replace(/^www\./, "")}`);
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
   await page.waitForTimeout(1500);
   await dismissCookies(page, 2500);
@@ -535,6 +610,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const tabs = limiter(MAX_TABS);
   waiting.set(runId, new Map());
   skips.set(runId, new Set());
+  trackPause(runId, emit);
 
   // What the run knows. Tools read and write it; the planner sees summaries.
   const funding: Funding = { onBenefits: null, partner: null, dependants: null, netIncomeYearly: null, outgoingsYearly: null, savings: null, skipped: false, ...fundingIn };
@@ -657,25 +733,25 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         return on === all ? `All ${all} firms are on the Law Society of Scotland register.` : on > 0 ? `Confirmed ${on} of ${all} firms on the Law Society of Scotland register; the others did not match by name.` : `Could not confirm these firms on the Law Society register by name.`;
       }
       case "read_guideline":
-        return proof.guideline?.points.length ? `${proof.guideline.name}, ${proof.guideline.points[0].id}: "${short(proof.guideline.points[0].text, 160)}"` : "The guideline says nothing about this.";
+        return proof.guideline?.points.length ? `${proof.guideline.name}, ${proof.guideline.points[0].id}: "${proof.guideline.points[0].text}"` : "The guideline says nothing about this.";
       case "compare_care":
-        return proof.gaps?.length ? `${proof.gaps.length} possible gap${proof.gaps.length === 1 ? "" : "s"} for a solicitor to check: ${short(proof.gaps[0].question, 160)}` : "No gap between the guideline and your account.";
+        return proof.gaps?.length ? `${proof.gaps.length} possible gap${proof.gaps.length === 1 ? "" : "s"} for a solicitor to check: ${proof.gaps[0].question}` : "No gap between the guideline and your account.";
       case "search_case_law": {
         const n = (out.match(/^\d+\./gm) ?? []).length;
-        return n ? `${n} Scottish judgment${n === 1 ? "" : "s"} found. Top: ${short(out.split("\n")[0].replace(/^1\.\s*/, "").split(" — ")[0], 90)}.` : "No Scottish judgments found.";
+        return n ? `${n} Scottish judgment${n === 1 ? "" : "s"} found. Top: ${out.split("\n")[0].replace(/^1\.\s*/, "").split(" — ")[0]}.` : "No Scottish judgments found.";
       }
       case "read_judgment": {
         const c = proof.cases?.at(-1);
         if (!c) return out;
         const kind = c.kind === "medical_negligence" ? "a medical negligence case" : c.kind === "similar_injury_other_cause" ? "a similar injury, but not medical negligence" : "not relevant";
-        return `${c.title} (${c.year}) is ${kind}.${c.award ? ` Award: ${short(c.award, 80)}.` : ""}`;
+        return `${c.title} (${c.year}) is ${kind}.${c.award ? ` Award: ${c.award}.` : ""}`;
       }
       case "fill_enquiry": {
         const e = enquiries.get(String(a.firm_id ?? ""));
         return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry form filled. Waiting for your OK before anything is sent.` : e.status === "needs_input" ? `${e.firmName}: form filled as far as I could. It needs ${e.unfilled.join(", ")} from you, which you can add when you review.` : `${e.firmName}: ${e.note}`) : out;
       }
       default:
-        return short(out.split("\n")[0], 180);
+        return out.split("\n")[0];
     }
   };
 
@@ -727,7 +803,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "web_search": {
         const r = await tabs(() => crewFor(thought, "robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
         if (!r.ok) return `Search failed: ${r.error}`;
-        if (r.value.length) finding(`Web search found ${r.value.length} results for "${short(s("query"), 50)}"`, "Web search");
+        if (r.value.length) finding(`Web search found ${r.value.length} results for "${s("query")}"`, "Web search");
         return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
       }
       case "visit": {
@@ -780,7 +856,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         guideline = r.value;
         proof.guideline = { name: r.value.guideline, url: r.value.url, points: r.value.points };
         emit({ type: "evidence", evidence: { ...proof } });
-        if (r.value.points.length) finding(`${r.value.guideline} ${r.value.points.map((x) => x.id).join(", ")}: "${short(r.value.points[0].text, 120)}"`, r.value.url, "iona");
+        if (r.value.points.length) finding(`${r.value.guideline} ${r.value.points.map((x) => x.id).join(", ")}: "${r.value.points[0].text}"`, r.value.url, "iona");
         return r.value.points.length ? `${r.value.guideline}:\n${r.value.points.map((x) => `${x.id}: ${x.text}`).join("\n")}` : "No recommendation about this on the page.";
       }
       case "compare_care": {
@@ -871,6 +947,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     let finished = false;
 
     for (turns = 1; turns <= MAX_TURNS && !finished; turns++) {
+      await untilResumed(runId);
       const res: Response = await respond({
         model: MODELS.draft,
         reasoning: { effort: "low" },
@@ -899,6 +976,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         else batches.push([c]);
       }
       const exec = async (call: ResponseFunctionToolCall): Promise<ResponseInputItem> => {
+          await untilResumed(runId);
           const args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
           const thought: Thought = { i: thoughts.length, t: Date.now() - t0, text: String(args.why ?? call.name), tool: call.name, detail: JSON.stringify(Object.fromEntries(Object.entries(args).filter(([k]) => k !== "why")), null, 1) };
           thoughts.push(thought);
@@ -932,7 +1010,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
             const failed = /^(Error|Could not|Blocked:|Unknown firm|.*failed\b|.*: failed\.)/.test(out);
             // A Kit report is a success only if the form really is filled and waiting (Luigi, f17ed55).
             const ok = !failed && (call.name !== "fill_enquiry" || enquiries.get(String(args.firm_id))?.status === "ready_to_send");
-            const text = failed ? `I hit a problem: ${short(out, 160)}` : describe(call.name, args, out);
+            const text = failed ? `I hit a problem: ${out}` : describe(call.name, args, out);
             const f = call.name === "check_firm" ? firms.get(String(args.firm_id ?? "")) ?? [...firms.values()].find((x) => x.name === args.name) : undefined;
             const facts = f && f.sources.includes("website") && !failed
               ? [
@@ -946,8 +1024,8 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
             open.set(who, left);
             const plural = (n: number, w: string) => `${n} more ${w}${n === 1 ? "" : "s"}`;
             const still = call.name === "check_firm" ? `Checking ${plural(left, "firm website")}` : call.name === "fill_enquiry" ? `Filling ${plural(left, "enquiry form")}` : doing(call.name, args);
-            crewState(who, left > 0 ? "working" : "idle", left > 0 ? still : short(text, 90));
-          } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: short(out.replace(/\n/g, "; "), 200), tool: call.name });
+            crewState(who, left > 0 ? "working" : "idle", left > 0 ? still : text);
+          } else if (call.name === "shortlist") say({ from: "elliot", kind: "note", text: out.replace(/\n/g, "; "), tool: call.name });
           else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
           if (call.name === "finish") finished = true;
           return { type: "function_call_output" as const, call_id: call.call_id, output: out };
@@ -994,6 +1072,8 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   } finally {
     waiting.delete(runId);
     skips.delete(runId);
+    dropPause(runId);
+    dropHandoffs(runId);
     if (!reviewing) await browser.close().catch(() => {});
   }
 }

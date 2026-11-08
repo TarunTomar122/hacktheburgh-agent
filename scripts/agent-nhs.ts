@@ -1,4 +1,5 @@
 // Fill the NHS Lothian form with fictional data and stop before submitting.
+process.env.HANDOFF_WAIT_MS ??= "0";
 import { draftComplaint } from "../lib/agent/draft";
 import type { CaseFacts } from "../lib/agent/facts";
 import { fillNhsComplaint } from "../lib/agent/nhsLothian";

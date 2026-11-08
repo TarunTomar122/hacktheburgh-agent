@@ -2,6 +2,8 @@ import type { ElementHandle, Page } from "playwright";
 import { z } from "zod";
 import { dismissCookies } from "../../browser";
 import { pointAt } from "../../agentCursor";
+import { gateWall } from "../handoff";
+import { tookHandoff } from "../handoffQuiet";
 import { MODELS, structured } from "../llm";
 import type { Wall, WorkerCtx } from "./types";
 
@@ -26,6 +28,7 @@ export type DirectorySearch = {
   pagesRead: number;
   wall?: Wall;
   summary: string;
+  handedOff?: boolean;
   /** results: entries found; no_results: the search ran and the site said nothing matches; search_failed: the search
    *  could not be run or did not take effect; wall: login / CAPTCHA / bot check. */
   outcome: "results" | "no_results" | "search_failed" | "wall";
@@ -202,7 +205,7 @@ function inPageSnapshot(args: { textCap: number; linkCap: number }): Snapshot {
       name: inp.name || e.id || "",
       label: label.slice(0, kind === "checkbox" || kind === "radio" ? 300 : 140),
       group: kind === "radio" || kind === "checkbox" ? (role ? clean(e.closest("[role=radiogroup], [role=group], fieldset")?.getAttribute("aria-label")) : groupOf(inp)) : "",
-      value: kind === "select" ? clean((e as HTMLSelectElement).selectedOptions?.[0]?.textContent) : kind === "text" ? inp.value ?? "" : "",
+      value: kind === "select" ? clean((e as HTMLSelectElement).selectedOptions?.[0]?.textContent) : kind === "text" ? (type === "password" ? "" : inp.value ?? "") : "",
       checked: role ? e.getAttribute("aria-checked") === "true" : !!inp.checked,
       selected: e.getAttribute("aria-selected") === "true",
       expanded: e.hasAttribute("aria-expanded") ? e.getAttribute("aria-expanded") === "true" : tag === "summary" ? !!e.closest("details")?.open : null,
@@ -265,6 +268,17 @@ export function detectWall(s: Snapshot): Wall | undefined {
   const fields = s.els.filter((e) => e.kind === "text" && !e.chrome);
   if (s.passwordBox && fields.length <= 4) return { kind: "login", detail: "The page asks the user to sign in. Stopped: the agent never signs in.", url: s.url };
   return undefined;
+}
+
+/** Ask the patient only when this wall helps them. Null means the page is clear and the search should carry on. */
+async function offerDirectoryWall(ctx: WorkerCtx, wall: Wall, log: (kind: "fail", text: string, extra?: { shot?: boolean }) => Promise<unknown>): Promise<Wall | null> {
+  const g = await gateWall(ctx, wall, async () => detectWall(await snapshot(ctx.page)) ?? null);
+  if (g.go) {
+    if (!g.open) ctx.note("Back to work");
+    return null;
+  }
+  if (!g.quiet) await log("fail", g.wall.detail, { shot: true });
+  return g.wall;
 }
 
 const opt = (o: string) => o.replace(/\s+/g, " ").trim();
@@ -747,6 +761,7 @@ export async function searchDirectory(
   const done = (r: Omit<DirectorySearch, "pagesRead" | "outcome">, outcome?: DirectorySearch["outcome"]): DirectorySearch => ({
     ...r,
     pagesRead,
+    ...(tookHandoff(page) ? { handedOff: true } : {}),
     outcome: outcome ?? (r.ok ? "results" : r.wall && ["login", "captcha", "bot_check", "payment"].includes(r.wall.kind) ? "wall" : "search_failed"),
   });
   let sawNoResults = false;
@@ -762,8 +777,8 @@ export async function searchDirectory(
   const first = await snapshot(page);
   const wall0 = detectWall(first);
   if (wall0) {
-    await log("fail", `Stopped at ${host}: ${wall0.detail}`, { shot: true });
-    return done({ ok: false, results: [], searchedWith: [], wall: wall0, summary: wall0.detail });
+    const left = await offerDirectoryWall(ctx, wall0, log);
+    if (left) return done({ ok: false, results: [], searchedWith: [], wall: left, summary: left.kind === "dead_end" ? "Left this sign-in. It does not help with your complaint." : left.detail });
   }
   await log("open", `Opened ${host} to use its own search`, { shot: true, detail: `Goal: ${opts.goal}\nCriteria: ${criteria.map((c) => `${c.label} = ${c.value}`).join("; ")}` });
 
@@ -870,8 +885,8 @@ async function runSearchForm(
     const snap = await snapshot(page, { linkCap: 50 });
     const wall = detectWall(snap);
     if (wall) {
-      await log("fail", wall.detail, { shot: true });
-      return { searched: false, used, wall, typed };
+      const left = await offerDirectoryWall(ctx, wall, log);
+      if (left) return { searched: false, used, wall: left, typed };
     }
     note(step === 0 ? "Reading the search form" : "Looking at the form again");
     const input = [
@@ -1206,8 +1221,8 @@ async function readResults(
     let snap = await snapshot(page, { textCap: 15000, linkCap: 160 });
     const wall = detectWall(snap);
     if (wall) {
-      await log("fail", wall.detail, { shot: true });
-      return { entries: [...out.values()], pages, ignored: [...ignored], why: wall.detail, kind: "wall", wall };
+      const left = await offerDirectoryWall(ctx, wall, log);
+      if (left) return { entries: [...out.values()], pages, ignored: [...ignored], why: left.detail, kind: "wall", wall: left };
     }
     note(`Reading results page ${pages + 1}`);
     let ex = await extract(snap, criteria, goal);

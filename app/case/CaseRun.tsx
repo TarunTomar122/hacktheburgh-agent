@@ -9,6 +9,7 @@ import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip, { routeSteps } from "./crew/StepStrip";
 import FirmResults from "./FirmResults";
+import InvestigationList from "./Investigation";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
@@ -57,7 +58,7 @@ function useFresh(value: number | null, ms: number): number | null {
 const SLAB_CALC = "https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/";
 
 export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profile; onReviewEnquiries: () => void }) {
-  const { state, start, answer, replay, skip } = usePlannerRun({ scope: "case", caseId: profile.createdAt });
+  const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "case", caseId: profile.createdAt });
   const place = placeOf(profile);
   const hasDemo = useDemoAvailable("step3", place);
   const [view, setView] = useState<"case" | "firms" | "replay">("case");
@@ -94,6 +95,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
       <Workspace
         state={state}
         onAnswer={answer}
+        onPause={pause}
         onSkip={(crew) => {
           skipStep(3);
           return skip(crew);
@@ -190,7 +192,7 @@ type RunState = ReturnType<typeof usePlannerRun>["state"];
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
-export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION_KIT, currency = "£" }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onRetry?: () => void; kit?: CrewKit; currency?: string }) {
+export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COMPENSATION_KIT, currency = "£" }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; kit?: CrewKit; currency?: string }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -210,17 +212,27 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
   }, [tab]);
 
   const question = state.asks[0];
+  const needs = state.handoffs.filter((h) => !h.outcome);
+  useEffect(() => {
+    document.title = needs.length ? `(${needs.length}) Needs you` : "Case helper";
+    return () => {
+      document.title = "Case helper";
+    };
+  }, [needs.length]);
+  const needsKey = needs.map((h) => h.id).join(",");
+  useEffect(() => {
+    const h = needs[0];
+    window.dispatchEvent(new CustomEvent("live-handoff", { detail: h ? { ...h, runId: state.runId, demo: state.demo } : null }));
+    // The modal stays closed until the patient clicks the tile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsKey, state.runId, state.demo]);
 
   // Who is in focus: the crew member in the spotlight; between steps, Elliot deciding what's next.
   const spot = state.spotlight;
   const lastPlan = state.says.findLast((x) => x.kind === "plan");
   const replanned = useFresh(lastPlan?.replan ? lastPlan.i : null, 6000);
   const focusCrew: CrewId = question ? (question.crew ?? "elliot") : replanned !== null ? "elliot" : spot && state.crew[spot.crew]?.state !== "idle" ? spot.crew : "elliot";
-  // The hero is one sentence: the planner's own words can run long, so keep the first clause and cap it (full text in "Plan and history").
-  const one = (t: string) => {
-    const first = t.split(/(?<=[.;:])\s+|,\s+so\s+/)[0].replace(/[.;:,]$/, "");
-    return first.length > 110 ? `${first.slice(0, first.lastIndexOf(" ", 107))}…` : first;
-  };
+  const one = (t: string) => t.replace(/[.;:,]$/, "");
   const task = question
     ? "needs one detail from you"
     : focusCrew === "elliot"
@@ -229,7 +241,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
         : state.crew.elliot?.state === "working" && state.crew.elliot.note
           ? `is ${lowerFirst(state.crew.elliot.note)}`
           : lastPlan
-          ? `is deciding the next step: ${lowerFirst(one(lastPlan.text))}`
+          ? "is planning what the crew does next"
           : "is reading your case and making a plan"
       : lowerFirst(one(state.crew[focusCrew]?.note || spot?.tab.split(" · ")[1] || "is working"));
   const site = spot && focusCrew !== "elliot" ? host(state.trace.findLast((t) => t.agent === spot.tab && t.url)?.url) : "";
@@ -247,9 +259,17 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
             <p className={cx("text-[12px]", replanned !== null && !question ? "font-medium text-amber" : "text-muted")}>
               {replanned !== null && !question ? "Elliot · changed the plan" : `${CREW[focusCrew].name} · ${kit.role(focusCrew).toLowerCase()}${site ? ` · on ${site}` : ""}${stepNo > 0 ? ` · step ${stepNo} of ${order.length}` : ""}${state.demo ? " · recorded run" : ""}`}
             </p>
-            <h1 key={`${focusCrew}-${task}`} className="rise display mt-1 text-[28px] leading-[1.2] text-ink">
-              {question || (focusCrew === "elliot" && replanned === null) ? `${CREW[focusCrew].name} ${task}` : task.replace(/^./, (c) => c.toUpperCase())}
-            </h1>
+            {needs.length ? (
+              <h1 className="rise display mt-1 text-[28px] leading-[1.2] text-amber" data-needs-you-title>
+                ({needs.length}) Needs you
+              </h1>
+            ) : state.paused && !question ? (
+              <h1 className="rise display mt-1 text-[28px] leading-[1.2] text-ink">Paused. The crew finishes what it is doing, then waits for you.</h1>
+            ) : (
+              <h1 key={`${focusCrew}-${task}`} className="rise display mt-1 text-[28px] leading-[1.2] text-ink">
+                {question || (focusCrew === "elliot" && replanned === null) ? `${CREW[focusCrew].name} ${task}` : task.replace(/^./, (c) => c.toUpperCase())}
+              </h1>
+            )}
           </div>
           <div className="shrink-0 pt-0.5 text-right text-[13px] text-ink-2">
             <span className="font-medium tabular-nums text-ink" title="An estimate, from what the crew has finished so far">
@@ -261,6 +281,14 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
             <button className="text-brand hover:underline" onClick={() => setDrawer("all")}>
               Plan and history
             </button>
+            {onPause && state.status === "running" && !state.demo && (
+              <>
+                <span className="mx-2 text-fade">·</span>
+                <button className="font-medium text-brand hover:underline" aria-pressed={!!state.paused} onClick={() => onPause(!state.paused)}>
+                  {state.paused ? "Resume" : "Pause"}
+                </button>
+              </>
+            )}
           </div>
           <RunProgressBar pct={pct} />
         </div>
@@ -269,7 +297,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
 
       <CrewRow state={state} ids={["elliot", ...kit.workers]} onOpen={(id) => setDrawer(id)} />
 
-      <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} />
+      <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} needs={needs} />
 
       {/* The browsers working right now, small. Click one to watch it in a window. */}
       <section aria-label="Browsers working now">
@@ -317,7 +345,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
             <div className="space-y-6">
               <PlanChips plan={state.plan} />
               <ModelsTable entries={state.models} />
-              <Timeline says={state.says} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} />
+              <Timeline says={state.says} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} needs={needs} />
             </div>
           ) : (
             <div className="space-y-4">
@@ -325,7 +353,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
                 Show {CREW[drawer].name}&apos;s browser
               </button>
               <ModelsLine entries={state.models.filter((m) => m.agent === drawer)} />
-              <Timeline says={state.says.filter((x) => x.from === drawer || (x.to === drawer && x.kind === "assign"))} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} compact />
+              <Timeline says={state.says.filter((x) => x.from === drawer || (x.to === drawer && x.kind === "assign"))} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} compact needs={needs.filter((h) => h.crew === drawer)} />
             </div>
           )}
         </Drawer>
@@ -335,14 +363,29 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
   );
 }
 
+/** The instruction Elliot gave for this report's job (the 8-word "why"), so the history can say what the agent was trying to do. */
+const goalOf = (says: Say[], s: Say) => says.findLast((x) => x.kind === "assign" && x.to === s.from && x.tool === s.tool && x.i < s.i)?.text;
+
 /** What the crew has found so far: one line per finished job, newest first, with its proof one click away. */
-function Found({ says, trace, runId, onTrace }: { says: Say[]; trace: TraceStep[]; runId?: string; onTrace: (s: TraceScope) => void }) {
+function Found({ says, trace, runId, onTrace, needs = [] }: { says: Say[]; trace: TraceStep[]; runId?: string; onTrace: (s: TraceScope) => void; needs?: RunState["handoffs"] }) {
+  const open = needs.filter((h) => !h.outcome);
   const done = says.filter((s) => s.kind === "report").slice().reverse();
-  if (!done.length) return null;
+  // Only the latest report from the tab that is waiting on the patient; earlier ones are history.
+  const waiting = new Set(open.map((h) => done.find((s) => s.tab === h.tab)?.i).filter((i) => i !== undefined));
+  if (!done.length && !open.length) return null;
   return (
     <section aria-label="What the crew found so far">
       <h2 className="mb-2 text-[12px] text-muted">What the crew found so far</h2>
       <ol className="max-h-[21rem] divide-y divide-line-soft overflow-y-auto rounded-card border border-line bg-white">
+        {open.map((h) => (
+          <li key={h.id} className="flex items-center gap-3 bg-amber-soft px-4 py-3">
+            <CrewMark id={h.crew} size={30} />
+            <p className="min-w-0 flex-1 text-[14px] leading-5 text-ink">
+              <span className="mr-1 text-[13px] font-medium text-amber">Needs you</span>
+              {h.why}
+            </p>
+          </li>
+        ))}
         {done.map((s) => {
           const steps = s.tab ? trace.filter((t) => t.agent === s.tab) : [];
           const shot = steps.findLast((t) => t.shot)?.shot;
@@ -351,7 +394,7 @@ function Found({ says, trace, runId, onTrace }: { says: Say[]; trace: TraceStep[
               <CrewMark id={s.from} size={30} />
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] leading-5 text-ink">
-                  {s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
+                  {waiting.has(s.i) ? <span className="mr-1 text-[13px] font-medium text-amber">Needs you</span> : s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
                   {s.text}
                 </p>
                 {s.facts && (
@@ -366,7 +409,7 @@ function Found({ says, trace, runId, onTrace }: { says: Say[]; trace: TraceStep[
                 )}
               </div>
               {shot && (
-                <button onClick={() => onTrace({ title: `${CREW[s.from].name}: ${s.text}`, steps })} title="How they found it" className="shrink-0 overflow-hidden rounded-[4px] border border-line hover:border-brand">
+                <button onClick={() => onTrace({ title: goalOf(says, s) ?? `${CREW[s.from].name}: ${s.text}`, subtitle: `${CREW[s.from].name}'s steps`, steps })} title="How they found it" className="shrink-0 overflow-hidden rounded-[4px] border border-line hover:border-brand">
                   {/* eslint-disable-next-line @next/next/no-img-element -- screenshots served by our own route */}
                   <img src={shotUrl(runId, shot)} alt="" className="h-[40px] w-[64px] object-cover object-top" />
                 </button>
@@ -381,16 +424,29 @@ function Found({ says, trace, runId, onTrace }: { says: Say[]; trace: TraceStep[
 
 /** The crew as one quiet row: who has finished, who is working, who is waiting. Click someone to see what they did. */
 function CrewRow({ state, ids, onOpen }: { state: RunState; ids: CrewId[]; onOpen: (id: CrewId) => void }) {
+  const open = state.handoffs.filter((h) => !h.outcome);
   return (
     <nav aria-label="The crew" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2">
       {ids.map((id, i) => {
         const c = state.crew[id];
-        const started = c.state !== "idle" || state.says.some((s) => s.from === id);
+        const mine = open.find((h) => h.crew === id);
+        const started = c.state !== "idle" || state.says.some((s) => s.from === id) || !!mine;
         const done = c.state === "done" || (c.state === "idle" && state.says.some((s) => s.from === id && s.kind === "report" && s.ok !== false));
         return (
           <span key={id} className="flex items-center gap-2">
             {i > 0 && <span aria-hidden className="h-px w-6 bg-line" />}
-            <button onClick={() => onOpen(id)} title={`${CREW[id].name}: see what they did`} className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-[13px] hover:bg-subtle">
+            <button
+              onClick={() => {
+                if (mine && !state.demo) {
+                  window.dispatchEvent(new globalThis.Event("live-open"));
+                  window.dispatchEvent(new CustomEvent("live-handoff-open"));
+                  return;
+                }
+                onOpen(id);
+              }}
+              title={mine ? "Needs you" : `${CREW[id].name}: see what they did`}
+              className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-[13px] hover:bg-subtle"
+            >
               <span className="relative">
                 <CrewMark id={id} size={30} className={cx("transition-[filter,opacity] duration-300", !started && "opacity-40 grayscale-[40%]")} />
                 {started && (
@@ -400,6 +456,7 @@ function CrewRow({ state, ids, onOpen }: { state: RunState; ids: CrewId[]; onOpe
                 )}
               </span>
               <span className={cx(started ? "text-ink" : "text-muted")}>{CREW[id].name}</span>
+              {mine && <span className="rounded-full bg-amber px-1.5 py-0.5 text-[11px] font-medium text-white">Needs you</span>}
             </button>
           </span>
         );
@@ -486,17 +543,24 @@ function ModelsTable({ entries }: { entries: LedgerEntry[] }) {
 
 /* ------------------------------------------------------------------ the timeline (behind a click) */
 
-function Timeline({ says, trace, runId, openAsks, onTrace, compact }: { says: Say[]; trace: TraceStep[]; runId?: string; openAsks: string[]; onTrace: (s: TraceScope) => void; compact?: boolean }) {
+function Timeline({ says, trace, runId, openAsks, onTrace, compact, needs = [] }: { says: Say[]; trace: TraceStep[]; runId?: string; openAsks: string[]; onTrace: (s: TraceScope) => void; compact?: boolean; needs?: RunState["handoffs"] }) {
   // An open question is on screen in its own card: don't repeat it here.
   const lastAsk = says.findLast((x) => x.kind === "ask");
   // Newest first (Tarun): what just happened is at the top.
   const shown = useMemo(() => says.filter((s) => !(s.kind === "ask" && openAsks.length > 0 && s === lastAsk)).reverse(), [says, openAsks.length, lastAsk]);
   const steps = (s: Say) => (s.kind === "report" && s.tab ? trace.filter((t) => t.agent === s.tab) : []);
-  if (!shown.length) return <p className="text-[13px] text-muted">Nothing yet.</p>;
+  const open = needs.filter((h) => !h.outcome);
+  if (!shown.length && !open.length) return <p className="text-[13px] text-muted">Nothing yet.</p>;
   return (
     <ol className={cx(compact ? "space-y-3" : "space-y-4")}>
+      {open.map((h) => (
+        <li key={h.id} className="border-l-2 border-amber pl-3 text-[14px] leading-6 text-ink">
+          <span className="mr-1 font-medium text-amber">Needs you</span>
+          {h.why}
+        </li>
+      ))}
       {shown.map((s) => (
-        <Event key={s.i} s={s} steps={steps(s)} runId={runId} onTrace={(st) => onTrace({ title: `${CREW[s.from].name}: ${s.text}`, steps: st })} compact={compact} />
+        <Event key={s.i} s={s} steps={steps(s)} runId={runId} onTrace={(st) => onTrace({ title: goalOf(says, s) ?? `${CREW[s.from].name}: ${s.text}`, subtitle: `${CREW[s.from].name}'s steps`, steps: st })} compact={compact} needsYou={open.some((h) => h.crew === s.from)} />
       ))}
     </ol>
   );
@@ -508,7 +572,7 @@ const FACT: Record<"yes" | "no" | "unknown", { mark: string; cls: string }> = {
   unknown: { mark: "?", cls: "bg-subtle text-muted" },
 };
 
-function Event({ s, steps, runId, onTrace, compact }: { s: Say; steps: TraceStep[]; runId?: string; onTrace: (st: TraceStep[]) => void; compact?: boolean }) {
+function Event({ s, steps, runId, onTrace, compact, needsYou }: { s: Say; steps: TraceStep[]; runId?: string; onTrace: (st: TraceStep[]) => void; compact?: boolean; needsYou?: boolean }) {
   const [open, setOpen] = useState(false);
   const from = CREW[s.from];
   const time = <span className="w-9 shrink-0 pt-0.5 text-[11px] tabular-nums text-faint">{mmss(s.t)}</span>;
@@ -559,7 +623,7 @@ function Event({ s, steps, runId, onTrace, compact }: { s: Say; steps: TraceStep
         <div className="flex items-start gap-3">
           <p className="min-w-0 flex-1 text-[14px] leading-6 text-ink">
             {!compact && <span className="font-medium">{from.name}: </span>}
-            {s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
+            {needsYou ? <span className="mr-1 font-medium text-amber">Needs you</span> : s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
             {s.text}
           </p>
           {shot?.shot && (
@@ -776,7 +840,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
 
         {(result as PlannerResult).scheme && !/does not (describe|say|mention)/i.test((result as PlannerResult).scheme!.text) && (
           <Row crew="robin" topic="Compensation scheme" title={(result as PlannerResult).scheme!.body}>
-            <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ")}</p>
+            <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text}</p>
             {(result as PlannerResult).scheme!.quote && (
               <Quote source={(result as PlannerResult).scheme!.body} href={(result as PlannerResult).scheme!.url}>
                 {(result as PlannerResult).scheme!.quote}
@@ -855,6 +919,12 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
             </p>
           )}
         </Row>
+
+        {ev.investigation && (
+          <Row crew="iona" topic="Supporting evidence" title={ev.investigation.items.length ? "Decisions and awards in similar cases" : "No published decisions found"}>
+            <InvestigationList inv={ev.investigation} />
+          </Row>
+        )}
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-4 text-[12px] text-muted">

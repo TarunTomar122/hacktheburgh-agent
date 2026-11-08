@@ -122,7 +122,7 @@ async function observeOnce(page: Page): Promise<Observation> {
         label: label.slice(0, kind === "checkbox" ? 500 : 140),
         group: kind === "radio" || kind === "checkbox" ? groupOf(e).slice(0, 140) : "",
         required: el.required || e.getAttribute("aria-required") === "true" || /(^\s*\*|\*\s*$)/.test(label),
-        value: kind === "select" ? text(el.selectedOptions?.[0]) : kind === "radio" || kind === "checkbox" ? "" : el.value ?? "",
+        value: kind === "select" ? text(el.selectedOptions?.[0]) : kind === "radio" || kind === "checkbox" || type === "password" ? "" : el.value ?? "",
         checked: !!el.checked,
         options: kind === "select" ? Array.from(el.options).map((o) => text(o)) : [],
         disabled: !!el.disabled,

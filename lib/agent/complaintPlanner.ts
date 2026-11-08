@@ -180,13 +180,13 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
   const describe = (name: string, out: string): string => {
     switch (name) {
       case "read_process":
-        return processReading ? `${short(processReading.summary, 200)}${hasSupport(processReading.support) ? ` ${short(processReading.support, 140)}` : ""}` : out;
+        return processReading ? `${processReading.summary}${hasSupport(processReading.support) ? ` ${processReading.support}` : ""}` : out;
       case "check_time_limit":
-        return timeLimit ? `${timeLimit.status === "within" ? "You are inside the time limit." : timeLimit.status === "close" ? "You are close to the time limit." : timeLimit.status === "outside" ? "This may be past the time limit." : "I could not tell from your dates."} ${short(timeLimit.explanation, 220)}` : out;
+        return timeLimit ? `${timeLimit.status === "within" ? "You are inside the time limit." : timeLimit.status === "close" ? "You are close to the time limit." : timeLimit.status === "outside" ? "This may be past the time limit." : "I could not tell from your dates."} ${timeLimit.explanation}` : out;
       case "read_guideline":
-        return proof.guideline?.points.length ? `${proof.guideline.name}, ${proof.guideline.points[0].id}: "${short(proof.guideline.points[0].text, 160)}"` : "The guideline says nothing about this.";
+        return proof.guideline?.points.length ? `${proof.guideline.name}, ${proof.guideline.points[0].id}: "${proof.guideline.points[0].text}"` : "The guideline says nothing about this.";
       case "compare_care":
-        return proof.gaps?.length ? `${proof.gaps.length} possible gap${proof.gaps.length === 1 ? "" : "s"} to ask NHS Lothian about: ${short(proof.gaps[0].question, 160)}` : "No gap between the guideline and your account.";
+        return proof.gaps?.length ? `${proof.gaps.length} possible gap${proof.gaps.length === 1 ? "" : "s"} to ask NHS Lothian about: ${proof.gaps[0].question}` : "No gap between the guideline and your account.";
       case "draft_complaint":
         return draft ? `Written. ${proof.gaps?.length ? "It asks NHS Lothian about the guideline politely, without blaming anyone." : "Facts only, no blame."}` : out;
       case "fill_complaint_form":
@@ -196,7 +196,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
             ? `The form is filled as far as I could. It still needs: ${form.unfilled.join(", ") || "an answer from you"}.`
             : out;
       default:
-        return short(out.split("\n")[0], 180);
+        return out.split("\n")[0];
     }
   };
 
@@ -224,7 +224,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
         const r = await tabs(() => crewFor(thought, "robin", "Time limit", (p, note) => checkTimeLimit(p, facts, note, track), 120_000));
         if (!r.ok) return `Could not check the time limit: ${r.error}`;
         timeLimit = { limit: r.value.limit, status: r.value.status, explanation: r.value.explanation, url: r.value.url };
-        finding(`Time limit: ${short(r.value.limit, 120)}`, r.value.url, "robin");
+        finding(`Time limit: ${r.value.limit}`, r.value.url, "robin");
         return `Status: ${r.value.status}. ${r.value.limit}\n${r.value.explanation}`;
       }
       case "read_guideline": {
@@ -234,7 +234,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
         guideline = r.value;
         proof.guideline = { name: r.value.guideline, url: r.value.url, points: r.value.points };
         emit({ type: "evidence", evidence: { ...proof } });
-        if (r.value.points.length) finding(`${r.value.guideline} ${r.value.points.map((x) => x.id).join(", ")}: "${short(r.value.points[0].text, 120)}"`, r.value.url, "iona");
+        if (r.value.points.length) finding(`${r.value.guideline} ${r.value.points.map((x) => x.id).join(", ")}: "${r.value.points[0].text}"`, r.value.url, "iona");
         return r.value.points.length ? `${r.value.guideline}:\n${r.value.points.map((x) => `${x.id}: ${x.text}`).join("\n")}` : "No recommendation about this on the page.";
       }
       case "compare_care": {
@@ -364,9 +364,9 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
         if (busy) {
           const failed = /^(Error|Could not|Blocked:|The form could not|Write the complaint|Read the guideline|.*failed\b)/.test(out);
           const ok = !failed && (call.name !== "fill_complaint_form" || form.status === "ready_to_submit" || form.status === "needs_input");
-          const text = failed ? `I hit a problem: ${short(out, 160)}` : describe(call.name, out);
+          const text = failed ? `I hit a problem: ${out}` : describe(call.name, out);
           say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab, ok });
-          crewState(who, "idle", short(text, 90));
+          crewState(who, "idle", text);
         } else if (call.name === "finish") say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
         if (call.name === "finish") finished = true;
         outputs.push({ type: "function_call_output", call_id: call.call_id, output: out });

@@ -3,6 +3,9 @@ import type { Download, Frame, Page } from "playwright";
 import { z } from "zod";
 import { dismissCookies } from "../../browser";
 import { pointAt } from "../../agentCursor";
+import { gateWall } from "../handoff";
+import { tookHandoff } from "../handoffQuiet";
+import { quickFetch } from "./quickRead";
 import { pageText } from "../legalAid";
 import { EFFORT, MODELS, structured } from "../llm";
 import type { Quote, Wall, WorkerCtx } from "./types";
@@ -389,7 +392,12 @@ async function openUrl(ctx: WorkerCtx, url: string): Promise<Opened> {
   }
   await settle(page);
   await dismissCookies(page, 2500);
-  if (!(await waitOutBotCheck(ctx))) return { kind: "fail", wall: { kind: "bot_check", detail: "The site's browser check did not clear within 20 seconds", url: page.url() } };
+  if (!(await waitOutBotCheck(ctx))) {
+    const wall: Wall = { kind: "bot_check", detail: "The site's browser check did not clear within 20 seconds", url: page.url() };
+    const g = await gateWall(ctx, wall, async () => (await detectWall(page)) ?? null);
+    if (g.go) return { kind: "html", status };
+    return { kind: "fail", wall: g.wall };
+  }
   return { kind: "html", status };
 }
 
@@ -449,18 +457,23 @@ const Reading = z.object({
   links: z.array(z.object({ id: z.number(), why: z.string() })).describe("Up to 6 link ids from the list worth following for the question, best first"),
 });
 
-export type PageReading = { url: string; title: string; answer: string; quotes: Quote[]; links: { text: string; url: string }[]; wall?: Wall };
+export type PageReading = { url: string; title: string; answer: string; quotes: Quote[]; links: { text: string; url: string }[]; wall?: Wall; handedOff?: boolean; via?: "fetch"; text?: string };
 
 /** Open any page or PDF and answer one question from it, with code-checked quotes and the links worth following next. */
 export async function readPage(ctx: WorkerCtx, url: string, question: string): Promise<PageReading> {
   const { page, note, track } = ctx;
-  note(`Opening ${short(hostOf(url), 40)}`);
-  const opened = await openUrl(ctx, url);
-  track.bump("action");
+  const stamp = <T extends PageReading>(r: T): T => (tookHandoff(page) ? { ...r, handedOff: true } : r);
+  // Fetch first: most official pages and PDFs need no browser. The browser opens only when the page needs one (a wall, a script-built page, a login).
+  const quick = await quickFetch(url);
+  if (quick) track.bump("quick", quick.url);
+  else note(`Reading ${hostOf(url)}`);
+  const opened: Opened = quick ? (quick.kind === "pdf" ? (() => { const t = pdfText(quick.buf); return readable(t) ? ({ kind: "pdf", text: t } as Opened) : null; })() : { kind: "html", status: 200 }) ?? (await openUrl(ctx, url)) : await openUrl(ctx, url);
+  const direct = !!quick && (quick.kind === "html" || opened.kind === "pdf");
+  if (!direct) track.bump("action");
   if (opened.kind === "fail") {
     await note.log("fail", `Could not read ${hostOf(url)}: ${opened.wall.detail}`, { shot: true, url });
-    note(short(opened.wall.detail, 60));
-    return { url, title: "", answer: "", quotes: [], links: [], wall: opened.wall };
+    note(opened.wall.detail);
+    return stamp({ url, title: "", answer: "", quotes: [], links: [], wall: opened.wall });
   }
   let text: string;
   let title: string;
@@ -469,12 +482,24 @@ export async function readPage(ctx: WorkerCtx, url: string, question: string): P
     text = opened.text;
     title = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "PDF");
     await note.log("open", `Opened a PDF (${Math.round(text.length / 1000)}k characters of text)`, { url });
+  } else if (direct && quick?.kind === "html") {
+    text = quick.text;
+    title = quick.title;
+    links = quick.links;
+    note(`Reading ${hostOf(quick.url)}`);
+    await note.log("open", `Read ${quick.url} directly (no browser needed)`, { url: quick.url });
   } else {
     const wall = await detectWall(page, opened.status);
     if (wall) {
-      await note.log("fail", `Stopped at ${page.url()}: ${wall.detail}`, { shot: true });
-      note(short(wall.detail, 60));
-      return { url: page.url(), title: await page.title().catch(() => ""), answer: "", quotes: [], links: [], wall };
+      const g = await gateWall(ctx, wall, async () => (await detectWall(page, opened.status)) ?? null);
+      if (!g.go) {
+        if (!g.quiet) {
+          await note.log("fail", `Stopped at ${page.url()}: ${g.wall.detail}`, { shot: true });
+          note(g.wall.detail);
+        }
+        return stamp({ url: page.url(), title: await page.title().catch(() => ""), answer: "", quotes: [], links: [], wall: g.wall });
+      }
+      if (!g.open) note("Back to work");
     }
     await note.log("open", `Opened ${page.url()}`, { shot: true });
     title = await page.title().catch(() => "");
@@ -496,12 +521,12 @@ export async function readPage(ctx: WorkerCtx, url: string, question: string): P
     effort: EFFORT.browser,
     instructions:
       "You read one web page (or PDF) for a research agent. Answer only from the page text; never invent facts. Quotes must be copied exactly from the page text (no paraphrase, no joining of separate sentences). Pick links only from the numbered list.",
-    input: `Question: ${question}\nPage: ${title} (${page.url() === "about:blank" ? url : page.url()})\n\nPage text:\n${text.slice(0, 30000)}\n\nLinks:\n${links.map((l, i) => `[${i}] ${l.text} -> ${showHref(l.url, url)}`).join("\n")}`,
+    input: `Question: ${question}\nPage: ${title} (${direct ? quick!.url : page.url() === "about:blank" ? url : page.url()})\n\nPage text:\n${text.slice(0, 30000)}\n\nLinks:\n${links.map((l, i) => `[${i}] ${l.text} -> ${showHref(l.url, url)}`).join("\n")}`,
     schema: Reading,
     name: "read_page",
   });
   const hay = normText(text);
-  const quotes: Quote[] = r.quotes.slice(0, 4).map((q) => ({ url: opened.kind === "pdf" ? url : page.url(), quote: q.trim(), checked: quoteInText(q, hay) }));
+  const quotes: Quote[] = r.quotes.slice(0, 4).map((q) => ({ url: opened.kind === "pdf" ? url : direct ? quick!.url : page.url(), quote: q.trim(), checked: quoteInText(q, hay) }));
   const picked = r.links.map((l) => links[l.id]).filter((l): l is { text: string; url: string } => !!l).slice(0, 6);
   const good = quotes.filter((q) => q.checked).length;
   await note.log("read", `Read ${short(title || hostOf(url), 60)}: ${short(r.answer, 160)}`, {
@@ -513,7 +538,7 @@ export async function readPage(ctx: WorkerCtx, url: string, question: string): P
     ].join("\n"),
   });
   note(quotes.length ? `${good} of ${quotes.length} quotes checked` : "Done reading");
-  return { url: opened.kind === "pdf" ? url : page.url(), title, answer: r.answer, quotes, links: picked };
+  return stamp({ url: opened.kind === "pdf" ? url : direct ? quick!.url : page.url(), title, answer: r.answer, quotes, links: picked, ...(direct ? { via: "fetch" as const, text } : {}) });
 }
 
 /* ------------------------------------------------------------------ what can be done on a page */
@@ -860,6 +885,7 @@ export type ExploreResult = {
   form?: FormInfo;
   wall?: Wall;
   summary: string;
+  handedOff?: boolean;
 };
 
 /**
@@ -877,7 +903,8 @@ export async function exploreSite(ctx: WorkerCtx, start: string, goal: string, o
   };
   ctx.page.on("download", onDownload);
   try {
-    return await explore(ctx, start, goal, opts, dl);
+    const r = await explore(ctx, start, goal, opts, dl);
+    return tookHandoff(ctx.page) ? { ...r, handedOff: true } : r;
   } finally {
     ctx.page.off("download", onDownload);
   }
@@ -917,7 +944,7 @@ async function explore(ctx: WorkerCtx, start: string, goal: string, opts: { maxH
   };
   const trailText = (url: string) => pathTo(url).map((p) => (p.via === "start" ? hostOf(p.url) : `"${short(p.via, 40)}"`)).join(" > ") || "(start)";
 
-  note(`Exploring ${hostOf(start)}`);
+  note(`Navigating ${hostOf(start)}`);
   await note.log("open", `Exploring ${hostOf(start)} to find ${goal}`, { url: start });
   const first = await openUrl(ctx, start);
   track.bump("action");
@@ -940,13 +967,23 @@ async function explore(ctx: WorkerCtx, start: string, goal: string, opts: { maxH
     sameStateAgain = false;
 
     if (fresh && !pdfText) {
-      const wall = await detectWall(page, status);
+      let wall = await detectWall(page, status);
+      if (wall && (wall.kind === "login" || wall.kind === "captcha" || wall.kind === "bot_check")) {
+        const g = await gateWall(ctx, wall, async () => (await detectWall(page, status)) ?? null);
+        if (g.go) {
+          if (!g.open) note("Back to work");
+          wall = undefined;
+        } else wall = g.wall;
+      }
       if (wall) {
         walls.push(wall);
-        if (wall.kind === "login" || wall.kind === "payment") maxHops = Math.min(maxHops, hops + 3); // the route is likely behind it
-        await note.log("recover", `Wall: ${wall.detail}. Not going past it; trying the next best route`, { shot: true });
-        note(short(wall.detail, 60));
-        if ((pathTo(here).length <= 1 && (wall.kind === "bot_check" || wall.kind === "captcha")) || walls.filter((w) => w.kind === "bot_check").length >= 2) {
+        const staff = wall.kind === "dead_end" && /does not help the patient/.test(wall.detail);
+        if (!staff && (wall.kind === "login" || wall.kind === "payment")) maxHops = Math.min(maxHops, hops + 3);
+        if (!staff) {
+          await note.log("recover", `Could not use this page (${wall.kind}). Looking for another way.`);
+          note(wall.detail);
+        }
+        if (!staff && ((pathTo(here).length <= 1 && (wall.kind === "bot_check" || wall.kind === "captcha")) || walls.filter((w) => w.kind === "bot_check").length >= 2)) {
           return { ok: false, url: here, path: pathTo(here), wall, summary: `The site blocked the agent at the start: ${wall.detail}` };
         }
       } else {
@@ -974,12 +1011,19 @@ async function explore(ctx: WorkerCtx, start: string, goal: string, opts: { maxH
         const wizardStart = want === "form" && j.wizard && j.role === "application" && !(found && isForm(found.form));
         const formOk = want !== "form" || (!!found && isForm(found.form) && j.formPurposeMatches) || wizardStart;
         if (j.role === "sign_in_gate" && !(found && isForm(found.form))) {
-          // No password box yet, but the page exists to make you sign in or register first: a login wall all the same.
-          const w: Wall = { kind: "login", detail: `It asks to sign in or create an account first: ${j.reason}`, url: here };
-          walls.push(w);
-          await note.log("recover", `Wall: ${w.detail}. Not going past it; trying the next best route`, { shot: true });
-          note("Needs an account");
-          continue;
+          const w: Wall = { kind: "login", detail: "It asks to sign in or create an account first", url: here };
+          const g = await gateWall(ctx, w, async () => (await detectWall(page)) ?? null);
+          if (g.go && g.open) {
+            /* A form is already on the page. A header login does not block it. */
+          } else if (g.go) {
+            visited.delete(hereKey);
+            note("Back to work");
+            continue;
+          } else {
+            walls.push(g.wall);
+            if (!g.quiet) note("Needs an account");
+            continue;
+          }
         }
         const title = await page.title().catch(() => "");
         if (j.status === "goal_met" && formOk) {
@@ -1064,7 +1108,7 @@ async function explore(ctx: WorkerCtx, start: string, goal: string, opts: { maxH
     track.bump("action");
     const m = next;
     const label = m.cand.kind === "search" ? `the site search ("${m.searchTerms}")` : `"${short(m.cand.text, 50)}"`;
-    note(m.cand.kind === "search" ? `Searching the site: ${short(m.searchTerms, 40)}` : `Trying ${short(m.cand.text, 40)}`);
+    note(m.cand.kind === "search" ? `Searching the site: ${m.searchTerms}` : `Trying ${m.cand.text}`);
     const away = normUrl(page.url()) !== normUrl(m.from);
     const before = page.url();
     const beforeLen = await page.evaluate(() => document.body?.innerText.length ?? 0).catch(() => 0);
@@ -1197,16 +1241,16 @@ async function explore(ctx: WorkerCtx, start: string, goal: string, opts: { maxH
   const off = noRoute ?? offline;
   const blocking = walls.find((w) => w.kind === "login" || w.kind === "captcha" || w.kind === "payment");
   const wall = blocking ?? (off ? { kind: "phone_or_post_only" as const, detail: off.contact ? `${off.reason} Contact given: ${off.contact}` : off.reason, url: off.url } : undefined) ?? walls[0];
-  const finalWall: Wall = wall ?? { kind: "dead_end", detail: hops >= maxHops ? `No page met the goal within ${maxHops} moves` : "No promising route left to try", url: page.url() };
+  const finalWall: Wall = wall ?? { kind: "dead_end", detail: hops >= maxHops ? `No page met the goal within ${maxHops} moves` : "No other page met the goal", url: page.url() };
   const via = pathTo(finalWall.url).map((p) => (p.via === "start" ? hostOf(p.url) : `"${short(p.via, 40)}"`)).join(" > ");
   const summary =
     finalWall.kind === "login" || finalWall.kind === "payment"
-      ? `Reached ${hostOf(finalWall.url)}${via ? ` (${via})` : ""}, but it needs ${finalWall.kind === "login" ? "the user to sign in or create an account" : "a payment"}: handing over to the user. ${finalWall.detail}`
+      ? `Reached ${hostOf(finalWall.url)}${via ? ` (${via})` : ""}, but the page asks ${finalWall.kind === "login" ? "the patient to sign in" : "for a payment"}. ${finalWall.detail}`
       : finalWall.kind === "phone_or_post_only"
         ? `No online ${want === "form" ? "form" : "page"} found after ${hops} moves (${secs}s); the site's own route is offline. ${finalWall.detail}`
         : `Did not reach ${want === "form" ? "the form" : "the page"} after ${hops} moves (${secs}s): ${finalWall.detail}${explainer ? `. Closest page: "${short(explainer.title, 70)}" ${explainer.url}` : ""}`;
   await note.log("fail", summary, { shot: true });
-  note(short(finalWall.detail, 60));
+  note(finalWall.detail);
   return { ok: false, url: finalWall.url, path: pathTo(finalWall.url).length ? pathTo(finalWall.url) : pathTo(page.url()), wall: finalWall, summary };
 }
 

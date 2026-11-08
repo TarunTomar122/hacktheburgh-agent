@@ -1,6 +1,7 @@
 // Run a generic flow (night plan, "Elliot anywhere") on a fictional persona and a saved route map, headless:
 //   npx tsx --env-file=.env.local scripts/agent-flow.ts <persona> <complaint|compensation> <route.json>
 // Questions from the crew get fictional answers: money -> 14000, yes/no -> "No", choice -> the first option, text -> skipped.
+process.env.HANDOFF_WAIT_MS ??= "0";
 import { readFileSync, writeFileSync } from "node:fs";
 import { personaFacts } from "./personaFacts";
 import { runComplaintAnywhere } from "../lib/agent/complaintAnywhere";

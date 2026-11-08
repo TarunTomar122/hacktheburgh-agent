@@ -378,7 +378,7 @@ function FirmModal({ o, firm, steps, onClose, onSteps, onReview }: { o: EnquiryO
         {form && (
           <>
             <dt className="text-muted">Enquiry form</dt>
-            <dd className="min-w-0 truncate">
+            <dd className="min-w-0 break-words">
               <a className="text-brand hover:underline" href={form} target="_blank" rel="noreferrer">
                 {host(form)}
               </a>

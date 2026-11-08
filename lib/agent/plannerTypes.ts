@@ -68,8 +68,33 @@ export type Say = {
   firm?: string; // reports: the firm this is about
 };
 
+/**
+ * Iona's pre-action investigation (night plan, side backlog 2): official, public material that a patient can cite,
+ * found live on the pages of the place's own bodies. Every item has a quote that code found in the page text, and a
+ * URL that was opened in the run. Where nothing was found, `nothing` says so; nothing is ever filled in.
+ */
+export type InvestigationLane = "decision" | "policy" | "inspection" | "public_record";
+export type InvestigationItem = {
+  lane: InvestigationLane;
+  title: string; // the page's own title
+  publisher: string; // the site's host
+  url: string; // opened in this run
+  quote: string; // checked word for word against the page text
+  why: string; // one plain line on how it relates to the case; "" unless every number in it is in the quote
+  fit: "close" | "partial";
+  stance: "supports" | "neutral" | "against"; // for the complaint: only "supports" items are cited in the letter; the others are shown to the patient
+};
+export type Investigation = {
+  items: InvestigationItem[];
+  nothing: { lane: InvestigationLane; note: string }[]; // honest "not found" per lane, written by code from what was searched and opened
+  searched: string[]; // the web searches run
+  opened: string[]; // pages opened
+  tookMs: number;
+};
+
 /** Evidence gathered by Iona, kept with the result (D48). */
 export type EvidenceResult = {
+  investigation?: Investigation;
   guideline?: { name: string; url: string; points: { id: string; text: string }[] };
   gaps?: { guideline: string; timeline: string; question: string }[];
   caveat?: string;
@@ -126,7 +151,7 @@ export type ComplaintResult = {
   timeLimit?: { limit: string; status: "within" | "close" | "outside" | "unclear"; explanation: string; url: string };
   evidence: EvidenceResult;
   draft?: Draft;
-  form: { status: "ready_to_submit" | "needs_input" | "incomplete" | "failed" | "not_started"; filled: { label: string; value: string }[]; unfilled: string[]; note: string; url: string };
+  form: { status: "ready_to_submit" | "needs_input" | "incomplete" | "failed" | "not_started"; filled: { label: string; value: string }[]; unfilled: string[]; note: string; url: string; handedOff?: boolean };
   message?: string;
   stage?: "complaint" | "escalation";
 };
@@ -179,6 +204,9 @@ export type PlannerEvent =
   | { type: "say"; say: Say }
   | { type: "crew"; id: CrewId; state: "idle" | "working" | "waiting" | "done"; note: string }
   | { type: "spotlight"; crew: CrewId; tab: string } // the worker to show big right now (D62)
+  | { type: "paused"; paused: boolean } // the user paused or resumed the crew
+  | { type: "handoff"; id: string; crew: CrewId; tab: string; url: string; kind: "login" | "captcha" | "bot_check"; why: string }
+  | { type: "handoff_done"; id: string; outcome: "continued" | "skipped" | "timeout" }
   | { type: "evidence"; evidence: EvidenceResult }
   | { type: "enquiry"; enquiry: EnquiryOutcome }
   | { type: "planner_result"; result: PlannerResult };

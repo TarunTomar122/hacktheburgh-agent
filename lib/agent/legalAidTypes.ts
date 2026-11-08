@@ -117,7 +117,7 @@ export type Step3Result = {
   trace?: TraceStep[]; // everything every agent did, in order (D39)
 };
 
-export type Stats = { agents: number; sites: number; pages: number; actions: number };
+export type Stats = { agents: number; sites: number; pages: number; actions: number; quick?: number };
 
 /** One browser agent working in its own tab. Shown as a tile in the live grid and a row in the step's log. */
 export type AgentTile = {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
 import type { LedgerEntry } from "../../lib/agent/ledgerSummary";
+import type { HandoffInfo } from "../../lib/agent/handoffCopy";
 import type { Place, RouteMap } from "../../lib/agent/routeTypes";
 import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EscalationInput, type EscalationResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
@@ -43,17 +44,19 @@ export type PlannerRunState = {
   reconnectedAt?: number; // set when this screen picked up a run that went on while it was away
   spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
   demo: boolean; // playing back a recorded run (D63)
+  paused?: boolean; // the user paused the crew: what is under way finishes, nothing new starts
   skipped: (CrewId | "all")[]; // demo skips asked for
   models: LedgerEntry[]; // every model call so far (the ledger)
   place?: Place; // discovery: where the care happened
   route?: RouteMap; // discovery: the route map so far
   discovery?: DiscoveryResult;
+  handoffs: (HandoffInfo & { outcome?: "continued" | "skipped" | "timeout" })[];
 };
 
 const idleCrew = (): Record<CrewId, CrewState> =>
   Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "idle", note: "", since: Date.now() }])) as Record<CrewId, CrewState>;
 
-const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [], models: [] });
+const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [], models: [], handoffs: [] });
 
 /**
  * Runs live on the server (lib/agent/runRegistry.ts) and keep going when this screen goes away. What survives here is a
@@ -129,6 +132,8 @@ export function usePlannerRun(scope?: RunScope) {
           return { ...cur, plan: e.steps };
         case "spotlight":
           return { ...cur, spotlight: { crew: e.crew, tab: e.tab } };
+        case "paused":
+          return { ...cur, paused: e.paused };
         case "say":
           return { ...cur, says: [...cur.says, e.say] };
         case "crew":
@@ -165,6 +170,10 @@ export function usePlannerRun(scope?: RunScope) {
           return { ...cur, status: "done", complaint: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "escalation_result":
           return { ...cur, status: "done", escalation: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
+        case "handoff":
+          return { ...cur, handoffs: [...cur.handoffs.filter((h) => h.id !== e.id), { id: e.id, crew: e.crew, tab: e.tab, url: e.url, kind: e.kind, why: e.why }] };
+        case "handoff_done":
+          return { ...cur, handoffs: cur.handoffs.map((h) => (h.id === e.id ? { ...h, outcome: e.outcome } : h)) };
         case "error":
           return { ...cur, status: "error", error: e.message };
         default:
@@ -362,6 +371,15 @@ export function usePlannerRun(scope?: RunScope) {
     return !!res?.ok;
   }, [apply]);
 
+  /** Pause or resume the crew. Every screen on the run hears it back as a "paused" event. */
+  const pause = useCallback(async (paused: boolean) => {
+    const runId = runIdRef.current;
+    if (!runId || rec.current) return;
+    setS((cur) => ({ ...cur, paused }));
+    const res = await fetch("/api/agent/plan/pause", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, paused }) }).catch(() => null);
+    if (!res?.ok) setS((cur) => ({ ...cur, paused: !paused }));
+  }, []);
+
   const tick = useCallback(() => {
     const r = rec.current;
     if (!r) return;
@@ -436,5 +454,5 @@ export function usePlannerRun(scope?: RunScope) {
     setS(initial());
   }, []);
 
-  return { state: s, start, answer, reset, replay, skip, cancel: () => cancel(runIdRef.current) };
+  return { state: s, start, answer, reset, replay, skip, pause, cancel: () => cancel(runIdRef.current) };
 }

@@ -55,7 +55,7 @@ function label(s: TraceStep): string {
     case "pick":
       return "Chose an option";
     case "recover":
-      return host ? `Tried another way on ${host}` : "Tried another way";
+      return quoted ? `Tried “${quoted}”` : host ? `Tried another page on ${host}` : "Tried another page";
     case "fail":
       return host ? `Could not use ${host}` : "Could not do this step";
     default:

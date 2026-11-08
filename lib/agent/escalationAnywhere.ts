@@ -152,12 +152,12 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
       doing: (name) =>
         ({ read_rules: `Reading ${bodyName}'s rules`, draft_case: "Writing your case", fill_form: `Filling ${bodyName}'s form`, find_address: "Finding where it goes", prepare_message: "Preparing your letter" })[name] ?? "Working",
       describe: (name, _a, out) => {
-        if (name === "read_rules" && ready) return `${ready.status === "ready" ? "You can go now." : ready.status === "not_yet" ? "Not yet." : "I could not tell if you can go yet."} ${short(ready.explanation, 200)}`;
+        if (name === "read_rules" && ready) return `${ready.status === "ready" ? "You can go now." : ready.status === "not_yet" ? "Not yet." : "I could not tell if you can go yet."} ${ready.explanation}`;
         if (name === "draft_case" && draft) return `Written for ${bodyName}: what happened, your complaint${caseText?.providerSaid ? `, what ${provider} said` : ""} and what you would like.`;
-        if (name === "fill_form") return form.status === "ready_to_submit" ? `The form is filled (${form.filled.length} fields) and waiting for you to check it and press Submit yourself.` : form.status === "needs_input" ? `Filled as far as I could. It still needs: ${form.unfilled.join(", ") || "an answer from you"}.` : short(out, 200);
+        if (name === "fill_form") return form.status === "ready_to_submit" ? `The form is filled (${form.filled.length} fields) and waiting for you to check it and press Submit yourself.` : form.status === "needs_input" ? `Filled as far as I could. It still needs: ${form.unfilled.join(", ") || "an answer from you"}.` : out;
         if (name === "find_address" && sendTo) return `It goes to ${sendTo.address}, as their own page says.`;
-        if (name === "prepare_message" && message) return sendTo ? `Your letter is ready to send to ${short(sendTo.address, 80)}.` : "Your letter is ready; I could not confirm the address on their pages.";
-        return short(out.split("\n")[0], 200);
+        if (name === "prepare_message" && message) return sendTo ? `Your letter is ready to send to ${sendTo.address}.` : "Your letter is ready; I could not confirm the address on their pages.";
+        return out.split("\n")[0];
       },
       exec: async (call, a, thought, kit) => {
         switch (call.name) {
@@ -199,8 +199,8 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
             ready = { status: st, when: x.when, explanation, include: x.include.slice(0, 5), url: page.url };
             process = { summary: page.answer, steps: x.steps.slice(0, 4), support: "", url: page.url };
             timeLimit = { limit: x.limit, status: x.limitStatus, explanation: x.limitExplanation, url: page.url };
-            kit.finding(st === "ready" ? `You can go to ${bodyName} now` : st === "not_yet" ? `Not yet: ${short(explanation, 120)}` : `When you can go: ${short(x.when || "not stated", 120)}`, page.url, "robin");
-            if (x.limit) kit.finding(`Time limit: ${short(x.limit, 120)}`, page.url, "robin");
+            kit.finding(st === "ready" ? `You can go to ${bodyName} now` : st === "not_yet" ? `Not yet: ${explanation}` : `When you can go: ${x.when || "not stated"}`, page.url, "robin");
+            if (x.limit) kit.finding(`Time limit: ${x.limit}`, page.url, "robin");
             return `Can go: ${st}. ${explanation}\nWhen: ${x.when}\nTime limit: ${x.limit || "not stated"} (${x.limitStatus})\nInclude: ${x.include.join("; ")}\nAfter applying: ${x.steps.join(" -> ")}\nHow (page): ${short(page.answer, 300)}\nChecked quotes: ${page.quotes.filter((q) => q.checked).map((q) => `"${short(q.quote, 140)}"`).join(" | ") || "none"}`;
           }
           case "draft_case": {
@@ -259,8 +259,9 @@ Use ONLY the facts, the complaint text and the provider's reply given. Never add
               unfilled: o.unfilled,
               note: o.status === "blocked" ? `${o.wall?.kind ?? "blocked"}: ${o.wall?.detail ?? o.summary}` : o.summary,
               url: r.value.url,
+              handedOff: o.handedOff || undefined,
             };
-            kit.finding(form.status === "ready_to_submit" ? `${bodyName}'s form is filled, waiting for you to submit` : form.status === "needs_input" ? `The form needs: ${o.unfilled.join(", ") || o.summary}` : `The form stopped: ${short(form.note, 120)}`, r.value.url, "kit");
+            kit.finding(form.status === "ready_to_submit" ? `${bodyName}'s form is filled, waiting for you to submit` : form.status === "needs_input" ? `The form needs: ${o.unfilled.join(", ") || o.summary}` : `The form stopped: ${form.note}`, r.value.url, "kit");
             return o.status === "ready_to_submit"
               ? `Form filled across ${o.pages.length} page(s), ${form.filled.length} fields. Stopped before "${o.finalSubmitLabel ?? "Submit"}".`
               : o.status === "blocked"

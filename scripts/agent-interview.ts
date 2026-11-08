@@ -1,4 +1,5 @@
 // Chat with the intake agent in the terminal. `--sim` makes an LLM play Ailsa so you can watch a whole interview.
+process.env.HANDOFF_WAIT_MS ??= "0";
 import readline from "node:readline/promises";
 import { emptyFacts } from "../lib/agent/facts";
 import { interviewTurn, OPENER, type ChatMessage } from "../lib/agent/interview";

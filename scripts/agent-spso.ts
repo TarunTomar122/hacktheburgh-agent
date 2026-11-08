@@ -1,4 +1,5 @@
 // Fill the SPSO complaint form with the fictional demo patient and stop before submitting. Prints every action.
+process.env.HANDOFF_WAIT_MS ??= "0";
 import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_SPSO } from "../lib/agent/sample";
 import { fillSpsoComplaint } from "../lib/agent/spso";
 

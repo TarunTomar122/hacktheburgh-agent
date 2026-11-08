@@ -9,6 +9,7 @@ import { CREW, type ComplaintResult, type CrewId } from "../../lib/agent/planner
 import { setComplaintRun, setDraft, setOmbudsman, setProgress, skipStep, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import AskMissing from "./AskMissing";
+import InvestigationList from "./Investigation";
 import { CrewMark } from "./crew/Crew";
 import StepStrip, { type Step } from "./crew/StepStrip";
 import { DemoBar, DemoButton, Quote, Row, Said, Workspace, type CrewKit } from "./CaseRun";
@@ -33,7 +34,7 @@ const STEPS: Step[] = [
 const NHS_PAGE = "https://www.nhslothian.scot/yourrights/patient-experience-team-tell-us-about-your-experience/how-do-i-make-a-complaint/";
 
 export default function ComplaintRun({ profile, onContinue }: { profile: Profile; onContinue: () => void }) {
-  const { state, start, answer, replay, skip } = usePlannerRun({ scope: "complaint", caseId: profile.createdAt });
+  const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "complaint", caseId: profile.createdAt });
   const saved = profile.complaintRun;
   const [again, setAgain] = useState(false);
 
@@ -65,7 +66,7 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   };
 
   if (!route && !supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => go()} kit={KIT} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => go()} kit={KIT} />;
   if (saved && !again) return <ComplaintFile body={body} profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
   // A recorded run is offered only if one was made for this case's place.
   return <Intro body={body} recorded={hasDemo} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
@@ -267,6 +268,12 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
           )}
         </Row>
 
+        {ev.investigation && (
+          <Row crew="iona" topic="Supporting evidence" title={ev.investigation.items.length ? "Official material you can cite" : "Nothing official found to cite"}>
+            <InvestigationList inv={ev.investigation} />
+          </Row>
+        )}
+
         <Row crew="elliot" topic="Your complaint" title={run.draft ? "Written from your story" : "Not written yet"}>
           {run.draft ? (
             <div className="space-y-4">
@@ -286,13 +293,14 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
           {filledForm ? (
             <div className="space-y-3">
               <ul className="divide-y divide-line-soft text-[14px]">
-                {run.form.filled.slice(0, 14).map((f) => (
+                {run.form.filled.map((f) => (
                   <li key={`${f.label}-${f.value}`} className="flex gap-4 py-1.5">
                     <span className="w-44 shrink-0 text-muted">{f.label}</span>
-                    <span className="min-w-0 truncate text-ink">{f.value}</span>
+                    <span className="min-w-0 whitespace-pre-line break-words text-ink">{f.value}</span>
                   </li>
                 ))}
               </ul>
+              {run.form.handedOff && <p className="text-[13px] font-medium text-amber">You signed in here.</p>}
               {run.form.unfilled.length > 0 && <p className="text-[14px] leading-6 text-amber">Still needs: {run.form.unfilled.join(", ")}.</p>}
               <a className="inline-block text-[13px] text-brand hover:underline" href={run.form.url} target="_blank" rel="noreferrer">
                 {body}&apos;s online form ↗

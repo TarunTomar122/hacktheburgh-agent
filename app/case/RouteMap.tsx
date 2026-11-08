@@ -28,43 +28,27 @@ const host = (u: string) => {
   }
 };
 
-/** First sentence, capped: the card shows one line per part; the rest is one click away. */
-const firstLine = (t: string, n = 150) => {
-  const f = t.split(/(?<=[.!?])\s+/)[0] ?? t;
-  return f.length > n ? `${f.slice(0, f.lastIndexOf(" ", n - 2))}…` : f;
-};
-
-export default function RouteMapCard({ route, compact }: { route: Route; compact?: boolean }) {
-  const [more, setMore] = useState(false);
+export default function RouteMapCard({ route, compact, handoff }: { route: Route; compact?: boolean; handoff?: { url: string } | null }) {
   const where = [route.place.region, route.place.country].filter(Boolean).join(", ") || "your place";
-  const lead = route.summary ? firstLine(route.summary, 220) : "";
   return (
     <section aria-label="How it works where you live" className="rounded-card border border-line bg-white">
       <header className="border-b border-line-soft px-6 py-5">
         <p className="text-[12px] text-muted">How it works where you live</p>
         <h2 className="display mt-1 text-[26px] leading-tight text-ink">{where}</h2>
-        {!compact && lead && (
-          <p className="mt-2 max-w-3xl font-serif text-[16px] leading-7 text-ink-2">
-            {more ? route.summary : lead}{" "}
-            {route.summary !== lead && (
-              <button className="font-sans text-[13px] text-brand hover:underline" onClick={() => setMore((m) => !m)}>
-                {more ? "Less" : "More"}
-              </button>
-            )}
-          </p>
-        )}
+        {!compact && route.summary && <p className="mt-2 max-w-3xl font-serif text-[16px] leading-7 text-ink-2">{route.summary}</p>}
       </header>
       <ol className="divide-y divide-line-soft">
         {ROUTE_KINDS.map((k) => {
           const s = route.steps.find((x) => x.kind === k.kind);
-          return <Row key={k.kind} label={k.label} step={s} crew={s?.by ?? k.crew} compact={compact} />;
+          const ask = !!(handoff && s?.url && host(s.url) === host(handoff.url));
+          return <Row key={k.kind} label={k.label} step={s} crew={s?.by ?? k.crew} compact={compact} ask={ask} />;
         })}
       </ol>
     </section>
   );
 }
 
-function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; crew: RouteStep["by"]; compact?: boolean }) {
+function Row({ label, step, crew, compact, ask }: { label: string; step?: RouteStep; crew: RouteStep["by"]; compact?: boolean; ask?: boolean }) {
   const [open, setOpen] = useState(false);
   // Nothing checked on an official page: the claimed body stays out of the headline (Cursor review).
   if (!step || step.confidence === "unconfirmed")
@@ -86,11 +70,23 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
             <span className="w-36 shrink-0 text-[13px] text-muted">{label}</span>
             <span className="text-[15px] font-medium text-ink">{step.body}</span>
           </div>
-          {!compact && <p className="mt-1 text-[14px] leading-6 text-ink-2 md:pl-39">{firstLine(step.what)}</p>}
+          {!compact && <p className="mt-1 text-[14px] leading-6 text-ink-2 md:pl-39">{step.what}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] md:pl-39">
             {HOW[step.how] && <Chip tone={step.how === "online_form" ? "ok" : step.how === "login_required" ? "warn" : "plain"}>{HOW[step.how]}</Chip>}
             {step.deadline && step.deadline.length <= 40 && <Chip tone={step.deadlineCheck === "sources_differ" ? "warn" : "plain"}>{step.deadline}{step.deadlineCheck === "one_site" ? " · one source" : step.deadlineCheck === "sources_differ" ? " · sources differ" : ""}</Chip>}
-            {step.wall && <Chip tone="warn">{firstLine(step.wall, 60)}</Chip>}
+            {ask && (
+              <button
+                className="rounded-full bg-amber px-2 py-0.5 text-[12px] font-medium text-white"
+                onClick={() => {
+                  window.dispatchEvent(new Event("live-open"));
+                  window.dispatchEvent(new CustomEvent("live-handoff-open"));
+                }}
+              >
+                Needs you
+              </button>
+            )}
+            {step.handedOff && <Chip tone="ok">You signed in here</Chip>}
+            {step.wall && !ask && <Chip tone="warn">{step.wall}</Chip>}
             {step.url && (
               <a className="text-brand hover:underline" href={step.url} target="_blank" rel="noreferrer">
                 {host(step.url)} ↗
@@ -102,7 +98,6 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
           </div>
           {open && (
             <div className="rise mt-3 space-y-3 md:pl-39">
-              {step.what !== firstLine(step.what) && <p className="text-[14px] leading-6 text-ink-2">{step.what}</p>}
               {step.deadline && step.deadline.length > 40 && <p className="text-[13px] leading-5 text-ink-2">Time limit: {step.deadline}{step.deadlineCheck === "one_site" ? " (one official source: confirm with the body)" : ""}</p>}
               {step.deadlineCheck === "sources_differ" && <p className="text-[13px] leading-5 text-amber">Official pages give different periods ({[step.deadline, ...(step.deadlineOthers ?? [])].join(" / ")}). Check with the body before relying on it.</p>}
               {step.points?.length ? (

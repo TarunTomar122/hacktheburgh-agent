@@ -35,7 +35,7 @@ const load = (createdAt: string): Saved | null => {
 };
 
 export default function EscalationRun({ profile, route, goToStepOne, onContinue }: { profile: Profile; route: RouteMap; goToStepOne: () => void; onContinue?: () => void }) {
-  const { state, start, answer, skip } = usePlannerRun({ scope: "escalation", caseId: profile.createdAt });
+  const { state, start, answer, skip, pause } = usePlannerRun({ scope: "escalation", caseId: profile.createdAt });
   const [saved, setSaved] = useState<Saved | null>(() => load(profile.createdAt));
   const [again, setAgain] = useState(false);
   const [reply, setReply] = useState("");
@@ -83,7 +83,7 @@ export default function EscalationRun({ profile, route, goToStepOne, onContinue 
     : undefined;
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => go()} kit={KIT} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => go()} kit={KIT} />;
   if (saved && !again) return <EscalationFile run={saved.result} profile={profile} goToStepOne={goToStepOne} onAgain={() => setAgain(true)} onContinue={skipToStepThree} />;
   return (
     <Intro
@@ -190,7 +190,6 @@ const hostOf = (u: string) => {
 };
 
 function EscalationFile({ run, profile, goToStepOne, onAgain, onContinue }: { run: EscalationResult; profile: Profile; goToStepOne: () => void; onAgain: () => void; onContinue?: () => void }) {
-  const [letterOpen, setLetterOpen] = useState(false);
   const body = run.body;
   const done = !!profile.progress?.spsoSent;
   const notYet = run.ready?.status === "not_yet";
@@ -309,10 +308,7 @@ function EscalationFile({ run, profile, goToStepOne, onAgain, onContinue }: { ru
         <Row crew="elliot" topic="Your case" title={run.draft ? "Written from your complaint" : "Not written yet"}>
           {run.draft ? (
             <div className="space-y-4">
-              <p className={cx("whitespace-pre-line font-serif text-[16px] leading-7 text-ink", !letterOpen && "line-clamp-5")}>{run.draft.details}</p>
-              <button className="text-[13px] text-brand hover:underline" onClick={() => setLetterOpen((o) => !o)}>
-                {letterOpen ? "Less" : "Read it all"}
-              </button>
+              <p className="whitespace-pre-line font-serif text-[16px] leading-7 text-ink">{run.draft.details}</p>
               {run.draft.outcome && <Said label="What you would like">{run.draft.outcome}</Said>}
               {run.ready?.include.length ? <Said label={`${body} asks you to include`}>{run.ready.include.join(" · ")}</Said> : null}
             </div>
@@ -325,13 +321,14 @@ function EscalationFile({ run, profile, goToStepOne, onAgain, onContinue }: { ru
           {filledForm ? (
             <div className="space-y-3">
               <ul className="divide-y divide-line-soft text-[14px]">
-                {run.form.filled.slice(0, 12).map((f) => (
+                {run.form.filled.map((f) => (
                   <li key={`${f.label}-${f.value}`} className="flex gap-4 py-1.5">
                     <span className="w-44 shrink-0 text-muted">{f.label}</span>
-                    <span className="min-w-0 truncate text-ink">{f.value}</span>
+                    <span className="min-w-0 whitespace-pre-line break-words text-ink">{f.value}</span>
                   </li>
                 ))}
               </ul>
+              {run.form.handedOff && <p className="text-[13px] font-medium text-amber">You signed in here.</p>}
               {needs && <p className="text-[14px] leading-6 text-amber">Still needs: {needs}.</p>}
               <a className="inline-block text-[13px] text-brand hover:underline" href={run.form.url} target="_blank" rel="noreferrer">
                 {body}&apos;s online form ↗

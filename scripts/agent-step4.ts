@@ -1,6 +1,7 @@
 // Step 4 from the CLI (D45): draft the message, find and fill 3 firms' enquiry forms, then try to send one.
 // Uses the fictional compensation persona (example.com email), so the send gate ALWAYS refuses: nothing reaches a firm.
 // Usage: HEADLESS=1 npm run agent:step4
+process.env.HANDOFF_WAIT_MS ??= "0";
 import { draftEnquiry, runEnquiries, sendEnquiry } from "../lib/agent/enquiry";
 import type { FirmFinding } from "../lib/agent/legalAidTypes";
 import { DEMO_PERSONAS } from "../lib/agent/sample";

@@ -18,17 +18,16 @@ import { usePlannerRun } from "./usePlannerRun";
  * route map, which the later steps use.
  */
 
-const ROLES: Partial<Record<CrewId, string>> = { elliot: "Leads the search", robin: "Finds the rules", iona: "Finds the guidance", nell: "Finds the money", kit: "Finds the forms" };
-const KIT: CrewKit = { workers: ["robin", "iona", "nell", "kit"], role: (id) => ROLES[id] ?? CREW[id].role };
+const ROLES: Partial<Record<CrewId, string>> = { elliot: "Leads the search", robin: "Finds the rules and forms", iona: "Finds the guidance", nell: "Finds the money" };
+const KIT: CrewKit = { workers: ["robin", "iona", "nell"], role: (id) => ROLES[id] ?? CREW[id].role };
 const STEPS: Step[] = [
-  { crew: ["robin"], title: "Find the rules", line: "Who to complain to, who checks it, how claims work" },
+  { crew: ["robin"], title: "Find the rules", line: "Who to complain to, who checks it, and the real forms" },
   { crew: ["iona"], title: "Find the guidance", line: "What doctors there are told to do" },
   { crew: ["nell"], title: "Find the money", line: "How help can be paid for" },
-  { crew: ["kit"], title: "Find the forms", line: "The real online forms you will need" },
 ];
 
 export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profile: Profile; saved?: RouteMap; onDone: (route: RouteMap, sample: boolean) => void; onSkip?: () => void }) {
-  const { state, start, answer, replay, skip } = usePlannerRun({ scope: "discovery", caseId: profile.createdAt });
+  const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "discovery", caseId: profile.createdAt });
   const done = useRef<string | null>(null);
   useEffect(() => {
     const r = state.discovery;
@@ -46,10 +45,10 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
   if (live)
     return (
       <div className="space-y-6">
-        <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => start(profile.facts, undefined, "discovery")} kit={KIT} />
+        <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => start(profile.facts, undefined, "discovery")} kit={KIT} />
         {state.route && (
           <div className="mx-auto max-w-6xl">
-            <RouteMapCard route={state.route} compact />
+            <RouteMapCard route={state.route} compact handoff={state.handoffs.find((h) => !h.outcome) ?? null} />
           </div>
         )}
       </div>
@@ -61,13 +60,13 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">How it works where you live</h1>
       <p className="mt-3 flex items-center gap-2 text-[15px] text-ink-2">
-        <CrewMark id="elliot" size={28} /> The crew works it out live, from official sites{where ? `, for ${where}` : ""}. Nothing is filled in or sent.
+        <CrewMark id="elliot" size={28} /> First, the crew researches how complaints and claims work{where ? ` in ${where}` : ""}, from official sites. It takes about 10 minutes. Nothing is filled in or sent.
       </p>
       <div className="mt-12">
         <StepStrip steps={STEPS} />
       </div>
       <div className="mt-12 flex flex-col items-center gap-4">
-        <Button onClick={() => start(profile.facts, undefined, "discovery")}>Work it out</Button>
+        <Button onClick={() => start(profile.facts, undefined, "discovery")}>Start the research</Button>
         <p className="text-[13px] text-muted">
           <span className="text-teal">✓</span> Every fact quoted and checked <span className="mx-2 text-fade">·</span> <span className="text-teal">✓</span> Official sources first
         </p>

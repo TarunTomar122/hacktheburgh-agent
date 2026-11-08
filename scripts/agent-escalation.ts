@@ -3,6 +3,7 @@
 // Progress defaults to: complaint sent, final response received, with a short fictional reply. The complaint text comes
 // from a saved complaint run's result.json when given. Questions from the crew get fictional answers:
 // yes/no -> "No", choice -> the first option, text -> skipped. Nothing is ever submitted or sent.
+process.env.HANDOFF_WAIT_MS ??= "0";
 import { readFileSync, writeFileSync } from "node:fs";
 import { personaFacts } from "./personaFacts";
 import { runEscalationAnywhere } from "../lib/agent/escalationAnywhere";

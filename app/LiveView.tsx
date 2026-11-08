@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, cx } from "./ui";
+import { handoffHost } from "../lib/agent/handoffCopy";
 import { CREW, type CrewId } from "../lib/agent/plannerTypes";
 
 /**
@@ -26,6 +27,7 @@ type LiveMsg =
   | { type: "idle" }
   | { type: "control"; enabled: boolean };
 type Mode = "hidden" | "live" | "ended";
+type HandoffAsk = { id: string; runId?: string; tab: string; url: string; crew: CrewId; why: string; demo?: boolean };
 const SINGLE = "_single"; // frames from a server that does not tag pages
 
 /** How long the "browser has closed" notice stays before the panel closes itself. */
@@ -114,6 +116,8 @@ export default function LiveView() {
   const [pages, setPages] = useState<LivePage[]>([]);
   const [, setStats] = useState<LiveStats | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  const [ask, setAsk] = useState<HandoffAsk | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
   const srcs = useRef(new Map<string, string>()); // latest frame per tab
   const sizes = useRef(new Map<string, { width: number; height: number }>());
   const urls = useRef(new Map<string, string>());
@@ -271,10 +275,11 @@ export default function LiveView() {
     if (img.current && src) img.current.src = src;
   }, [mode, open, grid, bigId, slot, focused]);
 
-  const focus = useCallback((pageId: string | null) => {
+  const focus = useCallback((pageId: string | null, take = false) => {
     setFocused(pageId);
-    setControl(false);
+    setControl(take);
     void send({ type: "focus", pageId });
+    if (take) img.current?.focus();
   }, []);
 
   // Inline: the remote pages get exactly the size of the modal's picture, so a clicked tile shows at 1:1, not zoomed.
@@ -337,6 +342,29 @@ export default function LiveView() {
     return () => window.removeEventListener("live-focus", onFocus);
   }, [focus]);
 
+  // A hand-off is one amber tile. One click opens one modal. A demo playback shows the note and no buttons.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const d = (e as CustomEvent<HandoffAsk | null>).detail;
+      setAsk(d?.id ? d : null);
+      if (!d?.id) setAskOpen(false);
+    };
+    const onOpenAsk = () => setAskOpen(true);
+    window.addEventListener("live-handoff", onAsk);
+    window.addEventListener("live-handoff-open", onOpenAsk);
+    return () => {
+      window.removeEventListener("live-handoff", onAsk);
+      window.removeEventListener("live-handoff-open", onOpenAsk);
+    };
+  }, []);
+
+  // Opening the hand-off puts that tab under the patient's control, with no extra confirm.
+  useEffect(() => {
+    if (!askOpen || !ask || ask.demo) return;
+    const page = pages.find((p) => p.label === ask.tab) ?? pages.find((p) => p.label.startsWith(`${CREW[ask.crew].name} ·`));
+    if (!page) return;
+    if (focused !== page.pageId || !control) focus(page.pageId, true);
+  }, [askOpen, ask, pages, focused, control, focus]);
 
   // Make room on the right so the panel does not cover the page.
   const docked = !slot && mode !== "hidden" && open && width > 0;
@@ -413,7 +441,8 @@ export default function LiveView() {
     return (
       <>
         {createPortal(panel(true), slot)}
-        {focused && createPortal(watchModal(), document.body)}
+        {askOpen && ask && !ask.demo && createPortal(handoffModal(), document.body)}
+        {focused && !askOpen && createPortal(watchModal(), document.body)}
       </>
     );
   }
@@ -478,6 +507,46 @@ export default function LiveView() {
             <span className="rounded-full bg-ink px-4 py-2 text-[13px] text-white">The browser has closed</span>
           </div>
         )}
+      </div>
+    );
+  }
+
+  function handoffPage() {
+    if (!ask) return undefined;
+    return pages.find((p) => p.label === ask.tab) ?? pages.find((p) => p.label.startsWith(`${CREW[ask.crew].name} ·`));
+  }
+
+  /** One compact hand-off: the sentence, the site, the browser (already under the patient's control), two buttons. */
+  function handoffModal() {
+    if (!ask) return null;
+    const size = inlineSize();
+    const post = (action: "continue" | "skip") => {
+      setAskOpen(false);
+      if (!ask.runId) return;
+      void fetch("/api/agent/plan/handoff", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId: ask.runId, id: ask.id, action }) });
+    };
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-label="Needs you" data-handoff-modal="1">
+        <button aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={() => setAskOpen(false)} />
+        <div className="rise relative flex max-w-[860px] flex-col gap-3 rounded-card border-2 border-amber bg-white p-4">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- tiny static avatar */}
+            <img src={`/crew/${ask.crew}-256.png`} alt="" className="size-10 shrink-0 object-contain" />
+            <p className="min-w-0 flex-1 text-[15px] leading-5 text-ink">{ask.why}</p>
+            <span className="shrink-0 text-[13px] text-muted">{handoffHost(ask.url)}</span>
+          </div>
+          <div className="flex" style={{ width: Math.min(size.width, 780), height: Math.min(size.height, 420) }}>
+            {bigView()}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => post("skip")}>
+              Skip this step
+            </Button>
+            <Button size="sm" onClick={() => post("continue")}>
+              I&apos;ve signed in, continue
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -582,11 +651,14 @@ export default function LiveView() {
 
       {grid ? (
         <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", inline ? "grid-cols-2 @2xl:grid-cols-4 @5xl:grid-cols-6" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
-          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting"))).map((p) => (
+          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting"))).map((p) => {
+            const needs = !!ask && (p.label === ask.tab || p.label.startsWith(`${CREW[ask.crew].name} ·`));
+            return (
             <Tile
               key={p.pageId}
               page={p}
               ended={mode === "ended"}
+              needsYou={needs}
               onImg={(el) => {
                 if (el) {
                   tileImgs.current.set(p.pageId, el);
@@ -594,12 +666,20 @@ export default function LiveView() {
                   if (src) el.src = src;
                 } else tileImgs.current.delete(p.pageId);
               }}
-              onOpen={() => focus(p.pageId)}
+              onOpen={() => {
+                if (needs && ask && !ask.demo) {
+                  setAskOpen(true);
+                  focus(p.pageId, true);
+                  return;
+                }
+                focus(p.pageId);
+              }}
               caption={inline}
               small={inline}
               active={inline && p.pageId === highlight}
             />
-          ))}
+            );
+          })}
         </div>
       ) : (
       bigView()
@@ -639,18 +719,19 @@ export default function LiveView() {
  * One agent's tab in the grid: only the live picture (Tarun, 2026-11-07). The agent's name and colour are already
  * drawn inside the page by its cursor pill, so there is no header, border or label here. A failed agent gets a thin red wash with its note.
  */
-function Tile({ page, ended, onImg, onOpen, caption, small, active }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void; caption?: boolean; small?: boolean; active?: boolean }) {
-  const failed = page.state === "failed";
+function Tile({ page, ended, onImg, onOpen, caption, small, active, needsYou }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void; caption?: boolean; small?: boolean; active?: boolean; needsYou?: boolean }) {
+  const failed = page.state === "failed" && !needsYou;
   return (
     <button
       onClick={onOpen}
-      aria-label={`${page.label}: ${page.note || page.state}. Watch up close`}
-      title={`Watch ${page.label} up close`}
+      data-needs-you={needsYou ? "1" : undefined}
+      aria-label={needsYou ? "Needs you" : `${page.label}: ${page.note || page.state}. Watch up close`}
+      title={needsYou ? "Needs you" : `Watch ${page.label} up close`}
       className={cx(
         "relative block w-full shrink-0 overflow-hidden rounded-card border bg-white outline-none transition-[opacity,border-color] hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand",
         small ? "aspect-[4/3]" : "aspect-[16/10]",
-        active ? "border-brand ring-2 ring-brand-soft" : "border-line",
-        page.state === "done" && !active && "opacity-60",
+        needsYou ? "border-amber ring-4 ring-amber" : active ? "border-brand ring-2 ring-brand-soft" : "border-line",
+        page.state === "done" && !active && !needsYou && "opacity-60",
       )}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
@@ -667,6 +748,9 @@ function Tile({ page, ended, onImg, onOpen, caption, small, active }: { page: Li
           {page.label.split(" · ")[0]}
           {page.state === "done" ? <span className="font-normal text-teal">✓</span> : page.state === "working" ? <span aria-label="working" className="size-1.5 animate-pulse rounded-full bg-brand" /> : null}
         </span>
+      )}
+      {needsYou && (
+        <span className="absolute inset-x-0 bottom-0 bg-amber px-2 py-1.5 text-left text-[15px] font-medium leading-5 text-white">Needs you</span>
       )}
       {failed && (
         <span className="absolute inset-0 flex items-end bg-danger/10 ring-1 ring-inset ring-danger/40">

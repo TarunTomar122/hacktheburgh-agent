@@ -1,5 +1,6 @@
 // Run discovery (night plan, "Elliot anywhere") on a fictional persona, headless: npx tsx --env-file=.env.local scripts/agent-discovery.ts wales
 // RECORD_VIDEO=docs/night-runs/<run>/video records every tab. Answers any question with ANSWER (default: skip).
+process.env.HANDOFF_WAIT_MS ??= "0";
 import { writeFileSync } from "node:fs";
 import { personaFacts } from "./personaFacts";
 import { runDiscovery } from "../lib/agent/discovery";

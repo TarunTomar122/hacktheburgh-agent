@@ -8,6 +8,7 @@ import type { BrowserContext, Page } from "playwright";
 import { dismissCookies, openSession } from "../browser";
 import { pointAt, setCursor } from "../agentCursor";
 import { publishStats, setPageMeta } from "../liveview";
+import { isHushed } from "./handoffQuiet";
 import type { Value } from "./browserAgent";
 import { runDecisionAgent } from "./decisionAgent";
 import { decide, type DAnswer } from "./decisions";
@@ -52,14 +53,16 @@ export class Tracker {
   pages = 0;
   actions = 0;
   agents = 0;
+  quick = 0; // pages read with a plain fetch, no browser needed
   constructor(private emit: Emit) {}
   get stats(): Stats {
-    return { agents: this.agents, sites: this.sites.size, pages: this.pages, actions: this.actions };
+    return { agents: this.agents, sites: this.sites.size, pages: this.pages, actions: this.actions, quick: this.quick };
   }
-  bump(kind: "action" | "page", url?: string) {
+  bump(kind: "action" | "page" | "quick", url?: string) {
     if (kind === "action") this.actions++;
     else {
       this.pages++;
+      if (kind === "quick") this.quick++;
       try {
         this.sites.add(new URL(url!).hostname.replace(/^www\./, ""));
       } catch {
@@ -135,8 +138,9 @@ export async function agent<T>(
   const note = Object.assign((s: string) => update({ state: "working", note: s }), {
     log: async (kind: TraceStep["kind"], text: string, extra: LogExtra = {}) => {
       const { shot, ...rest } = extra;
-      const file = typeof shot === "string" ? shot : shot && !page.isClosed() ? await ctx.tracer.shot(page, `${label}-${kind}`) : undefined;
-      ctx.tracer.add({ agent: label, color, kind, text, url: page.isClosed() ? undefined : page.url(), ...(firms ? { firms } : {}), ...rest, ...(file ? { shot: file } : {}) });
+      const quiet = isHushed(page);
+      const file = typeof shot === "string" ? shot : shot && !page.isClosed() && !quiet ? await ctx.tracer.shot(page, `${label}-${kind}`) : undefined;
+      ctx.tracer.add({ agent: label, color, kind, text, url: page.isClosed() ? undefined : page.url(), ...(firms && !quiet ? { firms } : {}), ...(quiet ? {} : rest), ...(file ? { shot: file } : {}) });
     },
   });
   let timer: ReturnType<typeof setTimeout> | undefined;

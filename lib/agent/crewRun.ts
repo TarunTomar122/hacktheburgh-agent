@@ -1,13 +1,16 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Browser, BrowserContext, Page } from "playwright";
+import type { Wall } from "./workers/types";
 import type { FunctionTool, Response, ResponseFunctionToolCall, ResponseInputItem } from "openai/resources/responses/responses";
 import { keepOnlyTabs, openSession } from "../browser";
 import { agent, Tracer, Tracker, type Note } from "./legalAid";
 import { MODELS, respond } from "./llm";
 import { makeLogger } from "./events";
 import { enterLedger, withLedger } from "./ledger";
-import { limiter, skips, waiting, type Ask, type Emit } from "./planner";
+import { flowOf } from "./handoffCopy";
+import { bindHandoff, boundStep, performHandoff } from "./handoff";
+import { dropHandoffs, dropPause, handoffs, limiter, skips, trackPause, untilResumed, waiting, type Ask, type Emit } from "./planner";
 import { CREW, type AskSpec, type CrewId, type PlanStep, type Say, type Thought } from "./plannerTypes";
 
 /**
@@ -22,7 +25,7 @@ export const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) +
 
 /** "Reading x.org" -> "Read x.org": the crew's present-tense status line, said as done. */
 function pastTense(doing: string): string {
-  const map: [RegExp, string][] = [[/^Searching/i, "Searched"], [/^Reading/i, "Read"], [/^Opening/i, "Opened"], [/^Exploring/i, "Explored"], [/^Filling/i, "Filled"], [/^Checking/i, "Checked"], [/^Looking/i, "Looked"], [/^Finding/i, "Found"], [/^Comparing/i, "Compared"], [/^Writing/i, "Wrote"], [/^Drafting/i, "Drafted"], [/^Working/i, "Worked"]];
+  const map: [RegExp, string][] = [[/^Searching/i, "Searched"], [/^Reading/i, "Read"], [/^Opening/i, "Opened"], [/^Exploring/i, "Explored"], [/^Navigating/i, "Navigated"], [/^Filling/i, "Filled"], [/^Checking/i, "Checked"], [/^Looking/i, "Looked"], [/^Finding/i, "Found"], [/^Comparing/i, "Compared"], [/^Writing/i, "Wrote"], [/^Drafting/i, "Drafted"], [/^Working/i, "Worked"]];
   for (const [re, to] of map) if (re.test(doing)) return doing.replace(re, to);
   return doing;
 }
@@ -60,6 +63,8 @@ export type CrewKit = {
   ask: Ask;
   /** Run `work` in crew member `id`'s own tab (spotlighted, coloured, traced, timed out, in the ledger as that member). */
   inTab: <T>(th: Thought, id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number) => Promise<{ ok: true; value: T } | { ok: false; error: string }>;
+  /** Ask the patient to finish a sign-in or human check in this same tab, then carry on. */
+  handoff: (th: Thought, tab: string, page: Page, wall: Wall, why: string) => Promise<"continued" | "skipped" | "timeout">;
   keep: (p: Page) => void; // keep this tab open after the run (a filled form waiting for the user)
 };
 
@@ -110,6 +115,8 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   const tabs = limiter(4);
   waiting.set(runId, new Map());
   skips.set(runId, new Set());
+  trackPause(runId, emit);
+  handoffs.set(runId, new Map());
 
   let plan: PlanStep[] = [];
   const thoughts: Thought[] = [];
@@ -157,10 +164,24 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
     crewState,
     finding: (text, source, crew) => emit({ type: "finding", text, source, crew }),
     ask,
+    handoff: (th, tab, page, wall, why) => performHandoff({ runId, emit, tab, page, wall, why, step: boundStep(page), crewState }),
     inTab: (th, id, task, work, timeoutMs) => {
       th.tab = `${CREW[id].name} · ${task}`;
       emit({ type: "spotlight", crew: id, tab: th.tab });
-      return tabs(() => agent(actx, th.tab!, (p, note) => withLedger({ agent: id }, () => work(p, note)), timeoutMs, undefined, { color: CREW[id].color, cursor: th.tab }));
+      const step = { flow: flowOf(flow.prefix), crew: id };
+      return tabs(() =>
+        agent(
+          actx,
+          th.tab!,
+          (p, note) => {
+            bindHandoff(p, (wall, why) => kit.handoff(th, th.tab!, p, wall, why), step);
+            return withLedger({ agent: id }, () => work(p, note));
+          },
+          timeoutMs,
+          undefined,
+          { color: CREW[id].color, cursor: th.tab },
+        ),
+      );
     },
     keep: (p) => void kept.push(p),
   };
@@ -173,6 +194,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
     let prev: string | undefined;
     let finished = false;
     for (turns = 1; turns <= flow.maxTurns && !finished; turns++) {
+      await untilResumed(runId);
       const res: Response = await respond(
         { model: MODELS.draft, reasoning: { effort: flow.effort ?? "low" }, instructions: flow.system, input, tools: flow.tools, tool_choice: "required", parallel_tool_calls: true, ...(prev ? { previous_response_id: prev } : {}) },
         `${flow.prefix} planner`,
@@ -187,6 +209,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       const order = (n: string) => (n === "update_plan" ? 0 : n === "finish" ? 2 : 1);
       calls.sort((x, y) => order(x.name) - order(y.name));
       const exec1 = async (call: ResponseFunctionToolCall): Promise<ResponseInputItem> => {
+        await untilResumed(runId);
         let args: Record<string, unknown> = {};
         try {
           args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
@@ -237,8 +260,8 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
           const full = bad ? out : flow.describe(call.name, args, out);
           const did = pastTense(flow.doing(call.name, args));
           const text = bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did;
-          say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? short(full, 1500) : out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab, ok: !bad });
-          crewState(who, "idle", short(text, 90));
+          say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? full : out.includes("\n") ? out : undefined, tool: call.name, tab: thought.tab, ok: !bad });
+          crewState(who, "idle", text);
         } else if (call.name === "finish") {
           say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
           finished = true;
@@ -280,6 +303,8 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   } finally {
     waiting.delete(runId);
     skips.delete(runId);
+    dropPause(runId);
+    dropHandoffs(runId);
     if (!reviewing) await browser.close().catch(() => {});
   }
 }

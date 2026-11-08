@@ -1,6 +1,8 @@
 import type { Page } from "playwright";
 import { z } from "zod";
 import { dismissCookies } from "../../browser";
+import { gateWall } from "../handoff";
+import { tookHandoff } from "../handoffQuiet";
 import { MODELS, modelFor, structured } from "../llm";
 import {
   AMBIGUOUS_RE,
@@ -56,6 +58,7 @@ export type QuestionnaireRun = {
   caveats: Quote[];
   wall?: Wall;
   summary: string;
+  handedOff?: boolean;
 };
 
 const MODEL = process.env.WORKER_MODEL ?? MODELS.browser;
@@ -112,7 +115,7 @@ export async function runQuestionnaire(ctx: WorkerCtx, opts: { url: string; goal
   const typed = new Set<string>(); // every text code typed into the checker (its answers), and nothing else may be sent
   const log = (kind: Parameters<typeof note.log>[0], text: string, extra: Parameters<typeof note.log>[2] = {}) => note.log(kind, text, extra).catch(() => {});
   const act = () => ctx.track.bump("action");
-  const stop = (summary: string, wall?: Wall, extra: Partial<QuestionnaireRun> = {}): QuestionnaireRun => ({ ok: false, answers, result: "", caveats: [], summary, ...(wall ? { wall } : {}), ...extra });
+  const stop = (summary: string, wall?: Wall, extra: Partial<QuestionnaireRun> = {}): QuestionnaireRun => ({ ok: false, answers, result: "", caveats: [], summary, ...(wall ? { wall } : {}), ...(tookHandoff(page) ? { handedOff: true } : {}), ...extra });
 
   note(`Opening ${host}`);
   try {
@@ -132,8 +135,16 @@ export async function runQuestionnaire(ctx: WorkerCtx, opts: { url: string; goal
     const snap = await snapshot(page, { textCap: 6000, linkCap: 40 });
     const wall = detectWall(snap);
     if (wall) {
-      await log("fail", wall.detail, { shot: true });
-      return stop(wall.detail, wall);
+      const g = await gateWall(ctx, wall, async () => detectWall(await snapshot(page)) ?? null);
+      if (g.go && !g.open) {
+        note("Back to work");
+        step--;
+        continue;
+      }
+      if (!g.go) {
+        if (!g.quiet) await log("fail", g.wall.detail, { shot: true });
+        return stop(g.quiet ? "Left this sign-in. It does not help with your complaint." : g.wall.detail, g.wall);
+      }
     }
     note(advances ? `Page ${advances + 1}: reading the questions` : "Reading the questions");
     const read = await structured({
@@ -156,11 +167,27 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
     const personalField = personalOnPage(snap);
     const personalQ = read.questions.find((q) => q.personal && !isPlaceQuestion(q, snap));
     const identityPage = read.pageKind === "identity_or_contact" && !(read.questions.length && read.questions.every((q) => isPlaceQuestion(q, snap) || !q.personal));
-    if (read.pageKind === "login" || identityPage || personalQ || personalField) {
-      const detail = read.pageKind === "login" ? "The checker asks the user to sign in" : `This checker wants personal details (${(personalQ?.question ?? personalField?.label ?? "personal details").slice(0, 80)})`;
+    if (read.pageKind === "login") {
+      const w: Wall = { kind: "login", detail: "The checker asks the user to sign in", url: snap.url };
+      const g = await gateWall(ctx, w, async () => detectWall(await snapshot(page)) ?? null);
+      if (g.go && g.open) {
+        /* The page already has something to use. */
+      } else if (g.go) {
+        note("Back to work");
+        step--;
+        continue;
+      } else {
+        if (read.result) return finish(read.result, snap, true);
+        if (g.quiet) return stop("Left this sign-in. It does not help with your complaint.", g.wall);
+        await log("check", "The checker asks the user to sign in. Stopped: this worker never signs in", { shot: true });
+        return stop("The checker asks the user to sign in; stopped before it.", g.wall);
+      }
+    }
+    if (identityPage || personalQ || personalField) {
+      const detail = `This checker wants personal details (${(personalQ?.question ?? personalField?.label ?? "personal details").slice(0, 80)})`;
       await log("check", `${detail}. Stopped: this worker never enters personal details`, { shot: true });
       if (read.result) return finish(read.result, snap, true);
-      return stop(`${detail}; stopped before it.`, { kind: read.pageKind === "login" ? "login" : "dead_end", detail, url: snap.url });
+      return stop(`${detail}; stopped before it.`, { kind: "dead_end", detail, url: snap.url });
     }
 
     hint = "";
@@ -298,6 +325,7 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
       resultQuote,
       caveats,
       summary: `Ran the checker on ${host}: ${answers.length} question(s) answered (${answers.length - asked} from what we knew, ${asked} asked). Result: ${r.summary}${stoppedEarly ? " (stopped before a page asking for personal details)" : ""}`,
+      ...(tookHandoff(page) ? { handedOff: true } : {}),
     };
   }
 

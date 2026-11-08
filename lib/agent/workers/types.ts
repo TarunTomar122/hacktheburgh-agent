@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import type { HandoffKind, HandoffStep } from "../handoffCopy";
 import type { Note, Tracker } from "../legalAid";
 import type { AskSpec } from "../plannerTypes";
 
@@ -18,6 +19,12 @@ export type WorkerCtx = {
   note: Note; // tile note + note.log(kind, text, {shot, detail, url}) for the trace
   track: Pick<Tracker, "bump">;
   ask?: Ask; // ask the user one question (only for things no page can tell)
+  /** Which step this tab belongs to, so a hand-off only promises what that step does. */
+  step?: HandoffStep;
+  /** Offer a login or human check to the patient and wait. Bound on the page by the crew; tests may set it directly. */
+  handoff?: (wall: Wall, why: string) => Promise<"continued" | "skipped" | "timeout">;
+  /** Judge from title, address and headings only. Tests set this so the suite never calls a model. */
+  judge?: (snap: { url: string; title: string; headings: string; kind: HandoffKind; step?: HandoffStep }) => Promise<{ relevant: boolean; why: string }>;
 };
 
 /** Something that stops a worker and is reported honestly. */

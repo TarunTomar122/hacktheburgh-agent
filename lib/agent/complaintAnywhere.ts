@@ -5,9 +5,10 @@ import { modelFor, structured } from "./llm";
 import { draftComplaintTo, type Draft } from "./draft";
 import type { GuidelineReading } from "./evidence";
 import { findGuidance } from "./guidance";
+import { describeInvestigation, describeIssue, investigate, supportFor } from "./investigate";
 import type { Emit } from "./planner";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool } from "./crewRun";
-import type { ComplaintResult, CrewId, EvidenceResult } from "./plannerTypes";
+import type { ComplaintResult, CrewId, EvidenceResult, Investigation } from "./plannerTypes";
 import type { RouteMap, RouteStep } from "./routeTypes";
 import { exploreSite, readPage } from "./workers/explore";
 import { fillForm } from "./workers/fillForm";
@@ -26,6 +27,7 @@ const TOOLS = [
   PLAN_TOOL,
   tool("read_rules", "Robin: read the complaint body's own pages (from the route map) for how to complain, the stages, response times and the time limit, and check the patient's dates against that limit.", {}, []),
   tool("find_guidance", "Iona: on the clinical guidance body's site found by discovery, find the recommendation that applies to the patient's condition, quote it exactly, and compare it with the patient's timeline.", { condition: { type: "string", description: "e.g. 'suspected scaphoid fracture'" } }, ["condition"]),
+  tool("investigate", "Iona: before the complaint is written, look on the official sites (the independent complaints body, the provider, the health regulator, public records) for published decisions on similar cases, the provider's own policies, inspection reports and public records that make the complaint stronger. Quotes are checked by code; where nothing is found it says so. Takes up to 3.5 minutes.", { condition: { type: "string", description: "e.g. 'suspected scaphoid fracture'" }, issue: { type: "string", description: "One generic sentence on what went wrong with the care: no names, no dates, no places" } }, ["condition", "issue"]),
   tool("draft_complaint", "Elliot: write the complaint to the body, from the patient's facts, with Iona's finding as one polite question if there is one.", {}, []),
   tool("fill_form", "Kit: open the complaint body's online form (found by discovery, or find it) and fill it with the patient's details and the draft, page by page, stopping before the final submit. If there is no online form, report how the body takes complaints instead.", { answers: { type: "array", items: { type: "object", properties: { label: { type: "string" }, value: { type: "string" } }, required: ["label", "value"] } } }, []),
   tool("prepare_message", "Elliot: when the body takes complaints only by email or post, prepare the full message and where to send it (address or email from its own page).", {}, []),
@@ -47,6 +49,7 @@ export async function runComplaintAnywhere(facts: CaseFacts, route: RouteMap, op
   const placeName = [route.place.region, route.place.country].filter(Boolean).join(", ");
   const proof: EvidenceResult = {};
   let guideline: GuidelineReading | null = null;
+  let investigation: Investigation | undefined;
   let process: ComplaintResult["process"];
   let timeLimit: ComplaintResult["timeLimit"];
   let draft: Draft | undefined;
@@ -83,24 +86,25 @@ export async function runComplaintAnywhere(facts: CaseFacts, route: RouteMap, op
     {
       prefix: "complaint",
       system: `You lead a crew making a complaint for a patient about their care, in ${placeName}. Discovery already worked out the route (below). Work ONE step at a time and let each result decide the next.
-Order (adapt when results call for it, and say why with update_plan): read_rules (Robin) -> find_guidance (Iona; skip with update_plan if the story is not about a condition with clinical guidance) -> draft_complaint (you) -> fill_form (Kit), or prepare_message if the body takes complaints only by email or post -> finish.
+Order (adapt when results call for it, and say why with update_plan): read_rules (Robin) -> find_guidance (Iona; skip with update_plan if the story is not about a condition with clinical guidance) -> investigate (Iona; official decisions, policies and reports to cite; call it once, in the same turn as find_guidance) -> draft_complaint (you) -> fill_form (Kit), or prepare_message if the body takes complaints only by email or post -> finish.
 If read_rules says the patient may be outside the time limit, say so with update_plan and ask_user (yes_no) whether to carry on. If fill_form reports a question the patient must answer, ask_user once and call fill_form again with answers (at most twice in total).
 Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Never say anyone was at fault. Never submit anything. Never invent facts.
 ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, deadline: s.deadline, wall: s.wall, requires: s.requires })) }, null, 1).slice(0, 6000)}`,
       tools: TOOLS,
       firstInput: `Patient: (name withheld from the planner).\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
       maxTurns: 14,
-      stage: { read_rules: 1, find_guidance: 1, draft_complaint: 2, fill_form: 3, prepare_message: 3 },
-      who: (name): CrewId => (name === "read_rules" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_form" ? "kit" : "elliot"),
+      stage: { read_rules: 1, find_guidance: 1, investigate: 1, draft_complaint: 2, fill_form: 3, prepare_message: 3 },
+      who: (name): CrewId => (name === "read_rules" ? "robin" : name === "find_guidance" || name === "investigate" ? "iona" : name === "fill_form" ? "kit" : "elliot"),
       doing: (name) =>
-        ({ read_rules: `Reading ${body?.body ?? "the provider"}'s complaint rules`, find_guidance: "Finding the clinical guidance", draft_complaint: "Writing your complaint", fill_form: `Filling ${body?.body ?? "the"} form`, prepare_message: "Preparing your message" })[name] ?? "Working",
+        ({ read_rules: `Reading ${body?.body ?? "the provider"}'s complaint rules`, find_guidance: "Finding the clinical guidance", investigate: "Looking for official decisions, policies and reports", draft_complaint: "Writing your complaint", fill_form: `Filling ${body?.body ?? "the"} form`, prepare_message: "Preparing your message" })[name] ?? "Working",
       describe: (name, _a, out) => {
-        if (name === "read_rules" && timeLimit) return `${timeLimit.status === "within" ? "You are inside the time limit." : timeLimit.status === "close" ? "You are close to the time limit." : timeLimit.status === "outside" ? "This may be past the time limit." : "I could not tell from your dates."} ${short(timeLimit.explanation, 200)}`;
-        if (name === "find_guidance" && proof.guideline?.points.length) return `${proof.guideline.name}: "${short(proof.guideline.points[0].text, 160)}"${proof.gaps?.length ? ` One question to ask: ${short(proof.gaps[0].question, 120)}` : ""}`;
-        if (name === "draft_complaint" && draft) return `Written to ${body?.body ?? "the provider"}. ${proof.gaps?.length ? "It asks about the guidance politely, without blaming anyone." : "Facts only, no blame."}`;
-        if (name === "fill_form") return form.status === "ready_to_submit" ? `The form is filled (${form.filled.length} fields) and waiting for you to check it and press Submit yourself.` : form.status === "needs_input" ? `Filled as far as I could. It still needs: ${form.unfilled.join(", ") || "an answer from you"}.` : short(out, 200);
-        if (name === "prepare_message" && message) return `Your message is ready to send. ${short(out, 160)}`;
-        return short(out.split("\n")[0], 200);
+        if (name === "read_rules" && timeLimit) return `${timeLimit.status === "within" ? "You are inside the time limit." : timeLimit.status === "close" ? "You are close to the time limit." : timeLimit.status === "outside" ? "This may be past the time limit." : "I could not tell from your dates."} ${timeLimit.explanation}`;
+        if (name === "find_guidance" && proof.guideline?.points.length) return `${proof.guideline.name}: "${proof.guideline.points[0].text}"${proof.gaps?.length ? ` One question to ask: ${proof.gaps[0].question}` : ""}`;
+        if (name === "investigate" && investigation) return investigation.items.length ? `Found ${investigation.items.length} official ${investigation.items.length === 1 ? "item" : "items"} you can cite. ${investigation.items[0].publisher}: "${investigation.items[0].quote}"` : "I looked on the official sites and found nothing to cite this time.";
+        if (name === "draft_complaint" && draft) return `Written to ${body?.body ?? "the provider"}. ${proof.gaps?.length ? "It asks about the guidance politely, without blaming anyone." : "Facts only, no blame."}${supportFor(investigation).length ? " It cites official material Iona found." : ""}`;
+        if (name === "fill_form") return form.status === "ready_to_submit" ? `The form is filled (${form.filled.length} fields) and waiting for you to check it and press Submit yourself.` : form.status === "needs_input" ? `Filled as far as I could. It still needs: ${form.unfilled.join(", ") || "an answer from you"}.` : out;
+        if (name === "prepare_message" && message) return `Your message is ready to send. ${out}`;
+        return out.split("\n")[0];
       },
       exec: async (call, a, thought, kit) => {
         const ctxFor = (p: WorkerCtx["page"], note: WorkerCtx["note"], who: CrewId): WorkerCtx => ({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: who }) });
@@ -122,7 +126,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             });
             process = { summary: r.value.answer, steps: lim.steps, support: "", url: r.value.url };
             timeLimit = { limit: lim.limit, status: lim.status, explanation: lim.explanation, url: r.value.url };
-            kit.finding(`Time limit: ${short(lim.limit || "not stated", 120)}`, r.value.url, "robin");
+            kit.finding(`Time limit: ${lim.limit || "not stated"}`, r.value.url, "robin");
             return `Status: ${lim.status}. ${lim.limit}\n${lim.explanation}\nSteps: ${lim.steps.join(" -> ")}\nInclude: ${lim.include.join("; ")}`;
           }
           case "find_guidance": {
@@ -130,9 +134,15 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             guideline = g.guideline ?? guideline;
             return g.text;
           }
+          case "investigate": {
+            if (investigation) return "Already investigated; use draft_complaint.";
+            const brief = String(a.issue ?? "").trim() ? { condition: String(a.condition ?? "").trim() || "the patient's condition", issue: String(a.issue).trim() } : await describeIssue(facts);
+            investigation = await investigate(kit, thought, route, brief, proof, { focus: "complaint" });
+            return describeInvestigation(investigation);
+          }
           case "draft_complaint": {
             const gp = proof.guideline?.points[0];
-            draft = await draftComplaintTo(facts, { body: body?.body ?? "the health provider", place: placeName }, gp && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: gp.text, question: proof.gaps[0].question } : undefined);
+            draft = await draftComplaintTo(facts, { body: body?.body ?? "the health provider", place: placeName }, gp && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: gp.text, question: proof.gaps[0].question } : undefined, supportFor(investigation));
             kit.finding(`Complaint written to ${body?.body ?? "the provider"} (${draft.details.split(/\s+/).length} words)`, undefined, "elliot");
             // The letter is written on this Mac and stays out of the cloud planner's conversation (privacy, Codex round 3).
             return `Drafted (${draft.details.split(/\s+/).length} words). The text stays on the patient's device; you do not need it to continue.`;
@@ -176,6 +186,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
               unfilled: o.unfilled,
               note: o.summary,
               url: r.value.url,
+              handedOff: o.handedOff || undefined,
             };
             kit.finding(form.status === "ready_to_submit" ? `${body?.body ?? "The"} form is filled, waiting for you to submit` : `The form needs: ${o.unfilled.join(", ") || o.summary}`, r.value.url, "kit");
             return o.status === "ready_to_submit" ? `Form filled across ${o.pages.length} page(s), ${form.filled.length} fields. Stopped before "${o.finalSubmitLabel ?? "Submit"}".` : o.status === "blocked" ? `Blocked: ${o.wall?.kind ?? ""} ${o.wall?.detail ?? o.summary}` : `Status: ${o.status}. Still needs: ${o.unfilled.join(", ")}. ${o.summary}`;

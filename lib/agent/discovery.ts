@@ -17,7 +17,7 @@ import type { WorkerCtx } from "./workers/types";
  * finds in the page it came from.
  */
 
-const WHO = { who: { type: "string", enum: ["robin", "iona", "nell", "kit"], description: "Which crew member does this: Robin (rules, bodies, lawyers), Iona (clinical guidance), Nell (funding), Kit (forms)." } };
+const WHO = { who: { type: "string", enum: ["robin", "iona", "nell"], description: "Which crew member does this: Robin (rules, bodies, lawyers, and finding the real online forms), Iona (clinical guidance), Nell (funding)." } };
 
 const TOOLS = [
   PLAN_TOOL,
@@ -50,7 +50,7 @@ const TOOLS = [
 
 const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real pages and online forms they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. You can only open pages this run found: a search result, or a link or path on a page already opened.
 The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply (countries with several systems, like the UK nations, Australian or US states, differ).
-Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for), Kit (forms: goes through a site to the actual online form and reads its fields; never fills anything here).
+Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for). Robin also finds the actual online forms: goes through a site to the form and reads its fields; never fills anything here.
 Find, for this place: ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
 How to work:
 - Start with update_plan. Give different crew members jobs in the SAME turn so they work at the same time (one tool call each); one member's calls run in order.
@@ -97,6 +97,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const opened = new Set<string>(); // hosts whose pages were really opened (for "official")
   const visited = new Set<string>(); // exact pages opened in this run (normalised URLs)
   const forms = new Set<string>(); // pages where explore_site really reached a form
+  const signedIn = new Set<string>(); // pages the patient signed in on, so the crew could carry on
   const titles = new Map<string, string>(); // url -> normalised page title + first heading (for officialness)
   const rememberTitle = async (p: Page) => {
     const t = await p.evaluate(() => `${document.title} ${document.querySelector("h1")?.textContent ?? ""}`).catch(() => "");
@@ -109,7 +110,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
     kit.emit({ type: "route", route });
   };
   const ctxFor = (kit: CrewKit, p: Page, note: WorkerCtx["note"], who: CrewId): WorkerCtx => ({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: who }) });
-  const whoOf = (a: Record<string, unknown>): CrewId => (["robin", "iona", "nell", "kit"].includes(String(a.who)) ? (a.who as CrewId) : "robin");
+  const whoOf = (a: Record<string, unknown>): CrewId => (["robin", "iona", "nell"].includes(String(a.who)) ? (a.who as CrewId) : "robin");
   const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
 
   return runCrew<DiscoveryResult>(
@@ -144,11 +145,11 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
         }
         if (name === "web_search") {
           const hits = [...out.matchAll(/^\d+\. (.*?) — (\S+)/gm)];
-          return hits.length ? `${hits.length} results for "${short(String(a.query ?? ""), 60)}". Top: ${host(hits[0][2])}.` : "No useful results.";
+          return hits.length ? `${hits.length} results for "${String(a.query ?? "")}". Top: ${host(hits[0][2])}.` : "No useful results.";
         }
-        if (name === "read_page") return short(out.split("\n")[1] ?? out, 220);
-        if (name === "explore_site") return out.startsWith("Found:") ? short(out.split("\n")[1] ?? out, 220) : short(out, 220);
-        return short(out.split("\n")[0], 200);
+        if (name === "read_page") return out.split("\n")[1] ?? out;
+        if (name === "explore_site") return out.startsWith("Found:") ? out.split("\n")[1] ?? out : out;
+        return out.split("\n")[0];
       },
       failed: (name, out) => /^(Error|Could not|Blocked)/.test(out) || (name === "explore_site" && /^Not found/.test(out)),
       exec: async (call, a, thought, kit) => {
@@ -170,6 +171,10 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
                 if (!/\.pdf(\?|#|$)/i.test(v.url) && keyOf(v.url) === keyOf(p.url())) {
                   remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
                   await rememberTitle(p);
+                } else if (v.via === "fetch" && v.text) {
+                  // Read directly (no browser): its own text and title are the evidence for this page.
+                  remember(v.url, v.text);
+                  titles.set(keyOf(v.url), normText(v.title));
                 }
                 if (!v.wall) opened.add(hostOf(v.url));
               }
@@ -206,6 +211,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             visited.add(keyOf(v.url));
             v.path.forEach((x) => visited.add(keyOf(x.url)));
             if (v.ok && v.form) forms.add(keyOf(v.url));
+            if (v.handedOff) signedIn.add(keyOf(v.url));
             const path = v.path.map((s, i) => `${i + 1}. ${s.via} -> ${s.url}`).join("\n");
             if (!v.ok) return `Not found. ${v.summary}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail}) at ${v.wall.url}` : ""}\nPath:\n${path}`;
             if (v.form) kit.finding(`${host(v.url)}: online form found (${v.form.fields.length} fields${v.form.multiPage ? ", several pages" : ""})`, v.url, who);
@@ -272,6 +278,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               how: ((h) => (h === "online_form" && !(a.url && forms.has(keyOf(String(a.url)))) ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"),
               url: a.url && visited.has(keyOf(String(a.url))) ? String(a.url) : undefined,
               wall: a.wall ? String(a.wall) : undefined,
+              handedOff: a.url && signedIn.has(keyOf(String(a.url))) ? true : undefined,
               points: keptPoints,
               requires: Array.isArray(a.requires) ? (a.requires as string[]).map(String) : undefined,
               appliesIf: a.applies_if ? String(a.applies_if) : undefined,
