@@ -99,6 +99,8 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
       lane: (name, a) => (name === "check_firm" || name === "fill_enquiry" ? `${name === "check_firm" ? "robin" : "kit"}:${String(a.firm_id ?? "")}` : name === "find_guidance" || name === "investigate" ? `iona:${name}` : name === "read_scheme" ? "robin:scheme" : name === "find_firms" ? "robin:find" : `crew:${name === "check_funding" ? "nell" : name === "update_plan" || name === "shortlist" || name === "ask_user" || name === "finish" ? "elliot" : name === "read_scheme" || name === "search_register" || name === "web_search" ? "robin" : name}`),
       firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
+      // Background jobs (checker, register, guidance, decisions) hold tabs for minutes: firm checks and forms need room beside them.
+      tabLimit: 8,
       // Everything independent starts at once (stage 1); firm checks need the register, the shortlist needs the checks.
       stage: { check_funding: 1, read_scheme: 1, web_search: 1, search_register: 1, find_firms: 1, find_guidance: 1, investigate: 1, check_firm: 3, shortlist: 4, fill_enquiry: 5 },
       who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" || name === "web_search" || name === "find_firms" ? "robin" : name === "find_guidance" || name === "investigate" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
