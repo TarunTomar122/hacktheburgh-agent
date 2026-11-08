@@ -768,7 +768,7 @@ export async function searchDirectory(
 
   note(`Opening ${host}`);
   try {
-    await page.goto(opts.url, { waitUntil: "domcontentloaded", timeout: 35000 });
+    await page.goto(/^[a-z][a-z0-9+.-]*:/i.test(opts.url) ? opts.url : `https://${opts.url.replace(/^\/+/, "")}`, { waitUntil: "domcontentloaded", timeout: 35000 });
   } catch (e) {
     return done({ ok: false, results: [], searchedWith: [], wall: { kind: "dead_end", detail: `Could not open the page: ${say(e)}`, url: opts.url }, summary: `Could not open ${host}.` });
   }

@@ -292,7 +292,8 @@ Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf
       const acronym = (x: string) => x.split(" ").filter((w) => w.length > 2).map((w) => w[0]).join("");
       return parts.some((x) => title.includes(x) || hostWords.split(" ").some((h) => h.length > 3 && (x.replace(/ /g, "").includes(h) || acronym(x) === h)));
     };
-    const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s) && !isEnactedUrl(String(s.url)), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+    const withScheme = (u: string) => (/^[a-z][a-z0-9+.-]*:/i.test(u.trim()) ? u.trim() : `https://${u.trim().replace(/^\/+/, "")}`); // the model sometimes writes www.site.org/page: a browser cannot open that
+    const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: withScheme(String(s.url)), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s) && !isEnactedUrl(String(s.url)), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
     // A claim with numbers (a time limit, a cap, a percentage) only stands if EVERY number (with its currency or unit)
     // is in a checked quote from an OFFICIAL source, ideally one quote (evidence-claims.ts). Unofficial quotes, and law as
     // originally enacted (already not "official" above), back nothing: "£500" does not back "$500" or "€500".

@@ -160,8 +160,9 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           case "search_register": {
             const l = step("lawyers");
             if (s("url") && !found.has(host(s("url"))) && host(s("url")) !== host(l?.url)) return `Blocked: ${s("url")} was not found in this run. Use web_search first.`;
-            const url = s("url") || (l?.url ?? l?.sources[0]?.url);
-            if (!url) return "Could not search: discovery found no register or directory.";
+            const rawUrl = s("url") || (l?.url ?? l?.sources[0]?.url);
+            if (!rawUrl) return "Could not search: discovery found no register or directory.";
+            const url = /^[a-z][a-z0-9+.-]*:/i.test(rawUrl) ? rawUrl : `https://${rawUrl.replace(/^\/+/, "")}`; // old routes may hold an address without https://
             const where = route.place.city || facts.postcode || route.place.region;
             if (s("area")) areaOfLaw = s("area");
             const r = await kit.inTab(thought, "robin", short(l?.body ?? "Register", 26), (p, note) => searchDirectory({ page: p, note, track: kit.track }, { url, goal: `Find lawyers or firms who do ${s("area") || "clinical negligence"} near ${where}`, criteria: [{ label: "area of law", value: s("area") || "clinical negligence / medical negligence" }, { label: "location", value: where }], maxResults: 12 }), 4 * 60 * 1000);

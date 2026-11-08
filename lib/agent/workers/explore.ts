@@ -368,8 +368,9 @@ async function waitOutBotCheck(ctx: WorkerCtx): Promise<boolean> {
 }
 
 /** Open a URL like a person would: wait for it, close the cookie banner, sit out a bot check. PDFs are read as text. */
-async function openUrl(ctx: WorkerCtx, url: string): Promise<Opened> {
+async function openUrl(ctx: WorkerCtx, rawUrl: string): Promise<Opened> {
   const { page } = ctx;
+  const url = /^[a-z][a-z0-9+.-]*:/i.test(rawUrl.trim()) ? rawUrl.trim() : `https://${rawUrl.trim().replace(/^\/+/, "")}`; // an address saved without https:// still opens
   let status = 0;
   try {
     const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
@@ -894,7 +895,8 @@ export type ExploreResult = {
  * next, so a dead end means going back to the most promising branch not yet tried. Never revisits a page, never
  * fills or submits, stops a branch at walls and reports them.
  */
-export async function exploreSite(ctx: WorkerCtx, start: string, goal: string, opts: { maxHops?: number; want?: "form" | "page" } = {}): Promise<ExploreResult> {
+export async function exploreSite(ctx: WorkerCtx, startRaw: string, goal: string, opts: { maxHops?: number; want?: "form" | "page" } = {}): Promise<ExploreResult> {
+  const start = /^[a-z][a-z0-9+.-]*:/i.test(startRaw.trim()) ? startRaw.trim() : `https://${startRaw.trim().replace(/^\/+/, "")}`;
   // Downloads are never saved: note what the link offered (a document form, a PDF) and cancel.
   const dl: Downloads = { last: null };
   const onDownload = (d: Download) => {
