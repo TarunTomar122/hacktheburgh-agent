@@ -1,0 +1,23 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Progress: {"complaintSent":true,"finalResponse":"yes","complaintText":"1207 chars","providerReply":"Cardiff and Vale University Health Board wrote that the wrist was examined and X-rayed in line with its procedures, the X-ray was reported as showing no fracture at the time, and it apologised that I had a poor experience. It did not explain why no follow-up was arranged."}
+[5s] [elliot] Start with the ombudsman's own rules so we know if Elin can complain now and what the route is.
+[8s] [elliot → robin] Confirm the Ombudsman's own requirements, time limit, and application method before preparing Elin's escalation.
+  finding (robin): You can go to Public Services Ombudsman for Wales now <https://www.ombudsman.wales/how-to-complain/>
+  finding (robin): Time limit: You complained to us within a year of knowing about the issue <https://www.ombudsman.wales/how-to-complain/>
+[82s] [robin → elliot] You can go now. You can now bring your complaint to the Public Services Ombudsman for Wales because you have received the final response from the Cardiff and Vale University Health Board.
+[85s] [elliot] The Ombudsman route is open now because Elin has the Health Board's final response, so the next step is to prepare the case clearly for the form.
+  finding (elliot): Case written for Public Services Ombudsman for Wales (262 words)
+[130s] [elliot → you] Written for Public Services Ombudsman for Wales: what happened, your complaint, what Cardiff and Vale University Health Board said and what you would like.
+[133s] [elliot] The case summary is ready, so I can now try the Ombudsman's complaint route and stop before any final submission.
+[138s] [elliot → kit] Use the Ombudsman's own online complaint route if available, filling Elin's details and case, and stop before final submission.
+ASK (choice): The form asks: "I would like to complain about a". Which one applies? -> Service Provider
+[169s] [kit → you] The form asks: "I would like to complain about a". Which one applies?
+  finding (kit): The form needs: Service Provider: Please select one of these options. <https://complaints.ombudsman.wales/en/pre-complaint>
+[176s] [kit → elliot] Filled as far as I could. It still needs: Service Provider: Please select one of these options..
+ASK (text): The Ombudsman's form asks you to select the exact service provider from its drop-down list. Which option did you see or want me to try? -> null
+[179s] [elliot → you] The Ombudsman's form asks you to select the exact service provider from its drop-down list. Which option did you see or want me to try?
+[185s] [elliot] The online form is available, but it stopped at a drop-down choice only Elin can confirm, so I should finish with what is ready and what Elin still needs to select.
+[189s] [elliot → you] You can take this complaint to the Public Services Ombudsman for Wales now because you have Cardiff and Vale University Health Board’s final response. I prepared the case summary and reached the Ombudsman’s online form, but it stopped at a required drop-down a
+
+RUN escalation-2026-11-08T00-08-36-413Z 3.2 min; body Public Services Ombudsman for Wales; ready ready ("After a final response from the Cardiff and Vale University Health Board"); limit within "You complained to us within a year of knowing about the issue"; form needs_input (0 fields, unfilled: Service Provider: Please select one of these options.) at https://complaints.ombudsman.wales/en/pre-complaint — The form rejected answers we cannot fix without you; stopped before moving on.; sendTo none; letter no; stats {"agents":2,"sites":2,"pages":3,"actions":5}

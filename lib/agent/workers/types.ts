@@ -27,4 +27,4 @@ export type Wall = { kind: "login" | "captcha" | "bot_check" | "phone_or_post_on
 export type Quote = { url: string; quote: string; checked: boolean };
 
 /** A value the patient has given, offered to a form by key. Models see key + description; the value is typed by code. */
-export type Value = { key: string; description: string; value: string };
+export type Value = { key: string; description: string; value: string; public?: boolean }; // public: not personal, may be shown to the model

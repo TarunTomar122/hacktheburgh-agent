@@ -13,6 +13,7 @@ import Header from "./Header";
 import CaseRun from "./CaseRun";
 import ComplaintRun from "./ComplaintRun";
 import DiscoveryRun from "./DiscoveryRun";
+import EscalationRun from "./EscalationRun";
 import RouteMapCard from "./RouteMap";
 import OmbudsmanStep from "./OmbudsmanStep";
 import ProfileTab from "./ProfileTab";
@@ -77,13 +78,18 @@ export default function CasePage() {
               </div>
             ) : !chosen ? (
               <div className="mx-auto max-w-4xl space-y-10 px-8 py-12">
-                {"map" in profile.route && <RouteMapCard route={profile.route.map} compact />}
+                {"map" in profile.route && <RouteMapCard route={profile.route.map} />}
                 <TrackChoice profile={profile} onChosen={setActive} />
               </div>
             ) : active === 1 && "map" in profile.route ? (
               // With a route map, step 1 is the complaint crew for whichever body discovery found (night plan).
               <div className="px-8 py-8">
                 <ComplaintRun profile={profile} onContinue={() => setActive(2)} />
+              </div>
+            ) : active === 2 && "map" in profile.route ? (
+              // With a route map, step 2 takes the complaint to whichever independent body discovery found (night plan).
+              <div className="px-8 py-8">
+                <EscalationRun profile={profile} route={profile.route.map} goToStepOne={() => setActive(1)} onContinue={TRACKS[chosen].steps.includes(3) ? () => setActive(3) : undefined} />
               </div>
             ) : active === 3 ? (
               // Step 3 is Elliot's crew (D49): it uses the whole width while it runs, and a case file when done.

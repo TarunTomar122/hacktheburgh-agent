@@ -6,7 +6,7 @@ import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
 import type { LedgerEntry } from "../../lib/agent/ledger";
 import type { Place, RouteMap } from "../../lib/agent/routeTypes";
 import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
-import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
+import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EscalationInput, type EscalationResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 
 /**
  * Client state for one planner run (D47, D48): streams /api/agent/plan, keeps the crew's conversation, plan, states,
@@ -37,6 +37,7 @@ export type PlannerRunState = {
   result?: PlannerResult;
   funding?: Funding;
   complaint?: ComplaintResult; // the complaint crew's result (D65)
+  escalation?: EscalationResult; // step 2 anywhere: the escalation crew's result
   startedAt?: number;
   spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
   demo: boolean; // playing back a recorded run (D63)
@@ -111,6 +112,8 @@ export function usePlannerRun() {
           return { ...cur, models: [...cur.models, e.entry] };
         case "complaint_result":
           return { ...cur, status: "done", complaint: e.result, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+        case "escalation_result":
+          return { ...cur, status: "done", escalation: e.result, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
         case "error":
           return { ...cur, status: "error", error: e.message };
         default:
@@ -120,7 +123,7 @@ export function usePlannerRun() {
   }, []);
 
   const start = useCallback(
-    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" = "compensation", route?: RouteMap) => {
+    async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" | "escalation_anywhere" = "compensation", route?: RouteMap, progress?: EscalationInput) => {
       abort.current?.abort();
       stopReplay();
       const ctrl = new AbortController();
@@ -128,7 +131,7 @@ export function usePlannerRun() {
       runIdRef.current = undefined;
       setS({ ...initial(), status: "running", startedAt: Date.now() });
       try {
-        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route }), signal: ctrl.signal });
+        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route, progress }), signal: ctrl.signal });
         if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the crew");
         const reader = res.body.getReader();
         const dec = new TextDecoder();
@@ -149,7 +152,7 @@ export function usePlannerRun() {
           reader.releaseLock();
         }
         if (ctrl.signal.aborted || abort.current !== ctrl) return;
-        setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery ? "done" : "error", error: cur.result || cur.complaint || cur.discovery ? undefined : "The run ended without a result" } : cur));
+        setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation ? undefined : "The run ended without a result" } : cur));
       } catch (e) {
         if (ctrl.signal.aborted) return;
         setS((cur) => ({ ...cur, status: "error", error: e instanceof Error ? e.message : String(e) }));
@@ -178,7 +181,7 @@ export function usePlannerRun() {
     while (r.i < r.events.length && r.events[r.i].t - t < 80) apply(r.events[r.i++].e);
     if (r.i >= r.events.length) {
       rec.current = null;
-      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery ? "done" : "error", error: cur.result || cur.complaint || cur.discovery ? undefined : "The recording ended without a result" } : cur));
+      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation ? undefined : "The recording ended without a result" } : cur));
       return;
     }
     const gap = r.events[r.i].t - r.events[r.i - 1].t;

@@ -50,7 +50,7 @@ export async function runDecisionAgent(opts: {
 
   const hide = !!opts.hideValues;
   const valuesText = hide
-    ? [...byKey.values()].map((v) => `- ${v.key}: ${v.description}`).join("\n")
+    ? [...byKey.values()].map((v) => (v.public ? `- ${v.key}: ${v.description}: ${JSON.stringify(v.value.slice(0, 120))} (not personal, shown)` : `- ${v.key}: ${v.description}`)).join("\n")
     : [...byKey.values()].map((v) => `- ${v.key} (${v.description}): ${JSON.stringify(v.value.length > 120 ? v.value.slice(0, 120) + "…" : v.value)}`).join("\n");
   const result = (status: BrowserRun["status"], summary: string, step: number, extra: Partial<BrowserRun> = {}): DecisionRun => ({
     status, summary, unfilled: [], steps: step, stats, ...extra,
@@ -183,7 +183,9 @@ const uniq = (xs: string[]) => [...new Set(xs)];
 function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: string, allowSubmit: boolean, attempted: Set<string>, advance?: RegExp, hide = false): Plan {
   const questions: DQuestion[] = [];
   const plan: Plan = { questions, fields: [], groups: [], checks: [] };
-  const valueChoices = [...byKey.values()].map((v) => ({ value: v.key, description: v.description }));
+  // Values that are not personal (e.g. the organisation's name) are shown to the model, so it can pick the matching dropdown option.
+  const valueChoices = [...byKey.values()].map((v) => ({ value: v.key, description: v.public ? `${v.description}: "${v.value.slice(0, 120)}"` : v.description }));
+  const publicVals = [...byKey.values()].filter((v) => v.public);
   const sig = (kind: string, e: El) => `${kind}:${e.name}:${e.label}`;
   const isEmpty = (e: El) => e.value.trim() === "" || PLACEHOLDER.test(e.value.trim()) || /^open this select/i.test(e.value.trim()) || (hide && ANY_PLACEHOLDER.test(e.value.trim()));
 
@@ -204,8 +206,8 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
       questions.push(hide
         ? {
             type: "choice", name: q,
-            instructions: `Which saved value answers the dropdown [${e.id}] "${e.label}" (options: ${JSON.stringify(uniq(options).slice(0, 30))})? Answer "${NONE}" if no saved value answers it.`,
-            choices: [...valueChoices, { value: NONE, description: "No saved value answers this" }],
+            instructions: `Which saved value answers the dropdown [${e.id}] "${e.label}" (options: ${JSON.stringify(uniq(options).slice(0, 30))})? ${publicVals.length ? "If a value shown in full matches one of the options, answer that option itself (prefixed option:). " : ""}Answer "${NONE}" if no saved value answers it.`,
+            choices: [...valueChoices, ...(publicVals.length ? uniq(options).slice(0, 150).map((o) => ({ value: `option:${o}` })) : []), { value: NONE, description: "No saved value answers this" }],
           }
         : {
             type: "choice", name: q,
@@ -270,7 +272,7 @@ async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string
   await pointAt(page, loc); // show the agent's cursor on the field it is about to fill (D36)
   try {
     if (el.kind === "select") {
-      const label = hide ? matchOption(byKey.get(choice)?.value ?? "", el.options) : choice;
+      const label = choice.startsWith("option:") && el.options.includes(choice.slice(7)) ? choice.slice(7) : hide ? matchOption(byKey.get(choice)?.value ?? "", el.options) : choice;
       if (!label) return `error: the saved value "${choice}" matches none of the options`;
       await loc.selectOption({ label }, { timeout: 5000 });
       return "ok";

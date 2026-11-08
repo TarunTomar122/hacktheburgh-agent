@@ -4,7 +4,7 @@ import { EFFORT, MODELS, respond } from "./llm";
 import { formatObservation, observe, unfilledRequired, type El, type Observation } from "./observe";
 import type { OnEvent, RunStatus } from "./events";
 
-export type Value = { key: string; description: string; value: string };
+export type Value = { key: string; description: string; value: string; public?: boolean }; // public: not personal, may be shown to the model
 
 export type RunStats = { calls: number; ms: number; inputTokens: number };
 
