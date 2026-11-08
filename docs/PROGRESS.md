@@ -8,6 +8,13 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Timeouts on model calls
+
+A stuck model call could freeze a run for up to 10 minutes with no message (the OpenAI SDK's defaults are a 10-minute timeout and 2 retries; `decide()` used a plain `fetch` with no timeout).
+- `lib/agent/llm.ts`: the OpenAI client now gives up after 90 s, with 1 retry (`OPENAI_TIMEOUT_MS` overrides). All calls use low or no reasoning effort.
+- `lib/agent/decisions.ts`: each Decisions API try gives up after 20 s (`DECISION_TIMEOUT_MS`); a timeout or network error is retried like a 5xx, up to 3 tries, then fails as before (the NHS step then switches to the backup engine).
+- Not run against the live API from here (the sandbox cannot reach it). `tsc` and eslint clean on both files.
+
 ### 2026-11-08 - Om + Claude - DONE - NHS Submit detection confirmed; new fills reset "sent" (D84)
 
 - **Found:** the 03:58 "no POST" was not the site. Clicks in the live panel only reach the page in Take control mode; without it the click is dropped. With Take control, a real Submit at 05:25 was detected end to end (see D84 for the log). This sent a real complaint to NHS Lothian.

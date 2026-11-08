@@ -23,11 +23,20 @@ export async function decide(input: string, questions: DQuestion[]): Promise<{ a
   let lastErr = "";
   for (let attempt = 0; attempt < 3; attempt++) {
     const t = Date.now();
-    const res = await fetch("https://api.openai.com/v1/decisions", {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-      body,
-    });
+    let res: Response;
+    try {
+      // A stuck request must not freeze the browser agent: give up after DECISION_TIMEOUT_MS (default 20 s) and try again.
+      res = await fetch("https://api.openai.com/v1/decisions", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+        body,
+        signal: AbortSignal.timeout(Number(process.env.DECISION_TIMEOUT_MS) || 20_000),
+      });
+    } catch (e) {
+      lastErr = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError") ? "timed out" : `network error (${e instanceof Error ? e.message : String(e)})`;
+      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      continue;
+    }
     const json = (await res.json().catch(() => ({}))) as { answers?: DAnswer[]; usage?: DUsage; error?: { message?: string } };
     if (res.ok && json.answers) {
       const u = json.usage ?? { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
