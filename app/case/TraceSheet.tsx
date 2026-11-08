@@ -27,8 +27,41 @@ const KIND: Record<TraceStep["kind"], { label: string; cls: string }> = {
 
 /** What the history shows by default: outcomes only. The agents' moment-to-moment thinking ("promising", scores) is behind "Show every step". */
 const OUTCOMES: TraceStep["kind"][] = ["found", "check", "recover", "fail", "result"];
-const oneLine = (t: string) => t.replace(/\s+/g, " ").replace(/^[^:]{3,60}: (promising|dead end|unlikely)\.\s*/i, "").trim();
 
+const hostOf = (s: TraceStep) => {
+  try {
+    return new URL(s.url ?? "").hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+const words = (t: string, n = 8) => {
+  const w = t.replace(/\s+/g, " ").trim().split(" ");
+  return w.length > n ? `${w.slice(0, n).join(" ")}…` : t.trim();
+};
+/** What a step is called on the timeline: five to eight words. The full text and details sit behind "Show details". */
+function label(s: TraceStep): string {
+  const host = hostOf(s);
+  const quoted = s.text.match(/["“]([^"”]{2,30})["”]/)?.[1];
+  switch (s.kind) {
+    case "open":
+      return host ? `Opened ${host}` : "Opened a page";
+    case "read":
+      return host ? `Read ${host}` : "Read a page";
+    case "click":
+      return quoted ? `Clicked “${quoted}”` : "Clicked a button";
+    case "type":
+      return "Filled in a field";
+    case "pick":
+      return "Chose an option";
+    case "recover":
+      return host ? `Tried another way on ${host}` : "Tried another way";
+    case "fail":
+      return host ? `Could not use ${host}` : "Could not do this step";
+    default:
+      return words(s.text.replace(/^[^:]{3,60}: (promising|dead end|unlikely)\.\s*/i, ""));
+  }
+}
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 const shotUrl = (runId: string | undefined, file: string) => `/api/agent/step3/shot?run=${encodeURIComponent(runId ?? "")}&file=${encodeURIComponent(file)}`;
 
@@ -124,19 +157,22 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
                   </span>
                   {every && s.confidence !== undefined && <Confidence value={s.confidence} />}
                 </div>
-                <p className="text-[14px] leading-5 text-ink">{every ? s.text : oneLine(s.text)}</p>
-                {s.url && (
-                  <a href={s.url} target="_blank" rel="noreferrer" className="block break-all text-[12px] text-brand underline-offset-2 hover:underline">
-                    {s.url.replace(/^https?:\/\/(www\.)?/, "")}
-                  </a>
-                )}
-                {s.detail && (
+                <p className="text-[14px] leading-5 text-ink">{label(s)}</p>
+                {(s.detail || s.text.length > label(s).length + 3 || s.url) && (
                   <details className="group">
                     <summary className="cursor-pointer list-none text-[12px] text-muted hover:text-ink">
                       <span className="group-open:hidden">Show details</span>
                       <span className="hidden group-open:inline">Hide details</span>
                     </summary>
-                    <pre className="mt-1.5 whitespace-pre-wrap rounded bg-subtle px-3 py-2 font-sans text-[12px] leading-5 text-ink-2">{s.detail}</pre>
+                    <div className="mt-1.5 space-y-1.5 rounded bg-subtle px-3 py-2 text-[12px] leading-5 text-ink-2">
+                      <p>{s.text}</p>
+                      {s.url && (
+                        <a href={s.url} target="_blank" rel="noreferrer" className="block break-all text-brand underline-offset-2 hover:underline">
+                          {s.url.replace(/^https?:\/\/(www\.)?/, "")}
+                        </a>
+                      )}
+                      {s.detail && <pre className="whitespace-pre-wrap font-sans">{s.detail}</pre>}
+                    </div>
                   </details>
                 )}
                 {s.shot && (
