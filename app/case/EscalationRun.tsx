@@ -35,7 +35,7 @@ const load = (createdAt: string): Saved | null => {
 };
 
 export default function EscalationRun({ profile, route, goToStepOne, onContinue }: { profile: Profile; route: RouteMap; goToStepOne: () => void; onContinue?: () => void }) {
-  const { state, start, answer, skip } = usePlannerRun();
+  const { state, start, answer, skip } = usePlannerRun({ scope: "escalation", caseId: profile.createdAt });
   const [saved, setSaved] = useState<Saved | null>(() => load(profile.createdAt));
   const [again, setAgain] = useState(false);
   const [reply, setReply] = useState("");

@@ -37,6 +37,7 @@ export function enterLedger(ctx: Ctx) {
 }
 
 export const currentAgent = () => store.getStore()?.agent ?? "system";
+export const currentRunId = () => store.getStore()?.runId;
 
 export function record(e: Omit<LedgerEntry, "t" | "agent" | "data" | "where"> & { agent?: LedgerEntry["agent"]; data?: DataKind[]; where?: LedgerEntry["where"] }) {
   const ctx = store.getStore() ?? {};

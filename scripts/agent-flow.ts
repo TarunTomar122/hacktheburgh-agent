@@ -2,13 +2,14 @@
 //   npx tsx --env-file=.env.local scripts/agent-flow.ts <persona> <complaint|compensation> <route.json>
 // Questions from the crew get fictional answers: money -> 14000, yes/no -> "No", choice -> the first option, text -> skipped.
 import { readFileSync, writeFileSync } from "node:fs";
+import { personaFacts } from "./personaFacts";
 import { runComplaintAnywhere } from "../lib/agent/complaintAnywhere";
 import { runCompensationAnywhere } from "../lib/agent/compensationAnywhere";
 import { answerQuestion } from "../lib/agent/planner";
 
 async function main() {
   const [who, flow, routePath] = process.argv.slice(2);
-  const facts = JSON.parse(readFileSync(`scripts/personas/${who}.json`, "utf8"));
+  const facts = personaFacts(who);
   const route = JSON.parse(readFileSync(routePath, "utf8"));
   let runId = "";
   const t0 = Date.now();

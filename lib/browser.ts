@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { attachLiveView } from "./liveview";
 import { installCursor } from "./agentCursor";
+import { registerBrowser } from "./agent/runControl";
 
 // Some sites (e.g. SLAB) return 403 to Playwright's default user-agent.
 const USER_AGENT =
@@ -23,6 +24,7 @@ export async function openSession(): Promise<Session> {
   // headless Chromium with a 403 but serve real Chrome (night run, 2026-11-07: Guy's and St Thomas').
   const channel = process.env.BROWSER_CHANNEL || undefined;
   const browser = await chromium.launch({ headless, slowMo: fast ? 0 : 250, channel });
+  registerBrowser(browser); // a run the user stops closes its browsers
   const context = await browser.newContext({
     locale: "en-GB",
     viewport: { width: 1300, height: 900 },

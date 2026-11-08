@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { zodResponseFormat, zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 import { currentAgent, record, SEES, type DataKind } from "./ledger";
+import { throwIfCancelled } from "./runControl";
 
 let client: OpenAI | null = null;
 export function openai(): OpenAI {
@@ -65,6 +66,7 @@ type StructuredOpts<T extends z.ZodType> = {
 
 /** One model call that must return JSON matching a zod schema. Local ("local:...") or cloud. */
 export async function structured<T extends z.ZodType>(opts: StructuredOpts<T>): Promise<z.infer<T>> {
+  throwIfCancelled();
   if (!isLocal(opts.model)) return cloudStructured(opts);
   try {
     return await localStructured(opts);
@@ -138,6 +140,7 @@ async function localStructured<T extends z.ZodType>(opts: StructuredOpts<T>): Pr
 
 /** One planner or agent-loop call to the Responses API, written to the ledger. Always cloud. */
 export async function respond(body: Parameters<OpenAI["responses"]["create"]>[0] & { stream?: false }, task: string, data?: DataKind[]) {
+  throwIfCancelled();
   const t0 = Date.now();
   const res = await openai().responses.create(body);
   record({ task, model: String(body.model), inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0, ms: Date.now() - t0, data });

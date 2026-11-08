@@ -3,7 +3,10 @@
 import { missingForOnboarding, missingRequired, placeIsUK, type CaseFacts } from "../../lib/agent/facts";
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, phoneProblem, postcodeProblem, splitPostcode, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
-import { clearProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
+import { useState } from "react";
+import { clearProfile, createProfile, setTrack, updateFacts, type Profile } from "../../lib/profile";
+import { PERSONA_PICKER_ENABLED } from "../../lib/personas";
+import PersonaPicker from "../PersonaPicker";
 import { TRACKS, type TrackId } from "../../lib/agent/track";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
@@ -43,6 +46,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
     updateFacts({ events: f.events.map((e, j) => (j === i ? { ...e, ...patch } : e)) });
   }
 
+  const [picking, setPicking] = useState(false);
   const set2 = <K extends keyof CaseFacts>(k: K, v: CaseFacts[K]) => updateFacts({ [k]: v } as Partial<CaseFacts>);
 
   return (
@@ -229,6 +233,16 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
           </details>
         </section>
 
+        {PERSONA_PICKER_ENABLED && (
+          <section className="space-y-2 border-t border-line pt-6">
+            <Eyebrow>Testing</Eyebrow>
+            <button onClick={() => setPicking(true)} aria-haspopup="dialog" className="text-sm font-medium text-brand underline underline-offset-2">
+              Switch persona
+            </button>
+            <p className="text-xs text-muted">Replaces this case with a fictional patient from another place or story. Nothing is sent.</p>
+          </section>
+        )}
+
         <section className="space-y-2 border-t border-line pt-6">
           <Eyebrow>Your data</Eyebrow>
           <button
@@ -245,6 +259,17 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
           <p className="text-xs text-muted">Your profile is saved in this browser. Agent runs also create logs and screenshots on the server.</p>
         </section>
       </div>
+      {picking && (
+        <PersonaPicker
+          replacing={[f.firstName, f.lastName].filter(Boolean).join(" ") || "this person"}
+          onClose={() => setPicking(false)}
+          onChoose={(p) => {
+            createProfile(p.facts, p.messages, p.draft);
+            setPicking(false);
+            onClose(); // the new case starts at the crew's first screen
+          }}
+        />
+      )}
     </div>
   );
 }

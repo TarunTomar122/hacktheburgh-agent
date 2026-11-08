@@ -33,7 +33,7 @@ const STEPS: Step[] = [
 const NHS_PAGE = "https://www.nhslothian.scot/yourrights/patient-experience-team-tell-us-about-your-experience/how-do-i-make-a-complaint/";
 
 export default function ComplaintRun({ profile, onContinue }: { profile: Profile; onContinue: () => void }) {
-  const { state, start, answer, replay, skip } = usePlannerRun();
+  const { state, start, answer, replay, skip } = usePlannerRun({ scope: "complaint", caseId: profile.createdAt });
   const saved = profile.complaintRun;
   const [again, setAgain] = useState(false);
 
@@ -45,9 +45,9 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
     persisted.current = r.runId;
     if (r.draft) setDraft(r.draft);
     if (r.form.status === "ready_to_submit" && !state.demo) setProgress({ nhsFilled: true });
-    setComplaintRun({ result: r, sample: state.demo, durationMs: Date.now() - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() });
+    setComplaintRun({ result: r, sample: state.demo, durationMs: (state.endedAt ?? Date.now()) - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() });
     setAgain(false);
-  }, [state.status, state.complaint, state.startedAt, state.demo]);
+  }, [state.status, state.complaint, state.startedAt, state.endedAt, state.demo]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
   // Night plan ("Elliot anywhere"): with a route map, the generic crew complains to whichever body discovery found.

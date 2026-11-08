@@ -4,6 +4,7 @@
 // from a saved complaint run's result.json when given. Questions from the crew get fictional answers:
 // yes/no -> "No", choice -> the first option, text -> skipped. Nothing is ever submitted or sent.
 import { readFileSync, writeFileSync } from "node:fs";
+import { personaFacts } from "./personaFacts";
 import { runEscalationAnywhere } from "../lib/agent/escalationAnywhere";
 import { answerQuestion } from "../lib/agent/planner";
 import type { EscalationInput, PlannerEvent } from "../lib/agent/plannerTypes";
@@ -12,7 +13,7 @@ async function main() {
   const args = process.argv.slice(2);
   const flags = new Set(args.filter((a) => a.startsWith("--")));
   const [who, routePath, complaintPath] = args.filter((a) => !a.startsWith("--"));
-  const facts = JSON.parse(readFileSync(`scripts/personas/${who}.json`, "utf8"));
+  const facts = personaFacts(who);
   const raw = JSON.parse(readFileSync(routePath, "utf8"));
   const route = raw.route ?? raw;
   const complaint = complaintPath ? JSON.parse(readFileSync(complaintPath, "utf8")) : null;

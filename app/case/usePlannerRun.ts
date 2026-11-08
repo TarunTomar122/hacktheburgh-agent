@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
 import type { LedgerEntry } from "../../lib/agent/ledgerSummary";
@@ -39,6 +39,8 @@ export type PlannerRunState = {
   complaint?: ComplaintResult; // the complaint crew's result (D65)
   escalation?: EscalationResult; // step 2 anywhere: the escalation crew's result
   startedAt?: number;
+  endedAt?: number; // when the run finished (the server's clock for a run picked up again), for the duration
+  reconnectedAt?: number; // set when this screen picked up a run that went on while it was away
   spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
   demo: boolean; // playing back a recorded run (D63)
   skipped: (CrewId | "all")[]; // demo skips asked for
@@ -53,9 +55,56 @@ const idleCrew = (): Record<CrewId, CrewState> =>
 
 const initial = (): PlannerRunState => ({ status: "idle", plan: [], says: [], crew: idleCrew(), asks: [], answered: {}, findings: [], tiles: [], stats: null, trace: [], firms: [], evidence: {}, enquiries: [], spotlight: null, demo: false, skipped: [], models: [] });
 
-export function usePlannerRun() {
-  const [s, setS] = useState<PlannerRunState>(initial);
+/**
+ * Runs live on the server (lib/agent/runRegistry.ts) and keep going when this screen goes away. What survives here is a
+ * pointer in localStorage, per case and screen: { runId, flow, startedAt, status } and, once finished, the final result
+ * event. Coming back, the hook attaches to the run: every event so far arrives at once, then the live tail, so the screen
+ * lands on the crew's current stage. Leaving only detaches; a new run (or an explicit cancel) is the only thing that stops one.
+ */
+export type RunScope = { scope: "case" | "complaint" | "discovery" | "escalation"; caseId: string };
+type Stored = { runId: string; flow: string; startedAt: number; status: "running" | "done" | "error"; seen?: boolean; endedAt?: number; terminal?: PlannerEvent };
+const storeKey = (sc: RunScope) => `elliot-run-v1:${sc.caseId}:${sc.scope}`;
+const slotOf = (sc?: RunScope) => (sc ? `${sc.caseId}:${sc.scope}` : undefined);
+function readStored(sc?: RunScope): Stored | null {
+  if (!sc || typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(storeKey(sc));
+    const v = raw ? (JSON.parse(raw) as Stored) : null;
+    return v && typeof v.runId === "string" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function writeStored(sc: RunScope | undefined, patch: Partial<Stored> | null) {
+  if (!sc || typeof window === "undefined") return;
+  try {
+    if (patch === null) return localStorage.removeItem(storeKey(sc));
+    const cur = readStored(sc);
+    // A different run replaces the old pointer; the same run only updates it.
+    const base = cur && (!patch.runId || patch.runId === cur.runId) ? cur : null;
+    if (!base && !(patch.runId && patch.flow && patch.startedAt)) return;
+    localStorage.setItem(storeKey(sc), JSON.stringify({ ...base, ...patch }));
+  } catch {
+    /* storage full or blocked: the run still shows for this visit */
+  }
+}
+const TERMINAL = new Set(["planner_result", "complaint_result", "escalation_result", "discovery_result"]);
+const wait = (a: AbortSignal, ms: number) => new Promise<void>((r) => { const t = setTimeout(r, ms); a.addEventListener("abort", () => { clearTimeout(t); r(); }, { once: true }); });
+
+export function usePlannerRun(scope?: RunScope) {
+  const scopeRef = useRef(scope);
+  useEffect(() => {
+    scopeRef.current = scope;
+  });
+  const slot = slotOf(scope);
+  const [s, setS] = useState<PlannerRunState>(() => {
+    // A run that is still going on the server starts on its run screen, so the start screen never flashes.
+    const st = readStored(scope);
+    return st && st.status === "running" ? { ...initial(), status: "running", runId: st.runId, startedAt: st.startedAt } : initial();
+  });
   const runIdRef = useRef<string | undefined>(undefined);
+  const startedRef = useRef<number | undefined>(undefined);
+  const flowRef = useRef<string>("compensation");
   const abort = useRef<AbortController | null>(null);
   // Demo playback (D63): a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
   const rec = useRef<{ events: Rec[]; i: number; timer?: ReturnType<typeof setTimeout> } | null>(null);
@@ -64,7 +113,9 @@ export function usePlannerRun() {
     rec.current = null;
   };
 
-  const apply = useCallback((e: PlannerEvent | { type: "ping" }) => {
+  const apply = useCallback((e: PlannerEvent | { type: "ping" }, at?: number) => {
+    // `at`: when the event really happened (a run picked up again replays old events at once, with their own times).
+    const now = at ?? Date.now();
     setS((cur) => {
       switch (e.type) {
         case "ping":
@@ -81,13 +132,13 @@ export function usePlannerRun() {
         case "say":
           return { ...cur, says: [...cur.says, e.say] };
         case "crew":
-          return { ...cur, crew: { ...cur.crew, [e.id]: { state: e.state, note: e.note, since: Date.now() } } };
+          return { ...cur, crew: { ...cur.crew, [e.id]: { state: e.state, note: e.note, since: now } } };
         case "ask":
           return { ...cur, asks: [...cur.asks, e.ask] };
         case "answered":
           return { ...cur, asks: cur.asks.filter((a) => a.id !== e.id), answered: { ...cur.answered, [e.id]: e.answer } };
         case "finding":
-          return { ...cur, findings: [...cur.findings, { i: cur.findings.length, text: e.text, source: e.source, crew: e.crew, t: Date.now() }] };
+          return { ...cur, findings: [...cur.findings, { i: cur.findings.length, text: e.text, source: e.source, crew: e.crew, t: now }] };
         case "agent":
           return { ...cur, tiles: cur.tiles.some((t) => t.id === e.tile.id) ? cur.tiles.map((t) => (t.id === e.tile.id ? e.tile : t)) : [...cur.tiles, e.tile] };
         case "stats":
@@ -101,19 +152,19 @@ export function usePlannerRun() {
         case "enquiry":
           return { ...cur, enquiries: cur.enquiries.some((x) => x.firmId === e.enquiry.firmId) ? cur.enquiries.map((x) => (x.firmId === e.enquiry.firmId ? e.enquiry : x)) : [...cur.enquiries, e.enquiry] };
         case "planner_result":
-          return { ...cur, status: "done", result: e.result, firms: e.result.firms, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+          return { ...cur, status: "done", result: e.result, endedAt: now, firms: e.result.firms, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "place":
           return { ...cur, place: e.place };
         case "route":
           return { ...cur, route: e.route };
         case "discovery_result":
-          return { ...cur, status: "done", discovery: e.result, route: e.result.route, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+          return { ...cur, status: "done", discovery: e.result, endedAt: now, route: e.result.route, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "model":
           return { ...cur, models: [...cur.models, e.entry] };
         case "complaint_result":
-          return { ...cur, status: "done", complaint: e.result, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+          return { ...cur, status: "done", complaint: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "escalation_result":
-          return { ...cur, status: "done", escalation: e.result, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: Date.now() }])) as Record<CrewId, CrewState> };
+          return { ...cur, status: "done", escalation: e.result, endedAt: now, crew: Object.fromEntries((Object.keys(CREW) as CrewId[]).map((id) => [id, { state: "done", note: cur.crew[id].note, since: now }])) as Record<CrewId, CrewState> };
         case "error":
           return { ...cur, status: "error", error: e.message };
         default:
@@ -122,43 +173,181 @@ export function usePlannerRun() {
     });
   }, []);
 
+  /** Stop a run on the server for good (its browsers close). Not used by leaving a screen, which only detaches. */
+  const cancel = useCallback(async (runId?: string) => {
+    if (!runId) return;
+    await fetch("/api/agent/plan/cancel", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId }) }).catch(() => null);
+  }, []);
+
+  /** Read one NDJSON response into the state. Returns true when the run is over (nothing more will come). */
+  const consume = useCallback(
+    async (res: Response, ctrl: AbortController): Promise<boolean> => {
+      const reader = res.body!.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      let over = false;
+      const line = (text: string) => {
+        const e = JSON.parse(text) as { type: string; _t?: number; [k: string]: unknown };
+        const t = typeof e._t === "number" ? e._t : undefined;
+        if (e.type === "attached") {
+          // Everything so far follows: start from a clean screen, with the run's own start time.
+          const a = e as unknown as { runId: string; flow: string; startedAt: number };
+          runIdRef.current = a.runId;
+          startedRef.current = a.startedAt;
+          flowRef.current = a.flow;
+          setS({ ...initial(), status: "running", runId: a.runId, startedAt: a.startedAt, reconnectedAt: Date.now() });
+          writeStored(scopeRef.current, { runId: a.runId, flow: a.flow, startedAt: a.startedAt });
+          return;
+        }
+        if (e.type === "live") {
+          if (e.status !== "running") over = true;
+          return;
+        }
+        if (e.type === "run") {
+          const runId = e.runId as string;
+          runIdRef.current = runId;
+          writeStored(scopeRef.current, { runId, flow: flowRef.current, startedAt: startedRef.current ?? Date.now(), status: "running", seen: false, terminal: undefined, endedAt: undefined });
+        }
+        const at = t !== undefined && startedRef.current !== undefined ? startedRef.current + t : undefined;
+        if (TERMINAL.has(e.type)) {
+          over = true;
+          writeStored(scopeRef.current, { status: "done", terminal: e as unknown as PlannerEvent, endedAt: at ?? Date.now() });
+        } else if (e.type === "error") {
+          over = true;
+          writeStored(scopeRef.current, { status: "error" });
+        }
+        apply(e as unknown as PlannerEvent, at);
+      };
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (ctrl.signal.aborted || abort.current !== ctrl) return false;
+          buf += dec.decode(value, { stream: !done });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const l of lines) if (l.trim()) line(l);
+          if (done) break;
+        }
+        if (buf.trim()) line(buf);
+        return over;
+      } catch {
+        return false; // the connection dropped: the caller reattaches
+      } finally {
+        await reader.cancel().catch(() => {});
+        reader.releaseLock();
+      }
+    },
+    [apply],
+  );
+
+  /** Show how a run ended when the stream is over and no result came (nothing else will arrive). */
+  const settle = useCallback(() => {
+    setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation ? undefined : "The run ended without a result" } : cur));
+  }, []);
+
+  /**
+   * Attach to a run on the server (replay everything so far, then the live tail), and keep trying through brief
+   * disconnects. A run the server no longer knows (it restarted) shows its stored result if there is one, else the start screen.
+   */
+  const follow = useCallback(
+    async (runId: string, ctrl: AbortController) => {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        if (ctrl.signal.aborted || abort.current !== ctrl) return;
+        const res = await fetch(`/api/agent/plan/attach?runId=${encodeURIComponent(runId)}`, { signal: ctrl.signal, cache: "no-store" }).catch(() => null);
+        if (ctrl.signal.aborted || abort.current !== ctrl) return;
+        if (res?.status === 404) {
+          const st = readStored(scopeRef.current);
+          if (st?.runId === runId && st.status === "done" && st.terminal) {
+            // The server has forgotten the run, but its result was kept here.
+            runIdRef.current = undefined;
+            setS({ ...initial(), startedAt: st.startedAt, endedAt: st.endedAt });
+            apply(st.terminal, st.endedAt);
+          } else {
+            writeStored(scopeRef.current, null);
+            runIdRef.current = undefined;
+            setS(initial());
+          }
+          return;
+        }
+        if (res?.ok && res.body) {
+          if (await consume(res, ctrl)) return settle();
+          if (ctrl.signal.aborted || abort.current !== ctrl) return;
+        }
+        await wait(ctrl.signal, Math.min(4000, 400 * 2 ** attempt));
+      }
+      if (!ctrl.signal.aborted && abort.current === ctrl) setS((cur) => ({ ...cur, status: "error", error: "Lost the connection to the crew. The run may still be going: reload to pick it up again." }));
+    },
+    [apply, consume, settle],
+  );
+
+  // Coming back to a screen: pick up the run that went on while it was away (or show how it ended).
+  useEffect(() => {
+    if (!slot) return;
+    const st = readStored(scopeRef.current);
+    if (st?.seen && st.status !== "running") return; // already shown and saved by this screen: it shows its own file
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    void (async () => {
+      let runId = st?.runId;
+      if (st) {
+        flowRef.current = st.flow;
+        startedRef.current = st.startedAt;
+      } else {
+        // Nothing stored here (cleared storage, another tab): ask the server whether a run is going in this slot.
+        const found = await fetch(`/api/agent/plan/active?slot=${encodeURIComponent(slot)}`, { cache: "no-store", signal: ctrl.signal })
+          .then((r) => r.json() as Promise<{ run: { runId: string; status: string } | null }>)
+          .catch(() => null);
+        if (ctrl.signal.aborted || found?.run?.status !== "running") return;
+        runId = found.run.runId;
+        setS((cur) => ({ ...cur, status: "running", runId }));
+      }
+      if (runId) await follow(runId, ctrl);
+    })();
+    // No cleanup here: the effect below detaches on leaving (and a restart in dev strict mode simply attaches again).
+  }, [slot, follow]);
+
+  // Leaving the screen only detaches. The run goes on, on the server.
+  useEffect(
+    () => () => {
+      abort.current?.abort();
+      abort.current = null;
+      clearTimeout(rec.current?.timer);
+    },
+    [],
+  );
+
+  // Once this screen has shown how a run ended (and saved it), reopening it shows the saved file instead of replaying the run.
+  useEffect(() => {
+    if ((s.status === "done" || s.status === "error") && !s.demo) writeStored(scopeRef.current, { seen: true });
+  }, [s.status, s.demo]);
+
   const start = useCallback(
     async (facts: CaseFacts, funding?: Partial<Funding>, flow: "compensation" | "complaint" | "discovery" | "complaint_anywhere" | "compensation_anywhere" | "escalation_anywhere" = "compensation", route?: RouteMap, progress?: EscalationInput) => {
       abort.current?.abort();
       stopReplay();
       const ctrl = new AbortController();
       abort.current = ctrl;
+      const old = readStored(scopeRef.current);
+      if (old?.status === "running") void cancel(old.runId); // a new run replaces the one still going (the server also does this per slot)
+      writeStored(scopeRef.current, null);
       runIdRef.current = undefined;
-      setS({ ...initial(), status: "running", startedAt: Date.now() });
+      flowRef.current = flow;
+      startedRef.current = Date.now();
+      setS({ ...initial(), status: "running", startedAt: startedRef.current });
       try {
-        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route, progress }), signal: ctrl.signal });
+        const res = await fetch("/api/agent/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts, funding, flow, route, progress, slot: slotOf(scopeRef.current) }), signal: ctrl.signal });
         if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the crew");
-        const reader = res.body.getReader();
-        const dec = new TextDecoder();
-        let buf = "";
-        try {
-          while (true) {
-            const { value, done } = await reader.read();
-            if (ctrl.signal.aborted || abort.current !== ctrl) return;
-            buf += dec.decode(value, { stream: !done });
-            const lines = buf.split("\n");
-            buf = lines.pop() ?? "";
-            for (const line of lines) if (line.trim()) apply(JSON.parse(line));
-            if (done) break;
-          }
-          if (buf.trim()) apply(JSON.parse(buf));
-        } finally {
-          await reader.cancel().catch(() => {});
-          reader.releaseLock();
-        }
+        if (await consume(res, ctrl)) return settle();
         if (ctrl.signal.aborted || abort.current !== ctrl) return;
-        setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation ? undefined : "The run ended without a result" } : cur));
+        // The stream broke before the run ended: the run did not (it belongs to the server), so pick it up again.
+        if (runIdRef.current) return await follow(runIdRef.current, ctrl);
+        settle();
       } catch (e) {
         if (ctrl.signal.aborted) return;
         setS((cur) => ({ ...cur, status: "error", error: e instanceof Error ? e.message : String(e) }));
       }
     },
-    [apply],
+    [cancel, consume, follow, settle],
   );
 
   /** Send the user's answer (or null to skip). Returns false if it did not arrive, so the question can be retried. */
@@ -241,10 +430,11 @@ export function usePlannerRun() {
 
   const reset = useCallback(() => {
     abort.current?.abort();
+    writeStored(scopeRef.current, null);
     runIdRef.current = undefined;
     stopReplay();
     setS(initial());
   }, []);
 
-  return { state: s, start, answer, reset, replay, skip };
+  return { state: s, start, answer, reset, replay, skip, cancel: () => cancel(runIdRef.current) };
 }

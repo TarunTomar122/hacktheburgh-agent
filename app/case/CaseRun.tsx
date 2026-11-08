@@ -54,7 +54,7 @@ function useFresh(value: number | null, ms: number): number | null {
 const SLAB_CALC = "https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/";
 
 export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profile; onReviewEnquiries: () => void }) {
-  const { state, start, answer, replay, skip } = usePlannerRun();
+  const { state, start, answer, replay, skip } = usePlannerRun({ scope: "case", caseId: profile.createdAt });
   const place = placeOf(profile);
   const hasDemo = useDemoAvailable("step3", place);
   const [view, setView] = useState<"case" | "firms" | "replay">("case");
@@ -77,9 +77,9 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     setLegalAid({ result: r as Step3Result, sample: state.demo, selected, ...(!state.demo && r.funding ? { funding: r.funding } : {}) });
     setEnquiry({ outcomes: r.enquiries, runId: r.runId, message: r.message, sample: state.demo });
     upsertEnquiries(r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => ({ firmId: e.firmId, firmName: e.firmName, status: e.status === "ready_to_send" ? ("ready_to_send" as const) : ("draft" as const) })));
-    const run: CaseRunRecord = { runId: r.runId ?? "", says: r.says, plan: r.plan, evidence: r.evidence, asks: r.asks, recoveries: r.recoveries, turns: r.turns, durationMs: Date.now() - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() };
+    const run: CaseRunRecord = { runId: r.runId ?? "", says: r.says, plan: r.plan, evidence: r.evidence, asks: r.asks, recoveries: r.recoveries, turns: r.turns, durationMs: (state.endedAt ?? Date.now()) - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() };
     setCaseRun(run);
-  }, [state.status, state.result, state.startedAt, state.demo]);
+  }, [state.status, state.result, state.startedAt, state.endedAt, state.demo]);
 
   // Night plan ("Elliot anywhere"): with a route map, the generic crew works with the place's own checker and register.
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
@@ -196,6 +196,8 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
     return () => clearInterval(t);
   }, []);
   const elapsed = state.startedAt ? now - state.startedAt : 0;
+  // A screen that picked up a run that went on while it was away says so, briefly.
+  const back = useFresh(state.reconnectedAt ?? null, 4000);
 
   // The spotlight follows the work: whoever just started is shown big (unless the user pinned a browser).
   const tab = state.spotlight?.tab;
@@ -233,7 +235,8 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       {/* The one thing to look at: who is working, on what, and their browser. A question appears right here. */}
-      <section className="overflow-hidden rounded-card border border-line bg-white">
+      <section className="relative overflow-hidden rounded-card border border-line bg-white">
+        {back !== null && <span className="rise absolute right-6 top-1.5 text-[11px] text-muted">Reconnected, picking up where the crew is</span>}
         <div className="flex items-start gap-5 border-b border-line-soft px-6 py-5">
           <CrewMark id={focusCrew} size={64} />
           <div className="min-w-0 flex-1">

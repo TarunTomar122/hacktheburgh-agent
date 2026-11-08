@@ -7,21 +7,22 @@ import { emptyFacts, type CaseFacts } from "../lib/agent/facts";
 import { echoFor, inputFor, patchFromAnswer, placeLine, type InputSpec, type Target } from "../lib/agent/inputs";
 import type { Place } from "../lib/agent/routeTypes";
 import type { WidgetAnswer } from "../lib/agent/interview";
-import { DEMO_PERSONAS, type DemoPersona } from "../lib/agent/sample";
+import { PERSONA_PICKER_ENABLED, type Persona } from "../lib/personas";
 import { createProfile } from "../lib/profile";
 import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
+import PersonaPicker from "./PersonaPicker";
 import StageInput from "./StageInputs";
 import { LogoLink } from "./ui";
 
-// Dev shortcut. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1.
 // The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
 const STEPS: Target[] = ["name", "story", "details", "who", "contact", "outcome", "done"];
 
 /** Where the care was, as far as onboarding knows it. Detected by the model, or typed by the user to correct it. */
 type Where = { city: string; country: string; region: string; fixed: boolean };
 
-const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
+// Dev and demo shortcut: the persona picker. Hidden in production builds unless NEXT_PUBLIC_DEMO_SKIP=1 (see lib/personas).
+const SHOW_SKIP = PERSONA_PICKER_ENABLED;
 
 export default function Onboarding() {
   const router = useRouter();
@@ -35,6 +36,7 @@ export default function Onboarding() {
   // The place lives here, not in `facts`, so a reply that was on its way while it was found cannot wipe it.
   const [where, setWhere] = useState<Where | null>(null);
   const [placeBusy, setPlaceBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   const whereRef = useRef<Where | null>(null);
   const detected = useRef(new Set<string>());
   const withPlace = (f: CaseFacts): CaseFacts => (where ? { ...f, country: where.country || null, region: where.region || null } : f);
@@ -114,8 +116,8 @@ export default function Onboarding() {
     return run([...messages, { role: "user", content: echo }], answer);
   }
 
-  /** Dev shortcut (D24): load a fictional persona with onboarding complete and go to the recommendation. */
-  function skipWith(p: DemoPersona) {
+  /** Dev shortcut (D24): load a fictional persona with onboarding complete and go to the case, where the real crew runs. */
+  function skipWith(p: Persona) {
     createProfile(p.facts, p.messages, p.draft);
     router.push("/case");
   }
@@ -138,19 +140,18 @@ export default function Onboarding() {
             </div>
           </div>
           {SHOW_SKIP && (
-            <div className="flex shrink-0 items-center gap-2" aria-label="Developer shortcut: load a fictional demo patient">
-              <span className="hidden text-[11px] text-white/70 md:inline">Try a demo:</span>
-              {DEMO_PERSONAS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => skipWith(p)}
-                  title={`Dev shortcut, fictional: ${p.name}. ${p.blurb}`}
-                  className="rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={() => setPicking(true)}
+              aria-haspopup="dialog"
+              title="Dev shortcut: load a fictional patient from another place and story"
+              className="inline-flex shrink-0 items-center gap-2 rounded-ctl border border-dashed border-white/50 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:border-white hover:bg-white/10"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="8" cy="5.5" r="2.7" />
+                <path d="M2.5 14c.6-2.7 2.6-4 5.5-4s4.9 1.3 5.5 4" />
+              </svg>
+              Try a persona
+            </button>
           )}
         </header>
         <Stripes />
@@ -205,6 +206,7 @@ export default function Onboarding() {
           )}
         </div>
       </main>
+      {picking && <PersonaPicker onClose={() => setPicking(false)} onChoose={skipWith} />}
     </div>
   );
 }

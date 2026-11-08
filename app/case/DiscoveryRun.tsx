@@ -28,7 +28,7 @@ const STEPS: Step[] = [
 ];
 
 export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profile: Profile; saved?: RouteMap; onDone: (route: RouteMap, sample: boolean) => void; onSkip?: () => void }) {
-  const { state, start, answer, replay, skip } = usePlannerRun();
+  const { state, start, answer, replay, skip } = usePlannerRun({ scope: "discovery", caseId: profile.createdAt });
   const done = useRef<string | null>(null);
   useEffect(() => {
     const r = state.discovery;
