@@ -29,7 +29,7 @@ async function WelcomeContent(props: PageProps<"/welcome">) {
         <div className="fade-up flex flex-col items-center space-y-7">
           <Logo className="!h-44 sm:!h-52" />
           <h1 className="display text-[38px] sm:text-[52px]">
-            <span className="text-brand">Your</span> case, under <span className="text-brand">your</span> control
+            <span className="hl-blue">Your</span> case, under <span className="hl-blue">your</span> control
           </h1>
           <p className="max-w-xl text-[17px] leading-7 text-ink-2">
             Your case is saved to your account, so you can pick it up on any device. The agent fills in forms for you and stops before Submit: you press it yourself.
