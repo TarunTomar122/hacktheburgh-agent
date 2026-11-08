@@ -103,7 +103,7 @@ function Row({ label, step, crew, compact }: { label: string; step?: RouteStep; 
           {open && (
             <div className="rise mt-3 space-y-3 md:pl-39">
               {step.what !== firstLine(step.what) && <p className="text-[14px] leading-6 text-ink-2">{step.what}</p>}
-              {step.deadline && step.deadline.length > 40 && <p className="text-[13px] leading-5 text-ink-2">Time limit: {step.deadline}</p>}
+              {step.deadline && step.deadline.length > 40 && <p className="text-[13px] leading-5 text-ink-2">Time limit: {step.deadline}{step.deadlineCheck === "one_site" ? " (one official source: confirm with the body)" : ""}</p>}
               {step.deadlineCheck === "sources_differ" && <p className="text-[13px] leading-5 text-amber">Official pages give different periods ({[step.deadline, ...(step.deadlineOthers ?? [])].join(" / ")}). Check with the body before relying on it.</p>}
               {step.points?.length ? (
                 <ul className="list-disc space-y-0.5 pl-5 text-[13px] leading-5 text-ink-2">
