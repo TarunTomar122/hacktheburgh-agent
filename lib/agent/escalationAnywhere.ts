@@ -7,6 +7,7 @@ import type { Emit } from "./planner";
 import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit } from "./crewRun";
 import type { CrewId, EscalationInput, EscalationResult, Thought } from "./plannerTypes";
 import type { RouteMap } from "./routeTypes";
+import { isEnactedUrl, vetClaim } from "./evidence-claims";
 import { exploreSite, readPage, type PageReading } from "./workers/explore";
 import { fillForm } from "./workers/fillForm";
 import type { Value, WorkerCtx } from "./workers/types";
@@ -178,6 +179,12 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
               name: "escalation_ready",
               data: ["health"],
             });
+            // The limit the model wrote must have its numbers in a checked quote from the body's own page (code, not the model).
+            const vetted = vetClaim(x.limit, page.quotes.map((q) => ({ quote: q.quote, checked: q.checked, official: !isEnactedUrl(page.url) })), { requireSingle: true });
+            if (x.limit && !vetted.ok) {
+              x.limit = "";
+              x.limitStatus = "unclear";
+            }
             // Honesty in code: no complaint sent and the page does not invite people straight in -> not yet.
             let st = x.status;
             let explanation = x.explanation;
