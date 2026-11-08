@@ -49,7 +49,7 @@ Why this is real browser work, not more of the same: the *shape* of the process 
 - The existing Scotland site code (SLAB calculator and finder, Law Society register, NHS Lothian form) may only help **after** the agent has reached that site by itself, and the generic path must work without it. Prefer making it generic.
 
 ## Update 03:55 (Tarun)
-- Reviews: no two-reviewer 9/10 loops any more; ONE Codex review per complicated task is enough. Cursor agents (grok-4.7) are used for implementation too, to save Claude tokens; Claude subagents only Sonnet 5.5.
+- Reviews: no two-reviewer 9/10 loops any more; ONE Codex review per complicated task is enough. Cursor agents (grok-4.7) are used for implementation too, to save Claude tokens; NO new Claude subagents (they have no KV cache and burn the limit); Cursor agents only for small parallel fixes.
 - Every feature must show in the UI and be tested (deterministic test + headless screenshots).
 - New: human hand-off (take over a blocked login/CAPTCHA tab, sign in, Continue) in progress (Cursor agent).
 

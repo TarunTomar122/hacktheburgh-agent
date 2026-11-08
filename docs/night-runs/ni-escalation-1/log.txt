@@ -10,3 +10,11 @@ Progress: {"complaintSent":true,"finalResponse":"yes","complaintText":"804 chars
 [89s] [elliot → you] Written for Northern Ireland Public Services Ombudsman (NIPSO): what happened, your complaint, what Belfast Health and Social Care Trust said and what you would like.
 [92s] [elliot → kit] Check NIPSO's current complaint route and try to open the online complaint form, stopping before any submit.
 [198s] [kit → elliot] I hit a problem: No online form: No online form found after 4 moves (106s); the site's own route is offline. This page says the online complaints form is currently unavailable …
+[201s] [elliot] The online form is unavailable, so we should get NIPSO's checked complaint address and prepare an email/letter the patient can send instead.
+[204s] [elliot → robin] The online form is unavailable, so check NIPSO's own page for the complaint email or postal contact to use instead.
+  finding (robin): Email: nipso@nipso.org.uk <https://www.nipso.org.uk/make-complaint/online-complaints-form>
+[211s] [robin → elliot] It goes to nipso@nipso.org.uk, as their own page says.
+[211s] [elliot → you] Your letter is ready to send to nipso@nipso.org.uk.
+[214s] [elliot → you] You are ready to complain to NIPSO now because you have Belfast Trust's final response. NIPSO's online form is currently unavailable, so the checked route is by email to nipso@nipso.org.uk; I have prepared the complaint message for that route. Do not send anyt
+
+RUN escalation-2026-11-08T03-44-16-219Z 3.6 min; body Northern Ireland Public Services Ombudsman (NIPSO); ready ready ("after receiving a final response from the Belfast Health and Social Care Trust"); limit unclear ""; form failed (0 fields, unfilled: none) at https://www.nipso.org.uk/make-complaint/online-complaints-form — Northern Ireland Public Services Ombudsman (NIPSO): your letter is ready to send to nipso@nipso.org.uk.; sendTo email nipso@nipso.org.uk; letter yes; stats {"agents":3,"sites":1,"pages":7,"actions":7}
