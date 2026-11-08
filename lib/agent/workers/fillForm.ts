@@ -4,6 +4,7 @@ import { dismissCookies } from "../../browser";
 import { decide, type DAnswer, type DQuestion } from "../decisions";
 import { ANY_PLACEHOLDER, labelDuplicates, matchOption, redactObservation, runDecisionAgent } from "../decisionAgent";
 import { formatObservation, observe, PLACEHOLDER, type El, type Observation } from "../observe";
+import { auditControl, followLink, linkVerdict, pageHasAnswers, withoutSends } from "../pressGuard";
 import type { Value, Wall, WorkerCtx } from "./types";
 
 /**
@@ -736,28 +737,37 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
   async function clickForward(p: Page, given: Fwd, why: "start" | "next" | "retry") {
     let f = given;
     // Backstop for every click on a filled form page: the final/not-final verdict, recomputed on the live page now.
-    if (why !== "start") {
+    // A start page that already holds answers is a filled page too.
+    const answers = await pageHasAnswers(p);
+    if (why !== "start" || answers) {
       const live = await liveForwardVerdict(p, f);
       if (!live.ok) throw new Error(`refused to click "${short(f.label, 40)}": ${live.final}`);
       f = live.fwd;
     }
     const loc = p.locator(`[data-aid="${f.id}"]`);
-    const href = f.kind === "link" ? await loc.getAttribute("href").catch(() => null) : null;
-    const target = f.kind === "link" ? await loc.getAttribute("target").catch(() => null) : null;
     // Safety in code: whatever the page or the model says, a control whose label means "send" is never clicked,
-    // except a plain link that only opens the form from a start page (it carries no data).
-    const plainLink = !!href && !/^\s*(javascript:|#)/i.test(href);
+    // except a VERIFIED plain link that only opens the form from a start page (it carries no data).
+    const lv = f.kind === "link" ? await linkVerdict(p, f.id, answers) : null;
     const live = ((await loc.innerText({ timeout: 2000 }).catch(() => "")) || (await loc.getAttribute("value").catch(() => "")) || f.label).trim();
-    if ((FINAL_RE.test(f.label) || FINAL_RE.test(live)) && !(why === "start" && plainLink)) throw new Error(`refused to click "${short(live || f.label, 40)}": it would send the form`);
+    if ((FINAL_RE.test(f.label) || FINAL_RE.test(live)) && !(why === "start" && lv?.ok)) throw new Error(`refused to click "${short(live || f.label, 40)}": it would send the form`);
+    if (f.kind === "link" && !lv?.ok) throw new Error(`refused to click "${short(f.label, 40)}": ${lv?.why ?? "not a plain link"}`);
     await pointAt(p, loc);
-    if (href && target === "_blank" && /^https?:|^\//i.test(href)) {
-      await p.goto(new URL(href, p.url()).toString(), { waitUntil: "domcontentloaded" });
+    if (f.kind === "link" && lv?.ok) {
+      // A verified link is followed by its address: no click handler on the page can run.
+      await followLink(p, lv.to);
     } else {
       // Sticky footers and cookie bars can cover the button: centre it and retry, then click it through the DOM.
-      await loc.click({ timeout: 6000 }).catch(async () => {
-        await loc.evaluate((e) => e.scrollIntoView({ block: "center" })).catch(() => {});
-        await loc.click({ timeout: 3000 }).catch(() => loc.evaluate((e) => (e as HTMLElement).click(), undefined, { timeout: 3000 }));
-      });
+      // With answers on the page, a script button runs with every write blocked (a send would be aborted and reported).
+      const press = async () => {
+        await loc.click({ timeout: 6000 }).catch(async () => {
+          await loc.evaluate((e) => e.scrollIntoView({ block: "center" })).catch(() => {});
+          await loc.click({ timeout: 3000 }).catch(() => loc.evaluate((e) => (e as HTMLElement).click(), undefined, { timeout: 3000 }));
+        });
+      };
+      if (answers && f.kind !== "submit") {
+        const { blocked } = await withoutSends(p, press);
+        if (blocked.length) { await log("check", `Blocked ${blocked.length} write request(s) made by "${short(f.label, 30)}": ${blocked.slice(0, 2).join("; ")}`); throw new Error(`"${short(f.label, 40)}" tried to send data; blocked`); }
+      } else await press();
     }
     ctx.track.bump("action");
     lastClicked = f.label;
@@ -891,8 +901,7 @@ async function classify(page: Page, obs: Observation, goal: string, values: Valu
   let forward: El | undefined;
   if (fwdA?.type === "choice" && fwdA.choice.startsWith("el:")) forward = cands.find((e) => `el:${e.id}` === fwdA.choice);
   if (!forward) forward = cands.find((e) => NEXT_RE.test(e.label) && !FINAL_RE.test(e.label) && e.kind !== "link") ?? cands.find((e) => (e.kind === "submit" || e.kind === "button") && FINAL_RE.test(e.label)) ?? (kind !== "form" ? cands.find((e) => NEXT_RE.test(e.label)) : undefined);
-  const href = forward?.kind === "link" ? await page.locator(`[data-aid="${forward.id}"]`).getAttribute("href").catch(() => null) : null;
-  const forwardIsPlainLink = !!href && !/^\s*(javascript:|#)/i.test(href);
+  const forwardIsPlainLink = forward?.kind === "link" && (await linkVerdict(page, forward.id, await pageHasAnswers(page))).ok;
 
   // Final, decided in code. When unsure, it is final.
   const lastP = lastA?.type === "predicate" ? lastA.probability : 0.5;
@@ -1026,8 +1035,19 @@ export async function liveForwardVerdict(page: Page, f: { label: string; kind: E
   const loc = page.locator(`[data-aid="${el.id}"]`);
   const live = ((await loc.innerText({ timeout: 2000 }).catch(() => "")) || (await loc.getAttribute("value").catch(() => "")) || fwd.label).trim();
   if (FINAL_RE.test(fwd.label) || FINAL_RE.test(live)) return { ok: false, fwd, final: `its label "${short(live || fwd.label, 30)}" sends` };
-  const href = el.kind === "link" ? await loc.getAttribute("href").catch(() => null) : null;
-  if (href && !/^\s*(javascript:|#)/i.test(href)) return { ok: true, fwd, why: "a plain link: it carries no answers" };
+  // Codex round 5: a link is no longer exempt. An `<a href>` can carry onclick or a script listener that sends the form,
+  // whatever its label. On a form page a link is pressed only when code VERIFIES it (same-origin address, no handler,
+  // not tied to a form), and then it is followed by address, never clicked. Otherwise: refuse, "needs your input".
+  if (el.kind === "link") {
+    const lv = await linkVerdict(page, el.id, true);
+    if (!lv.ok) return { ok: false, fwd, final: `"${short(fwd.label, 30)}" is a link that cannot be verified as plain navigation (${lv.why})` };
+    return { ok: true, fwd, why: lv.why };
+  }
+  // A submit control wired to a script (onclick, a listener) may do anything, whatever it says: not pressed.
+  if (el.kind === "submit") {
+    const au = await auditControl(page, el.id);
+    if (au && au.handlers.length) return { ok: false, fwd, final: `"${short(fwd.label, 30)}" runs a script (${au.handlers.slice(0, 2).join("; ")}) and may send this form` };
+  }
   const later = await laterStepEvidence(page, el.id);
   if (!later) return { ok: false, fwd, final: `"${short(fwd.label, 30)}" may send this form: on the page as filled, nothing of this form shows a later step` };
   return { ok: true, fwd, why: later };

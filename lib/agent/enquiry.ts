@@ -15,6 +15,7 @@ import { agent, pageText, Tracer, Tracker, type Emit, type Note } from "./legalA
 import type { FirmFinding, Step3Event, Step3Result } from "./legalAidTypes";
 import { modelFor, structured } from "./llm";
 import { observe, PLACEHOLDER } from "./observe";
+import { assessForm, classifyField, expectFrom, findFinalControl, stillOnUnsentForm, type Expect, type ReadyVerdict } from "./enquiryReady";
 
 /**
  * Step 4 (D45): contact up to 3 firms. Server only.
@@ -225,6 +226,40 @@ export async function snapshot(page: Page) {
 }
 
 
+/* ------------------------------------------------------------------ honest readiness (Codex round 5, blocker 2) */
+
+/** What code meant to type into each tab's form, so a later read-back can compare (values never go to a model). */
+const EXPECT = new WeakMap<Page, Expect>();
+
+/** The verdict on the form as it is now: read back from the DOM, final control identified, nothing pressed. */
+async function assessPage(p: Page, form: Awaited<ReturnType<typeof readForm>>, expect: Expect): Promise<ReadyVerdict> {
+  return assessForm({
+    fields: form.fields,
+    expect,
+    finalControl: await findFinalControl(p),
+    stillOnForm: await stillOnUnsentForm(p),
+    missingRequired: form.unfilled.filter((l) => !CONSENT_RE.test(l)),
+  });
+}
+
+/** Read the open form back and judge it (used by the run's own checks and by the trap test). Never presses anything. */
+export async function checkFilledForm(p: Page, expect: Expect): Promise<ReadyVerdict> {
+  return assessPage(p, await readForm(p), expect);
+}
+
+/** For a tab we did not fill ourselves (or after the user's edits): what each recognisable box holds now is what is meant to be there. */
+function expectNow(p: Page, form: Awaited<ReturnType<typeof readForm>>, edits: FieldEdit[] = []): Expect {
+  const out: Expect = { ...(EXPECT.get(p) ?? {}) };
+  if (!EXPECT.has(p)) for (const f of form.fields) { const slot = classifyField(f); if (slot && f.value.trim() && !out[slot]) out[slot] = f.value; }
+  for (const ed of edits) {
+    const f = form.fields.find((x) => x.name === ed.name && x.label === ed.label) ?? form.fields.find((x) => x.label === ed.label);
+    const slot = classifyField(f ?? { name: ed.name, label: ed.label, kind: "text" });
+    if (slot && ed.value.trim()) out[slot] = ed.value;
+  }
+  EXPECT.set(p, out);
+  return out;
+}
+
 /* ------------------------------------------------------------------ one firm */
 
 const noop = Object.assign(() => {}, { log: async () => {} }) as Note;
@@ -273,19 +308,33 @@ export async function fillOne(
     run = await runBrowserAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 10, onEvent });
   }
   const form = await readForm(p, before);
-  await note.log("type", `Filled ${form.filled.length} field${form.filled.length === 1 ? "" : "s"}; stopped before Send`, {
-    shot: true,
-    detail: form.filled.map((x) => `${x.label}: ${x.value.length > 80 ? x.value.slice(0, 80) + "…" : x.value}`).join("\n"),
-  });
+  const expect = expectFrom(values);
+  EXPECT.set(p, expect);
+  const verdict = await assessPage(p, form, expect);
   const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
-  if (missing.length > 0) {
+  await note.log("type", verdict.verified.length ? `Filled ${verdict.verified.length} box${verdict.verified.length === 1 ? "" : "es"} and read them back; stopped before Send` : "Filled nothing we could read back", {
+    shot: true,
+    detail: [form.filled.map((x) => `${x.label}: ${x.value.length > 80 ? x.value.slice(0, 80) + "…" : x.value}`).join("\n"), `Check: ${verdict.reason}`].filter(Boolean).join("\n"),
+  });
+  const common = { ...base, formUrl, filled: form.filled, consents: form.consents, fields: form.fields };
+  if (verdict.status === "could_not_fill") {
+    note("Could not fill their form");
+    await note.log("recover", verdict.reason, { shot: true });
+    return { ...common, status: "could_not_fill", unfilled: missing, note: verdict.reason };
+  }
+  if (verdict.status === "needs_input") {
     note("Needs an answer from you");
-    return { ...base, status: "needs_input", formUrl, filled: form.filled, unfilled: missing, consents: form.consents, fields: form.fields, question: `Their form asks for: ${missing.join(", ")}. We do not have this.`, note: `The form asks for something we do not know (${missing.join(", ")})` };
+    return { ...common, status: "needs_input", unfilled: missing, question: `Their form asks for: ${missing.join(", ")}. We do not have this.`, note: `The form asks for something we do not know (${missing.join(", ")})` };
+  }
+  if (verdict.status === "partial") {
+    note("Only partly filled");
+    await note.log("recover", verdict.reason, { shot: true });
+    return { ...common, status: "partial", unfilled: [...missing, ...verdict.problems], question: verdict.reason, note: verdict.reason };
   }
   if (run.status === "needs_input" && run.question && !/confirm/i.test(run.question)) await note.log("check", run.question);
   if (form.consents.length) await note.log("check", `${form.consents.length} consent box${form.consents.length === 1 ? "" : "es"} left unticked for your approval`, { detail: form.consents.join("\n") });
   note("Filled. Waiting for your approval");
-  return { ...base, status: "ready_to_send", formUrl, filled: form.filled, unfilled: [], consents: form.consents, fields: form.fields, note: "Form filled and stopped before Send. Waiting for your approval" };
+  return { ...common, status: "ready_to_send", unfilled: [], note: "Form filled and stopped before Send. Waiting for your approval" };
 }
 
 /* ------------------------------------------------------------------ the run */
@@ -341,7 +390,7 @@ export async function runEnquiries(
           attempts > 1 ? `${label(f)} (retry)` : label(f),
           async (p, note) => {
             const o = await fillOne(p, f, input, note, track, (x) => put({ ...x, swappedFor, attempts }));
-            if (o.status === "ready_to_send" || o.status === "needs_input") REG.tabs.set(f.id, { page: p, firm: f, email: input.facts.email, runId, tracer, note });
+            if (o.status === "ready_to_send" || o.status === "needs_input" || o.status === "partial") REG.tabs.set(f.id, { page: p, firm: f, email: input.facts.email, runId, tracer, note });
             return o;
           },
           150_000,
@@ -451,11 +500,13 @@ async function applyEdits(open: Open, edits: FieldEdit[]): Promise<{ applied: nu
 }
 
 /** The open form as the review should show it now: ready, or still missing required fields only the user can supply. */
-async function describeForm(open: Open, why?: string): Promise<EnquiryOutcome> {
+async function describeForm(open: Open, why?: string, edits: FieldEdit[] = []): Promise<EnquiryOutcome> {
   const form = await readForm(open.page);
   const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
-  const base: EnquiryOutcome = { firmId: open.firm.id, firmName: open.firm.name, status: "ready_to_send", formUrl: open.page.url(), filled: form.filled, unfilled: [], consents: form.consents, fields: form.fields, note: "" };
-  if (missing.length) return { ...base, status: "needs_input", unfilled: missing, question: `Their form still needs: ${missing.join(", ")}.`, note: why ?? `The form needs ${missing.join(", ")} from you` };
+  const verdict = await assessPage(open.page, form, expectNow(open.page, form, edits));
+  const base: EnquiryOutcome = { firmId: open.firm.id, firmName: open.firm.name, status: verdict.status, formUrl: open.page.url(), filled: form.filled, unfilled: [], consents: form.consents, fields: form.fields, note: "" };
+  if (verdict.status === "needs_input") return { ...base, unfilled: missing, question: `Their form still needs: ${missing.join(", ")}.`, note: why ?? `The form needs ${missing.join(", ")} from you` };
+  if (verdict.status !== "ready_to_send") return { ...base, unfilled: [...missing, ...verdict.problems], question: verdict.reason, note: why ? `${why}. ${verdict.reason}` : verdict.reason };
   return { ...base, note: why ?? "Form filled and stopped before Send. Waiting for your approval" };
 }
 
@@ -464,7 +515,7 @@ export async function editEnquiry(firmId: string, edits: FieldEdit[]): Promise<E
   const open = REG.tabs.get(firmId);
   if (!open || open.page.isClosed()) return gone(firmId, open);
   const { missed } = await applyEdits(open, edits);
-  const out = await describeForm(open);
+  const out = await describeForm(open, undefined, edits);
   return missed.length ? { ...out, note: `${out.note}. Could not find on their page any more: ${missed.join(", ")}` } : out;
 }
 
@@ -491,6 +542,10 @@ export async function sendEnquiry(firmId: string, agreed: string[], edits: Field
   }
   const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
   if (missing.length) return { ...base, status: "needs_input", unfilled: missing, question: `Their form still needs: ${missing.join(", ")}.`, note: `The form still needs ${missing.join(", ")}` };
+
+  // Never press Send on a form we cannot show is filled: read back, final control found, still the unsent form.
+  const verdict = await assessPage(page, form, expectNow(page, form, edits));
+  if (verdict.status !== "ready_to_send") return { ...base, status: verdict.status, unfilled: [...missing, ...verdict.problems], question: verdict.reason, note: `Not sent: ${verdict.reason}` };
 
   // Tick only the consent boxes whose text the user agreed to, word for word.
   const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();

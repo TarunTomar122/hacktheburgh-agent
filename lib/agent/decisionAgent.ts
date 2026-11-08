@@ -4,6 +4,7 @@ import { formatObservation, observe, PLACEHOLDER, unfilledRequired, type El, typ
 import type { OnEvent } from "./events";
 import type { BrowserRun, Value } from "./browserAgent";
 import { pointAt } from "../agentCursor";
+import { auditControl, followLink, linkVerdict, pageHasAnswers, withoutSends } from "./pressGuard";
 
 /**
  * Browser agent driven by the Decisions API. The model only CHOOSES (which saved value belongs in a field,
@@ -127,7 +128,10 @@ export async function runDecisionAgent(opts: {
       // Multi-page forms: nothing on this page is unresolved (only optional fields we have no data for, e.g. diversity
       // monitoring), so "ask" means the model is unsure, not that data is missing. Move on with the allowed "Next" button.
       const next = opts.advance && unsure.length === 0 && f.status === "ready_to_submit" ? obs.elements.find((e) => e.kind === "submit" && !e.disabled && opts.advance!.test(e.label.trim())) : undefined;
-      if (next) {
+      const nextAudit = next && !opts.allowSubmit ? await auditControl(page, next.id) : null;
+      if (next && nextAudit?.handlers.length) {
+        emit({ type: "blocked", step, reason: `BLOCKED: "${next.label.slice(0, 40)}" runs a script (${nextAudit.handlers.slice(0, 2).join("; ")}) and could send the form` });
+      } else if (next) {
         await page.locator(`[data-aid="${next.id}"]`).click({ timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(700);
         emit({ type: "action", step, tool: "click", args: { id: next.id, label: next.label.slice(0, 40), reason: "nothing required left on this page" }, result: "ok" });
@@ -148,9 +152,36 @@ export async function runDecisionAgent(opts: {
     // A one-page form (no `advance` given, e.g. a firm's enquiry form) never needs a button: any button there could send it.
     const sends = !!el && (el.kind === "submit" || (el.kind === "button" && !opts.advance) || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim())));
     if (!el || (sends && !opts.allowSubmit && !(el.kind === "submit" && opts.advance?.test(el.label.trim()) && !SENDS_RE.test(el.label.trim())))) return finish(page, opts, stats, step, unsure);
+    // Codex round 5: a label that dodges SENDS_RE ("Continue", "Next", "Proceed", "Go on") proves nothing. Without
+    // allowSubmit, a link is pressed only when code VERIFIES it as plain navigation (and then followed by address, not
+    // clicked); a script button never once anything has been entered; a submit control wired to a script never.
+    let followTo: string | undefined;
+    let scripted = false;
+    if (!opts.allowSubmit) {
+      const answers = await pageHasAnswers(page);
+      let why = "";
+      if (el.kind === "link") {
+        const lv = await linkVerdict(page, el.id, answers);
+        if (lv.ok) followTo = lv.to; else why = lv.why;
+      } else if (el.kind === "button") {
+        if (answers) why = "a script button on a page holding answers cannot be verified as navigation";
+        else scripted = true;
+      } else if (el.kind === "submit") {
+        const au = await auditControl(page, el.id);
+        if (au?.handlers.length) why = `it runs a script (${au.handlers.slice(0, 2).join("; ")})`;
+      }
+      if (why) {
+        emit({ type: "blocked", step, reason: `BLOCKED: "${el.label.slice(0, 40)}" could send the form: ${why}` });
+        return finish(page, opts, stats, step, unsure);
+      }
+    }
     try {
       await pointAt(page, page.locator(`[data-aid="${el.id}"]`));
-      await page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 });
+      if (followTo) await followLink(page, followTo);
+      else if (scripted) {
+        const { blocked } = await withoutSends(page, () => page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 }));
+        if (blocked.length) emit({ type: "blocked", step, reason: `BLOCKED: "${el.label.slice(0, 40)}" tried to send data (${blocked.slice(0, 2).join("; ")})` });
+      } else await page.locator(`[data-aid="${el.id}"]`).click({ timeout: 5000 });
       await page.waitForTimeout(700);
       emit({ type: "action", step, tool: "click", args: { id: el.id, label: el.label.slice(0, 40), confidence: +nav.confidence.toFixed(2) }, result: "ok" });
     } catch (e) {

@@ -3,6 +3,7 @@ import type { FunctionTool, ResponseFunctionToolCall } from "openai/resources/re
 import { EFFORT, MODELS, respond } from "./llm";
 import { formatObservation, observe, unfilledRequired, type El, type Observation } from "./observe";
 import type { OnEvent, RunStatus } from "./events";
+import { followLink, linkVerdict, pageHasAnswers, withoutSends } from "./pressGuard";
 
 export type Value = { key: string; description: string; value: string; public?: boolean }; // public: not personal, may be shown to the model
 
@@ -172,6 +173,23 @@ async function execute(page: Page, obs: Observation, tool: string, args: Record<
       case "click":
         // Hard rule in code, not a prompt: the agent can never submit.
         if ((el.kind === "submit" || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim()))) && !allowSubmit) return "BLOCKED: this would send or submit; that needs human approval. Do not click it. Call finish when the form is filled.";
+        // Codex round 5: a harmless label proves nothing. Links are pressed only when code verifies them as plain
+        // navigation (then followed by address, not clicked); a script button never once anything has been entered.
+        if (!allowSubmit) {
+          const answers = await pageHasAnswers(page);
+          if (el.kind === "link") {
+            const lv = await linkVerdict(page, el.id, answers);
+            if (!lv.ok) return `BLOCKED: this link could send the form (${lv.why}). Do not click it. Call finish when the form is filled.`;
+            await followLink(page, lv.to);
+            await page.waitForTimeout(500);
+            return "ok";
+          }
+          if (el.kind === "button") {
+            if (answers) return "BLOCKED: a script button on a page holding answers cannot be verified as navigation. Do not click it. Call finish when the form is filled.";
+            const { blocked } = await withoutSends(page, () => loc.click({ timeout: 5000 }));
+            return blocked.length ? `BLOCKED: that button tried to send data (${blocked.length} write blocked). Call finish.` : "ok";
+          }
+        }
         await loc.click({ timeout: 5000 });
         await page.waitForTimeout(500);
         return "ok";

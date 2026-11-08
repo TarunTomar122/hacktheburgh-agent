@@ -39,7 +39,7 @@ const BUSY: EnquiryStatus[] = ["queued", "finding_form", "filling", "sending"];
 function stage(o: EnquiryOutcome): number {
   if (o.status === "sent") return 4;
   if (o.status === "ready_to_send" || o.status === "send_blocked" || o.status === "needs_input") return 2;
-  if (o.status === "filling") return 1;
+  if (o.status === "filling" || o.status === "partial" || o.status === "could_not_fill") return 1; // found, but never counted as filled
   return 0;
 }
 
@@ -157,17 +157,17 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
     const targets: EnquiryOutcome[] = outcomes.length
       ? outcomes.filter((o) => !(o.status === "no_form" && /swapped in/i.test(o.note)))
       : firms.map((f) => ({ firmId: f.id, firmName: f.name, status: "queued" as const, formUrl: null, filled: [], unfilled: [], consents: [], note: "" }));
-    const skipped = targets.filter((o) => !isSent(o.firmId) && o.status !== "no_form").map((o) => ({ ...o, status: "sent" as const, sentAt: at, note: "Skipped in the demo: nothing was actually sent" }));
+    const skipped = targets.filter((o) => !isSent(o.firmId) && o.status !== "no_form" && o.status !== "could_not_fill").map((o) => ({ ...o, status: "sent" as const, sentAt: at, note: "Skipped in the demo: nothing was actually sent" }));
     setEnquiry({ outcomes: [...targets.filter((o) => !skipped.some((s) => s.firmId === o.firmId)), ...skipped] });
     upsertEnquiries(skipped.map((o) => ({ firmId: o.firmId, firmName: o.firmName, status: "sent" as const, sentAt: at, followUpOn: followUpFrom(at) })));
     skipStep(4);
     setLive(null);
   };
-  const skippable = outcomes.length ? outcomes.filter((o) => o.status !== "no_form").map((o) => o.firmId) : firms.map((f) => f.id);
+  const skippable = outcomes.length ? outcomes.filter((o) => o.status !== "no_form" && o.status !== "could_not_fill").map((o) => o.firmId) : firms.map((f) => f.id);
   const canSkip = !running && !writing && skippable.some((id) => !isSent(id));
   // A firm with no online form that was replaced drops to a one-line note; one we could not replace keeps its card.
   const swapped = (o: EnquiryOutcome) => o.status === "no_form" && /swapped in/i.test(o.note);
-  const rank: Partial<Record<EnquiryOutcome["status"], number>> = { ready_to_send: 0, sent: 1, send_blocked: 2, needs_input: 3, filling: 4, finding_form: 4, queued: 5, failed: 6, no_form: 7 };
+  const rank: Partial<Record<EnquiryOutcome["status"], number>> = { ready_to_send: 0, sent: 1, send_blocked: 2, needs_input: 3, partial: 3, could_not_fill: 6, filling: 4, finding_form: 4, queued: 5, failed: 6, no_form: 7 };
   const active = outcomes.filter((o) => !swapped(o)).sort((a, b) => (rank[a.status] ?? 5) - (rank[b.status] ?? 5));
   const swappedOut = outcomes.filter(swapped);
 
@@ -299,7 +299,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
             setScope({ title: info.firmName, steps });
           }}
           onReview={
-            selected.includes(info.firmId) && !contacted(info.firmId) && (info.status === "ready_to_send" || info.status === "needs_input")
+            selected.includes(info.firmId) && !contacted(info.firmId) && (info.status === "ready_to_send" || info.status === "needs_input" || info.status === "partial")
               ? () => {
                   setInfo(null);
                   setReview(info);
@@ -336,7 +336,7 @@ function FirmModal({ o, firm, steps, onClose, onSteps, onReview }: { o: EnquiryO
       onClose={onClose}
       footer={
         <div className="flex flex-wrap items-center gap-3">
-          {onReview && <Button onClick={onReview}>{o.status === "needs_input" ? "Add the missing details" : "Review and send"}</Button>}
+          {onReview && <Button onClick={onReview}>{o.status === "needs_input" ? "Add the missing details" : o.status === "partial" ? "Check what was filled" : "Review and send"}</Button>}
           {firm?.website && (
             <a href={firm.website} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-ctl border border-line px-3 py-2 text-[14px] font-medium text-ink hover:border-faint">
               Visit their website ↗
@@ -448,7 +448,11 @@ function FirmCard({
             ? "The agent tried twice and could not finish this one."
             : o.status === "ready_to_send"
               ? "Form filled. Check it, then we send it."
-              : o.status === "needs_input"
+              : o.status === "partial"
+                ? `Only partly filled. ${o.note} Check it yourself before anything is sent.`
+                : o.status === "could_not_fill"
+                  ? `We found their form but could not fill it. ${o.note} A phone call works just as well.`
+                : o.status === "needs_input"
                 ? `Their form needs ${o.unfilled.length ? o.unfilled.join(", ") : "a detail we do not have"}. Add it and the agent fills it in.`
                 : o.status === "no_form"
                   ? "No online enquiry form on their website, and no other checked firm to swap in. A phone call works just as well."
@@ -476,18 +480,18 @@ function FirmCard({
       <ol className="mt-5 grid grid-cols-4 gap-1.5" aria-label="Progress">
         {STAGES.map((label, i) => {
           const done = sent ? true : i < at;
-          const stuck = o.status === "failed" || o.status === "send_blocked" || o.status === "no_form";
+          const stuck = o.status === "failed" || o.status === "send_blocked" || o.status === "no_form" || o.status === "partial" || o.status === "could_not_fill";
           const now = !sent && i === at && !stuck;
           return (
             <li key={label}>
-              <div className={cx("h-1.5 rounded-full", done ? "bg-teal" : now ? (busy ? "animate-pulse bg-brand" : "bg-brand") : stuck && i === at ? (o.status === "no_form" ? "bg-amber/60" : "bg-danger/60") : "bg-line-soft")} />
+              <div className={cx("h-1.5 rounded-full", done ? "bg-teal" : now ? (busy ? "animate-pulse bg-brand" : "bg-brand") : stuck && i === at ? (o.status === "no_form" || o.status === "partial" || o.status === "could_not_fill" ? "bg-amber/60" : "bg-danger/60") : "bg-line-soft")} />
               <div className={cx("mt-1.5 text-[11px] leading-4", done || now ? "text-ink-2" : "text-faint")}>{label}</div>
             </li>
           );
         })}
       </ol>
 
-      <p className={cx("mt-4 flex-1 text-[13px] leading-5", o.status === "failed" || o.status === "send_blocked" ? "text-danger" : due ? "text-amber" : "text-ink-2")}>
+      <p className={cx("mt-4 flex-1 text-[13px] leading-5", o.status === "failed" || o.status === "send_blocked" ? "text-danger" : due || o.status === "partial" || o.status === "could_not_fill" ? "text-amber" : "text-ink-2")}>
         {due ? `No reply since ${nice(rec?.sentAt)}. Worth a short follow-up now.` : line}
       </p>
 
@@ -502,12 +506,17 @@ function FirmCard({
             Add the missing details
           </Button>
         )}
-        {o.status === "failed" && (
+        {o.status === "partial" && !sent && (
+          <Button className="w-full" size="sm" variant="secondary" onClick={onReview}>
+            Check what was filled
+          </Button>
+        )}
+        {(o.status === "failed" || o.status === "could_not_fill") && (
           <Button className="w-full" size="sm" variant="secondary" disabled={running} onClick={onRetry}>
             Try again
           </Button>
         )}
-        {o.status === "no_form" && firm?.phone && (
+        {(o.status === "no_form" || o.status === "could_not_fill") && firm?.phone && (
           <a href={`tel:${firm.phone.replace(/\s+/g, "")}`} className="flex w-full items-center justify-center rounded-ctl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-faint">
             Call them: {firm.phone}
           </a>
@@ -695,6 +704,11 @@ function ApproveModal({ o, local, onClose, onResult }: { o: EnquiryOutcome; loca
         )
       }
     >
+      {o.status === "partial" && (
+        <p className="rounded-card border border-amber/40 bg-amber-soft/40 p-4 text-[13px] leading-5 text-ink-2">
+          <span className="font-medium text-ink">Only partly filled.</span> {o.note} Nothing is sent until the form reads back as filled and you approve it.
+        </p>
+      )}
       {waiting.length > 0 && (
         <section className="space-y-3 rounded-card border border-amber/40 bg-amber-soft/40 p-4">
           <div>

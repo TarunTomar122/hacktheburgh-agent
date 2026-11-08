@@ -21,7 +21,9 @@ export type EnquiryStatus =
   | "queued"
   | "finding_form" // looking harder for a form (contact page, popups, footer)
   | "filling"
-  | "ready_to_send" // form filled, waiting for the user's approval
+  | "ready_to_send" // form filled AND verified (read back from the page, final control found, nothing pressed), waiting for the user's approval
+  | "partial" // some boxes read back, but something is missing or unverified (see `note`): never counted as filled
+  | "could_not_fill" // the form was found but nothing could be filled and read back (see `note`): never counted as filled
   | "needs_input" // the form asks something we do not know; see `question`
   | "no_form" // no online form found even after a harder look; the run swaps in the next best firm (D46)
   | "email_draft" // legacy (D45): no longer produced
@@ -73,7 +75,8 @@ export type Step4Event =
  * POST /api/agent/step4/draft { facts, legalAid?: { verdict, route } } -> EnquiryMessage
  * POST /api/agent/step4/edit  { firmId, edits: FieldEdit[] } -> { enquiry: EnquiryOutcome }  (D64)
  *   The agent types the user's edits into the open form (never sends) and returns what the form looks like now:
- *   ready_to_send if every required field is filled, needs_input if something is still missing.
+ *   ready_to_send only if the form reads back as filled and its Send button is identified; needs_input if a required field is
+ *   missing; partial or could_not_fill (with the reason in `note`) otherwise.
  * POST /api/agent/step4/send  { firmId, consents: string[], edits?: FieldEdit[] } -> { enquiry: EnquiryOutcome }
  *   `consents` = the checkbox texts the user explicitly agreed to in our app; only those are ticked.
  *   Status comes back as sent | send_blocked | needs_input | failed.
