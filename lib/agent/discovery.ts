@@ -154,7 +154,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
         const who = whoOf(a);
         switch (call.name) {
           case "web_search": {
-            const r = await kit.inTab(thought, who, "Search", (p, note) => webSearch(p, String(a.query ?? ""), note, kit.track), 60_000);
+            const r = await kit.inTab(thought, who, "Search", (p, note) => webSearch(p, String(a.query ?? ""), note, kit.track), 150_000);
             if (!r.ok) return `Could not search: ${r.error}`;
             r.value.forEach((x) => learn(x.url));
             return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";

@@ -7,6 +7,7 @@ import type { FirmFinding, Route, Verdict } from "./legalAidTypes";
 import { draftEnquiry, fillOne, keepForApproval } from "./enquiry";
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 import { findGuidance } from "./guidance";
+import { describeInvestigation, describeIssue, investigate } from "./investigate";
 import type { EvidenceResult, PlannerResult } from "./plannerTypes";
 import type { RouteMap } from "./routeTypes";
 import { readPage } from "./workers/explore";
@@ -32,6 +33,7 @@ const TOOLS = [
   tool("search_register", "Robin: search a professional register or directory with its own search filters (area of law, place), and read the entries. Defaults to the one discovery found; give url to use another directory found by web_search in this run.", { area: { type: "string", description: "The area of law in this place's own terms, e.g. 'clinical negligence'" }, url: { type: "string" } }, ["area"]),
   tool("check_firm", "Robin: open a firm's own website (from its register entry, or found by search), check it is the same firm as the register entry, and read whether it acts for patients, works on no win no fee, and has an enquiry form.", { firm_id: { type: "string" } }, ["firm_id"]),
   tool("find_guidance", "Iona: find the recommendation about the patient's condition in the place's own clinical guidance, quote it, and compare it with the timeline.", { condition: { type: "string" } }, ["condition"]),
+  tool("investigate", "Iona: look on the official sites of the compensation scheme or courts for published decisions or awards in cases like this one (what was decided and why), quotes checked by code. Takes up to 3.5 minutes; where nothing is found it says so.", { condition: { type: "string" }, issue: { type: "string", description: "One generic sentence on what went wrong with the care: no names, no dates, no places" } }, ["condition", "issue"]),
   tool("shortlist", "Elliot: score the checked firms and pick up to 3 for the patient.", { firm_ids: { type: "array", items: { type: "string" } }, route: { type: "string", enum: ["legal_aid", "no_win_no_fee"] } }, ["firm_ids", "route"]),
   tool("fill_enquiry", "Kit: fill a shortlisted firm's online enquiry form with the patient's message (carrying Nell's funding result and Iona's point), stopping before Send.", { firm_id: { type: "string" } }, ["firm_id"]),
   ASK_TOOL,
@@ -63,18 +65,18 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
     {
       prefix: "step3",
       system: `You lead a crew helping a patient in ${placeName} find out how a compensation claim could be paid for, and contact the right lawyers. Discovery already worked out the route (below); use its pages and register. Work in this order, adapting when results call for it (say why with update_plan):
-1. Nell: check_funding, and Robin: read_scheme if the compensation part is a scheme (same turn). Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
+1. Nell: check_funding, and Robin: read_scheme if the compensation part is a scheme (same turn). Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant), and investigate (once, same turn: published decisions or awards in similar cases). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
 If the register is blocked (CAPTCHA, login), web_search for another official or specialist directory of lawyers who do this work in this place, then search_register with its url. Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Prefer firms based in or near the patient's own place when checking and shortlisting (a regional directory can list firms far away). Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
 ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, points: s.points })), null, 1).slice(0, 6000)}`,
       tools: TOOLS,
       firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
       // Funding and the scheme first: they decide whether lawyers are needed at all (Cursor round 3).
-      stage: { check_funding: 1, read_scheme: 1, web_search: 2, search_register: 2, find_guidance: 2, check_firm: 3, shortlist: 4, fill_enquiry: 5 },
-      who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" || name === "web_search" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
+      stage: { check_funding: 1, read_scheme: 1, web_search: 2, search_register: 2, find_guidance: 2, investigate: 2, check_firm: 3, shortlist: 4, fill_enquiry: 5 },
+      who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" || name === "web_search" ? "robin" : name === "find_guidance" || name === "investigate" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
       doing: (name, a) => {
         const f = firms.get(String(a.firm_id ?? ""));
-        return ({ check_funding: `Checking funding with ${step("funding")?.body ?? "the official checker"}`, read_scheme: `Reading how ${step("compensation")?.body ?? "the scheme"} works`, search_register: `Searching ${step("lawyers")?.body ?? "the register"}`, check_firm: f ? `Checking ${f.name}'s website` : "Checking a firm", find_guidance: "Finding the clinical guidance", shortlist: "Choosing the best fits", fill_enquiry: f ? `Filling ${f.name}'s enquiry form` : "Filling an enquiry form" } as Record<string, string>)[name] ?? "Working";
+        return ({ check_funding: `Checking funding with ${step("funding")?.body ?? "the official checker"}`, read_scheme: `Reading how ${step("compensation")?.body ?? "the scheme"} works`, search_register: `Searching ${step("lawyers")?.body ?? "the register"}`, check_firm: f ? `Checking ${f.name}'s website` : "Checking a firm", find_guidance: "Finding the clinical guidance", investigate: "Looking for published decisions and awards", shortlist: "Choosing the best fits", fill_enquiry: f ? `Filling ${f.name}'s enquiry form` : "Filling an enquiry form" } as Record<string, string>)[name] ?? "Working";
       },
       describe: (name, a, out) => {
         const f = firms.get(String(a.firm_id ?? ""));
@@ -90,6 +92,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           const e = enquiries.get(String(a.firm_id ?? ""));
           return e ? (e.status === "ready_to_send" ? `${e.firmName}: enquiry filled. Waiting for your OK before anything is sent.` : `${e.firmName}: ${e.note}`) : short(out, 200);
         }
+        if (name === "investigate" && proof.investigation) return proof.investigation.items.length ? `Found ${proof.investigation.items.length} official ${proof.investigation.items.length === 1 ? "item" : "items"}. ${proof.investigation.items[0].publisher}: "${short(proof.investigation.items[0].quote, 140)}"` : "I looked on the official sites and found no published decisions to cite.";
         if (name === "find_guidance" && proof.guideline?.points.length) return `${proof.guideline.name}: "${short(proof.guideline.points[0].text, 160)}"`;
         return short(out.split("\n")[0], 200);
       },
@@ -149,7 +152,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((x) => x.checked).map((x) => `"${x.quote}"`).join(" | ")}`;
           }
           case "web_search": {
-            const r = await kit.inTab(thought, "robin", "Search", (p, note) => webSearch(p, s("query"), note, kit.track), 90_000);
+            const r = await kit.inTab(thought, "robin", "Search", (p, note) => webSearch(p, s("query"), note, kit.track), 150_000);
             if (!r.ok) return `Could not search: ${r.error}`;
             r.value.forEach((x) => found.add(host(x.url)));
             return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
@@ -213,6 +216,11 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           }
           case "find_guidance":
             return (await findGuidance(kit, thought, route, facts, s("condition") || "the patient's condition", proof)).text;
+          case "investigate": {
+            if (proof.investigation) return "Already investigated.";
+            const brief = s("issue") ? { condition: s("condition") || "the patient's condition", issue: s("issue") } : await describeIssue(facts);
+            return describeInvestigation(await investigate(kit, thought, route, brief, proof, { focus: "compensation" }));
+          }
           case "shortlist": {
             // Legal aid only when Nell's checker actually said likely; the model's choice cannot override that.
             routeKind = s("route") === "legal_aid" && verdict === "likely" ? "legal_aid" : "no_win_no_fee";

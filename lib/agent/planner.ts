@@ -212,7 +212,7 @@ const ENGINES = [
 ];
 const engineCooldown = new Map<string, number>(); // engine -> walled until (ms)
 
-export async function webSearch(page: Page, query: string, note: Note, track: Tracker) {
+async function searchEngines(page: Page, query: string, note: Note, track: Tracker): Promise<{ title: string; url: string; snippet: string }[]> {
   note(`Searching: ${short(query, 50)}`);
   const walled = async () => /captcha|verify(ing)? you('| a)?re? (not )?(a )?(human|bot|robot)|not a bot|unusual traffic|are you a robot|drag the slider/i.test(await page.evaluate(() => document.body.innerText.slice(0, 3000)).catch(() => ""));
   const engines = ENGINES.filter((e) => (engineCooldown.get(e.name) ?? 0) < Date.now());
@@ -286,6 +286,37 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
     if (results.length || engine === ENGINES[ENGINES.length - 1]) return results;
   }
   throw new Error("Blocked: every search engine asked for a human check");
+}
+
+type SearchHit = { title: string; url: string; snippet: string };
+/**
+ * One search at a time for the whole process, a few seconds apart (a person does not fire five searches at once; parallel
+ * searches are what brings up the bot check), and the same query asked twice in a short time is answered from memory.
+ * Reading official pages stays parallel: those are different sites.
+ */
+const oneSearch = limiter(1);
+const searchCache = new Map<string, { at: number; hits: Promise<SearchHit[]> }>();
+let lastSearchAt = 0;
+export async function webSearch(page: Page, query: string, note: Note, track: Tracker): Promise<SearchHit[]> {
+  const key = query.toLowerCase().replace(/\s+/g, " ").trim();
+  const hit = searchCache.get(key);
+  if (hit && Date.now() - hit.at < 20 * 60 * 1000) {
+    note(`Already searched: ${short(query, 40)}`);
+    const r = await hit.hits.catch(() => null);
+    if (r?.length) return r;
+  }
+  const hits = oneSearch(async () => {
+    const gap = 2500 + Math.random() * 2500 - (Date.now() - lastSearchAt);
+    if (gap > 0) await new Promise((r) => setTimeout(r, gap));
+    try {
+      return await searchEngines(page, query, note, track);
+    } finally {
+      lastSearchAt = Date.now();
+    }
+  });
+  searchCache.set(key, { at: Date.now(), hits });
+  hits.catch(() => searchCache.delete(key));
+  return hits;
 }
 
 const Reading = z.object({
