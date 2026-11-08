@@ -163,6 +163,20 @@ result: only when the checker's outcome is on the page. Copy its words exactly f
     // A free-text box that asks for an amount (income, outgoings, savings, capital) is a money question: asked as one, so the
     // patient gets the money input and the answer is typed as a number (seen 2026-11-08: SLAB's "Your net annual income" came as text).
     for (const q of read.questions) if (q.answerType === "text" && /\b(income|outgoings?|earnings?|salary|wages?|savings|capital|rent|mortgage|benefits? amount|how much|amount)\b|£|€|\$/i.test(q.question)) q.answerType = "money";
+    // A bare instruction ("Please select from the following:") is not a question a person can answer. Use the real question
+    // the page asks just above it (the line ending in "?" or ":" that comes before), so the patient knows what is being asked.
+    for (const q of read.questions) {
+      if (!/^\s*(please\s+)?(select|choose|tick|pick)\b.{0,40}$|^\s*(select|choose) (one|an option|from)/i.test(q.question.replace(/\*/g, "").trim())) continue;
+      const text = String(snap.text ?? "");
+      const at = text.toLowerCase().indexOf(q.question.replace(/\*/g, "").trim().toLowerCase().slice(0, 30));
+      const before = (at > 0 ? text.slice(0, at) : text).split(/\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+      const idx = before.map((l, i) => ({ l, i })).reverse().find(({ l }) => /[?:]\s*$/.test(l) && l.length > 12 && !/^\s*(please\s+)?(select|choose|tick)/i.test(l))?.i;
+      if (idx === undefined) continue;
+      // The lines between the question and the instruction are what it refers to ("the following benefits"): keep them, whole.
+      const items = before.slice(idx + 1).filter((l) => l.length < 120);
+      const realQ = before[idx].replace(/\*+$/, "").trim();
+      q.question = items.length && items.length <= 10 ? `${realQ} ${items.join("; ")}` : realQ;
+    }
     await log("decide", read.reasoning.slice(0, 200), { detail: read.questions.map((q) => `${q.question} [${q.answerType}]${q.knownKey ? ` <- known "${q.knownKey}"` : ""}`).join("\n") || undefined });
 
     // Identity, contact details or login: stop. The checker's result, if already shown, still counts.
