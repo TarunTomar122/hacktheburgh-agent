@@ -294,6 +294,51 @@ type SearchHit = { title: string; url: string; snippet: string };
  * searches are what brings up the bot check), and the same query asked twice in a short time is answered from memory.
  * Reading official pages stays parallel: those are different sites.
  */
+/**
+ * A search API where a key is set (EXA_API_KEY, TAVILY_API_KEY or BRAVE_API_KEY): finding which pages exist is not a browser
+ * job, and an API never shows a bot check. Only the query leaves the machine (never patient values). The browser then opens
+ * the pages, so every quote is still checked against a page this run really read. Returns null if no key or it failed.
+ */
+async function searchApi(query: string, note: Note): Promise<SearchHit[] | null> {
+  const sites = [...query.matchAll(/\bsite:([^\s]+)/g)].map((m) => m[1]);
+  const q = query.replace(/\bsite:[^\s]+/g, "").replace(/\s+/g, " ").trim() || query;
+  const post = async (url: string, headers: Record<string, string>, body: unknown) => {
+    const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error(`${url} ${r.status}`);
+    return (await r.json()) as Record<string, unknown>;
+  };
+  const clean = (x: { title?: string; url?: string; snippet?: string }): SearchHit => ({ title: String(x.title ?? x.url ?? "").slice(0, 100), url: String(x.url ?? ""), snippet: String(x.snippet ?? "").replace(/\s+/g, " ").slice(0, 220) });
+  const tries: [string, () => Promise<SearchHit[]>][] = [];
+  if (process.env.EXA_API_KEY)
+    tries.push(["Exa", async () => {
+      const j = (await post("https://api.exa.ai/search", { "x-api-key": process.env.EXA_API_KEY! }, { query: q, numResults: 10, type: "auto", ...(sites.length ? { includeDomains: sites } : {}), contents: { highlights: { numSentences: 2, highlightsPerUrl: 1 } } })) as { results?: { title?: string; url?: string; highlights?: string[] }[] };
+      return (j.results ?? []).map((x) => clean({ ...x, snippet: x.highlights?.[0] }));
+    }]);
+  if (process.env.TAVILY_API_KEY)
+    tries.push(["Tavily", async () => {
+      const j = (await post("https://api.tavily.com/search", { authorization: `Bearer ${process.env.TAVILY_API_KEY}` }, { query: q, max_results: 10, ...(sites.length ? { include_domains: sites } : {}) })) as { results?: { title?: string; url?: string; content?: string }[] };
+      return (j.results ?? []).map((x) => clean({ ...x, snippet: x.content }));
+    }]);
+  if (process.env.BRAVE_API_KEY)
+    tries.push(["Brave", async () => {
+      const r = await fetch(`https://api.search.brave.com/res/v1/web/search?count=10&q=${encodeURIComponent(query)}`, { headers: { "x-subscription-token": process.env.BRAVE_API_KEY!, accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+      if (!r.ok) throw new Error(`brave ${r.status}`);
+      const j = (await r.json()) as { web?: { results?: { title?: string; url?: string; description?: string }[] } };
+      return (j.web?.results ?? []).map((x) => clean({ ...x, snippet: x.description }));
+    }]);
+  for (const [name, fn] of tries) {
+    try {
+      const hits = (await fn()).filter((h) => /^https?:/.test(h.url));
+      if (!hits.length) continue;
+      await note.log("read", `${name} search "${query}": ${hits.length} results`, { detail: hits.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}`).join("\n") });
+      note(`${hits.length} results`);
+      return hits;
+    } catch {
+      /* try the next provider, then the browser */
+    }
+  }
+  return null;
+}
 const oneSearch = limiter(1);
 const searchCache = new Map<string, { at: number; hits: Promise<SearchHit[]> }>();
 let lastSearchAt = 0;
@@ -304,6 +349,11 @@ export async function webSearch(page: Page, query: string, note: Note, track: Tr
     note(`Already searched: ${short(query, 40)}`);
     const r = await hit.hits.catch(() => null);
     if (r?.length) return r;
+  }
+  const viaApi = await searchApi(query, note);
+  if (viaApi) {
+    searchCache.set(key, { at: Date.now(), hits: Promise.resolve(viaApi) });
+    return viaApi;
   }
   const hits = oneSearch(async () => {
     const gap = 2500 + Math.random() * 2500 - (Date.now() - lastSearchAt);
