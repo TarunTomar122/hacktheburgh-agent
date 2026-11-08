@@ -4,7 +4,7 @@ import { missingForOnboarding, missingRequired, type CaseFacts } from "../../lib
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
 import { clearProfile, setTrack, updateFacts, useDemo, useSyncStatus, type Profile } from "../../lib/profile";
-import { TRACKS, type TrackId } from "../../lib/agent/track";
+import { TRACK_IDS, TRACKS, type TrackId } from "../../lib/agent/track";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
@@ -50,7 +50,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <div className="mx-auto max-w-3xl px-12 pb-14 pt-10">
           <h1 className="display text-[48px] text-white">Your profile</h1>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-6 text-white/85">
-            This is what the agent uses to fill in forms for you. Changes save as you type, on this device only.
+            This is what Elliot uses to fill in forms for you. Changes save as you type, on this device only.
           </p>
         </div>
       </div>
@@ -64,7 +64,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
             {missing.map((k) => FIELD_LABELS[k] ?? k).join(", ")}.
           </Callout>
         ) : (
-          <Callout tone="ok" title={forNhs ? "Everything the NHS form needs is here." : "Everything we need so far is here."} />
+          <Callout tone="ok" title={forNhs ? "Everything the NHS form needs is here." : "Everything Elliot needs so far is here."} />
         )}
 
         <section className="space-y-5">
@@ -200,7 +200,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
 
         <section className="space-y-3">
           <SectionTitle>Medical records (optional)</SectionTitle>
-          <p className="text-sm text-ink-2">Nothing to do now. We only ask about this at the step that needs it (finding a solicitor), so you can leave it.</p>
+          <p className="text-sm text-ink-2">Nothing to do now. Elliot only asks about this at the step that needs it (finding a solicitor), so you can leave it.</p>
           <select className={selectControl} value={f.medicalRecords ?? ""} onChange={(e) => set2("medicalRecords", (e.target.value || null) as CaseFacts["medicalRecords"])}>
             <option value="">Not decided yet</option>
             <option value="not_requested">I have not asked for them</option>
@@ -212,7 +212,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <section className="space-y-3">
           <SectionTitle>Your conversation</SectionTitle>
           <details className="rounded-card border border-line p-4 text-sm">
-            <summary className="cursor-pointer text-ink-2">Show what you told us ({profile.messages.length} messages)</summary>
+            <summary className="cursor-pointer text-ink-2">Show what you told Elliot ({profile.messages.length} messages)</summary>
             <div className="mt-3 space-y-2 text-ink-2">
               {profile.messages.map((m, i) => (
                 <p key={i}>
@@ -251,23 +251,23 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
     return (
       <section className="space-y-2">
         <SectionTitle>Your path</SectionTitle>
-        <p className="text-sm text-ink-2">You have not chosen a path yet. Close your profile to see what we suggest.</p>
+        <p className="text-sm text-ink-2">You have not chosen a path yet. Close your profile to see what Elliot suggests.</p>
       </section>
     );
   }
-  const other: TrackId = chosen === "complaint" ? "compensation" : "complaint";
+  const others = TRACK_IDS.filter((t) => t !== chosen);
   const emailMode = chosen === "complaint" && profile.track?.complaintMode === "email";
-  const fit = emailMode ? undefined : rec?.tracks[chosen].fit;
-  const otherFit = rec?.tracks[other].fit;
+  // Recommendations saved before the Yellow Card track have no score for it, so every lookup is optional.
+  const fit = emailMode ? undefined : rec?.tracks[chosen]?.fit;
   return (
     <section className="space-y-4">
       <SectionTitle>Your path</SectionTitle>
       <div className="flex flex-wrap items-center gap-5 rounded-card border border-line bg-white p-5">
-        {fit !== undefined && <FitRing fit={fit} size={64} title="How well this path fits what you told us. Not a chance of success." />}
+        {fit !== undefined && <FitRing fit={fit} size={64} title="How well this path fits what you told Elliot. Not a chance of success." />}
         <div className="min-w-[14rem] flex-1">
           <div className="text-[17px] font-medium text-ink">{emailMode ? "Request an explanation or apology by email" : TRACKS[chosen].title}</div>
           <p className="mt-0.5 text-sm text-ink-2">{emailMode ? "An editable email draft; you verify the recipient and send it yourself." : TRACKS[chosen].gets}</p>
-          {!emailMode && rec?.recommended === chosen && <p className="mt-1 text-xs text-teal">This is the path we suggested.</p>}
+          {!emailMode && rec?.recommended === chosen && <p className="mt-1 text-xs text-teal">This is the path Elliot suggested.</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={onContinue}>
@@ -277,17 +277,23 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
             setTrack({ chosen: "complaint", complaintMode: "email" });
             onSwitched?.(1);
           }}>Ask for an explanation or apology</Button>}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setTrack({ chosen: other });
-              onSwitched?.(TRACKS[other].steps[0]);
-            }}
-          >
-            Switch to {TRACKS[other].title.toLowerCase()}
-            {otherFit !== undefined && ` (${otherFit}% fit)`}
-          </Button>
+          {others.map((other: TrackId) => {
+            const otherFit = rec?.tracks[other]?.fit;
+            return (
+              <Button
+                key={other}
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setTrack({ chosen: other });
+                  onSwitched?.(TRACKS[other].steps[0]);
+                }}
+              >
+                Switch to {TRACKS[other].title.toLowerCase()}
+                {otherFit !== undefined && ` (${otherFit}% fit)`}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -32,7 +32,7 @@ async function WelcomeContent(props: PageProps<"/welcome">) {
             <span className="hl-blue">Your</span> case, under <span className="hl-blue">your</span> control
           </h1>
           <p className="max-w-xl text-[17px] leading-7 text-ink-2">
-            Your case is saved to your account, so you can pick it up on any device. The agent fills in forms for you and stops before Submit: you press it yourself.
+            Your case is saved to your account, so you can pick it up on any device. Elliot fills in forms for you and stops before Submit: you press it yourself.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <a href={`/auth/login?screen_hint=signup&returnTo=${q}`} className="btn-primary !px-7 !py-3 !text-[15px]">

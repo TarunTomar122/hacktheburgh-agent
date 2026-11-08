@@ -101,7 +101,7 @@ export async function runBrowserAgent(opts: {
 
       if (call.name === "ask_user") {
         const question = String(args.question);
-        return { status: "needs_input", summary: "The form needs information we don't have.", unfilled: [], question, steps: step, stats };
+        return { status: "needs_input", summary: "The form needs information Elliot doesn't have.", unfilled: [], question, steps: step, stats };
       }
 
       if (call.name === "finish") {

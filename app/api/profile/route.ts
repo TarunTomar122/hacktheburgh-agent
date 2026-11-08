@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authEnabled, sessionUser } from "../../../lib/auth0";
-import { dbEnabled, getSaved, putSaved } from "../../../lib/db";
+import { dbEnabled, getSaved, putSaved, removeSaved } from "../../../lib/db";
 
 /**
  * The signed-in user's saved case (D75).
@@ -18,7 +18,6 @@ const Put = z.object({
   profile: z.object({ facts: z.record(z.string(), z.unknown()) }).passthrough(),
   updatedAt: when,
 });
-const Delete = z.object({ updatedAt: when.optional() });
 
 type Who = { kind: "off" } | { kind: "anon" } | { kind: "user"; sub: string; email: string | null };
 
@@ -80,16 +79,13 @@ export async function PUT(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+/** Deletes the user's saved case from the database completely (D81). Idempotent: deleting nothing is also a success. */
+export async function DELETE() {
   try {
     const u = await who();
     if (u.kind !== "user") return notUser(u)!;
-    const parsed = Delete.safeParse(await req.json().catch(() => ({})));
-    if (!parsed.success) return Response.json({ error: "Bad request" }, { status: 400 });
-    const at = stamp(parsed.data.updatedAt);
-    if (at instanceof Response) return at;
-    const r = await putSaved(u.sub, u.email, null, at);
-    return r.ok ? Response.json({ ok: true }) : Response.json({ error: "A newer copy is already saved.", saved: r.current }, { status: 409 });
+    await removeSaved(u.sub);
+    return Response.json({ ok: true });
   } catch (e) {
     return unavailable(e);
   }

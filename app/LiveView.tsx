@@ -24,7 +24,8 @@ type LiveMsg =
   | { type: "stats"; stats: LiveStats }
   | { type: "end" }
   | { type: "idle" }
-  | { type: "control"; enabled: boolean };
+  | { type: "control"; enabled: boolean }
+  | { type: "submitted"; flow: string };
 type Mode = "hidden" | "live" | "ended";
 const SINGLE = "_single"; // frames from a server that does not tag pages
 
@@ -229,6 +230,9 @@ export default function LiveView() {
         setControl(false);
       } else if (msg.type === "control") {
         setControl(msg.enabled);
+      } else if (msg.type === "submitted") {
+        // The user sent a form the agent filled. The case page listens and marks that step as sent.
+        window.dispatchEvent(new CustomEvent("agent-submitted", { detail: msg.flow }));
       }
     };
     return () => {
@@ -436,7 +440,7 @@ export default function LiveView() {
         className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[13px] font-medium text-white hover:bg-brand/90"
       >
         <Dot live={mode === "live"} light />
-        {mode === "live" ? (pages.filter((p) => p.state === "working").length > 1 ? `Watch ${pages.filter((p) => p.state === "working").length} agents live` : "Watch the agent live") : "Agent's browser (closed)"}
+        {mode === "live" ? (pages.filter((p) => p.state === "working").length > 1 ? "Watch Elliot's crew live" : "Watch Elliot live") : "Elliot's browser (closed)"}
       </button>
     );
   }
@@ -450,7 +454,7 @@ export default function LiveView() {
         {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
         <img
           ref={img}
-          alt="Live view of the page the agent is working on"
+          alt="Live view of the page Elliot is working on"
           tabIndex={control ? 0 : -1}
           draggable={false}
           className={cx(
@@ -492,7 +496,7 @@ export default function LiveView() {
     if (!questionPending) return null;
     return (
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-card border border-amber/30 bg-amber-soft p-3">
-        <p role="status" className="text-sm text-ink">An agent needs your answer. Return to the case screen to continue.</p>
+        <p role="status" className="text-sm text-ink">Elliot needs your answer. Return to the case screen to continue.</p>
         <Button size="sm" onClick={() => {
           close();
           requestAnimationFrame(() => {
@@ -544,7 +548,7 @@ export default function LiveView() {
     <aside
       className={cx("flex flex-col gap-3", inline ? "@container h-full min-h-0" : "fixed inset-y-0 right-0 z-40 bg-subtle p-4")}
       style={inline ? undefined : { width }}
-      aria-label="The agent's browser, live"
+      aria-label="Elliot's browser, live"
     >
       {!inline && questionNotice(() => {
         autoOpened.current = false;
@@ -593,13 +597,13 @@ export default function LiveView() {
                 {focusedPage.label}
               </span>
             ) : mode === "live" ? (
-              "The agent's browser"
+              "Elliot's browser"
             ) : (
               "Browser closed"
             )}
           </div>
           {!inline && (
-            <Button variant="ghost" size="sm" onClick={() => { autoOpened.current = false; setOpen(false); }} title="Hide the panel (the agents keep working)">
+            <Button variant="ghost" size="sm" onClick={() => { autoOpened.current = false; setOpen(false); }} title="Hide the panel (Elliot keeps working)">
               Hide
             </Button>
           )}
@@ -645,13 +649,13 @@ export default function LiveView() {
             </Button>
           )}
           <span className="flex-1 text-[12px] text-muted">
-            {control ? "Your clicks and typing go to the real page." : "The agent always stops before Send."}
+            {control ? "Your clicks and typing go to the real page." : "Elliot always stops before Send."}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
-              if (window.confirm("Close the agent's browser? Anything not submitted is lost.")) void send({ type: "close" });
+              if (window.confirm("Close Elliot's browser? Anything not submitted is lost.")) void send({ type: "close" });
             }}
           >
             Close browser

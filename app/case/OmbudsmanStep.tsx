@@ -135,7 +135,7 @@ function Unlocked({ profile }: { profile: Profile }) {
       <PageTitle
         eyebrow="Complaint · step 2"
         title="Complain to the ombudsman"
-        lede="We fill in the ombudsman's form with what you have already told us. You check it on their form and press Send."
+        lede="Elliot fills in the ombudsman's form with what you have already told him. You check it on their form and press Send."
       />
 
       <AskMissing profile={profile} why="The ombudsman's form needs this, and it did not come up before." />
@@ -143,7 +143,7 @@ function Unlocked({ profile }: { profile: Profile }) {
       {impactMissing && (
         <section className="overflow-hidden rounded-card border border-brand/30 bg-white">
           <div className="space-y-1 bg-brand-soft/60 px-6 py-4">
-            <Eyebrow className="text-brand">One thing we still need</Eyebrow>
+            <Eyebrow className="text-brand">One thing Elliot still needs</Eyebrow>
             <p className="text-[15px] leading-6 text-ink">How has this affected you?</p>
             <p className="text-xs text-muted">The ombudsman&apos;s form requires it, and it did not come up before. A sentence or two is enough.</p>
           </div>

@@ -394,7 +394,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
     if (opts.keepOpen && formPage && !(formPage as Page).isClosed()) {
       reviewing = true;
       await keepOnlyTabs(context, [formPage]);
-      closeWhenSubmitted(formPage, browser);
+      closeWhenSubmitted(formPage, browser, { flow: "nhs" });
     }
     return result;
   } finally {

@@ -19,8 +19,8 @@ const CALCULATOR = "SLAB calculator";
 const VERDICT: Record<Step3Result["verdict"], { cls: string; chip: string; tip: string }> = {
   likely: { cls: "bg-teal-soft text-teal", chip: "May qualify for legal aid", tip: "SLAB's calculator says you may qualify financially. A solicitor applies for you, and SLAB also checks the case has merit." },
   unlikely: { cls: "bg-amber-soft text-amber", chip: "Legal aid unlikely", tip: "SLAB's calculator says you may not qualify financially. Some solicitors take cases like this on a no win no fee basis." },
-  unknown: { cls: "bg-subtle text-ink-2", chip: "Legal aid not checked", tip: "We could not get an answer from SLAB's calculator. A solicitor can check this with you." },
-  skipped: { cls: "bg-subtle text-ink-2", chip: "No win no fee search", tip: "You chose not to share money details, so we looked for solicitors who may work on a no win no fee basis." },
+  unknown: { cls: "bg-subtle text-ink-2", chip: "Legal aid not checked", tip: "Elliot could not get an answer from SLAB's calculator. A solicitor can check this with you." },
+  skipped: { cls: "bg-subtle text-ink-2", chip: "No win no fee search", tip: "You chose not to share money details, so Elliot looked for solicitors who may work on a no win no fee basis." },
 };
 
 type Flag = "legalAid" | "nwnf" | "patients" | "form" | "lawsoc" | "website";
@@ -124,7 +124,7 @@ export default function FirmResults({
           {ruledOut > 0 && (
             <label className="flex cursor-pointer items-start gap-2.5 border-t border-line pt-4 text-[13px] leading-5 text-ink-2">
               <input type="checkbox" className="mt-0.5 size-4 accent-brand" checked={q.ruledOut} onChange={() => setQ({ ...q, ruledOut: !q.ruledOut })} />
-              <span className="flex-1">Show firms we ruled out</span>
+              <span className="flex-1">Show firms Elliot ruled out</span>
               <span className="tabular-nums text-muted">{ruledOut}</span>
             </label>
           )}
@@ -141,7 +141,7 @@ export default function FirmResults({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2">
               {calcSteps.length > 0 ? (
                 <button
-                  title={`${v.tip} Click to see how we checked.`}
+                  title={`${v.tip} Click to see how Elliot checked.`}
                   onClick={() => setScope({ title: "The legal aid calculator", subtitle: v.tip + (quoted ? ` It said: "${result.calculatorText}"` : ""), steps: calcSteps })}
                   className={cx("rounded-full px-2.5 py-0.5 text-[12px] font-medium hover:underline", v.cls)}
                 >
@@ -194,7 +194,7 @@ export default function FirmResults({
         <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-card bg-ink px-5 py-3 text-white shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
           <span className="text-[14px]">
             <span className="font-medium tabular-nums">{selected.length}</span> of {MAX_ENQUIRIES} selected
-            {full && <span className="ml-2 text-[13px] text-white/70">(the most we contact at once)</span>}
+            {full && <span className="ml-2 text-[13px] text-white/70">(the most Elliot contacts at once)</span>}
             <button className="ml-3 text-[13px] text-white/70 underline-offset-2 hover:text-white hover:underline" onClick={() => onSelected([])}>
               Clear
             </button>
@@ -334,7 +334,7 @@ function FirmModal({ firm, top, selected, locked, onToggle, onClose, onTrace }: 
 
         <div className="space-y-6 p-6">
           {firm.excluded && (
-            <Callout tone="danger" title="We ruled this firm out">
+            <Callout tone="danger" title="Elliot ruled this firm out">
               {firm.excluded}
             </Callout>
           )}

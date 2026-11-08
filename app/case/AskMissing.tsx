@@ -45,7 +45,7 @@ export default function AskMissing({ profile, why, scope = "onboarding" }: { pro
   return (
     <section className="overflow-hidden rounded-card border border-brand/30 bg-white">
       <div className="space-y-1 bg-brand-soft/60 px-6 py-4">
-        <Eyebrow className="text-brand">One thing we still need</Eyebrow>
+        <Eyebrow className="text-brand">One thing Elliot still needs</Eyebrow>
         <p className="text-[15px] leading-6 text-ink">{questionFor(target, f)}</p>
         <p className="text-xs text-muted">{why}</p>
       </div>

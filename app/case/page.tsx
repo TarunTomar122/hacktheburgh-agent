@@ -20,6 +20,7 @@ import ContactLawyersStep from "./ContactLawyersStep";
 import { milestones } from "./progress";
 import StepAside from "./StepAside";
 import UnsupportedComplaint from "./UnsupportedComplaint";
+import YellowCardStep from "./YellowCardStep";
 import { supportsLothian } from "../../lib/agent/complaintScope";
 
 export default function CasePage() {
@@ -34,6 +35,19 @@ export default function CasePage() {
       setProfileOpen(true); // eslint-disable-line react-hooks/set-state-in-effect
       window.history.replaceState(null, "", window.location.pathname); // so a reload or Back does not reopen it
     }
+  }, []);
+
+  // The agent's browser saw the user press Submit on a form it filled (lib/browser.ts closeWhenSubmitted): do what "I've pressed Submit" does
+  // and nothing more. The page stays where it is; its button then changes (NHS: "Continue to Ombudsman") and the user moves on when they choose.
+  useEffect(() => {
+    const onSubmitted = (e: Event) => {
+      const flow = (e as CustomEvent<string>).detail;
+      if (flow === "nhs") setProgress({ nhsSent: true });
+      else if (flow === "spso") setProgress({ spsoSent: true });
+      else if (flow === "yellowcard") setProgress({ ycSent: true });
+    };
+    window.addEventListener("agent-submitted", onSubmitted);
+    return () => window.removeEventListener("agent-submitted", onSubmitted);
   }, []);
 
   useEffect(() => {
@@ -92,7 +106,9 @@ export default function CasePage() {
             ) : (
               <div className="mx-auto grid max-w-6xl gap-12 px-8 py-10 @4xl:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="min-w-0">
-                  {active === 2 ? (
+                  {active === 6 ? (
+                    <YellowCardStep profile={profile} />
+                  ) : active === 2 ? (
                     <OmbudsmanStep profile={profile} goToStepOne={() => setActive(1)} />
                   ) : active === 4 ? (
                     <ContactLawyersStep profile={profile} onBack={() => setActive(3)} />
@@ -174,10 +190,10 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
       <PageTitle
         eyebrow="Complaint · step 1"
         title="Complain to NHS Lothian"
-        lede="We have written your complaint from what you told us. We fill in NHS Lothian's form with it; you check it there, change anything you like, and press Submit yourself."
+        lede="Elliot has written your complaint from what you told him. He fills in NHS Lothian's form with it; you check it there, change anything you like, and press Submit yourself."
       />
 
-      <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. We only ask it now that you are making a complaint." />
+      <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. Elliot only asks it now that you are making a complaint." />
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
@@ -185,20 +201,34 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
         <Button onClick={() => fill()} disabled={!canFill}>
           {filling ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in NHS Lothian's form"}
         </Button>
-        {/* Demo (D49): no real complaint is filed, so the demo can go on to step 2 as if NHS Lothian had replied. Always shown, on purpose. */}
-        <Button
-          variant="secondary"
-          disabled={filling}
-          onClick={() => {
-            void closeAgentBrowser(); // the half-filled form is no use any more
-            skipStep(1);
-            setOmbudsman({ unlocked: true });
-            onContinue();
-          }}
-          title="Demo: nothing is sent to NHS Lothian. Opens step 2 as if they had replied."
-        >
-          Skip and continue to step 2 (demo)
-        </Button>
+        {/* Demo (D49): no real complaint is filed, so the demo can go on to step 2 as if NHS Lothian had replied. Always shown, on purpose.
+            Once the complaint is marked sent (the agent's browser saw Submit, or "I've pressed Submit") it becomes the plain way on, and skips nothing. */}
+        {profile.progress?.nhsSent ? (
+          <Button
+            disabled={filling}
+            onClick={() => {
+              void closeAgentBrowser();
+              setOmbudsman({ unlocked: true });
+              onContinue();
+            }}
+          >
+            Continue to Ombudsman
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            disabled={filling}
+            onClick={() => {
+              void closeAgentBrowser(); // the half-filled form is no use any more
+              skipStep(1);
+              setOmbudsman({ unlocked: true });
+              onContinue();
+            }}
+            title="Demo: nothing is sent to NHS Lothian. Opens step 2 as if they had replied."
+          >
+            Skip and continue to step 2 (demo)
+          </Button>
+        )}
       </div>
 
 
