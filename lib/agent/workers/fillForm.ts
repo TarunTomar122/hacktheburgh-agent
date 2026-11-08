@@ -35,7 +35,7 @@ export type FillFormResult = {
   summary: string;
   handedOff?: boolean;
 };
-export type FillFormOpts = { goal: string; values: Value[]; maxPages?: number; allowConsent?: (label: string) => boolean };
+export type FillFormOpts = { goal: string; values: Value[]; maxPages?: number; allowConsent?: (label: string) => boolean; /** Forward buttons the PATIENT approved pressing (never one whose label sends). */ allowForward?: (label: string) => boolean };
 
 /* ------------------------------------------------------------------ generic language of forms (no site knowledge) */
 
@@ -55,6 +55,9 @@ export const NEXT_RE = words(
 );
 /** Never click these to move forward: they save drafts (often behind a login), go back, leave, or are cookie banners. */
 const AVOID_RE = /save (?:for|and (?:come back|return|finish|exit|close)|as draft|draft|progress)|later|resume|sign ?in|log ?in|sign ?up|register|create (?:an )?account|cancel|^back\b|go back|previous|^prev\b|zurück|retour|précédent|atrás|anterior|indietro|terug|tillbaka|reset|clear|delete|remove|print|download|upload|browse|add another|search|help|skip to|cookie|language|^(?:accept|reject|decline|allow|deny|manage)\b.*|^×$|^close$/i;
+/** Going on without an account ("Continue without registering", "as a guest") is the way forward, not a sign-up to avoid. */
+const GUEST_RE = /continue without|without (?:registering|an account|signing|logging)|as a guest|guest (?:checkout|report)/i;
+const avoided = (label: string): boolean => AVOID_RE.test(label) && !GUEST_RE.test(label);
 /** "Check your answers" pages, in several languages. */
 const REVIEW_RE = /check (?:your|the) (?:answers|details|complaint|application|information|form)|review (?:your|the|and)|summary of (?:your|the)|confirm (?:your )?(?:answers|details)|before you (?:submit|send)|überprüf|zusammenfassung|récapitulatif|vérifi(?:ez|er) vos|revis(?:e|a|ar) (?:sus|tus|los|su|tu)|resumen de|riepilogo|controlla (?:i|le)|controleer|sammanfattning|granska|tarkista/i;
 const CHANGE_RE = /^(?:change|edit|modify|amend|ändern|bearbeiten|modifier|cambiar|editar|modifica|wijzig|ändra|muokkaa|zmień)\b/i;
@@ -314,8 +317,13 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
     return !o.elements.some((e) => (e.kind === "text" || e.kind === "textarea") && holds(e.value));
   };
   /** The live final/not-final verdict, with the exception above applied in one place for every forward click. */
+  const approved = (label: string | undefined) => !!label && !FINAL_RE.test(label) && !!opts.allowForward?.(label);
   const forwardVerdict = async (p: Page, f: { label: string; kind: El["kind"] }) => {
     const v = await liveForwardVerdict(p, f);
+    if (!v.ok && v.fwd && approved(v.fwd.label)) {
+      await log("check", `You said "${short(v.fwd.label, 40)}" may be pressed: it only moves the form on`);
+      return { ok: true as const, fwd: v.fwd, why: "the patient approved this button" };
+    }
     if (!v.ok && v.fwd && startsWithNothingPersonal(v.fwd.label, await observe(p))) {
       await log("check", `"${short(v.fwd.label, 40)}" only moves on, and nothing personal is in the form yet, so it is safe to press`);
       return { ok: true as const, fwd: v.fwd, why: "it only moves on, and nothing personal is in the form yet" };
@@ -459,13 +467,13 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       pages.push(await readPage(page));
       const missingHere = unfilled.filter((u) => !before.has(u));
 
-      if (view2.final && view2.forward && startsWithNothingPersonal(view2.forward.label, obs)) {
+      if (view2.final && view2.forward && (startsWithNothingPersonal(view2.forward.label, obs) || approved(view2.forward.label))) {
         await log("check", `"${short(view2.forward.label, 40)}" only moves on, and nothing personal is in the form yet, so it is safe to press`);
         view2.final = false;
       }
       if (view2.final || !view2.forward) {
         // A box only the patient may tick (a privacy policy, terms) often keeps the way on hidden or disabled: say that, not "no button".
-        if (!view2.forward && pending.length) return done({ status: "needs_input", unfilled: [...unfilled, ...pending.map((p) => `Your agreement: ${p}`)], summary: `Filled this page. It needs your agreement ("${short(pending[0], 100)}") before the form goes on. That box is yours to tick.` });
+        if (!view2.forward && pending.length) return done({ status: "needs_input", unfilled: [...unfilled, ...pending.map((p) => `Your agreement: ${p}`)], summary: `Filled this page. It needs your agreement before the form goes on: "${pending[0]}" That box is yours to tick.` });
         if (!view2.forward && !(await finalControls(page)).length) return done({ status: missingHere.length || unfilled.length ? "needs_input" : "failed", wall: { kind: "dead_end", detail: "No button moves this form on", url: page.url() }, summary: "Filled this page but found no button that moves the form on." });
         return stopAtFinal(view2, view2.forward?.label, unfilled.length ? "Filled what we could" : "Filled the form", scan);
       }
@@ -729,7 +737,14 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       if (fieldSig(obs) !== sigBefore) return attempt ? "fixed" : "ok"; // moved on
       const errs = await readErrors(page);
       if (errs.fields.length === 0 && errs.summary.length === 0) {
-        if (attempt === 0 && await page.waitForTimeout(1500).then(async () => fieldSig(await observe(page)) !== sigBefore)) return "ok";
+        // Some sites do work on their server first (creating a draft report): give the page up to ~6 s to move on.
+        if (attempt === 0) {
+          const urlBefore = page.url();
+          for (let w = 0; w < 6; w++) {
+            await page.waitForTimeout(1000);
+            if (page.url() !== urlBefore || fieldSig(await observe(page)) !== sigBefore) return "ok";
+          }
+        }
         const empty = (await observe(page)).elements.filter((e) => fillable(e) && e.kind !== "checkbox" && isEmpty(e) && !(e.kind === "radio" && obs.elements.some((r) => r.kind === "radio" && r.name === e.name && r.checked)));
         const labels = [...new Set(empty.map((e) => cleanLabel(e.kind === "radio" ? e.group || e.name : e.label)))];
         unfilled.push(...(labels.length ? labels.map((l) => `${l}: the form would not move on, probably because this is empty`) : [`"${forward.label}" did not move the form on and the page gives no reason`]));
@@ -928,7 +943,7 @@ type View = {
 const KIND_TEXT: Record<View["kind"], string> = { form: "a page of the form", landing: "a start page before the form", review: "a check-your-answers page", sent: "a 'sent' confirmation", other: "a page that is not the form itself" };
 
 function candidates(obs: Observation): El[] {
-  const c = obs.elements.filter((e) => (e.kind === "submit" || e.kind === "button" || e.kind === "link") && !e.disabled && e.label.trim() && e.label.length < 120 && !AVOID_RE.test(e.label.trim()));
+  const c = obs.elements.filter((e) => (e.kind === "submit" || e.kind === "button" || e.kind === "link") && !e.disabled && e.label.trim() && e.label.length < 120 && !avoided(e.label.trim()));
   const rank = (e: El) => (FINAL_RE.test(e.label) || NEXT_RE.test(e.label) ? 0 : e.kind === "link" ? 2 : 1);
   return c.sort((a, b) => rank(a) - rank(b)).slice(0, 40);
 }
@@ -1227,7 +1242,7 @@ async function finalControls(page: Page): Promise<string[]> {
       .filter((e) => vis(e) && !e.closest("header, nav, footer, [data-ff-side-login]"));
     return els.map((e) => ((e as HTMLInputElement).value && e.tagName === "INPUT" ? (e as HTMLInputElement).value : e.innerText || e.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim()).filter((t) => t && t.length < 80);
   }).catch(() => [] as string[]);
-  return [...new Set(labels.filter((l) => FINAL_RE.test(l) && !AVOID_RE.test(l)))];
+  return [...new Set(labels.filter((l) => FINAL_RE.test(l) && !avoided(l)))];
 }
 
 async function typeInto(page: Page, el: El, text: string): Promise<boolean> {

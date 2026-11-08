@@ -375,6 +375,30 @@ export default function LiveView() {
     return () => window.removeEventListener("live-open", onOpen);
   }, []);
 
+  // A question from a crew member who works in a browser: their browser opens in the window with the question beside it.
+  type NeedAsk = { id: string; crew: string | null; question: string; why: string; kind: string; options: string[] };
+  const [need, setNeed] = useState<NeedAsk | null>(null);
+  const [needText, setNeedText] = useState("");
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const d = (e as CustomEvent<NeedAsk | null>).detail;
+      setNeed(d);
+      setNeedText("");
+      if (!d?.crew) return;
+      const name = (CREW as Record<string, { name: string }>)[d.crew]?.name;
+      const mine = pagesRef.current.filter((p) => !p.pageId.startsWith(KEPT) && name && p.label.startsWith(`${name} ·`));
+      const pick = mine.find((p) => p.state === "working") ?? mine.at(-1);
+      if (pick) focus(pick.pageId);
+    };
+    window.addEventListener("live-ask", onAsk);
+    return () => window.removeEventListener("live-ask", onAsk);
+  }, [focus]);
+  const answerNeed = (value: string | null) => {
+    if (!need) return;
+    window.dispatchEvent(new CustomEvent("live-answer", { detail: { id: need.id, value } }));
+    setNeed(null);
+  };
+
   // The run screen can ask to show one crew member's browser: window.dispatchEvent(new CustomEvent("live-focus", { detail: "Robin" })).
   useEffect(() => {
     // detail: a crew name ("Robin"), an exact tab label ("Robin · Drummond Miller"), or { tab, auto: true } from the
@@ -649,6 +673,33 @@ export default function LiveView() {
               Close
             </Button>
           </div>
+          {need && who && need.crew === who && (
+            <div data-testid="browser-question" className="rounded-ctl border border-amber/40 bg-amber-soft px-4 py-3">
+              <p className="text-[12px] font-medium text-amber">Needs you</p>
+              <p className="mt-1 text-[15px] leading-6 text-ink">{need.question}</p>
+              {need.why && <p className="mt-1 text-[12px] leading-5 text-ink-2">{need.why}</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {need.kind === "yes_no" ? (
+                  <>
+                    <Button size="sm" onClick={() => answerNeed("Yes")}>Yes</Button>
+                    <Button variant="secondary" size="sm" onClick={() => answerNeed("No")}>No</Button>
+                  </>
+                ) : need.options.length ? (
+                  need.options.map((o) => (
+                    <Button key={o} variant="secondary" size="sm" onClick={() => answerNeed(o)}>
+                      {o}
+                    </Button>
+                  ))
+                ) : (
+                  <>
+                    <input value={needText} onChange={(e) => setNeedText(e.target.value)} className="min-w-64 flex-1 rounded-ctl border border-line px-3 py-1.5 text-[14px]" aria-label="Your answer" />
+                    <Button size="sm" disabled={!needText.trim()} onClick={() => answerNeed(needText.trim())}>OK</Button>
+                  </>
+                )}
+                <button className="ml-auto text-[12px] text-muted hover:text-ink" onClick={() => answerNeed(null)}>Skip</button>
+              </div>
+            </div>
+          )}
           {info && (
             <div data-testid="browser-info" className="rounded-ctl bg-subtle px-4 py-3 text-[13px] leading-5 text-ink-2">
               <p className="font-medium text-ink">
@@ -747,7 +798,7 @@ export default function LiveView() {
 
       {grid ? (
         <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", inline ? "grid-cols-2 @2xl:grid-cols-4 @5xl:grid-cols-6" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
-          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting" || p.pageId.startsWith(KEPT)))).map((p) => {
+          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting" || p.state === "done" || p.pageId.startsWith(KEPT)))).map((p) => {
             const needs = !!ask && (p.label === ask.tab || p.label.startsWith(`${CREW[ask.crew].name} ·`));
             return (
             <Tile

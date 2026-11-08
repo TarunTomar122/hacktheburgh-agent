@@ -465,6 +465,27 @@ export function usePlannerRun(scope?: RunScope) {
     setS(initial());
   }, []);
 
+  // A question from a crew member who works in a browser (Kit, Nell, Robin) brings their browser to the front with the
+  // question beside the page (app/LiveView.tsx), so the patient can see what it is about and answer there.
+  const openAsk = s.asks[0];
+  useEffect(() => {
+    if (s.demo) return;
+    if (!openAsk) {
+      window.dispatchEvent(new CustomEvent("live-ask", { detail: null })); // answered (here or in the browser window)
+      return;
+    }
+    window.dispatchEvent(new CustomEvent("live-ask", { detail: { id: openAsk.id, crew: openAsk.crew ?? null, question: openAsk.question, why: openAsk.why, kind: openAsk.kind, options: openAsk.options ?? [] } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one dispatch per question
+  }, [openAsk?.id]);
+  useEffect(() => {
+    const onAnswer = (e: Event) => {
+      const d = (e as CustomEvent<{ id: string; value: string | null }>).detail;
+      if (d?.id && s.asks.some((a) => a.id === d.id)) void answer(d.id, d.value);
+    };
+    window.addEventListener("live-answer", onAnswer);
+    return () => window.removeEventListener("live-answer", onAnswer);
+  }, [s.asks, answer]);
+
   // How this run reached the web so far (fetch, search API, saved search, browser), for the line under the browser tiles.
   const accessCount = s.access.length;
   useEffect(() => {

@@ -346,22 +346,33 @@ export async function isAutocomplete(loc: ReturnType<Page["locator"]>): Promise<
  * If none shows, the typed text is left as it is (some boxes accept free text).
  */
 export async function pickSuggestion(page: Page, loc: ReturnType<Page["locator"]>, value: string): Promise<string> {
-  await loc.click({ timeout: 3000 }).catch(() => {});
-  await loc.fill("", { timeout: 3000 }).catch(() => {});
-  await loc.pressSequentially(value, { delay: 60, timeout: 15000 });
   const options = page.locator('[role="option"], [role="listbox"] li, [class*="__option"], [class*="-option"], [class*="suggestion"] li, li[class*="suggestion"], datalist option');
-  await options.first().waitFor({ state: "visible", timeout: 6000 }).catch(() => {});
-  const texts = (await options.evaluateAll((els) => els.map((e) => ((e as HTMLElement).innerText || e.textContent || "").replace(/\s+/g, " ").trim()))).map((t, i) => ({ t, i }));
   const want = value.toLowerCase().trim();
+  // Suggestions come from the site's server and can be slow: type, wait, and if none show, nudge the box (delete and retype
+  // the last letter) up to twice, the way a person would.
+  let texts: { t: string; i: number }[] = [];
+  for (let attempt = 0; attempt < 3 && !texts.length; attempt++) {
+    if (attempt === 0) {
+      await loc.click({ timeout: 3000 }).catch(() => {});
+      await loc.fill("", { timeout: 3000 }).catch(() => {});
+      await loc.pressSequentially(value, { delay: 70, timeout: 15000 });
+    } else {
+      await loc.press("Backspace").catch(() => {});
+      await page.waitForTimeout(300);
+      await loc.pressSequentially(value.slice(-1), { delay: 70 }).catch(() => {});
+    }
+    await options.first().waitFor({ state: "visible", timeout: 7000 }).catch(() => {});
+    texts = (await options.evaluateAll((els) => els.map((e) => ((e as HTMLElement).innerText || e.textContent || "").replace(/\s+/g, " ").trim()))).map((t, i) => ({ t, i })).filter((x) => x.t);
+  }
   const best = texts.find((x) => x.t.toLowerCase() === want) ?? texts.find((x) => x.t.toLowerCase().startsWith(want)) ?? texts.find((x) => x.t.toLowerCase().includes(want)) ?? texts.find((x) => want.includes(x.t.toLowerCase()) && x.t.length > 2);
-  if (!best) return texts.length ? `error: none of the ${texts.length} suggestions matched "${value}"` : "ok";
+  if (!best) return texts.length ? `error: none of the ${texts.length} suggestions matched "${value}"` : "error: the box showed no suggestions to pick from";
   const opt = options.nth(best.i);
   await pointAt(page, opt).catch(() => {});
   await opt.click({ timeout: 4000 }).catch(async () => {
     await loc.press("ArrowDown").catch(() => {});
     await loc.press("Enter").catch(() => {});
   });
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(500);
   return "ok";
 }
 

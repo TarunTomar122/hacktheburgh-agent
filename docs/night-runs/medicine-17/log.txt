@@ -1,0 +1,16 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[3s] [elliot] Set out the reporting steps
+[9s] [robin] Found MHRA Yellow Card scheme, where anyone can report a side effect.
+[9s] [iona] co-codamol: Very sick, Dizzy.
+[12s] [elliot] Move on to the form
+ASK (choice) The form asks: "Who does your report relate to?". Which one applies? -> You
+[46s] [kit] The form asks: "Who does your report relate to?". Which one applies?
+[47s] [kit] Filled MHRA Yellow Card scheme's report
+[49s] [elliot] Wrap up the report work
+[51s] [elliot] I found the MHRA Yellow Card page and filled the report for co-codamol causing sickness and dizziness, using the details you gave. I stopped before the final unclear button, so nothing was sent; please review it and only
+
+MEDICINE medicine-2026-11-08T09-44-59-252Z-6jgt 0.9 min
+  regulator: MHRA Yellow Card scheme https://www.gov.uk/report-problem-medicine-medical-device
+  medicine: {"name":"co-codamol","reactions":["Very sick","Dizzy"],"started":"early July 2026","outcome":"unknown","howBad":"Very sick and Dizzy."}
+  form: needs_input, 11 fields, unfilled: The last button reads "Continue without registering"; it is not clearly a send button, so it was not pressed. Please check what it does. | Filled the form and stopped before "Continue without registering" ("Continue without registering" may send this form: nothing on the page shows a later step). Nothing was sent. The last button reads " | https://yellowcard.mhra.gov.uk/about-you?reportId=2dbeae25-521e-40c3-9605-03b7e278f4c5

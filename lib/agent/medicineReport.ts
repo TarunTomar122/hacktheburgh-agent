@@ -155,7 +155,32 @@ If the story does not name the medicine, ask_user once for it. Never invent a me
             const r = await tab(kit, thought, "kit", `${reg.body} report`)(async (ctx) => {
               const found = await exploreSite(ctx, reg.url, `the online form where a member of the public reports a suspected side effect of a medicine to ${reg.body}`, { want: "form" });
               if (!found.ok) return { kind: "none" as const, detail: `${found.summary}${found.wall ? ` (${found.wall.kind}: ${found.wall.detail})` : ""}` };
-              const out = await fillForm(ctx, { goal: `Report a suspected side effect of ${report.medicine!.name} to ${reg.body}, as a member of the public reporting about themself`, values: values(), maxPages: 12 });
+              const goal = `Report a suspected side effect of ${report.medicine!.name} to ${reg.body}, as a member of the public reporting about themself`;
+              let out = await fillForm(ctx, { goal, values: values(), maxPages: 12 });
+              // A box only the patient may tick (the regulator's privacy policy): ask them here, in the app, with the whole
+              // sentence. If they agree, Kit ticks exactly that box and carries on in the same browser, still stopping before Submit.
+              // Two things only the patient decides, asked here in the app: a box to agree to (the regulator's privacy policy), and a
+              // forward button Kit cannot prove is not a send ("Continue without registering"). After each yes, Kit carries on in
+              // the same browser. A button whose label sends ("Submit") is never offered: the patient presses that one themself.
+              const agreed: string[] = [];
+              const pressOk: string[] = [];
+              const same = (a: string, b: string) => a.replace(/\s+/g, " ").trim().toLowerCase().startsWith(b.replace(/\s+/g, " ").trim().toLowerCase().slice(0, 60));
+              for (let round = 0; round < 5 && (out.status === "needs_input" || out.status === "ready_to_submit"); round++) {
+                const asks = out.unfilled.filter((u) => u.startsWith("Your agreement: ")).map((u) => u.slice("Your agreement: ".length)).filter((a) => !agreed.includes(a));
+                const unclear = /it is not clearly a send button/.test(out.unfilled.join(" ")) ? out.finalSubmitLabel : undefined;
+                if (asks.length) {
+                  const answer = await ctx.ask?.({ agent: "Kit", crew: "kit", question: `${reg.body} asks you to agree to this before the report goes on: "${asks[0]}"`, why: "Only you can agree to this. If you agree, Kit ticks the box and fills the rest of the report. Nothing is sent: you submit it yourself.", kind: "yes_no" });
+                  if (!answer || !/^y/i.test(answer)) break;
+                  agreed.push(asks[0]);
+                  await ctx.note.log("check", `You agreed: "${asks[0]}". Ticking it and carrying on with the report.`);
+                } else if (unclear && !pressOk.includes(unclear)) {
+                  const answer = await ctx.ask?.({ agent: "Kit", crew: "kit", question: `Your details are filled in. The next button on ${reg.body}'s form reads "${unclear}". It looks like it only goes to the next page of the report. Shall Kit press it?`, why: "Kit cannot prove this button does not send the report, so you decide. Kit still stops before the real Submit.", kind: "yes_no" });
+                  if (!answer || !/^y/i.test(answer)) break;
+                  pressOk.push(unclear);
+                  await ctx.note.log("check", `You said "${unclear}" may be pressed. Carrying on with the report.`);
+                } else break;
+                out = await fillForm(ctx, { goal, values: values(), maxPages: 12, allowConsent: (label) => agreed.some((a) => same(label, a) || same(a, label)), allowForward: (label) => pressOk.some((x) => same(label, x)) });
+              }
               if (out.status === "ready_to_submit" || out.status === "needs_input") kit.keep(ctx.page);
               return { kind: "filled" as const, out, url: ctx.page.url() };
             }, 360_000);

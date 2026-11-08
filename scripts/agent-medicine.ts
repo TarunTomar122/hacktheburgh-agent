@@ -19,7 +19,7 @@ async function main() {
       if (e.type === "say" && e.say.kind !== "assign") console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s] [${e.say.from}] ${e.say.text.slice(0, 220)}`);
       if (e.type === "ask") {
         const q = e.ask;
-        const a = q.kind === "yes_no" ? (/agree|confirm|consent|accept|understand/i.test(q.question) ? "Yes" : "No") : q.kind === "choice" ? (q.options?.[0] ?? null) : q.kind === "number" || q.kind === "money" ? "20" : /age/i.test(q.question) ? "20" : /sex|gender/i.test(q.question) ? "Female" : null;
+        const a = q.kind === "yes_no" ? (/agree|confirm|consent|accept|understand|shall kit press/i.test(q.question) ? "Yes" : "No") : q.kind === "choice" ? (q.options?.[0] ?? null) : q.kind === "number" || q.kind === "money" ? "20" : /age/i.test(q.question) ? "20" : /sex|gender/i.test(q.question) ? "Female" : null;
         console.log(`ASK (${q.kind}) ${q.question} -> ${a}`);
         setTimeout(() => answerQuestion(runId, q.id, a), 800);
       }

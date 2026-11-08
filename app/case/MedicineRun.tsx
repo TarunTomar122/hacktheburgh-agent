@@ -104,7 +104,7 @@ function Board({ report, running }: { report: MedicineReport | null; running: bo
     <section aria-label="Your report" className="rounded-card border border-line bg-white">
       <header className="border-b border-line-soft px-6 py-5">
         <p className="text-[12px] text-muted">Your report</p>
-        <h2 className="display mt-1 text-[26px] leading-tight text-ink">{form?.status === "ready_to_submit" ? "Ready for you to check" : "Being prepared"}</h2>
+        <h2 className="display mt-1 text-[26px] leading-tight text-ink">{form?.status === "ready_to_submit" ? "Ready for you to check and submit" : running ? "Being prepared" : form?.status === "needs_input" ? "Waiting for you" : form?.status === "failed" ? "Could not finish the form" : "Being prepared"}</h2>
       </header>
       <ol className="divide-y divide-line-soft">
         {rows.map((r) => (

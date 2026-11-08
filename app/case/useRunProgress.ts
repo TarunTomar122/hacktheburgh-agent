@@ -20,5 +20,24 @@ export function useRunProgress(state: Parameters<typeof inputFrom>[0], shape: Pr
     const t = setInterval(() => setP((prev) => advance(prev, inputFrom(latest.current.state, latest.current.shape), Date.now())), 500);
     return () => clearInterval(t);
   }, []);
-  return shownPct(p);
+  // Never backwards across navigation either: the highest percent this run has shown is kept for the browser session, and a
+  // finished run is 100% (coming back to a screen replays the run quickly, which would otherwise start the estimate low again).
+  const run = (state as { runId?: string; status?: string }).runId;
+  const done = (state as { status?: string }).status === "done";
+  const shown = shownPct(p);
+  const key = run ? `run-progress:${run}` : "";
+  let floor = 0;
+  if (key && typeof window !== "undefined") {
+    try {
+      floor = Number(sessionStorage.getItem(key) ?? 0) || 0;
+    } catch {}
+  }
+  const value = done ? 100 : Math.max(shown, floor);
+  useEffect(() => {
+    if (!key || value <= floor) return;
+    try {
+      sessionStorage.setItem(key, String(value));
+    } catch {}
+  }, [key, value, floor]);
+  return value;
 }
