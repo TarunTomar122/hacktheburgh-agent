@@ -9,7 +9,7 @@ import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
 import { closeAgentBrowser, streamAgent, type DoneEvent } from "./streamAgent";
 
-// Same rule as the onboarding skip button (D24): a developer shortcut, never part of the real journey.
+// Same rule as the onboarding skip button: a developer shortcut, never part of the real journey.
 const DEMO = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_SKIP === "1";
 
 export default function OmbudsmanStep({ profile, goToStepOne }: { profile: Profile; goToStepOne: () => void }) {
@@ -76,7 +76,7 @@ function Unlocked({ profile }: { profile: Profile }) {
   const problems = draft ? spsoProblems(draft, answers) : ["Your complaint is still being written."];
   const impactMissing = a.outcome !== undefined && wordCount(a.impact ?? "") === 0;
 
-  // The agent prepares everything from onboarding (D33): the complaint text if step 1 never ran, then the ombudsman's two answers.
+  // The agent prepares everything from onboarding: the complaint text if step 1 never ran, then the ombudsman's two answers.
   const started = useRef(false);
   useEffect(() => {
     if (started.current || a.outcome !== undefined) return;
@@ -164,7 +164,7 @@ function Unlocked({ profile }: { profile: Profile }) {
           <Button onClick={() => run()} disabled={preparing || impactMissing || problems.length > 0 || running}>
             {running ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in the ombudsman's form"}
           </Button>
-          {/* Demo (D61): nothing is sent to the ombudsman, so the demo can carry on as if the form had been sent. Always shown, on purpose. */}
+          {/* Demo: nothing is sent to the ombudsman, so the demo can carry on as if the form had been sent. Always shown, on purpose. */}
           {profile.progress?.skipped?.includes(2) ? (
             <span className="text-sm font-medium text-teal">Skipped for the demo. Nothing was sent to the ombudsman.</span>
           ) : (

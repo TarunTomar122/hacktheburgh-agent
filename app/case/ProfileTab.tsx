@@ -34,7 +34,7 @@ const input = control;
 
 export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
   const f = profile.facts;
-  // How the reply should come is only needed for the complaint path, and only asked once the user takes it (D42).
+  // How the reply should come is only needed for the complaint path, and only asked once the user takes it.
   const forNhs = profile.track?.chosen === "complaint";
   const missing = forNhs ? missingRequired(f) : missingForOnboarding(f);
   const text = (k: keyof CaseFacts) => (f[k] as string | null) ?? "";
@@ -107,7 +107,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
                 value={text("address")}
                 onChange={(e) => set("address")(e.target.value)}
                 onBlur={(e) => {
-                  // A postcode typed inside the address goes to the postcode field, if that is empty (D44).
+                  // A postcode typed inside the address goes to the postcode field, if that is empty.
                   const found = uk !== false && !f.postcode?.trim() ? splitPostcode(e.target.value) : null;
                   if (found) {
                     set("address")(found.address);
@@ -279,7 +279,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
   );
 }
 
-/** "Your path" (D42): the track they are on, its fit, and the only place to switch (Tarun: not on the step pages). */
+/** "Your path": the track they are on, its fit, and the only place to switch (not on the step pages). */
 function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; onContinue: () => void; onSwitched?: (firstStep: number) => void }) {
   const chosen = profile.track?.chosen ?? null;
   const rec = profile.track?.rec;

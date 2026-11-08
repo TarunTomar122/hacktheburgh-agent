@@ -7,7 +7,7 @@ import { EFFORT, MODELS, modelFor, structured } from "./llm";
 import { pageText, type Note, type Tracker } from "./legalAid";
 
 /**
- * The evidence agent ("Iona", D48). Three browser skills and one reasoning step:
+ * The evidence agent ("Iona"). Three browser skills and one reasoning step:
  *  - readGuideline: open a clinical guideline page and pull out the recommendations about the patient's condition.
  *  - searchCaseLaw: search BAILII (court judgments) and list the results.
  *  - readJudgment: open one judgment and say, honestly, how it relates (same kind of case or only a similar injury).

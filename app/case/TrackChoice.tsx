@@ -8,7 +8,7 @@ import { CheckRow, FitRing } from "./scoreParts";
 import { stepsFor } from "./steps";
 
 /**
- * After onboarding (D42): one recommended track with its fit % and the reasons, one button to continue,
+ * After onboarding: one recommended track with its fit % and the reasons, one button to continue,
  * and the other track underneath for anyone who wants it instead. Fit is how well the track matches what they
  * told us, never a chance of success.
  */

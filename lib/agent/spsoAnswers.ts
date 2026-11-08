@@ -7,7 +7,7 @@ export type DocRoute = z.infer<typeof DocRoute>;
 export const DOC_OPTION: Record<DocRoute, string> = { upload: "I will upload below", none: "I do not have this document", post: "I will send a copy by post" };
 
 /**
- * What the SPSO form needs beyond the profile. None of it is a form for the user (D33):
+ * What the SPSO form needs beyond the profile. None of it is a form for the user:
  * - impact and outcome are written by the agent from what the user said at onboarding (lib/agent/spsoDraft.ts),
  * - the yes/no answers start from sensible defaults; the user changes them on the real form's review page,
  * - readConfirmed is set by the single approval click.
@@ -34,7 +34,7 @@ export type SpsoAnswers = z.infer<typeof SpsoAnswers>;
 
 export const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
 
-/** Starting answers, worked out in code. Not shown as a list (D33): the user checks and edits them on the real form's review page, which has an edit link per section. */
+/** Starting answers, worked out in code. Not shown as a list: the user checks and edits them on the real form's review page, which has an edit link per section. */
 export function defaultAssumptions(): Omit<SpsoAnswers, "impact" | "outcome" | "readConfirmed"> {
   return {
     nhsReference: "",

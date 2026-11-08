@@ -25,7 +25,7 @@ export default function DateField({
   onChange: (v: string) => void;
   label?: string;
   autoFocus?: boolean;
-  /** Full-screen version for the onboarding stage (D40): the three ways to say a date as buttons, and big fields. */
+  /** Full-screen version for the onboarding stage: the three ways to say a date as buttons, and big fields. */
   big?: boolean;
 }) {
   const [mode, setMode] = useState<DateMode>(value ? dateMode(value) : "exact");

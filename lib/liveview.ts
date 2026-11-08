@@ -1,7 +1,7 @@
 import type { BrowserContext, CDPSession, Page } from "playwright";
 
 /**
- * In-app live view of the agent's browser (D32), several tabs at once (D36).
+ * In-app live view of the agent's browser, several tabs at once.
  *
  * Every Playwright context opened through `openSession()` is attached here. We start a CDP screencast
  * (`Page.startScreencast`) on each tab and publish its JPEG frames, tagged with a `pageId`, to a process-wide
@@ -22,7 +22,7 @@ export type LiveFrame = {
   height: number;
 };
 
-/** One tab of the current session, as shown in the grid (D36). */
+/** One tab of the current session, as shown in the grid. */
 export type LivePage = {
   pageId: string;
   label: string;

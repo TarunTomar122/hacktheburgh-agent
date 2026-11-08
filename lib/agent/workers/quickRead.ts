@@ -1,5 +1,5 @@
 /**
- * Read a page without a browser (night plan: "fetch first, browser only when the page needs it").
+ * Read a page without a browser ("fetch first, browser only when the page needs it").
  * A plain HTTP fetch is enough for most official pages and PDFs. It declines (returns null) whenever the page might need
  * a real browser: a bot check, a login, a JavaScript app that renders nothing without scripts, an error, a page too thin to
  * read. The caller then opens the browser as before, so nothing is lost and nothing is claimed that was not read.

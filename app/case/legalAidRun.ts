@@ -2,7 +2,7 @@ import type { CaseFacts } from "../../lib/agent/facts";
 import { FIXTURE_RESULT, FIXTURE_TILES } from "../../lib/agent/legalAidFixture";
 import type { Funding, Step3Event, Step3Result } from "../../lib/agent/legalAidTypes";
 
-/** `?fixture=1` in the page URL replays sample data instead of running the agents (for building the UI; D36). */
+/** `?fixture=1` in the page URL replays sample data instead of running the agents (for building the UI). */
 export const fixtureMode = () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("fixture") === "1";
 
 /**

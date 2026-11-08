@@ -3,7 +3,7 @@ import type { PlannerEvent } from "./plannerTypes";
 import { cancelRunWork } from "./runControl";
 
 /**
- * Live runs, on the server (night plan: runs survive navigation, reloads and dropped connections).
+ * Live runs, on the server (runs survive navigation, reloads and dropped connections).
  * A run is started here, not tied to the request that started it: it keeps going when the client disconnects and only
  * stops through `cancelRun` (explicit cancel, or a restart of the same slot). Every event is kept in memory with its
  * time since the start, so a client can attach at any moment: it gets everything so far at once, then the live tail.

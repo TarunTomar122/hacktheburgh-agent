@@ -9,7 +9,7 @@ import type { DoneEvent } from "./streamAgent";
 const clean = (s: string) => s.replace(/\s*\((?:unsure|no answer|no saved value fits|chosen option not found)[^)]*\)\s*$/i, "").replace(/^\s*\*\s*|\s*\*\s*$/g, "").replace(/:\s*$/, "").trim();
 
 /**
- * When the agent stops on a field it could not fill, ask exactly that here, on the step (D33), then run again with the answer.
+ * When the agent stops on a field it could not fill, ask exactly that here, on the step, then run again with the answer.
  * Consent boxes are not answered here: those come from onboarding.
  */
 export default function AgentAsk({ result, busy, onAnswer }: { result: DoneEvent; busy: boolean; onAnswer: (extra: ExtraAnswers) => void }) {

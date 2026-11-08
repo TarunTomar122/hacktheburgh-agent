@@ -8,8 +8,8 @@ import InputPanel from "../InputPanel";
 import { Eyebrow } from "../ui";
 
 /**
- * Asks only what onboarding did not capture, one thing at a time, with the same inputs as onboarding (Om's InputPanel).
- * Renders nothing when everything is known. Used by every step instead of a form (D33).
+ * Asks only what onboarding did not capture, one thing at a time, with the same inputs as onboarding (InputPanel).
+ * Renders nothing when everything is known. Used by every step instead of a form.
  */
 export default function AskMissing({ profile, why, scope = "onboarding" }: { profile: Profile; why: string; scope?: "onboarding" | "nhs" }) {
   const f = profile.facts;

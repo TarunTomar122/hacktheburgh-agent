@@ -1,4 +1,4 @@
-// Headless check (night plan): the Research tab keeps the crew's view (history + result) after the research is done, also after a reload.
+// Headless check: the Research tab keeps the crew's view (history + result) after the research is done, also after a reload.
 //   npx tsx scripts/check-research-tab-ui.ts   (dev server on BASE, default http://localhost:3001; screenshot in docs/night-runs/takeaways/)
 // Seeds a saved route and the finished run's stored result from a real run's events file. Nothing is run or sent.
 import { readFileSync } from "node:fs";

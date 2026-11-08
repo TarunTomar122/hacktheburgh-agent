@@ -23,11 +23,11 @@ import { placeOf, useDemoAvailable } from "./useDemo";
 import { summarise, type LedgerEntry } from "../../lib/agent/ledgerSummary";
 
 /**
- * "Prepare your case" (D52, D62). Elliot's crew works through the case as a story, one step at a time.
+ * "Prepare your case". Elliot's crew works through the case as a story, one step at a time.
  *  Before: the four steps and one button.
  *  During: Elliot's current decision in one sentence (and a moment when he changes the plan), the question if one is
  *          open, then the crew on the left and the spotlight browser on the right. What each crew member did opens
- *          only when you pick them (progressive disclosure, Tarun's note 7).
+ *          only when you pick them (progressive disclosure).
  *  After:  the case file: the next action first, then funding, solicitors and evidence, each with its source.
  * Every line on screen comes from an event the agents actually produced.
  */
@@ -87,7 +87,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
       return;
     }
     persisted.current = r.runId ?? "x";
-    // A firm whose form needs a detail only the user has still goes to the review (D64), so it is kept like a ready one.
+    // A firm whose form needs a detail only the user has still goes to the review, so it is kept like a ready one.
     const ready = r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => e.firmId);
     const selected = [...new Set([...ready, ...r.shortlist])].slice(0, 3);
     setLegalAid({ result: r as Step3Result, sample: state.demo, selected, ...(!state.demo && r.funding ? { funding: r.funding } : {}) });
@@ -206,7 +206,7 @@ function Intro({ onStart, onDemo, recorded, error, routeMap }: { onStart: () => 
   );
 }
 
-/** Quiet controls for presenting (D63). Kept apart from the product UI so they never read as part of it. */
+/** Quiet controls for presenting. Kept apart from the product UI so they never read as part of it. */
 export function DemoBar({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-16 flex flex-wrap items-center justify-center gap-2 text-[12px] text-muted">
@@ -227,7 +227,7 @@ export function DemoButton({ onClick, children, disabled }: { onClick: () => voi
 
 type RunState = ReturnType<typeof usePlannerRun>["state"];
 
-/** Who works in a flow, in story order, and what each one is called in it (the complaint crew reuses the same screen, D65). */
+/** Who works in a flow, in story order, and what each one is called in it (the complaint crew reuses the same screen). */
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
@@ -591,7 +591,7 @@ function PlanMark({ status }: { status: PlanStep["status"] }) {
   return <span aria-hidden className={cx("inline-block size-2.5 rounded-[2px] border", status === "dropped" ? "border-faint" : "border-ink-2/40")} />;
 }
 
-/* ------------------------------------------------------------------ models and data (the ledger, night plan Phase 4b) */
+/* ------------------------------------------------------------------ models and data (the ledger) */
 
 const DATA_WORDS: Record<string, string> = { place: "where you are", health: "your health story", money: "your money", identity: "who you are" };
 const shortModel = (m: string) => m.replace(/^local:/, "").replace(/^hf\.co\/[^/]+\//, "").replace(/-GGUF.*$/, "");
@@ -649,7 +649,7 @@ function ModelsTable({ entries }: { entries: LedgerEntry[] }) {
 function Timeline({ says, trace, runId, openAsks, onTrace, compact, needs = [] }: { says: Say[]; trace: TraceStep[]; runId?: string; openAsks: string[]; onTrace: (s: TraceScope) => void; compact?: boolean; needs?: RunState["handoffs"] }) {
   // An open question is on screen in its own card: don't repeat it here.
   const lastAsk = says.findLast((x) => x.kind === "ask");
-  // Newest first (Tarun): what just happened is at the top.
+  // Newest first: what just happened is at the top.
   const shown = useMemo(() => says.filter((s) => !(s.kind === "ask" && openAsks.length > 0 && s === lastAsk)).reverse(), [says, openAsks.length, lastAsk]);
   const steps = (s: Say) => (s.kind === "report" && s.tab ? trace.filter((t) => t.agent === s.tab) : []);
   const open = needs.filter((h) => !h.outcome);
@@ -1136,7 +1136,7 @@ export function GapFinding({ gap, point, guideline, source, note }: { gap: { tim
   );
 }
 
-/** A firm as plain facts; the score behind it opens on click (Codex: facts, not bare percentages). */
+/** A firm as plain facts; the score behind it opens on click (facts, not bare percentages). */
 function FirmLine({ f }: { f: Step3Result["firms"][number] }) {
   const [open, setOpen] = useState(false);
   const facts: { label: string; on: boolean | null }[] = [

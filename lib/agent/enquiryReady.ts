@@ -2,7 +2,7 @@ import type { Page } from "playwright";
 import type { FormField } from "./enquiryTypes";
 
 /**
- * When may an enquiry be called "filled and ready" (Codex round 5, blocker 2)?
+ * When may an enquiry be called "filled and ready"?
  * An empty enquiry was once reported "filled and ready" (Enable Law: filled [], fields []). Now `ready_to_send` needs ALL of:
  *   (a) the enquiry form is verified on the page: it has fields we can read, and at least one is a message or contact box;
  *   (b) every message/contact box the form asks for holds, read back from the DOM, the value we meant to put there

@@ -10,8 +10,8 @@ import FirmResults from "./FirmResults";
 import { StatsLine } from "./scoreParts";
 
 /**
- * Step 3 (D36): "Can I get legal aid?" plus "who could take my case".
- * D33: one sentence and one button. Only the calculator's money questions are asked, here, one at a time, and only if missing.
+ * Step 3: "Can I get legal aid?" plus "who could take my case".
+ * One sentence and one button. Only the calculator's money questions are asked, here, one at a time, and only if missing.
  */
 export default function LegalAidStep({ profile, onContinue }: { profile: Profile; onContinue: () => void }) {
   const funding = profile.legalAid?.funding ?? EMPTY_FUNDING;

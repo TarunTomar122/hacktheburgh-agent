@@ -30,7 +30,7 @@ const MODEL_ROLES: { id: string; name: string; why: string }[] = [
   { id: MODELS.draft, name: "Reasoning", why: "Plans, re-plans and writes. Used where a wrong call costs the most." },
   { id: MODELS.browser, name: "Fast reader", why: "Reads pages and picks links many times a run, so it has to be quick and cheap." },
   { id: DECISION_MODEL, name: "Decisions", why: "Yes, no or pick-one answers with a confidence, like 'does this firm act for patients?'." },
-  { id: MODELS.private, name: "On this Mac", why: "Anything with your health story, money or identity stays on this machine." },
+  { id: MODELS.private, name: "On this Mac", why: "Writes and reasons over your health story, money and identity on this machine." },
 ];
 /** Why each step uses the models it does, in one line. Facts about where data goes are taken from the ledger, not assumed. */
 const STEP_WHY: Partial<Record<Flow, string>> = {

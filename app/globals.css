@@ -35,8 +35,7 @@
 }
 
 /*
- * Design tokens. Values come from wordsmith.ai's own CSS (read 2026-11-07, by Om's and Tarun's agents separately,
- * with the same results); see docs/DESIGN.md for the source of each.
+ * Design tokens. Values come from wordsmith.ai's own CSS (read 2026-11-07); see docs/DESIGN.md for the source of each.
  * Use these names (bg-brand, text-ink ...). Do not write raw hex values or zinc-* in components.
  */
 @theme {
@@ -55,7 +54,7 @@
   --color-night: #1a1d21;        /* home-card-dark: dark panels (activity log) */
   --color-night-text: #ededef;   /* home-card-text */
   --color-night-meta: #969698;   /* home-card-meta */
-  --color-purple: #8600fa;      /* brand-purple-500: Iona, the evidence agent (D52) */
+  --color-purple: #8600fa;      /* brand-purple-500: Iona, the evidence agent */
   --color-purple-soft: #f6eeff; /* brand-purple-100 */
   --color-amber: #e64d00;        /* brand-amber-500: warnings */
   --color-amber-soft: #fff0e8;   /* brand-amber-100 */
@@ -64,7 +63,7 @@
   --color-danger: #dc2626;       /* home-danger */
   --color-danger-soft: #fef2f2;  /* red-50 */
 
-  /* Aliases kept for the onboarding widgets (Om, D26). Same values as above where they overlap. New code: use the names above. */
+  /* Aliases kept for the onboarding widgets. Same values as above where they overlap. New code: use the names above. */
   --color-body: #181818;
   --color-cream: #fcf7ee;
   --color-stone: #fafaf9;
@@ -228,7 +227,7 @@ body {
     background-size: 12px;
   }
 
-  /* One-question screens (onboarding, D40): a big borderless field with an underline, like Typeform. */
+  /* One-question screens (onboarding): a big borderless field with an underline, like Typeform. */
   .big-input {
     width: 100%;
     border: 0;
@@ -355,7 +354,7 @@ body {
     background: #fff;
   }
 
-  /* The crew screen (D52). New events rise 4px while fading in (160 ms); a working agent shows two bars taking turns. */
+  /* The crew screen. New events rise 4px while fading in (160 ms); a working agent shows two bars taking turns. */
   .rise {
     animation: rise 160ms ease-out both;
   }

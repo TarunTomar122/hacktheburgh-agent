@@ -1,7 +1,7 @@
 import type { Investigation, InvestigationLane } from "../../lib/agent/plannerTypes";
 
 /**
- * Iona's pre-action investigation (night plan, side backlog 2), shown small: each item is a quote in the body's own
+ * Iona's pre-action investigation, shown small: each item is a quote in the body's own
  * words with the page it came from, grouped by what kind of material it is; what was not found is said in one line,
  * with the searches behind it one click away. Every quote here was checked against the page's text by code.
  */

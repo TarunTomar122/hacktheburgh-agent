@@ -2,7 +2,7 @@ import { z } from "zod";
 import { editEnquiry } from "../../../../../lib/agent/enquiry";
 
 /**
- * POST { firmId, edits } -> { enquiry } (D64). The agent types the user's edits into the open form and reports how it
+ * POST { firmId, edits } -> { enquiry }. The agent types the user's edits into the open form and reports how it
  * looks now. This never sends anything: sending is /api/agent/step4/send, behind the send gate.
  */
 const Edit = z.object({ name: z.string().max(200), label: z.string().min(1).max(300), value: z.string().max(6000) });

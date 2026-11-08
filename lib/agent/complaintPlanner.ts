@@ -21,7 +21,7 @@ import { limiter, skips, waiting, type Ask, type Emit } from "./planner";
 import { CREW, TOOL_CREW, type AskSpec, type ComplaintResult, type CrewId, type EvidenceResult, type PlanStep, type Say, type Thought } from "./plannerTypes";
 
 /**
- * The complaint crew (D65): the same Elliot-led story as the compensation crew, for step 1.
+ * The complaint crew: the same Elliot-led story as the compensation crew, for step 1.
  * Robin reads NHS Lothian's own pages and the NHS complaints time limit. Iona reads the clinical guideline and
  * compares it with the patient's account. Elliot writes the complaint. Kit fills in NHS Lothian's form and stops
  * before Submit: the patient presses it themselves. A reasoning model plans the route; nothing is ever submitted.
@@ -392,7 +392,7 @@ export async function runComplaint(facts: CaseFacts, opts: { onEvent?: Emit; kee
       message: undefined,
     };
     emit({ type: "complaint_result", result });
-    // Research tabs close. Only the filled form stays, for the patient to check and submit (D57).
+    // Research tabs close. Only the filled form stays, for the patient to check and submit.
     if (opts.keepOpen && formPage && !(formPage as Page).isClosed()) {
       reviewing = true;
       await keepOnlyTabs(context, [formPage]);

@@ -1,4 +1,4 @@
-// Checks the saved-cases database (D75): connects, creates the table if it is missing, writes and reads back a throwaway row, removes it.
+// Checks the saved-cases database: connects, creates the table if it is missing, writes and reads back a throwaway row, removes it.
 // Usage: npm run db:check     (reads DATABASE_URL from .env.local)
 import { dbEnabled, getSaved, putSaved, removeSaved } from "../lib/db";
 

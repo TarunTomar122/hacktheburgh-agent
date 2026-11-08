@@ -1171,7 +1171,7 @@ export async function liveForwardVerdict(page: Page, f: { label: string; kind: E
   const loc = page.locator(`[data-aid="${el.id}"]`);
   const live = ((await loc.innerText({ timeout: 2000 }).catch(() => "")) || (await loc.getAttribute("value").catch(() => "")) || fwd.label).trim();
   if (FINAL_RE.test(fwd.label) || FINAL_RE.test(live)) return { ok: false, fwd, final: `its label "${short(live || fwd.label, 30)}" sends` };
-  // Codex round 5: a link is no longer exempt. An `<a href>` can carry onclick or a script listener that sends the form,
+  // A link is no longer exempt. An `<a href>` can carry onclick or a script listener that sends the form,
   // whatever its label. On a form page a link is pressed only when code VERIFIES it (same-origin address, no handler,
   // not tied to a form), and then it is followed by address, never clicked. Otherwise: refuse, "needs your input".
   if (el.kind === "link") {

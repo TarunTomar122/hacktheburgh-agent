@@ -58,7 +58,7 @@ export default function CasePage() {
   const f = profile.facts;
   const name = [f.firstName, f.lastName].filter(Boolean).join(" ") || "you";
   const incomplete = missingForOnboarding(f).length > 0;
-  // D42: one track at a time. Research first, then the choice of path, then that path's steps.
+  // One track at a time. Research first, then the choice of path, then that path's steps.
   const chosen = profile.track?.chosen ?? null;
   const hasRoute = !!profile.route;
   const trackSteps = chosen ? TRACKS[chosen].steps : [];
@@ -121,12 +121,12 @@ export default function CasePage() {
                   <TrackChoice profile={profile} onChosen={(n) => go(n)} />
                 </div>
               ) : stage === 1 && profile.route && "map" in profile.route ? (
-                // With a route map, step 1 is the complaint crew for whichever body discovery found (night plan).
+                // With a route map, step 1 is the complaint crew for whichever body discovery found.
                 <div className="px-8 py-8">
                   <ComplaintRun profile={profile} onContinue={() => go(2)} />
                 </div>
               ) : stage === 2 && profile.route && "map" in profile.route ? (
-                // With a route map, step 2 takes the complaint to whichever independent body discovery found (night plan).
+                // With a route map, step 2 takes the complaint to whichever independent body discovery found.
                 <div className="px-8 py-8">
                   <EscalationRun profile={profile} route={profile.route.map} goToStepOne={() => go(1)} onContinue={trackSteps.includes(3) ? () => go(3) : undefined} />
                 </div>
@@ -136,12 +136,12 @@ export default function CasePage() {
                   <MedicineRun profile={profile} route={profile.route && "map" in profile.route ? profile.route.map : undefined} />
                 </div>
               ) : stage === 3 ? (
-                // Step 3 is Elliot's crew (D49): it uses the whole width while it runs, and a case file when done.
+                // Step 3 is Elliot's crew: it uses the whole width while it runs, and a case file when done.
                 <div className="px-8 py-8">
                   <CaseRun profile={profile} onReviewEnquiries={() => go(4)} />
                 </div>
               ) : stage === 4 ? (
-                // Step 4 is firm cards side by side: full width too, no side panel (D46).
+                // Step 4 is firm cards side by side: full width too, no side panel.
                 <div className="mx-auto max-w-6xl px-8 py-10">
                   <ContactLawyersStep profile={profile} onBack={() => go(3, false, "firms")} />
                 </div>
@@ -236,7 +236,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
         <Button onClick={() => fill()} disabled={!canFill}>
           {filling ? "Filling the form…" : preparing ? "Getting it ready…" : "Fill in NHS Lothian's form"}
         </Button>
-        {/* Demo (D49): no real complaint is filed, so the demo can go on to step 2 as if NHS Lothian had replied. Always shown, on purpose. */}
+        {/* Demo: no real complaint is filed, so the demo can go on to step 2 as if NHS Lothian had replied. Always shown, on purpose. */}
         <Button
           variant="secondary"
           disabled={filling}

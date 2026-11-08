@@ -21,7 +21,7 @@ export function milestones(p: Profile): Milestone[] {
   const g = p.progress ?? {};
   const first = nameOf(p, "complaint", p.route && "map" in p.route ? "the hospital" : "NHS Lothian"); // the body the research found for this place
   const second = nameOf(p, "escalation", p.route && "map" in p.route ? "the independent body" : "the ombudsman");
-  const skipped = g.skipped ?? []; // steps the user skipped in the demo (D60)
+  const skipped = g.skipped ?? []; // steps the user skipped in the demo
   return [
     { step: 1, label: "Your details are complete", done: missingRequired(p.facts).length === 0 },
     { step: 1, label: "Complaint written", done: !!p.draft?.details.trim() },

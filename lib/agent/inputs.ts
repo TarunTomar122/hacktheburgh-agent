@@ -2,7 +2,7 @@
 //
 // The order and the wording of the questions live here, in code, so they are predictable and
 // testable. The model is only used to read free text (the story, or anything typed in the
-// interview script) and to add one short acknowledgement. See D28.
+// interview script) and to add one short acknowledgement.
 import { placeIsUK, type CaseFacts } from "./facts";
 
 export type Target = "name" | "story" | "details" | "who" | "contact" | "contactMethod" | "emailRisk" | "outcome" | "done";
@@ -21,7 +21,7 @@ export const OUTCOME_CHOICES = [
   "Treatment or support to put things right",
   "Compensation for what happened",
 ] as const;
-/** Ticking this points towards the compensation track (D42). */
+/** Ticking this points towards the compensation track. */
 export const COMPENSATION_CHOICE = "Compensation for what happened";
 
 const blank = (v: string | null | undefined) => v === null || v === undefined || v.trim() === "";
@@ -29,7 +29,7 @@ const blank = (v: string | null | undefined) => v === null || v === undefined ||
 /**
  * The first thing still unanswered. Pure function of the facts, so the same facts always give the same question.
  * Scope "onboarding" leaves out what only one place's complaint form needs (how the reply should come, NHS Lothian's email-risk
- * consent): those are asked on the complaint step, and only if the user takes that track (D42). Scope "nhs" includes them.
+ * consent): those are asked on the complaint step, and only if the user takes that track. Scope "nhs" includes them.
  * A postcode is only required once the place is known to be in the UK: not every country has postcodes.
  */
 export function nextTarget(f: CaseFacts, scope: "onboarding" | "nhs" = "onboarding"): Target {
@@ -72,7 +72,7 @@ export function normaliseFacts(f: CaseFacts): CaseFacts {
 // ---------------------------------------------------------------- validation
 
 const POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
-// Email: the shape RFC 5321 allows in practice, plus a catch for the typos people actually make (D44).
+// Email: the shape RFC 5321 allows in practice, plus a catch for the typos people actually make.
 const EMAIL_LOCAL = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
 const DOMAIN_LABEL = /^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
 const TLD = /^([A-Za-z]{2,24}|xn--[A-Za-z0-9-]{2,59})$/;
@@ -141,7 +141,7 @@ export const isEmail = (v: string) => emailProblem(v) === null;
 
 const POSTCODE_IN_TEXT = /\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b/gi;
 /**
- * A UK postcode typed inside an address ("14 Gorgie Road, Edinburgh EH11 2LA"): returns the address without it and the postcode, so we never ask for it again (D44).
+ * A UK postcode typed inside an address ("14 Gorgie Road, Edinburgh EH11 2LA"): returns the address without it and the postcode, so we never ask for it again.
  * Takes the last one that is a valid postcode. Null if there is none, or if the address would be left empty.
  */
 export function splitPostcode(address: string): { address: string; postcode: string } | null {
@@ -257,7 +257,7 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         ],
       };
     case "contact": {
-      // Never ask again for something we already have (D33): the optional title only shows if it is still blank.
+      // Never ask again for something we already have: the optional title only shows if it is still blank.
       const fields: FormField[] = blank(f.title) ? [{ key: "title", label: "Title (optional)", kind: "select", required: false, options: TITLES, autoComplete: "honorific-prefix" }] : [];
       if (blank(f.lastName)) fields.push({ key: "lastName", label: "Last name", kind: "text", required: true, autoComplete: "family-name" });
       if (blank(f.address)) fields.push({ key: "address", label: "Address", kind: "text", required: true, autoComplete: "street-address" });

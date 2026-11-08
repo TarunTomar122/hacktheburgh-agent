@@ -20,7 +20,7 @@ import { searchDirectory } from "./workers/searchDirectory";
 import type { Quote, Value } from "./workers/types";
 
 /**
- * Compensation, anywhere (night plan, "Elliot anywhere"). On the route map discovery produced:
+ * Compensation, anywhere ("Elliot anywhere"). On the route map discovery produced:
  *  Nell runs the place's own funding checker (asking the patient only what the checker asks) or reads the funding rules;
  *  Robin searches the place's professional register with its own filters, then follows each entry to the firm's own
  *  website, matches it (name and web address) and reads whether it acts for patients and works on no win no fee,
@@ -356,7 +356,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             if (o.status === "ready_to_send" && o.formUrl) firms.set(firm.id, { ...firms.get(firm.id)!, enquiryUrl: o.formUrl });
             kit.finding(`${firm.name}: ${o.status === "ready_to_send" ? "enquiry form filled, waiting for your OK" : o.note}`, o.formUrl ?? undefined, "kit");
             if (o.status === "no_form" || o.status === "could_not_fill") {
-              // No usable online form: the next best firm checked on its own site takes its place on the shortlist (D46).
+              // No usable online form: the next best firm checked on its own site takes its place on the shortlist.
               const next = [...firms.values()].filter((x) => !x.excluded && x.sources.includes("website") && !shortlistIds.includes(x.id) && !enquiries.has(x.id)).sort((x, y) => score(y, routeKind, evidence.get(y.id)).score - score(x, routeKind, evidence.get(x.id)).score)[0];
               if (next) {
                 shortlistIds = [...shortlistIds.filter((id) => id !== firm.id), next.id];

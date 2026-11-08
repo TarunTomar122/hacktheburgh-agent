@@ -8,14 +8,14 @@ import { Badge, FitRing, host, ScoreRow, StatsLine } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 
 /**
- * Step 3 results as a shopping page (Tarun): a compact verdict on top, filters on the left built from the actual result (with
+ * Step 3 results as a shopping page: a compact verdict on top, filters on the left built from the actual result (with
  * counts), a sort, and a grid of compact firm cards. A card shows only name, place, fit and up to 3 badges; everything else is
  * one click away in a detail window, and the full trace behind that (progressive disclosure). Cards can be ticked for step 4.
  */
 
 const CALCULATOR = "SLAB calculator";
 
-/** The verdict as one small chip in the results line (Tarun: a card repeating it on every visit is not helpful). Hover for the honest detail, click for the calculator's steps. */
+/** The verdict as one small chip in the results line (a card repeating it on every visit is not helpful). Hover for the honest detail, click for the calculator's steps. */
 const VERDICT: Record<Step3Result["verdict"], { cls: string; chip: string; tip: string }> = {
   likely: { cls: "bg-teal-soft text-teal", chip: "May qualify for legal aid", tip: "SLAB's calculator says you may qualify financially. A solicitor applies for you, and SLAB also checks the case has merit." },
   unlikely: { cls: "bg-amber-soft text-amber", chip: "Legal aid unlikely", tip: "SLAB's calculator says you may not qualify financially. Some solicitors take cases like this on a no win no fee basis." },
@@ -88,7 +88,7 @@ export default function FirmResults({
     .sort((a, b) => (sort === "fit" ? fitOf(b) - fitOf(a) : (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9)));
   const count = (test: (f: FirmFinding) => boolean, skip: "fit" | "miles" | Flag) => result.firms.filter((f) => passes(f, q, skip) && test(f)).length;
   const full = selected.length >= MAX_ENQUIRIES;
-  // Up to MAX_ENQUIRIES firms (D45): once full, unticked boxes are disabled.
+  // Up to MAX_ENQUIRIES firms: once full, unticked boxes are disabled.
   const toggle = (id: string) => onSelected(selected.includes(id) ? selected.filter((x) => x !== id) : full ? selected : [...selected, id]);
   const firmScope = (f: FirmFinding): TraceScope => ({ title: f.name, subtitle: f.excluded ? `Left out: ${f.excluded}` : undefined, steps: trace.filter((s) => s.firms?.includes(f.id)) });
   const anyFilter = q.minFit > 0 || q.maxMiles !== null || q.flags.length > 0;

@@ -17,7 +17,7 @@ const Extract = z.object({
     .describe("Zero or one short sentence showing you heard them, in their own words. Empty if the answer was only a plain detail. Never a question."),
 });
 
-// The order of the questions and their wording are fixed in code (inputs.ts, D28). The model only reads free text.
+// The order of the questions and their wording are fixed in code (inputs.ts). The model only reads free text.
 const INSTRUCTIONS = `You read what a person tells you about health care they received, wherever in the world that was, and record it as facts for their case. You do not choose the next question: the program does that.
 
 Recording facts
@@ -31,7 +31,7 @@ Recording facts
 - desiredOutcome: set it only if the question being answered is the one about what they would like to happen. If they say they have nothing to add, set it to an empty string.
 - emailRiskAccepted: set it only if the question being answered is the email question. true only for an explicit yes, false for an explicit no.
 - preferredContact is one of Letter, Email, Phone Call. Set it only if they clearly chose.
-- medicalRecords: never ask about it and leave it null unless the user volunteers it; a later step handles it (D29).
+- medicalRecords: never ask about it and leave it null unless the user volunteers it; a later step handles it.
 
 The acknowledgement
 - Say it the way a good GP or a careful solicitor would, but only in everyday words. Unhurried and calm, never theatrical.

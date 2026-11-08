@@ -5,8 +5,8 @@ import type { TraceStep } from "../../lib/agent/legalAidTypes";
 import { Button, cx } from "../ui";
 
 /**
- * Full traceability for step 3 (D39): every step an agent took, in time order, for one firm, the calculator, or the whole run.
- * Opened from a firm card, the verdict, or "Whole run". A centred modal (Tarun: modals, never side sheets); Escape or the backdrop closes it.
+ * Full traceability for step 3: every step an agent took, in time order, for one firm, the calculator, or the whole run.
+ * Opened from a firm card, the verdict, or "Whole run". A centred modal (modals, never side sheets); Escape or the backdrop closes it.
  */
 
 export type TraceScope = { title: string; subtitle?: string; steps: TraceStep[]; whole?: boolean };

@@ -1,4 +1,4 @@
-// Checks that closeWhenSubmitted announces a submit (so the app marks the step sent and moves on, D83) and stays quiet when the site rejects it.
+// Checks that closeWhenSubmitted announces a submit (so the app marks the step sent and moves on) and stays quiet when the site rejects it.
 // Uses a local page that behaves like the NHS Lothian form (Ninja Forms: AJAX POST, success message in .nf-response-msg).
 // Run: npx tsx scripts/test-submit-detect.ts
 import http from "node:http";

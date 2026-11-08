@@ -1,4 +1,4 @@
-// Runs survive navigation (night plan): the run belongs to the server, not to the request that started it.
+// Runs survive navigation: the run belongs to the server, not to the request that started it.
 //   npx tsx --env-file=.env.local scripts/test-run-persistence.ts            (needs the dev server: BASE=http://localhost:3001)
 // Part A (offline): the registry with a fake run: replay with times, open questions reappear, answers still work, cancel stops.
 // Part B (real, short, headless via the app server): start a discovery run, drop the connection, check the run is still

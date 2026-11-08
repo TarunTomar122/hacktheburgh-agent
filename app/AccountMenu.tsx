@@ -11,7 +11,7 @@ export const useAccount = () => useContext(AccountContext);
 
 /**
  * Wraps the app (app/layout.tsx). Tells the profile store whose case this browser is showing, before anything below
- * reads it, so each account has its own saved case (D74), then fetches the case saved to the account (D75).
+ * reads it, so each account has its own saved case, then fetches the case saved to the account.
  */
 export function AccountProvider({ account, children }: { account: Account; children: ReactNode }) {
   setProfileOwner(account.sub);

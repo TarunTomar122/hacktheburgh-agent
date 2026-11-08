@@ -8,7 +8,7 @@ import { pageText, type Note, type Tracker } from "./legalAid";
 import { hasSupport } from "./complaintSupport";
 
 /**
- * Robin's two reading skills for the complaint crew (D65). Both open real pages and answer only from them.
+ * Robin's two reading skills for the complaint crew. Both open real pages and answer only from them.
  * Sources checked 2026-11-07: NHS Lothian's "How do I make a complaint" pages and Citizens Advice Scotland's page on NHS complaints (the SPSO site was returning errors, and NHS Lothian's pages do not state the time limit).
  */
 

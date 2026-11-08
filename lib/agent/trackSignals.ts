@@ -3,7 +3,7 @@ import { decide } from "./decisions";
 import type { TrackSignals } from "./track";
 
 /**
- * Two typed questions about the user's story, answered by the Decisions API (D42). Server only.
+ * Two typed questions about the user's story, answered by the Decisions API. Server only.
  * The model only gives probabilities; the scoring is in lib/agent/track.ts.
  */
 export async function trackSignals(f: CaseFacts): Promise<TrackSignals> {

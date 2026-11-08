@@ -6,7 +6,7 @@ import { cx } from "../ui";
 import { CrewMark } from "./crew/Crew";
 
 /**
- * "How it works where you live" (night plan, "Elliot anywhere"): the route the crew worked out live, one quiet row per
+ * "How it works where you live" ("Elliot anywhere"): the route the crew worked out live, one quiet row per
  * part, sources one click away. Confidence is said in words, never by colour alone.
  */
 
@@ -51,7 +51,7 @@ export default function RouteMapCard({ route, compact, handoff, onRerun }: { rou
 
 function Row({ label, step, crew, compact, ask }: { label: string; step?: RouteStep; crew: RouteStep["by"]; compact?: boolean; ask?: boolean }) {
   const [open, setOpen] = useState(false);
-  // Nothing checked on an official page: the claimed body stays out of the headline (Cursor review).
+  // Nothing checked on an official page: the claimed body stays out of the headline.
   if (!step || step.confidence === "unconfirmed")
     return (
       <li className="flex items-start gap-4 px-6 py-3.5">

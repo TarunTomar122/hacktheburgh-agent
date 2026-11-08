@@ -118,7 +118,7 @@ export default function Onboarding() {
     return run([...messages, { role: "user", content: echo }], answer);
   }
 
-  /** Dev shortcut (D24): load a fictional persona with onboarding complete and go to the case, where the real crew runs. */
+  /** Dev shortcut: load a fictional persona with onboarding complete and go to the case, where the real crew runs. */
   function skipWith(p: Persona) {
     createProfile(p.facts, p.messages, p.draft);
     router.push("/case");

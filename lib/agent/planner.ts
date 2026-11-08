@@ -38,7 +38,7 @@ import { approvalTabs, draftEnquiry, fillOne, keepForApproval } from "./enquiry"
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 
 /**
- * The planner agent (D47). A reasoning model plans its own route through the compensation research, calling
+ * The planner agent. A reasoning model plans its own route through the compensation research, calling
  * browser workers as tools. Several tools in one turn run at the same time in separate tabs. Workers ask the user
  * when a site needs something we do not know (the calculator asks the money questions itself, one at a time, only
  * those the site actually shows). Nothing is ever submitted.
@@ -623,7 +623,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   mkdirSync(runDir, { recursive: true });
   const emit: Emit = (e) => {
     if (e.type !== "stats" && e.type !== "trace") log({ type: "status", message: JSON.stringify(e).slice(0, 2000) });
-    // The whole event stream, timed, so a run can be replayed for a demo (D63, /api/agent/plan/demo).
+    // The whole event stream, timed, so a run can be replayed for a demo (/api/agent/plan/demo).
     try {
       appendFileSync(path.join(runDir, "events.ndjson"), JSON.stringify({ t: Date.now() - startedAt, e }) + "\n");
     } catch {
@@ -654,7 +654,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   let plan: PlanStep[] = [];
   const thoughts: Thought[] = [];
   const says: Say[] = [];
-  const proof: EvidenceResult = {}; // Iona's findings (D48); `evidence` below is per-firm scoring evidence
+  const proof: EvidenceResult = {}; // Iona's findings; `evidence` below is per-firm scoring evidence
   let guideline: GuidelineReading | null = null;
   let message: EnquiryMessage | null = null;
   const enquiries = new Map<string, EnquiryOutcome>();
@@ -668,7 +668,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     emit({ type: "say", say: full });
   };
   const crewState = (id: CrewId, state: "idle" | "working" | "waiting" | "done", note: string) => emit({ type: "crew", id, state, note });
-  const open = new Map<CrewId, number>(); // jobs each crew member still has running (D62: never "idle" while busy)
+  const open = new Map<CrewId, number>(); // jobs each crew member still has running (never "idle" while busy)
   /** Same, remembering the tab's label on the planner's thought so the report can point at exactly its browser steps. */
   const crewFor = <T,>(th: Thought, id: CrewId, task: string, work: (p: Page, note: Note) => Promise<T>, timeoutMs: number, firms?: string[]) => {
     th.tab = `${CREW[id].name} · ${task}`;
@@ -705,7 +705,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   const firmLine = (f: FirmFinding) =>
     `${f.id}: ${f.name}, ${f.town}${f.distanceMiles !== null ? ` (${f.distanceMiles} miles)` : ""}${f.website ? `, ${f.website}` : ", no website"}${f.legalAid ? ", takes legal aid" : ""}${f.sources.includes("website") ? `. Checked: acts for patients ${said(f.actsForPatients)}; no win no fee ${said(f.noWinNoFee)}; enquiry form ${f.enquiryUrl ? "found" : "not found"}${f.excluded ? `; RULED OUT: ${f.excluded}` : ""}` : ""}`;
 
-  /** What a crew member is doing, in a few plain words, while the tool runs (shown as the hero line, D62). */
+  /** What a crew member is doing, in a few plain words, while the tool runs (shown as the hero line). */
   const doing = (tool: string, a: Record<string, unknown>): string => {
     const firm = firms.get(String(a.firm_id ?? ""))?.name ?? (typeof a.name === "string" ? a.name : "");
     const short = (n: string) => n.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "");
@@ -818,7 +818,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         let r = await tabs(() => crewFor(thought, "robin", "SLAB lawyer list", (p, note) => runFinder(p, note, track, location), 120_000));
         let noLocation = "";
         if (!r.ok && /could not confirm/i.test(r.error) && location.allowed) {
-          // Recovery (D62): SLAB would not take the postcode. Search again without a location rather than asking again.
+          // Recovery: SLAB would not take the postcode. Search again without a location rather than asking again.
           tracer.add({ agent: thought.tab ?? "Robin", color: CREW.robin.color, kind: "recover", text: `SLAB could not confirm ${location.postcode}; searching again without a location` });
           noLocation = ` SLAB could not use ${location.postcode}, so this list is not sorted by distance; do not ask the user about the postcode again.`;
           location = { allowed: false };
@@ -967,7 +967,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
   let reviewing = false;
   let turns = 0;
   try {
-    // The profile's postcode is used for the solicitor search without a separate question (Tarun, 2026-11-07).
+    // The profile's postcode is used for the solicitor search without a separate question.
     const savedPostcode = facts.postcode && isPostcode(facts.postcode) ? formatPostcode(facts.postcode) : null;
     location = savedPostcode ? { allowed: true, postcode: savedPostcode } : { allowed: false };
     const story = [facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n");
@@ -994,7 +994,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
         input = [{ role: "user", content: "Call a tool. Use shortlist and then finish when you are done." }];
         continue;
       }
-      // One step at a time (D62): calls run in order. Consecutive check_firm or fill_enquiry calls form one side-by-side batch.
+      // One step at a time: calls run in order. Consecutive check_firm or fill_enquiry calls form one side-by-side batch.
       const PARALLEL = new Set(["check_firm", "fill_enquiry"]);
       // The story order wins over the order the model listed its calls in: Nell, Robin, Iona, shortlist, Kit.
       const STAGE: Record<string, number> = { update_plan: 0, ask_user: 0, slab_calculator: 1, slab_lawyer_list: 2, web_search: 2, visit: 2, check_firm: 3, law_society_check: 3, read_guideline: 4, compare_care: 4, search_case_law: 4, read_judgment: 4, shortlist: 5, fill_enquiry: 6, finish: 7 };
@@ -1092,7 +1092,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
     };
     emit({ type: "result", result });
     emit({ type: "planner_result", result });
-    // The research is over: close every tab. Only filled enquiry forms waiting for the user's OK stay up (D57).
+    // The research is over: close every tab. Only filled enquiry forms waiting for the user's OK stay up.
     const waiting4Ok = approvalTabs(context);
     if (opts.keepOpen && waiting4Ok.length > 0) {
       reviewing = true;

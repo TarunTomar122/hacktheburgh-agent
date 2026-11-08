@@ -5,7 +5,7 @@ import type { EvidenceResult, InvestigationLane, PlannerResult } from "../agent/
 import { cleanRoute, evidenceOf, ROUTE_KINDS, trustOf, type RouteMap, type RouteStep, type Source } from "../agent/routeTypes";
 
 /**
- * The solicitor-ready case bundle (night plan). One document built ONLY from what the app already saved for this case:
+ * The solicitor-ready case bundle. One document built ONLY from what the app already saved for this case:
  * nothing is invented, and a section with no saved data is left out. Server-rendered (renderToStaticMarkup) and printed to A4 by
  * lib/caseBundle/render.ts. Plain words, every fact with its source link and, where the data has them, the quoted words.
  */

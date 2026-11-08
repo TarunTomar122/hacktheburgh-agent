@@ -13,7 +13,7 @@ import { fillForm } from "./workers/fillForm";
 import type { Value, WorkerCtx } from "./workers/types";
 
 /**
- * Step 2, anywhere (night plan, "Elliot anywhere"): taking the complaint to the independent body discovery found
+ * Step 2, anywhere ("Elliot anywhere"): taking the complaint to the independent body discovery found
  * (an ombudsman, a commission, a regulator). Robin reads the body's own pages for when you can go, the time limit and
  * what to include, and checks the patient's progress honestly ("not yet: you need the final reply first"). Elliot
  * writes the case from the complaint and the provider's reply. Kit explores to the body's own online form or checker,

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Work out what to do next after a medical mistake",
 };
 
-/** Reads who is signed in (cookies), so it sits inside <Suspense>: with Cache Components, runtime data outside one blocks the route (D74). */
+/** Reads who is signed in (cookies), so it sits inside <Suspense>: with Cache Components, runtime data outside one blocks the route. */
 async function Accounts({ children }: { children: ReactNode }) {
   const account = await currentAccount();
   return (

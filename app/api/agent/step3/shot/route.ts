@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * GET ?run=<runId>&file=<shot> -> one JPEG screenshot from a step 3 trace (D39).
+ * GET ?run=<runId>&file=<shot> -> one JPEG screenshot from a step 3 trace.
  * Only files written by the step 3 and step 4 runners, under .runs/step3-* or .runs/step4-*, are served; both names are checked strictly.
  */
 export async function GET(req: Request) {
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const run = u.searchParams.get("run") ?? "";
   const file = u.searchParams.get("file") ?? "";
   if (!/^(step[34]|complaint|discovery|escalation|medicine)-[0-9T-]+Z?(-[a-z0-9]{4})?$/.test(run) || !/^[a-zA-Z0-9-]+\.jpg$/.test(file)) return new Response("Not found", { status: 404 });
-  // A run on this machine first, then the recorded demo run that ships with the repo (D63).
+  // A run on this machine first, then the recorded demo run that ships with the repo.
   for (const dir of [path.join(process.cwd(), ".runs", run), path.join(process.cwd(), "demo", run)]) {
     try {
       const data = await readFile(path.join(dir, file));

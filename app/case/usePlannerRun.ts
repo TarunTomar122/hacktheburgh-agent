@@ -12,7 +12,7 @@ import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../li
 import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EscalationInput, type EscalationResult, type EvidenceResult, type MedicineResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 
 /**
- * Client state for one planner run (D47, D48): streams /api/agent/plan, keeps the crew's conversation, plan, states,
+ * Client state for one planner run: streams /api/agent/plan, keeps the crew's conversation, plan, states,
  * open questions, findings, evidence and enquiries, and posts the user's answers back. UI-agnostic.
  */
 
@@ -61,14 +61,14 @@ export type PlannerRunState = {
   funding?: Funding;
   verdict?: Verdict; // the funding check's conclusion, live (the result carries it too)
   access: Access[]; // how each page, search and job reached the web (fetch, API, cache or browser, and why)
-  complaint?: ComplaintResult; // the complaint crew's result (D65)
+  complaint?: ComplaintResult; // the complaint crew's result
   escalation?: EscalationResult; // step 2 anywhere: the escalation crew's result
   medicine?: MedicineResult; // the medicine report crew's result (the optional extra step)
   startedAt?: number;
   endedAt?: number; // when the run finished (the server's clock for a run picked up again), for the duration
   reconnectedAt?: number; // set when this screen picked up a run that went on while it was away
-  spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big (D62)
-  demo: boolean; // playing back a recorded run (D63)
+  spotlight: { crew: CrewId; tab: string } | null; // whose browser to show big
+  demo: boolean; // playing back a recorded run
   paused?: boolean; // the user paused the crew: what is under way finishes, nothing new starts
   skipped: (CrewId | "all")[]; // demo skips asked for
   models: LedgerEntry[]; // every model call so far (the ledger)
@@ -134,7 +134,7 @@ export function usePlannerRun(scope?: RunScope) {
   const startedRef = useRef<number | undefined>(undefined);
   const flowRef = useRef<string>("compensation");
   const abort = useRef<AbortController | null>(null);
-  // Demo playback (D63): a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
+  // Demo playback: a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
   const rec = useRef<{ events: Rec[]; i: number; timer?: ReturnType<typeof setTimeout>; runId: string; speed: number; tabs: Map<string, LiveTab> } | null>(null);
   const stopReplay = () => {
     clearTimeout(rec.current?.timer);

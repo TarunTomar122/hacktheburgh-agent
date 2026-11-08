@@ -30,7 +30,7 @@ import {
 import type { Quote, Value, Wall, WorkerCtx } from "./types";
 
 /**
- * run_questionnaire (night plan, generic worker). Runs an online eligibility checker or calculator page by page,
+ * run_questionnaire. Runs an online eligibility checker or calculator page by page,
  * the way a careful person would: for each question the page actually shows, it answers from what is already known
  * when a known value clearly fits, and otherwise asks the user that one question in the page's own words (with the
  * page's own options). It never guesses money or personal answers. It presses Next / Continue between pages (these

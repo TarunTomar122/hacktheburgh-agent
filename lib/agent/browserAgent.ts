@@ -138,7 +138,7 @@ export async function runBrowserAgent(opts: {
   return { status: "max_steps", summary: "Ran out of steps before the form was complete.", unfilled, steps: maxSteps, stats };
 }
 
-/** Same list as decisionAgent: a button or link with such a label is never clicked without allowSubmit (Codex round 4). */
+/** Same list as decisionAgent: a button or link with such a label is never clicked without allowSubmit. */
 const SENDS_RE = /\b(send|submit|confirm|finish|complete|pay|apply|sign|register|post|book|request (a )?call ?back|enviar|envoyer|valider|absenden|senden|abschicken|bestätigen|invia|conferma|verzenden|versturen|skicka|skick|wyślij|odeslat)\b|^(go|ok|done|continue to payment)$/i;
 
 async function execute(page: Page, obs: Observation, tool: string, args: Record<string, unknown>, allowCheckboxes: boolean, allowSubmit: boolean): Promise<string> {
@@ -173,7 +173,7 @@ async function execute(page: Page, obs: Observation, tool: string, args: Record<
       case "click":
         // Hard rule in code, not a prompt: the agent can never submit.
         if ((el.kind === "submit" || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim()))) && !allowSubmit) return "BLOCKED: this would send or submit; that needs human approval. Do not click it. Call finish when the form is filled.";
-        // Codex round 5: a harmless label proves nothing. Links are pressed only when code verifies them as plain
+        // A harmless label proves nothing. Links are pressed only when code verifies them as plain
         // navigation (then followed by address, not clicked); a script button never once anything has been entered.
         if (!allowSubmit) {
           const answers = await pageHasAnswers(page);

@@ -1,4 +1,4 @@
-// Step 4 from the CLI (D45): draft the message, find and fill 3 firms' enquiry forms, then try to send one.
+// Step 4 from the CLI: draft the message, find and fill 3 firms' enquiry forms, then try to send one.
 // Uses the fictional compensation persona (example.com email), so the send gate ALWAYS refuses: nothing reaches a firm.
 // Usage: HEADLESS=1 npm run agent:step4
 process.env.HANDOFF_WAIT_MS ??= "0";
@@ -11,7 +11,7 @@ const firm = (f: Partial<FirmFinding> & Pick<FirmFinding, "id" | "name" | "town"
   actsForPatients: "unknown", noWinNoFee: "unknown", enquiryUrl: null, score: 0, reasons: [], excluded: null, ...f,
 });
 
-// Three forms verified earlier (docs/PROJECT.md): on-page form; form in a popup; form on /contact-us found from the home page.
+// Three forms verified earlier: on-page form; form in a popup; form on /contact-us found from the home page.
 const FIRMS: FirmFinding[] = [
   firm({ id: "anderson-strathern", name: "Anderson Strathern", town: "Edinburgh", website: "https://www.andersonstrathern.co.uk/", enquiryUrl: "https://www.andersonstrathern.co.uk/legal-expertise/medical-negligence/" }),
   firm({ id: "mfmac", name: "MFMac", town: "Glasgow", website: "https://mfmac.com/legal-expertise/individuals-and-families/personal-injury/medical-negligence-compensation", email: "enquiries@mfmac.com" }),

@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 /**
- * Step 3 contract (D36): "Can I get legal aid?" plus "who could take my case".
+ * Step 3 contract: "Can I get legal aid?" plus "who could take my case".
  * Client-safe (no Playwright imports). The backend (lib/agent/legalAid.ts, /api/agent/step3) produces these;
  * the frontend (app/case/LegalAidStep.tsx and the live grid) consumes them. Change this file only by agreement.
  */
 
 /**
- * What SLAB's civil legal aid calculator asks (read from the live page on 2026-11-07). Asked on step 3 only (D33).
+ * What SLAB's civil legal aid calculator asks (read from the live page on 2026-11-07). Asked on step 3 only.
  * If `onBenefits` is true the user automatically qualifies financially and nothing else is needed.
  * `skipped` = the user chose not to give money details; we then assume "no win, no fee" and skip the calculator.
  */
@@ -70,7 +70,7 @@ export type FirmFinding = {
   score: number; // higher is better; see `reasons`
   reasons: string[]; // plain words, shown to the user ("Takes legal aid", "Office 0.9 miles away")
   excluded: string | null; // why we dropped it, if we did
-  /** How the score is made up, one row per criterion (D39). Sum of `points` = `score`. */
+  /** How the score is made up, one row per criterion. Sum of `points` = `score`. */
   breakdown?: ScoreItem[];
   /** score / maximum possible score for this route, 0-100. "How well this firm fits what you need". NOT a chance of winning. */
   fit?: number;
@@ -87,7 +87,7 @@ export type ScoreItem = {
 };
 
 /**
- * One thing an agent did (D39). The whole run is a list of these, so the UI can show exactly how each firm was
+ * One thing an agent did. The whole run is a list of these, so the UI can show exactly how each firm was
  * found and checked. `firms` lists the firm ids the step is about; `shot` is a screenshot file served by
  * GET /api/agent/step3/shot?run=<runId>&file=<shot>.
  */
@@ -114,7 +114,7 @@ export type Step3Result = {
   stats: Stats;
   runDir: string;
   runId?: string; // for screenshot URLs
-  trace?: TraceStep[]; // everything every agent did, in order (D39)
+  trace?: TraceStep[]; // everything every agent did, in order
 };
 
 export type Stats = { agents: number; sites: number; pages: number; actions: number; quick?: number };

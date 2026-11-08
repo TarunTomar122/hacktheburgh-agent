@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Step 6 (Yellow Card, proposed on feature/yellow-card): what the user is reporting. Client-safe.
- * Asked on the step itself, not in onboarding (D33). The privacy box on the MHRA form is only ticked if the user agreed here.
+ * Asked on the step itself, not in onboarding. The privacy box on the MHRA form is only ticked if the user agreed here.
  */
 export const YellowCardKind = z.enum(["side_effect", "defective", "fake"]);
 export type YellowCardKind = z.infer<typeof YellowCardKind>;
@@ -50,7 +50,7 @@ export const SEVERITY_CHOICES = [
   "Life threatening",
 ];
 
-/** Demo default (Om, 2026-11-08: any box is fine): ticked when the user chose none, because the site will not go on with none ticked. Plausible for the demo story, not a real assessment. */
+/** Demo default: ticked when the user chose none, because the site will not go on with none ticked. Plausible for the demo story, not a real assessment. */
 export const DEFAULT_SEVERITY = "Significant enough to lead you to seek advice from a healthcare professional";
 
 export const YELLOW_CARD_SITE = "https://yellowcard.mhra.gov.uk/";

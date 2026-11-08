@@ -1,5 +1,5 @@
 /**
- * Discovery speed levers (night plan, "discovery in about a minute"). Each lever is independent so a run can be timed
+ * Discovery speed levers ("discovery in about a minute"). Each lever is independent so a run can be timed
  * with any mix; "classic" is how discovery worked before, "fast" turns all five on.
  *   fastmodel   the planner's turns after the first use the small model at low effort.
  *   batch       the planner is told to issue every independent call in one turn; more tabs run at once.

@@ -12,9 +12,9 @@ import { runPlanner } from "../../../../lib/agent/planner";
 import { startRun, streamRun } from "../../../../lib/agent/runRegistry";
 
 /**
- * POST { facts, funding?, flow? } -> newline-delimited JSON PlannerEvent (D47, D48).
+ * POST { facts, funding?, flow? } -> newline-delimited JSON PlannerEvent.
  * The planner and its crew plan their own route: legal aid, firms, evidence, enquiry forms (never sent).
- * flow "complaint" (D65) runs the complaint crew instead: NHS Lothian's process, time limit, evidence, the draft and the form (never submitted).
+ * flow "complaint" runs the complaint crew instead: NHS Lothian's process, time limit, evidence, the draft and the form (never submitted).
  * The first event is {type:"run", runId}; answers to the crew's questions go to POST /api/agent/plan/answer.
  * The run lives on the server (lib/agent/runRegistry.ts): dropping this connection does not stop it. See ./attach, ./active, ./cancel.
  * `slot` ("<case id>:<screen>") makes a new run replace the one still going in the same slot.

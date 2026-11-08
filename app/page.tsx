@@ -93,11 +93,11 @@ function Hero() {
   return (
     <section className="px-6 pb-8 pt-16 sm:px-8 sm:pt-24">
       <div className="mx-auto max-w-6xl">
-        <h1 className="display fade-up max-w-[17ch] text-[44px] sm:text-[72px] lg:text-[88px]">
-          After <span className="hl-blue">medical negligence</span>, find what to do next.
+        <h1 className="display fade-up max-w-[20ch] text-[44px] sm:text-[72px] lg:text-[88px]">
+          After <span className="hl-blue">medical negligence</span>, Elliot deals with the headache.
         </h1>
         <p className="fade-up mt-8 max-w-[56ch] text-lg leading-8 text-ink-2" style={{ animationDelay: "80ms" }}>
-          Tell Elliot what happened, whether it was a missed diagnosis, a surgical error or the wrong medicine. A small crew of agents reads the official complaint, claims and legal aid sites for the place where it happened, and builds your route, step by step.
+          Tell Elliot what happened. Elliot finds who can help, fills in the forms, and you press send.
         </p>
         <div className="fade-up mt-10 flex flex-wrap items-center gap-4" style={{ animationDelay: "160ms" }}>
           <StartLink className="inline-flex items-center gap-2 rounded-ctl bg-brand px-7 py-3.5 text-[15px] font-medium text-white transition-colors hover:bg-brand/90" />

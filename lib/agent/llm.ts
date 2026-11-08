@@ -27,7 +27,7 @@ export const MODELS = {
   interview: process.env.INTERVIEW_MODEL ?? "gpt-5.4-mini",
   draft: process.env.DRAFT_MODEL ?? "gpt-5.4",
   browser: process.env.BROWSER_MODEL ?? "gpt-5.4-mini",
-  /** Writing and reasoning over the patient's health story, money or identity: on this Mac (night plan, Phase 4b). */
+  /** Writing and reasoning over the patient's health story, money or identity: on this Mac. */
   private: process.env.PRIVATE_MODEL ?? "local:qwen3:8b",
   /** Short structured checks over private data (a label, an option, a yes/no). */
   privateCheck: process.env.PRIVATE_CHECK_MODEL ?? "local:qwen3:8b",
@@ -45,7 +45,7 @@ export const isSensitive = (data: DataKind[]) => data.some((d) => SENSITIVE.incl
 export const localModelsOn = () => process.env.LOCAL_MODELS !== "0";
 
 /**
- * The one place where a call's model follows from its data (night plan, Phase 4b). Anything that carries the
+ * The one place where a call's model follows from its data. Anything that carries the
  * patient's health story, money or identity runs on a local model unless LOCAL_MODELS=0; everything else (public
  * pages, plans with placeholders) uses the cloud model for its role.
  *   "draft": writing (complaint, enquiry) and comparing.  "reason": date arithmetic (time limits); locally Qwen3 thinks

@@ -1,7 +1,7 @@
 import type { AgentTile, Stats, TraceStep } from "./legalAidTypes";
 
 /**
- * Step 4 contract (D45): contact up to 3 shortlisted firms. Client-safe.
+ * Step 4 contract: contact up to 3 shortlisted firms. Client-safe.
  * Backend: lib/agent/enquiry.ts + /api/agent/step4/*. Frontend: the step 4 screen and the tracker.
  *
  * Flow: draft one message -> agents find and fill each firm's enquiry form in parallel tabs (stop before Send)
@@ -26,14 +26,14 @@ export type EnquiryStatus =
   | "partial" // some boxes read back, but something is missing or unverified (see `note`): never counted as filled
   | "could_not_fill" // the form was found but nothing could be filled and read back (see `note`): never counted as filled
   | "needs_input" // the form asks something we do not know; see `question`
-  | "no_form" // no online form found even after a harder look; the run swaps in the next best firm (D46)
-  | "email_draft" // legacy (D45): no longer produced
+  | "no_form" // no online form found even after a harder look; the run swaps in the next best firm
+  | "email_draft" // legacy: no longer produced
   | "sending"
   | "sent"
   | "send_blocked" // approval given but the send gate refused (demo persona, or sending not enabled)
   | "failed";
 
-/** One editable field on the firm's form, as the review shows it (D64). `name` + `label` find it again on the live page. */
+/** One editable field on the firm's form, as the review shows it. `name` + `label` find it again on the live page. */
 export type FormField = { name: string; label: string; value: string; kind: "text" | "textarea" | "select"; required: boolean; options?: string[] };
 
 /** What the user typed in the review for one field. Applied to the real form by the agent. */
@@ -47,13 +47,13 @@ export type EnquiryOutcome = {
   filled: { label: string; value: string }[]; // what the agent typed or picked, for the review
   unfilled: string[]; // required fields left empty
   consents: string[]; // checkbox texts the user must agree to before we can send (never ticked without approval)
-  fields?: FormField[]; // every editable field on the form now, so the review can change them (D64)
+  fields?: FormField[]; // every editable field on the form now, so the review can change them
   question?: string; // for needs_input
   email?: { to: string | null; subject: string; body: string; mailto: string }; // for email_draft
   note: string; // one plain line: "Form filled on their contact page", "Blocked: demo persona"
   sentAt?: string;
   confirmation?: string; // what the firm's page said after Send
-  swappedFor?: string; // this firm was brought in because <firm name> had no online form (D46)
+  swappedFor?: string; // this firm was brought in because <firm name> had no online form
   attempts?: number; // how many times the agent tried (it retries once by itself after a failure)
 };
 
@@ -74,7 +74,7 @@ export type Step4Event =
 
 /**
  * POST /api/agent/step4/draft { facts, legalAid?: { verdict, route } } -> EnquiryMessage
- * POST /api/agent/step4/edit  { firmId, edits: FieldEdit[] } -> { enquiry: EnquiryOutcome }  (D64)
+ * POST /api/agent/step4/edit  { firmId, edits: FieldEdit[] } -> { enquiry: EnquiryOutcome }
  *   The agent types the user's edits into the open form (never sends) and returns what the form looks like now:
  *   ready_to_send only if the form reads back as filled and its Send button is identified; needs_input if a required field is
  *   missing; partial or could_not_fill (with the reason in `note`) otherwise.

@@ -7,7 +7,7 @@ const Body = z.object({
   facts: CaseFacts.optional(),
   // What a form, button or checklist gave for the open question. When present, no model call is made.
   answer: z.record(z.string(), z.union([z.string(), z.array(z.string()), z.boolean()])).optional(),
-  scope: z.enum(["onboarding", "nhs"]).optional(), // "nhs" also asks what only the NHS complaint needs (D42)
+  scope: z.enum(["onboarding", "nhs"]).optional(), // "nhs" also asks what only the NHS complaint needs
 });
 
 /** POST { messages, facts?, answer? } -> { facts, reply, done, missing, target, input } */

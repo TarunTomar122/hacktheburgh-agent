@@ -19,7 +19,7 @@ import { assessForm, classifyField, expectFrom, findFinalControl, stillOnUnsentF
 import { usableForms } from "./workers/formKind";
 
 /**
- * Step 4 (D45): contact up to 3 firms. Server only.
+ * Step 4: contact up to 3 firms. Server only.
  *   draftEnquiry  -> one message from the profile (facts only, no claim of negligence)
  *   runEnquiries  -> one tab per firm: find the enquiry form (looking harder if needed), fill it, STOP before Send,
  *                    keep the tab open in a registry so the user's approval can be acted on
@@ -61,7 +61,7 @@ export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, eviden
   const draft = await structured({
     ...modelFor("draft", ["health", "identity"]), // the patient's story, name, email and phone: on this Mac by default
     instructions: DRAFT_RULES(opts.place ?? "Scotland"),
-    input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D62): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
+    input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point: ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
     schema: DraftSchema,
     name: "enquiry_draft",
     data: ["health", "identity"],
@@ -79,7 +79,7 @@ const holder = globalThis as unknown as { __enquiryTabs?: Registry };
 // On globalThis: Next.js can load this module once per route bundle, and /send must see the tabs /step4 opened.
 const REG: Registry = (holder.__enquiryTabs ??= { tabs: new Map<string, Open>() });
 
-/** Keep a filled form's tab open so /api/agent/step4/send can press Send after the user approves (used by the planner, D47). */
+/** Keep a filled form's tab open so /api/agent/step4/send can press Send after the user approves (used by the planner). */
 export function keepForApproval(firmId: string, open: Open) {
   REG.tabs.set(firmId, open);
 }
@@ -89,7 +89,7 @@ export function approvalTabs(context: BrowserContext): Page[] {
   return [...REG.tabs.values()].map((o) => o.page).filter((p) => !p.isClosed() && p.context() === context);
 }
 
-/** A form that has been sent (or refused) is finished with: close its tab. The browser closes itself with its last tab (D57). */
+/** A form that has been sent (or refused) is finished with: close its tab. The browser closes itself with its last tab. */
 async function releaseTab(firmId: string) {
   const open = REG.tabs.get(firmId);
   REG.tabs.delete(firmId);
@@ -237,7 +237,7 @@ export async function snapshot(page: Page) {
 }
 
 
-/* ------------------------------------------------------------------ honest readiness (Codex round 5, blocker 2) */
+/* ------------------------------------------------------------------ honest readiness */
 
 /** What code meant to type into each tab's form, so a later read-back can compare (values never go to a model). */
 const EXPECT = new WeakMap<Page, Expect>();
@@ -307,11 +307,11 @@ export async function fillOne(
   };
   let run: { status: string; question?: string };
   try {
-    // hideValues: the decision model sees value names, never the patient's story or contact details (Cursor round 3).
+    // hideValues: the decision model sees value names, never the patient's story or contact details.
     run = await runDecisionAgent({ page: p, goal, values, allowCheckboxes: false, allowSubmit: false, maxSteps: 6, onEvent, hideValues: true });
   } catch (e) {
-    // Recovery (D46): the Decisions API is down or overloaded. The backup engine sees the patient's values, so it runs
-    // only when the user has allowed a cloud fallback (privacy, Codex round 4); otherwise stop honestly.
+    // Recovery: the Decisions API is down or overloaded. The backup engine sees the patient's values, so it runs
+    // only when the user has allowed a cloud fallback (privacy); otherwise stop honestly.
     const why = (e instanceof Error ? e.message : String(e)).split("\n")[0].slice(0, 120);
     if (process.env.ALLOW_CLOUD_FALLBACK !== "1") throw new Error(`The form service is unavailable (${why}); nothing was typed or sent`);
     note("Main engine unavailable; switching to the backup engine");
@@ -387,7 +387,7 @@ export async function runEnquiries(
     firms.forEach((f) => put(base(f)));
 
     // One worker per firm. A failure is retried once by itself; a firm with no online form is swapped for the
-    // next best reserve firm (D46), so the user still ends up with up to 3 firms they can contact.
+    // next best reserve firm, so the user still ends up with up to 3 firms they can contact.
     const reserves = (input.reserves ?? []).filter((r) => r.website && !firms.some((f) => f.id === r.id));
     const order: string[] = firms.map((f) => f.id);
     const label = (f: FirmFinding) => f.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "").slice(0, 28);
@@ -436,7 +436,7 @@ export async function runEnquiries(
     send4({ type: "result", result });
     const waiting4Ok = approvalTabs(context);
     if (opts.keepOpen && waiting4Ok.length > 0) {
-      keep = true; // only the filled forms stay open for the approvals; the rest close now (D57). All close after 15 minutes.
+      keep = true; // only the filled forms stay open for the approvals; the rest close now. All close after 15 minutes.
       await keepOnlyTabs(context, waiting4Ok);
     }
     return result;
@@ -450,7 +450,7 @@ export async function runEnquiries(
 
 /* ------------------------------------------------------------------ send */
 
-/** Why the server refuses to send, or null. Checked before anything else (D45). */
+/** Why the server refuses to send, or null. Checked before anything else. */
 export function sendGate(email: string | null): string | null {
   if (email && /@(.+\.)?example\.(com|org|net)$/i.test(email.trim())) return "Not sent: this is a demo persona. We never send fictional enquiries to real firms.";
   if (process.env.ALLOW_REAL_SEND !== "1") return "Not sent: real sending is switched off on this server (ALLOW_REAL_SEND is not set).";
@@ -471,7 +471,7 @@ const squash = (x: string) => x.replace(/\s+/g, " ").trim().toLowerCase();
 const gone = (firmId: string, open?: Open): EnquiryOutcome => ({ firmId, firmName: open?.firm.name ?? firmId, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: "The filled form is no longer open (a form closes once it is sent, or after 15 minutes). Fill the forms again, then approve." });
 
 /**
- * Type the user's edits into the open form (D64). Fields are found again by name and label, never by position.
+ * Type the user's edits into the open form. Fields are found again by name and label, never by position.
  * Nothing is sent. Returns how many were applied and the labels that could not be found on the page any more.
  */
 async function applyEdits(open: Open, edits: FieldEdit[]): Promise<{ applied: number; missed: string[] }> {

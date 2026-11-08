@@ -26,26 +26,26 @@ export type CaseRunRecord = {
   finishedAt: string;
 };
 
-/** D65: the complaint crew's last run (the case file for step 1). `sample` = a recorded run played back, not a real one. */
+/** The complaint crew's last run (the case file for step 1). `sample` = a recorded run played back, not a real one. */
 export type ComplaintRunRecord = { result: ComplaintResult; sample: boolean; durationMs: number; finishedAt: string };
 
-/** Everything we keep about the user's case. Kept in this browser (localStorage) and, for a signed-in user, saved to their account (D75). */
+/** Everything we keep about the user's case. Kept in this browser (localStorage) and, for a signed-in user, saved to their account. */
 export type Profile = {
   facts: CaseFacts;
   messages: ChatMessage[]; // the intake conversation
   draft: Draft | null; // complaint text for step 1, once written
-  /** Step 2 (ombudsman). Opens after the NHS replies; answers are asked there, not at onboarding (D29). Missing in older saved profiles. */
+  /** Step 2 (ombudsman). Opens after the NHS replies; answers are asked there, not at onboarding. Missing in older saved profiles. */
   ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers> };
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
   progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; ycFilled?: boolean; ycSent?: boolean; skipped?: number[]; at?: Partial<Record<ProgressFlag, string>> };
   /** Patient insights (branch patient-insights): what Elliot did per step (1 NHS, 2 ombudsman, 6 Yellow Card), counted from the run logs and added across re-runs. */
   effort?: Partial<Record<number, Effort>>;
-  /** Step 6 (Yellow Card, proposed): what is being reported, asked on the step only (D33). */
+  /** Step 6 (Yellow Card, proposed): what is being reported, asked on the step only. */
   yellowCard?: Partial<YellowCardAnswers>;
-  /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
+  /** Step 3: the calculator's money answers (asked on the step only) and the result. `sample` = the result came from the fixture, not a real run. */
   /** `selected`: firm ids ticked in step 3 for step 4 to contact. */
   legalAid?: { funding: Funding; result?: Step3Result; sample?: boolean; selected?: string[] };
-  /** D52: the crew's last run, for the case file and "Review the run" (conversation, plan, evidence, counts). */
+  /** The crew's last run, for the case file and "Review the run" (conversation, plan, evidence, counts). */
   caseRun?: CaseRunRecord;
   complaintRun?: ComplaintRunRecord;
   /** Night plan ("Elliot anywhere"): how the system works where the care happened, worked out live by the crew. */
@@ -53,8 +53,8 @@ export type Profile = {
   /** Step 4: the message (editable), the last run's outcome per firm (`sample` = fixture), and the tracker (updated by hand for now). */
   enquiry?: { message?: EnquiryMessage; outcomes?: EnquiryOutcome[]; runId?: string; sample?: boolean };
   enquiries?: EnquiryRecord[];
-  /** D42: the recommendation shown after onboarding, and the track the user chose (null until they choose). */
-  /** `wanted` (D80): the paths ticked in onboarding when there were several; the suggestion page only offers those. */
+  /** The recommendation shown after onboarding, and the track the user chose (null until they choose). */
+  /** `wanted`: the paths ticked in onboarding when there were several; the suggestion page only offers those. */
   track?: { chosen: TrackId | null; rec?: TrackRecommendation; complaintMode?: "email" | "formal"; wanted?: TrackId[] };
   complaintEmail?: ComplaintEmail;
   createdAt: string;
@@ -67,12 +67,12 @@ const DEMO_FLAG = "case-demo";
 const EVENT = "case-profile-change";
 const STATUS_EVENT = "case-sync-status";
 
-/** Whose case this browser shows (D74). Null with no accounts, which keeps the one shared key below. */
+/** Whose case this browser shows. Null with no accounts, which keeps the one shared key below. */
 let owner: string | null = null;
 const userKey = () => (owner ? `${LEGACY_KEY}:${owner}` : LEGACY_KEY);
 
 /**
- * Demo mode (D75). The demo personas ("Demo: NHS Complaint", "Demo: Compensation", "Demo: Yellow Card") run on a throwaway copy that lives in this tab only
+ * Demo mode. The demo personas ("Demo: NHS Complaint", "Demo: Compensation", "Demo: Yellow Card") run on a throwaway copy that lives in this tab only
  * (sessionStorage): it never replaces the user's real saved case and is never sent to the server. It ends when the tab closes or
  * the user chooses Exit demo.
  */
@@ -87,7 +87,7 @@ const store = (): Storage => (inDemo() ? sessionStorage : localStorage);
 const key = () => (inDemo() ? DEMO_KEY : userKey());
 
 /**
- * Saving to the user's account (D75). The browser copy stays the one the screens read, so they are instant and still work when the
+ * Saving to the user's account. The browser copy stays the one the screens read, so they are instant and still work when the
  * network or database does not. When accounts and a database are on, every change is also sent to the server, and the newest
  * copy (by `updatedAt`) wins when the user opens the app on another device. "loading" holds the screens back for the first pull so a
  * new device does not flash the empty start page before the saved case arrives.
@@ -161,7 +161,7 @@ function write(p: Profile) {
   schedulePush();
 }
 
-// ---- account sync (D75) ----
+// ---- account sync ----
 
 type Saved = { profile: Profile | null; updatedAt: string };
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -171,7 +171,7 @@ let started: string | null = null;
 /** Sync applies to a signed-in user's own case, never to a demo, and never once the server has said it is off. */
 const syncing = () => Boolean(owner) && !inDemo() && phase !== "off" && online !== "no";
 
-// Two small markers per user (D81). "synced": this browser has exchanged its case with the server, so a missing server row later means the
+// Two small markers per user. "synced": this browser has exchanged its case with the server, so a missing server row later means the
 // case was deleted elsewhere (clear it here) rather than never uploaded (upload it). "delete pending": a deletion that has not reached the
 // server yet (offline), retried on the next pull so a deleted case cannot come back from the server.
 const syncedKey = () => `case-synced-v1:${owner}`;
@@ -373,7 +373,7 @@ export function useSyncStatus(): SyncStatus {
   );
 }
 
-// ---- demo mode (D75) ----
+// ---- demo mode ----
 
 /** Loads a fictional persona for the demo. Nothing is saved to the account, and the real saved case is left alone. */
 export function startDemo(facts: CaseFacts, messages: ChatMessage[], draft: Draft | null = null) {
@@ -425,7 +425,7 @@ export function setYellowCard(patch: Partial<YellowCardAnswers>) {
   if (p) write({ ...p, yellowCard: { ...p.yellowCard, ...patch } });
 }
 
-/** Demo (D60): the user skipped this step, so every milestone of it counts as done. */
+/** Demo: the user skipped this step, so every milestone of it counts as done. */
 export function skipStep(step: number) {
   const p = read();
   const cur = p?.progress?.skipped ?? [];
@@ -531,7 +531,7 @@ export async function clearProfile(): Promise<void> {
   localStorage.removeItem(key());
   window.dispatchEvent(new Event(EVENT));
   if (!syncing()) return;
-  // Remove the case from the server for good (D81); the user's other devices see the row is gone and clear theirs.
+  // Remove the case from the server for good; the user's other devices see the row is gone and clear theirs.
   setStatus("saving");
   clearTimeout(pushTimer);
   flagSet(pendingKey(), true); // retried on the next pull if this request does not get through

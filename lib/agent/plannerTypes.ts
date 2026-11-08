@@ -7,7 +7,7 @@ import type { MedicineReport } from "./medicine";
 import type { Place, RouteMap } from "./routeTypes";
 
 /**
- * Planner agent contract (D47). Client-safe.
+ * Planner agent contract. Client-safe.
  * A reasoning model plans its own route through the compensation research (and, later, the enquiries), calling
  * browser workers as tools. It shows its plan, explains each move in one line, and asks the user when a site needs
  * something we do not know.
@@ -17,7 +17,7 @@ import type { Place, RouteMap } from "./routeTypes";
  */
 
 /**
- * The crew (D48): the planner and its workers, each with a name, a role and a colour. Every tool belongs to one of
+ * The crew: the planner and its workers, each with a name, a role and a colour. Every tool belongs to one of
  * them, so the user sees a team at work rather than a script. Visual identity lives in the UI; ids are stable.
  */
 export type CrewId = "elliot" | "nell" | "robin" | "iona" | "kit";
@@ -39,14 +39,14 @@ export const TOOL_CREW: Record<string, CrewId> = {
   slab_lawyer_list: "robin",
   web_search: "robin",
   visit: "robin",
-  check_firm: "robin", // one agent for solicitors (Tarun, D62): Robin finds and checks them
+  check_firm: "robin", // one agent for solicitors: Robin finds and checks them
   law_society_check: "robin",
   read_guideline: "iona",
   search_case_law: "iona",
   read_judgment: "iona",
   compare_care: "iona",
   fill_enquiry: "kit",
-  // The complaint crew (D65): Elliot, Robin, Iona and Kit.
+  // The complaint crew: Elliot, Robin, Iona and Kit.
   read_process: "robin",
   check_time_limit: "robin",
   draft_complaint: "elliot",
@@ -71,7 +71,7 @@ export type Say = {
 };
 
 /**
- * Iona's pre-action investigation (night plan, side backlog 2): official, public material that a patient can cite,
+ * Iona's pre-action investigation: official, public material that a patient can cite,
  * found live on the pages of the place's own bodies. Every item has a quote that code found in the page text, and a
  * URL that was opened in the run. Where nothing was found, `nothing` says so; nothing is ever filled in.
  */
@@ -94,7 +94,7 @@ export type Investigation = {
   tookMs: number;
 };
 
-/** Evidence gathered by Iona, kept with the result (D48). */
+/** Evidence gathered by Iona, kept with the result. */
 export type EvidenceResult = {
   investigation?: Investigation;
   guideline?: { name: string; url: string; points: { id: string; text: string }[] };
@@ -125,7 +125,7 @@ export type AskSpec = {
 export type Thought = { i: number; t: number; text: string; tool?: string; detail?: string; result?: string; tab?: string };
 
 export type PlannerResult = Step3Result & {
-  scheme?: { body: string; text: string; quote?: string; url: string }; // a redress / no-fault scheme read by Robin (night plan)
+  scheme?: { body: string; text: string; quote?: string; url: string }; // a redress / no-fault scheme read by Robin
   funding?: Funding; // optional for older recorded runs
   message?: EnquiryMessage; // the message Kit actually put in the forms
   plan: PlanStep[];
@@ -138,7 +138,7 @@ export type PlannerResult = Step3Result & {
   recoveries: number;
 };
 
-/** What the complaint crew found and did (D65): the route NHS Lothian describes, the time limit, the evidence, the draft, the form. */
+/** What the complaint crew found and did: the route NHS Lothian describes, the time limit, the evidence, the draft, the form. */
 export type ComplaintResult = {
   runId: string;
   runDir: string;
@@ -159,7 +159,7 @@ export type ComplaintResult = {
 };
 
 /**
- * Step 2 anywhere (night plan, "Elliot anywhere"): taking the complaint to the independent body discovery found.
+ * Step 2 anywhere ("Elliot anywhere"): taking the complaint to the independent body discovery found.
  * Where the patient is with step 1, as the app knows it (self-reported milestones, the complaint text, the reply).
  */
 export type EscalationInput = { complaintSent: boolean; finalResponse: "yes" | "no" | "unknown"; complaintText?: string; providerReply?: string };
@@ -177,7 +177,7 @@ export type EscalationResult = ComplaintResult & {
 /** What the medicine-report crew found and prepared: the place's regulator, the medicine and side effect, and its form, filled and stopped before Send. */
 export type MedicineResult = MedicineReport & { runId: string; runDir: string; plan: PlanStep[]; thoughts: Thought[]; says: Say[]; turns: number; asks: number; trace: TraceStep[]; stats: Stats };
 
-/** What discovery found (night plan, "Elliot anywhere"): the route map plus the crew's story. */
+/** What discovery found ("Elliot anywhere"): the route map plus the crew's story. */
 export type DiscoveryResult = {
   runId: string;
   runDir: string;
@@ -211,7 +211,7 @@ export type PlannerEvent =
   | { type: "finding"; text: string; source?: string; crew?: CrewId }
   | { type: "say"; say: Say }
   | { type: "crew"; id: CrewId; state: "idle" | "working" | "waiting" | "done"; note: string }
-  | { type: "spotlight"; crew: CrewId; tab: string } // the worker to show big right now (D62)
+  | { type: "spotlight"; crew: CrewId; tab: string } // the worker to show big right now
   | { type: "paused"; paused: boolean } // the user paused or resumed the crew
   | { type: "handoff"; id: string; crew: CrewId; tab: string; url: string; kind: "login" | "captcha" | "bot_check"; why: string }
   | { type: "handoff_done"; id: string; outcome: "continued" | "skipped" | "timeout" }

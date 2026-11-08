@@ -18,7 +18,7 @@ export function Badge({ children, cls }: { children: ReactNode; cls: string }) {
   return <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-medium", cls)}>{children}</span>;
 }
 
-/** "How well this firm fits what you need" (D39). A fit, never a chance of winning. */
+/** "How well this firm fits what you need". A fit, never a chance of winning. */
 export function FitRing({ fit, size = 60, title = "How well this firm fits what you need, from the checks below. Not a chance of winning." }: { fit: number; size?: number; title?: string }) {
   // Everything is drawn in one 56x56 SVG coordinate space, so the number and "FIT" are centred on the ring and scale with it at any size.
   const r = 22;
@@ -51,7 +51,7 @@ export function FitRing({ fit, size = 60, title = "How well this firm fits what 
   );
 }
 
-/** Why each check matters, in plain words (Tarun: "what does this mean?", "why is this important?"). */
+/** Why each check matters, in plain words ("what does this mean?", "why is this important?"). */
 export const WHY: Record<ScoreItem["key"], string> = {
   legal_aid: "Only firms approved by the legal aid body can use legal aid to pay for your case.",
   active: "A firm that did legal aid work this year is still taking these cases.",
@@ -102,7 +102,7 @@ export function ScoreRow({ row }: { row: Pick<ScoreItem, "label" | "points" | "m
 }
 
 /**
- * One reason for the suggested track as a plain tick box (D51): ticked if it fits what they told us, empty if not.
+ * One reason for the suggested track as a plain tick box: ticked if it fits what they told us, empty if not.
  * No points and no bar: the numbers only fed the fit % and read as more exact than they are. A reason we could not
  * judge ("unknown") is an empty box with a short note. The full sentence is in the tooltip.
  */

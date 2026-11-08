@@ -8,13 +8,13 @@ const Body = z.object({
   message: z.object({ subject: z.string().min(1), body: z.string().min(1) }),
   // The firm objects come from step 3's result; only the fields the runner reads are checked strictly.
   firms: z.array(z.object({ id: z.string(), name: z.string(), website: z.string().nullable(), enquiryUrl: z.string().nullable(), email: z.string().nullable() }).passthrough()).min(1).max(MAX_ENQUIRIES),
-  // Next best checked firms, best first, to swap in when a firm has no online form (D46).
+  // Next best checked firms, best first, to swap in when a firm has no online form.
   reserves: z.array(z.object({ id: z.string(), name: z.string(), website: z.string().nullable(), enquiryUrl: z.string().nullable(), email: z.string().nullable() }).passthrough()).max(10).optional(),
   legalAid: z.object({ verdict: z.enum(["likely", "unlikely", "unknown", "skipped"]), route: z.enum(["legal_aid", "no_win_no_fee"]) }).optional(),
 });
 
 /**
- * POST { facts, message, firms (max 3), legalAid? } -> newline-delimited JSON Step4Event (D45).
+ * POST { facts, message, firms (max 3), legalAid? } -> newline-delimited JSON Step4Event.
  * One tab per firm: find the enquiry form, fill it, stop before Send. The tabs stay open for the approvals.
  */
 export async function POST(req: Request) {

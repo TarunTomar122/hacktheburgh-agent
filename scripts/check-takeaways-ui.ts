@@ -1,4 +1,4 @@
-// Headless check (night plan): the "what to know" route view, with a saved route, click to open a row. Nothing is run or sent.
+// Headless check: the "what to know" route view, with a saved route, click to open a row. Nothing is run or sent.
 //   npx tsx scripts/check-takeaways-ui.ts      (dev server on BASE, default http://localhost:3001; screenshots in docs/night-runs/takeaways/)
 import { readFileSync } from "node:fs";
 import { chromium } from "playwright";

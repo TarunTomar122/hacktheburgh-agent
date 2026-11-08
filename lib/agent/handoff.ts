@@ -52,7 +52,7 @@ export async function pageHasUsableForm(page: Page): Promise<boolean> {
     .catch(() => false);
 }
 
-/** How long a hand-off waits. 0 means do not ask (overnight scripts, and anything that is not the app). */
+/** How long a hand-off waits. 0 means do not ask (scripts, and anything that is not the app). */
 export function handoffWaitMs(): number {
   const raw = process.env.HANDOFF_WAIT_MS;
   if (raw !== undefined && raw !== "") {

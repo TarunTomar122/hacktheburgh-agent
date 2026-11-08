@@ -8,13 +8,13 @@ import { CREW, type CrewId } from "../lib/agent/plannerTypes";
 import { KEPT, summarize, type Summary, type TraceLite } from "./browserInfo";
 
 /**
- * Right-hand panel that shows the agent's browser live (D32). Mounted once in app/layout.tsx.
+ * Right-hand panel that shows the agent's browser live. Mounted once in app/layout.tsx.
  * Hidden until a browser session starts; frames arrive as server-sent events from /api/live.
- * One tab: the page fills the panel. Several tabs (D36, step 3's parallel agents): a grid of tiles, one per agent,
+ * One tab: the page fills the panel. Several tabs (step 3's parallel agents): a grid of tiles, one per agent,
  * each with the agent's colour, state and note; clicking a tile focuses it (full quality, take control) until "Back to grid".
  * The panel reports its size, and the server sizes the focused page to match, so it fills the panel edge to edge.
  * "Take control" forwards the user's clicks, scrolling and typing to the page being shown.
- * When the browser closes, the panel shows a short notice and then closes itself (D38).
+ * When the browser closes, the panel shows a short notice and then closes itself.
  */
 
 type Frame = { type: "frame"; pageId?: string; data: string; url: string; width: number; height: number; /** a recorded run's screenshot (an image URL) instead of a live frame */ src?: string };
@@ -96,7 +96,7 @@ const sendMove = moveSender();
 
 export default function LiveView() {
   const [mode, setMode] = useState<Mode>("hidden");
-  // Closed until the user clicks the floating button: the agents work in the background (Tarun, 2026-11-07).
+  // Closed until the user clicks the floating button: the agents work in the background.
   const [open, setOpen] = useState(false);
   // True when a page opened the panel for the user (the "live-open" event) rather than the user clicking the button.
   const autoOpened = useRef(false);
@@ -115,7 +115,7 @@ export default function LiveView() {
   const lastSrc = useRef("");
   const modeRef = useRef<Mode>("hidden");
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // Several tabs (D36)
+  // Several tabs
   const [pages, setPages] = useState<LivePage[]>([]);
   const [, setStats] = useState<LiveStats | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
@@ -128,7 +128,7 @@ export default function LiveView() {
   const [singleId, setSingleId] = useState<string | null>(null); // the tab shown when there is only one
   const singleRef = useRef<string | null>(null);
   // Which tab the big view shows: the focused one, or the only one. null = the grid.
-  // Inline mode (D52): a page that wants the browsers inside it renders <div id="live-slot">. While it exists, the
+  // Inline mode: a page that wants the browsers inside it renders <div id="live-slot">. While it exists, the
   // panel lives there (no floating button, no dock), so the crew's browsers sit right next to their work.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function LiveView() {
     return () => mo.disconnect();
   }, []);
   const [highlight, setHighlight] = useState<string | null>(null); // inline: the tab the crew is working on now
-  // Inline (D62, Tarun): small tiles of every browser; the tab the crew is on is highlighted, not enlarged.
+  // Inline: small tiles of every browser; the tab the crew is on is highlighted, not enlarged.
   // A tile opens big only when the user clicks it.
   const grid = (!!slot && pages.length > 0) || (pages.length > 1 && focused === null);
   const bigId = focused ?? (pages.length === 1 ? pages[0].pageId : singleId);
@@ -368,7 +368,7 @@ export default function LiveView() {
   }, [slot, focused, control, focus]);
 
   // A page that runs one browser the user is meant to watch (step 1, the NHS Lothian form) opens the panel by itself:
-  // window.dispatchEvent(new Event("live-open")). Every other flow still waits for the button (Tarun, 2026-11-07).
+  // window.dispatchEvent(new Event("live-open")). Every other flow still waits for the button.
   useEffect(() => {
     const onOpen = () => {
       setOpen((o) => {
@@ -446,6 +446,8 @@ export default function LiveView() {
     if (!askOpen || !ask || ask.demo) return;
     const page = pages.find((p) => p.label === ask.tab) ?? pages.find((p) => p.label.startsWith(`${CREW[ask.crew].name} ·`));
     if (!page) return;
+    // Focusing the asking tab is the point of this effect (it follows the hand-off from outside React).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (focused !== page.pageId || !control) focus(page.pageId, true);
   }, [askOpen, ask, pages, focused, control, focus]);
 
@@ -879,7 +881,7 @@ export default function LiveView() {
 }
 
 /**
- * One agent's tab in the grid: only the live picture (Tarun, 2026-11-07). The agent's name and colour are already
+ * One agent's tab in the grid: only the live picture. The agent's name and colour are already
  * drawn inside the page by its cursor pill, so there is no header, border or label here. A failed agent gets a thin red wash with its note.
  */
 function Tile({ page, ended, onImg, onOpen, caption, small, active, needsYou }: { page: LivePage; ended: boolean; onImg: (el: HTMLImageElement | null) => void; onOpen: () => void; caption?: boolean; small?: boolean; active?: boolean; needsYou?: boolean }) {
@@ -899,7 +901,7 @@ function Tile({ page, ended, onImg, onOpen, caption, small, active, needsYou }: 
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- frames are data URLs replaced many times a second */}
       <img ref={onImg} alt="" draggable={false} className={cx("absolute inset-0 size-full object-cover object-top", ended && "opacity-50")} />
-      {/* Inline (D52): a small name tag inside the picture, so you know whose tab it is even when their cursor is off screen. */}
+      {/* Inline: a small name tag inside the picture, so you know whose tab it is even when their cursor is off screen. */}
       {caption && !failed && (
         <span className="absolute bottom-2 left-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-[4px] bg-white/92 px-1.5 py-0.5 text-[11px] font-medium text-ink">
           {crewId(page.label) ? (

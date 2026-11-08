@@ -14,7 +14,7 @@ import { normText, normUrl, quoteInText, readPage, type PageReading } from "./wo
 import type { WorkerCtx } from "./workers/types";
 
 /**
- * Discovery (night plan, "Elliot anywhere"): the crew works out, live, how the health and legal system works for this
+ * Discovery ("Elliot anywhere"): the crew works out, live, how the health and legal system works for this
  * patient's place, and finds the real pages. Nothing about any country or site is in this file: the place
  * comes from the patient's words, the sites from live search and exploration, and every fact from a quote that code
  * finds in the page it came from.

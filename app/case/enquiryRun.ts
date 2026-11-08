@@ -4,7 +4,7 @@ import type { FirmFinding, Step3Result, TraceStep } from "../../lib/agent/legalA
 import { AGENT_COLORS } from "../../lib/agent/legalAidTypes";
 import { fixtureMode } from "./legalAidRun";
 
-/** Client side of step 4 (D45 contract): draft the message, fill the firms' forms, send one approved firm. `?fixture=1` = sample data. */
+/** Client side of step 4: draft the message, fill the firms' forms, send one approved firm. `?fixture=1` = sample data. */
 
 type LegalAidSummary = { verdict: Step3Result["verdict"]; route: Step3Result["route"] } | undefined;
 const json = { "content-type": "application/json" };

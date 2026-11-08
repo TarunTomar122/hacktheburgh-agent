@@ -3,7 +3,7 @@ import { z } from "zod";
 import { isLive, liveInput, subscribeLive, type LiveEvent } from "../../../lib/liveview";
 
 /**
- * GET  -> server-sent events with the agent's browser tabs as JPEG frames (see lib/liveview.ts, D32, D36).
+ * GET  -> server-sent events with the agent's browser tabs as JPEG frames (see lib/liveview.ts).
  *         Events: {type:"pages",pages} | {type:"frame",pageId,data,url,width,height} | {type:"stats",stats}
  *                 | {type:"end"} | {type:"control",enabled} | {type:"idle"}.
  *         Frames are dropped, not queued, when the client is slow, so the view never lags behind.

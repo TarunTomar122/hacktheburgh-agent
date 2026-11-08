@@ -1,6 +1,6 @@
 export type StepState = "ready" | "locked" | "soon";
 
-/** Which path a step belongs to. D42 shows one track at a time ("answers" = complaint track); see lib/agent/track.ts. */
+/** Which path a step belongs to. The case shows one track at a time ("answers" = complaint track); see lib/agent/track.ts. */
 export type Track = "answers" | "compensation" | "end";
 
 export type Step = { n: number; title: string; blurb: string; state: StepState; track: Track; help: string };
@@ -15,7 +15,7 @@ export const STEPS: Step[] = [
 ];
 
 /**
- * The steps for this patient's place (night plan, "Elliot anywhere"): once the crew has worked out the route, the
+ * The steps for this patient's place ("Elliot anywhere"): once the crew has worked out the route, the
  * titles and help name the bodies it found, not NHS Lothian. Without a route, the original steps.
  */
 export function stepsFor(route?: { steps: { kind: string; body: string; what: string }[] }): Step[] {

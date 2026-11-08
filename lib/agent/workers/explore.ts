@@ -12,7 +12,7 @@ import { EFFORT, MODELS, structured } from "../llm";
 import type { Quote, Wall, WorkerCtx } from "./types";
 
 /**
- * Two generic browser workers (night plan, "Elliot anywhere"). They know nothing about any site or country:
+ * Two generic browser workers ("Elliot anywhere"). They know nothing about any site or country:
  *  - readPage:    open any page (or PDF), answer a question from it with quotes that CODE checks against the page text.
  *  - exploreSite: from a start URL, find the page or online form that meets a goal in plain words, by best-first
  *                 exploration of links, menus, accordions, "Start now" buttons, embedded forms and the site's own search.

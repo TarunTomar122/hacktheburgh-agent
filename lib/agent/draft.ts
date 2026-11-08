@@ -20,7 +20,7 @@ Rules:
 - Do not include the patient's contact details (they go in separate fields).
 - If desiredOutcome is null, return an empty string for outcome.`;
 
-/** What Iona found (D65): one guideline recommendation and the question it raises. Goes in as a polite question, never a claim. */
+/** What Iona found: one guideline recommendation and the question it raises. Goes in as a polite question, never a claim. */
 export type DraftEvidence = { guideline: string; point: string; question: string };
 
 const EVIDENCE_RULE = `
@@ -28,7 +28,7 @@ const EVIDENCE_RULE = `
 
 /**
  * Code's check on the evidence paragraph: if the model left out the exact quote (local Qwen3 8B did in 12 of 12 bench
- * drafts, docs/night-runs/local-vs-cloud.md), add the paragraph from a fixed, neutral template. English only.
+ * drafts), add the paragraph from a fixed, neutral template. English only.
  */
 export function ensureEvidence(d: Draft, evidence: DraftEvidence | undefined, body: string, language = "English"): Draft {
   if (!evidence || !/^english$/i.test(language) || d.details.includes(evidence.point.slice(0, 40))) return d;
@@ -61,7 +61,7 @@ export async function draftComplaint(facts: CaseFacts, evidence?: DraftEvidence)
 }
 
 /**
- * The complaint, addressed to whichever body discovery found (night plan, "Elliot anywhere"). Same rules as above, no
+ * The complaint, addressed to whichever body discovery found ("Elliot anywhere"). Same rules as above, no
  * place baked in: the body, the place and its own guidance come from the route map at run time.
  */
 export async function draftComplaintTo(facts: CaseFacts, to: { body: string; place: string; language?: string }, evidence?: DraftEvidence, support?: DraftSupport[]): Promise<Draft> {

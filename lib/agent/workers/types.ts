@@ -4,7 +4,7 @@ import type { Note, Tracker } from "../legalAid";
 import type { AskSpec } from "../plannerTypes";
 
 /**
- * Shared contract for the generic browser workers (night plan, "Elliot anywhere"). Workers know NOTHING about any
+ * Shared contract for the generic browser workers ("Elliot anywhere"). Workers know NOTHING about any
  * country or site: no URLs, no site names, no per-site selectors. They get a page, a goal in words, and the
  * patient's values; everything else they find and judge live. Safety lives here, in code:
  *  - never click a final Submit/Send/Pay/Confirm on a form that carries the patient's data

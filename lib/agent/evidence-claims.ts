@@ -1,7 +1,7 @@
 import { normText, quoteInText } from "./workers/explore";
 
 /**
- * Evidence-honesty helpers (night plan, "Live and dynamic"; Codex round 5, blocker A and B). Nothing here knows any
+ * Evidence-honesty helpers ("Live and dynamic"). Nothing here knows any
  * country, body or site. A model-written claim that carries a number (a time limit, a cap, a percentage) only
  * stands if every such number is backed, as a WHOLE token with its currency / unit, by a quote that
  *   1. code found in the page it came from (`checked`), and

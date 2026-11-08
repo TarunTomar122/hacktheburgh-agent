@@ -15,7 +15,7 @@ import RouteMapCard from "./RouteMap";
 import { usePlannerRun } from "./usePlannerRun";
 
 /**
- * Discovery (night plan, "Elliot anywhere"): before any step, the crew works out live how the system works where the
+ * Discovery ("Elliot anywhere"): before any step, the crew works out live how the system works where the
  * patient's care happened, and finds the real pages and forms. Same crew screen as the other runs; the result is the
  * route map, which the later steps use.
  */
@@ -44,6 +44,13 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
   // A short "starting" screen first, so the switch from onboarding to the crew is not abrupt.
   const auto = useRef(false);
   const [starting, setStarting] = useState(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (auto.current || saved || state.status !== "idle" || state.says.length) return;
     const key = `research-autostart:${profile.createdAt}`;
@@ -58,13 +65,6 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
       setStarting(false);
     }, 1800);
   }, [saved, state.status, state.says.length, profile.createdAt, profile.facts, start]);
-  const mounted = useRef(false);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
 
   // Demo controls only when a recorded discovery run exists.
   const place = placeOf(profile);

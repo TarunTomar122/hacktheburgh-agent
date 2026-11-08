@@ -12,7 +12,7 @@ export type Session = { browser: Browser; context: BrowserContext; page: Page };
 /**
  * Launch Chromium. Set HEADLESS=1 for fast test runs.
  * Inside the web app (Next.js server) there is no separate window by default: the browser is only seen in the
- * in-app live view, with everything else as in a visible run (slow, watchable typing, kept open for review) (D32).
+ * in-app live view, with everything else as in a visible run (slow, watchable typing, kept open for review).
  * SHOW_BROWSER_WINDOW=1 brings the window back. CLI scripts keep the window unless IN_APP_BROWSER=1.
  * Every session streams to the live view unless LIVEVIEW=0.
  */
@@ -21,7 +21,7 @@ export async function openSession(): Promise<Session> {
   const inApp = process.env.SHOW_BROWSER_WINDOW !== "1" && (process.env.IN_APP_BROWSER === "1" || !!process.env.NEXT_RUNTIME);
   const headless = fast || inApp;
   // BROWSER_CHANNEL=chrome: the installed Google Chrome instead of Playwright's Chromium. Some health sites refuse
-  // headless Chromium with a 403 but serve real Chrome (night run, 2026-11-07: Guy's and St Thomas').
+  // headless Chromium with a 403 but serve real Chrome (Guy's and St Thomas', for one).
   const channel = process.env.BROWSER_CHANNEL || undefined;
   const browser = await chromium.launch({ headless, slowMo: fast ? 0 : 250, channel });
   registerBrowser(browser); // a run the user stops closes its browsers
@@ -29,7 +29,7 @@ export async function openSession(): Promise<Session> {
     locale: "en-GB",
     viewport: { width: 1300, height: 900 },
     userAgent: USER_AGENT, // also for real Chrome: its headless mode says "HeadlessChrome", which search engines wall
-    // RECORD_VIDEO=<dir>: a video of every tab, for the night runs (night plan, Phase 5).
+    // RECORD_VIDEO=<dir>: a video of every tab, for recordings.
     ...(process.env.RECORD_VIDEO ? { recordVideo: { dir: process.env.RECORD_VIDEO, size: { width: 1300, height: 900 } } } : {}),
   });
   // tsx/esbuild wraps named functions in a __name() helper that doesn't exist inside the page.
@@ -84,7 +84,7 @@ const SUBMITTED_TEXT = /thank you for (your (complaint|feedback|enquiry|submissi
 /**
  * A filled form is left open so the user can check it and press Submit themselves. Close the browser once that
  * has happened: the page made a POST and now shows a confirmation that it did not show before. Also closes it when
- * the user closes the tab, or after maxMs, so a forgotten window never lingers. The agent never presses Submit (D57).
+ * the user closes the tab, or after maxMs, so a forgotten window never lingers. The agent never presses Submit.
  */
 export function closeWhenSubmitted(page: Page, browser: Browser, opts: { maxMs?: number; lingerMs?: number; flow?: string } = {}) {
   const lingerMs = opts.lingerMs ?? 5000;

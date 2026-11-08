@@ -7,7 +7,7 @@ import type { CrewState } from "../usePlannerRun";
 import { CrewMark, StateMark } from "./Crew";
 
 /**
- * The four steps of "Preparing your case" (Tarun's option A, D53): who does what, left to right on a thin line.
+ * The four steps of "Preparing your case": who does what, left to right on a thin line.
  * Before the run it explains the work; during the run the same strip is the progress bar (waiting, working, needs you,
  * done), worked out only from what the crew actually reported.
  */

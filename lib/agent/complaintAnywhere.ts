@@ -15,7 +15,7 @@ import { fillForm } from "./workers/fillForm";
 import type { Value, WorkerCtx } from "./workers/types";
 
 /**
- * The complaint, anywhere (night plan, "Elliot anywhere"). Runs on the route map discovery produced: Robin reads the
+ * The complaint, anywhere ("Elliot anywhere"). Runs on the route map discovery produced: Robin reads the
  * provider's own rules and checks the time limit against the patient's dates; Iona finds the recommendation in the
  * place's own clinical guidance and compares it with the timeline; Elliot writes the complaint to the right body;
  * Kit goes to the form discovery found (or finds it) and fills it, stopping before the final submit. When the
@@ -145,7 +145,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             const gp = proof.guideline?.points[0];
             draft = await draftComplaintTo(facts, { body: body?.body ?? "the health provider", place: placeName }, gp && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: gp.text, question: proof.gaps[0].question } : undefined, supportFor(investigation));
             kit.finding(`Complaint written to ${body?.body ?? "the provider"} (${draft.details.split(/\s+/).length} words)`, undefined, "elliot");
-            // The letter is written on this Mac and stays out of the cloud planner's conversation (privacy, Codex round 3).
+            // The letter is written on this Mac and stays out of the cloud planner's conversation (privacy).
             return `Drafted (${draft.details.split(/\s+/).length} words). The text stays on the patient's device; you do not need it to continue.`;
           }
           case "fill_form": {

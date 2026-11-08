@@ -1,7 +1,7 @@
 import type { BrowserContext, Locator, Page } from "playwright";
 
 /**
- * A visible cursor for each browser agent (D36), drawn inside the page so it shows in the live view.
+ * A visible cursor for each browser agent, drawn inside the page so it shows in the live view.
  * It follows real mouse events: before the engine types into or picks a field it moves the real mouse there
  * (`pointAt`), and Playwright's own clicks move the mouse too. So the cursor shows where the agent actually
  * acts; it is not an animation laid on top.

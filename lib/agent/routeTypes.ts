@@ -1,7 +1,7 @@
 import type { CrewId } from "./plannerTypes";
 
 /**
- * The route map (night plan, "Elliot anywhere"): how the system works for this patient's place, worked out live by
+ * The route map ("Elliot anywhere"): how the system works for this patient's place, worked out live by
  * the crew. Client-safe. Every fact carries sources; a quote is `checked` only if code found it in that page's text.
  */
 
@@ -30,7 +30,7 @@ export const ROUTE_KINDS: { kind: RouteKind; label: string; crew: CrewId; questi
 export type Source = { url: string; quote: string; checked: boolean; official: boolean; publisher: string };
 
 /**
- * What a route step's evidence status is, in one stable shape, so later flows never re-derive it (night plan, round 5).
+ * What a route step's evidence status is, in one stable shape, so later flows never re-derive it.
  * Computed by code in discovery's record_step; `evidenceOf(step)` gives the same shape for a step saved without it.
  *
  * Downstream rule (complaintAnywhere / escalationAnywhere / compensationAnywhere): use a step's `deadline`, `points`
@@ -77,7 +77,7 @@ export type RouteStep = {
   missing?: string[]; // facts we would still need from the patient to use it
   sources: Source[];
   confidence: "confirmed" | "likely" | "unconfirmed";
-  evidence?: StepEvidence; // absent only on routes saved before round 5: use evidenceOf(step)
+  evidence?: StepEvidence; // absent on older saved routes: use evidenceOf(step)
   /** What this means for the patient, in plain words, written from the checked quotes at the end of discovery. */
   takeaway?: Takeaway;
   by: CrewId;

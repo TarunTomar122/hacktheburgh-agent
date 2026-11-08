@@ -27,7 +27,7 @@ export function Tick({ done }: { done: boolean }) {
 /**
  * The journey as one slim sticky bar, always there: Research, Choose a path, then the chosen path's steps. Done stages can be
  * reopened; stages that are not open yet say why. `stage` is null while the profile is open, so no tab looks selected.
- * Switching tracks lives in the profile, not here (Tarun).
+ * Switching tracks lives in the profile, not here.
  */
 export default function TrackBar({ profile, stage, onSelect }: { profile: Profile; stage: Stage | null; onSelect: (s: Stage) => void }) {
   const STEPS_ = stepsFor(profile.route && "map" in profile.route ? profile.route.map : undefined);
@@ -94,7 +94,7 @@ export default function TrackBar({ profile, stage, onSelect }: { profile: Profil
           {t &&
             STEPS_.filter((s) => t.steps.includes(s.n)).map((s, i) => {
               const state = s.n === 2 && ombudsmanOpen ? "ready" : s.state;
-              // Step 4 needs firms picked in step 3; until then it is disabled and says why (Tarun).
+              // Step 4 needs firms picked in step 3; until then it is disabled and says why.
               const needsPick = s.n === 4 && !(profile.legalAid?.selected?.length);
               const mine = ms.filter((m) => m.step === s.n);
               const complete = mine.length > 0 && mine.every((m) => m.done);

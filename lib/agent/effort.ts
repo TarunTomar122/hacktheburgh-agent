@@ -1,5 +1,5 @@
 // Patient insights (proposed, branch patient-insights): what Elliot did on a case, counted only from what the runs logged.
-// Client-safe: no Node imports. See docs/plans/patient-insights-plan.md.
+// Client-safe: no Node imports.
 //
 // Rules: counts, never estimates ("hours saved"); every hurdle comes from a logged event; no organisation is cast as at fault.
 
@@ -66,7 +66,7 @@ const page = (url: string) => url.split("#")[0];
 const FIELD_TOOLS = new Set(["fill", "select", "check"]);
 const ADVANCE = /^(next|continue|start report)/i;
 
-/** Cases are saved to the account (D75), so a run's curve is kept small: at most this many points, always keeping the last. */
+/** Cases are saved to the account, so a run's curve is kept small: at most this many points, always keeping the last. */
 const MAX_POINTS = 60;
 function thin(curve: EffortPoint[]): EffortPoint[] {
   if (curve.length <= MAX_POINTS) return curve;
@@ -133,7 +133,7 @@ export function fromEvents(events: TimedEvent[], step: number): Effort {
   return { sites: [...sites], pages, fields, clicks, questionsForYou: questions, ms: events.length ? events[events.length - 1].t - t0 : 0, runs: 1, hurdles, curve: thin(curve) };
 }
 
-/** Effort of a crew run (step 3, step 4) from its trace (D39). */
+/** Effort of a crew run (step 3, step 4) from its trace. */
 export function fromTrace(trace: TraceStep[], step: number): Effort {
   const sites = new Set<string>();
   const urls = new Set<string>();

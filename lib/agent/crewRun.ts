@@ -14,7 +14,7 @@ import { dropHandoffs, dropPause, handoffs, limiter, skips, trackPause, untilRes
 import { CREW, type AskSpec, type CrewId, type PlanStep, type Say, type Thought } from "./plannerTypes";
 
 /**
- * One crew run, reusable (night plan, "Elliot anywhere"): a reasoning model (Elliot) plans and calls tools; each tool
+ * One crew run, reusable ("Elliot anywhere"): a reasoning model (Elliot) plans and calls tools; each tool
  * belongs to a crew member who works in their own browser tab; the user sees who does what, answers questions, and
  * can skip. The flows (discovery, complaint, escalation, compensation) only bring their tools, prompt and result.
  * Calls in one turn that belong to different crew members run at the same time; one member's calls run in order.

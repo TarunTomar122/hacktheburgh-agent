@@ -4,7 +4,7 @@ import { authEnabled, devLoginOn, sessionUser } from "../../lib/auth0";
 import { Stripes } from "../case/Header";
 import { Logo } from "../ui";
 
-/** Where a signed-out visitor lands (D74): Sign up for a new account, Log in for an existing one. Both go through Auth0. */
+/** Where a signed-out visitor lands: Sign up for a new account, Log in for an existing one. Both go through Auth0. */
 export default function Welcome(props: PageProps<"/welcome">) {
   // The session and the address's query are runtime data, so they are read inside <Suspense> (Cache Components).
   return (
@@ -26,17 +26,15 @@ async function WelcomeContent(props: PageProps<"/welcome">) {
   return (
     <div className="flex min-h-dvh flex-col">
       <Stripes />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center px-6 py-12 text-center">
         <div className="fade-up flex flex-col items-center space-y-7">
           <span className="disc-spin inline-block" title="Elliot">
             <Logo className="!h-44 sm:!h-52" />
           </span>
           <h1 className="display text-[38px] sm:text-[52px]">
-            <span className="hl-blue">Your</span> case, under <span className="hl-blue">your</span> control
+            Elliot deals with the <span className="hl-blue">headache</span>, so you don&apos;t have to.
           </h1>
-          <p className="max-w-xl text-[17px] leading-7 text-ink-2">
-            Your case is saved to your account, so you can pick it up on any device. Elliot fills in forms for you and stops before Submit: you press it yourself.
-          </p>
+          <p className="text-[17px] leading-7 text-ink-2">For medical negligence, Elliot finds who can help, fills in the forms, and you press send.</p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <a href={`/auth/login?screen_hint=signup&returnTo=${q}`} className="btn-primary !px-7 !py-3 !text-[15px]">
               Sign up

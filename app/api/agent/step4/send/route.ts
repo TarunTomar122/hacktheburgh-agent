@@ -2,7 +2,7 @@ import { z } from "zod";
 import { sendEnquiry } from "../../../../../lib/agent/enquiry";
 
 /**
- * POST { firmId, consents } -> { enquiry } (D45). The send gate is checked first, on the server: nothing is sent
+ * POST { firmId, consents } -> { enquiry }. The send gate is checked first, on the server: nothing is sent
  * unless ALLOW_REAL_SEND=1 and the patient is not a demo persona. Only the consent texts listed are ticked.
  */
 export async function POST(req: Request) {

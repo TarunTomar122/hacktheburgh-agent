@@ -125,7 +125,7 @@ function FormPanel({
   const set = (k: string, v: string) => setValues((s) => ({ ...s, [k]: v }));
 
   function submit() {
-    // A postcode typed inside the address fills the postcode field (D44).
+    // A postcode typed inside the address fills the postcode field.
     const all = { ...values };
     if (spec.fields.some((f) => f.key === "postcode" && f.uk !== false) && !(all.postcode ?? "").trim()) {
       const found = splitPostcode(all.address ?? "");

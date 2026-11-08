@@ -1,4 +1,4 @@
-// Run the complaint crew (D65) on the fictional demo patient, headless, and stop before Submit. Used to record the demo run.
+// Run the complaint crew on the fictional demo patient, headless, and stop before Submit. Used to record the demo run.
 // IN_APP_BROWSER=1 keeps the browser invisible. Answers any question the crew asks with ANSWER (default "yes").
 process.env.HANDOFF_WAIT_MS ??= "0";
 import { runComplaint } from "../lib/agent/complaintPlanner";

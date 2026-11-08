@@ -1,7 +1,7 @@
-// Iona's pre-action investigation on its own (night plan, side backlog 2), headless, on a fictional persona and a saved route map:
+// Iona's pre-action investigation on its own, headless, on a fictional persona and a saved route map:
 //   npx tsx --env-file=.env.local scripts/test-investigate.ts <persona> <route.json> [complaint|compensation] [--no-draft] [--lanes=decision,policy,inspection,public_record]
 //   INVESTIGATE_DEBUG=1 prints how the judge rated every passage.
-//   e.g. scripts/test-investigate.ts scotland docs/night-runs/scotland-discovery-2/route.json
+//   e.g. scripts/test-investigate.ts scotland .runs/<discovery-run>/route.json
 // 1. offline checks (number backing, the draft's support paragraph); 2. the live investigation in real headless tabs;
 // 3. an independent re-check: every item's URL was opened in the run and its quote is found again in a fresh load of the page;
 // 4. the complaint drafted with the findings (local model for the story). Nothing is submitted or sent. Test scripts may

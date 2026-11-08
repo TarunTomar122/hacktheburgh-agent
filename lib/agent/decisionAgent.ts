@@ -35,7 +35,7 @@ export async function runDecisionAgent(opts: {
   /** Elements the agent must leave alone, e.g. a 'resume saved complaint' login box. Called with each element and the page URL. */
   ignore?: (el: { label: string; name: string; kind: string }, url: string) => boolean;
   /**
-   * Privacy (night plan, Phase 4b): the model sees each saved value's key and description, never the value itself.
+   * Privacy: the model sees each saved value's key and description, never the value itself.
    * Dropdowns and radios are answered with a key too, and code matches that key's value to an option. Values already
    * typed into the page are masked in what the model sees. Off by default (the Scotland flows rely on the old behaviour).
    */
@@ -148,11 +148,11 @@ export async function runDecisionAgent(opts: {
       return result("needs_input", "Some fields on this page could not be filled from the saved values.", step, { unfilled: unsure, question: `I could not fill: ${unsure.join("; ")}. Can you help with these?` });
     }
     // Without allowSubmit, code refuses anything that could send: a real submit, OR any button or link whose label means
-    // send / submit / confirm / pay / apply / sign (JavaScript "Send enquiry" buttons are type=button, Codex round 4).
+    // send / submit / confirm / pay / apply / sign (JavaScript "Send enquiry" buttons are type=button).
     // A one-page form (no `advance` given, e.g. a firm's enquiry form) never needs a button: any button there could send it.
     const sends = !!el && (el.kind === "submit" || (el.kind === "button" && !opts.advance) || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim())));
     if (!el || (sends && !opts.allowSubmit && !(el.kind === "submit" && opts.advance?.test(el.label.trim()) && !SENDS_RE.test(el.label.trim())))) return finish(page, opts, stats, step, unsure);
-    // Codex round 5: a label that dodges SENDS_RE ("Continue", "Next", "Proceed", "Go on") proves nothing. Without
+    // A label that dodges SENDS_RE ("Continue", "Next", "Proceed", "Go on") proves nothing. Without
     // allowSubmit, a link is pressed only when code VERIFIES it as plain navigation (and then followed by address, not
     // clicked); a script button never once anything has been entered; a submit control wired to a script never.
     let followTo: string | undefined;
@@ -308,7 +308,7 @@ function buildQuestions(obs: Observation, byKey: Map<string, Value>, goal: strin
 
 async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string, { value: string }>, hide = false): Promise<string> {
   const loc = page.locator(`[data-aid="${el.id}"]`);
-  await pointAt(page, loc); // show the agent's cursor on the field it is about to fill (D36)
+  await pointAt(page, loc); // show the agent's cursor on the field it is about to fill
   try {
     if (el.kind === "select") {
       const label = choice.startsWith("option:") && el.options.includes(choice.slice(7)) ? choice.slice(7) : hide ? matchOption(byKey.get(choice)?.value ?? "", el.options) : choice;

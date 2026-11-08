@@ -17,7 +17,7 @@ export default function Header({ name, profileOpen, incomplete, stripes = true, 
           </div>
         </div>
         <div className="flex items-center gap-4">
-          {/* Signed-in account (Auth0, D74): shows nothing while accounts are off. */}
+          {/* Signed-in account (Auth0): shows nothing while accounts are off. */}
           <AccountMenu />
         <button
           onClick={onProfile}

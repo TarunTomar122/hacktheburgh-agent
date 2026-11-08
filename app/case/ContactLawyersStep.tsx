@@ -13,7 +13,7 @@ import { WHY } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 
 /**
- * Step 4 (D45, D46): contact up to 3 firms.
+ * Step 4: contact up to 3 firms.
  * Before the run: the message (left) and one button (right). After: one card per firm, side by side, each with a small
  * progress track and ONE next action that changes with its state. The card itself opens how the agent did it.
  * The agent retries failures by itself, falls back to a backup engine, and swaps in the next best firm when a firm has no
@@ -47,7 +47,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const result = profile.legalAid?.result;
   const selected = profile.legalAid?.selected ?? [];
   const firms = selected.map((id) => result?.firms.find((f) => f.id === id)).filter((f): f is FirmFinding => !!f);
-  // Next best checked firms with a website, to swap in when a selected firm has no online form (D46).
+  // Next best checked firms with a website, to swap in when a selected firm has no online form.
   const reserves = (result?.firms ?? []).filter((f) => !selected.includes(f.id) && !f.excluded && f.website).sort((a, b) => b.score - a.score).slice(0, 4);
   const verdict = result?.verdict;
   const route = result?.route;
@@ -149,7 +149,7 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
     upsertEnquiries([{ firmId: o.firmId, firmName: o.firmName, status: "sent", sentAt: at, followUpOn: followUpFrom(at) }]);
   const started = outcomes.length > 0 || running;
 
-  // Demo (D59): no real enquiry is sent, so the demo can carry on as if every firm had been sent its enquiry.
+  // Demo: no real enquiry is sent, so the demo can carry on as if every firm had been sent its enquiry.
   const isSent = (id: string) => ["sent", "replied", "not_interested"].includes(records.find((r) => r.firmId === id)?.status ?? "");
   const skipSending = () => {
     void closeAgentBrowser(); // the filled forms are no use any more
@@ -635,7 +635,7 @@ function Modal({ title, sub, onClose, children, footer }: { title: string; sub?:
 }
 
 /**
- * The review (D64). Everything we are about to send is a field you can change, including the message. Required fields we
+ * The review. Everything we are about to send is a field you can change, including the message. Required fields we
  * have no answer for are at the top, waiting for you. "Save changes" has the agent type your edits into the firm's real
  * form and read it back; "Approve and send" does that too, then presses Send. Send stays off until nothing required is
  * empty and every consent is ticked by you.

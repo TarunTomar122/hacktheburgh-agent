@@ -7,7 +7,7 @@ import { DemoFillButton } from "./StageControls";
 /**
  * The first screen of onboarding, in the manner of Typeform: one question, big, and one large field to type into.
  * Enter submits. The text is lifted into the page (`value`), so a failed request does not lose what was typed.
- * The answer goes through the normal free-text path (`onSubmit`), so "Om" and "Om Prabhu" both work.
+ * The answer goes through the normal free-text path (`onSubmit`), so "Ailsa" and "Ailsa Reid" both work.
  */
 export default function NameStep({
   value,

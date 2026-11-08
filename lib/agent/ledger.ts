@@ -3,7 +3,7 @@ import { appendFileSync } from "node:fs";
 import path from "node:path";
 
 /**
- * The model ledger (night plan, Phase 4b). Every model call in a run is written down: which agent made it, which
+ * The model ledger. Every model call in a run is written down: which agent made it, which
  * model, local or cloud, tokens in and out, time, and what kinds of the patient's data went into it. The run's
  * context (run, emitter, current crew member) travels with the async call chain, so call sites stay unchanged.
  */

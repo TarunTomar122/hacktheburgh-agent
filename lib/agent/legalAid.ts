@@ -31,7 +31,7 @@ import {
 } from "./legalAidTypes";
 
 /**
- * Step 3 (D36): can I get legal aid, and who could take my case. Several browser agents in parallel tabs of
+ * Step 3: can I get legal aid, and who could take my case. Several browser agents in parallel tabs of
  * one browser, each with its own cursor and live-grid tile:
  *   1. SLAB civil legal aid calculator   (Decisions engine fills it; we read the verdict off the page)
  *   2. SLAB solicitor finder              (Decisions engine runs the search; direct clicks if it fails)
@@ -76,7 +76,7 @@ export class Tracker {
   }
 }
 
-/** Everything every agent did, in order, with screenshots (D39). Streamed live and returned with the result. */
+/** Everything every agent did, in order, with screenshots. Streamed live and returned with the result. */
 export class Tracer {
   steps: TraceStep[] = [];
   t0 = Date.now();
@@ -117,7 +117,7 @@ export async function agent<T>(
   work: (page: Page, note: Note) => Promise<T>,
   timeoutMs = 120_000,
   firms?: string[], // every step of this agent is about these firms (a firm's own website)
-  look?: { color?: string; cursor?: string }, // the planner's crew colour and cursor name (D48)
+  look?: { color?: string; cursor?: string }, // the planner's crew colour and cursor name
 ): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
   const n = ++ctx.track.agents;
   const color = look?.color ?? AGENT_COLORS[(n - 1) % AGENT_COLORS.length];
@@ -453,7 +453,7 @@ export function mergeCards(cards: SlabCard[]): FirmFinding[] {
 export type Evidence = Partial<Record<ScoreItem["key"], string>>;
 
 /**
- * Score a firm against what the user needs (D39). One row per criterion, each with points, a maximum, a status
+ * Score a firm against what the user needs. One row per criterion, each with points, a maximum, a status
  * and the evidence, so the UI can show exactly why. `fit` = points / maximum for this route: how well the firm
  * fits, never a chance of winning. The weights are our judgement, not a standard.
  */
@@ -799,7 +799,7 @@ export async function runStep3(funding: Funding, opts: { onEvent?: Emit } = {}):
     tracer.add({ agent: "Shortlist", color: "#181818", kind: "result", text: `Scored ${firms.length} firms; shortlisted ${shortlist.length}`, firms: shortlist, detail: firms.slice(0, 8).map((f) => `${shortlist.includes(f.id) ? "★" : " "} ${f.fit}% ${f.name}`).join("\n") });
     const result: Step3Result = { verdict, route, calculatorText: quote, firms, shortlist, stats: track.stats, runDir, runId, trace: tracer.steps };
     emit({ type: "result", result });
-    return result; // the crawl is over, so the browser closes now (D57)
+    return result; // the crawl is over, so the browser closes now
   } finally {
     await browser.close().catch(() => {});
   }

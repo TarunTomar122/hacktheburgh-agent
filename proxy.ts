@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { authEnabled, DEV_COOKIE, devCookieOk, getAuth0 } from "./lib/auth0";
 
 /**
- * Auth0 (D74). Mounts the SDK's routes (/auth/login, /auth/logout, /auth/callback, /auth/profile) and keeps the session fresh.
+ * Auth0. Mounts the SDK's routes (/auth/login, /auth/logout, /auth/callback, /auth/profile) and keeps the session fresh.
  * Everything else needs a signed-in user, except the /welcome page and static files:
  *  - a page sends a signed-out visitor to /welcome (which offers Sign up and Log in);
  *  - an API route answers 401 with a JSON error, so nobody can spend the OpenAI key or drive the agent's browser without an account.
@@ -15,7 +15,7 @@ export async function proxy(request: NextRequest) {
   const response = await auth0.middleware(request);
   const path = request.nextUrl.pathname;
 
-  // Test-only login bypass (D78): Log out drops the dev cookie instead of going to Auth0.
+  // Test-only login bypass: Log out drops the dev cookie instead of going to Auth0.
   const dev = devCookieOk(request.cookies.get(DEV_COOKIE)?.value);
   if (dev && path === "/auth/logout") {
     const out = NextResponse.redirect(new URL("/welcome", request.url));

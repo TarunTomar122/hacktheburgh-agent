@@ -3,7 +3,7 @@ import { authEnabled, sessionUser } from "../../../lib/auth0";
 import { dbEnabled, getSaved, putSaved, removeSaved } from "../../../lib/db";
 
 /**
- * The signed-in user's saved case (D75).
+ * The signed-in user's saved case.
  *   GET    -> { enabled, saved: { profile | null, updatedAt } | null }   enabled=false: no accounts or no database, keep it in the browser
  *   PUT    { profile, updatedAt } -> { ok }                              409 { saved } when a newer copy is already saved
  *   DELETE { updatedAt? } -> { ok }                                      records a deletion so the user's other devices clear too
@@ -79,7 +79,7 @@ export async function PUT(req: Request) {
   }
 }
 
-/** Deletes the user's saved case from the database completely (D81). Idempotent: deleting nothing is also a success. */
+/** Deletes the user's saved case from the database completely. Idempotent: deleting nothing is also a success. */
 export async function DELETE() {
   try {
     const u = await who();

@@ -122,7 +122,7 @@ const FIXTURES: Record<string, string> = {
     ]),
   ),
 
-  /* --- Codex round 5, blocker 1: links and buttons with a harmless label on a FILLED form. Every "send" below is a
+  /* --- Links and buttons with a harmless label on a FILLED form. Every "send" below is a
    * synthetic request to /SUBMITTED-*, which the harness serves locally and counts as a leak. */
   ...Object.fromEntries(
     Object.entries({
@@ -330,7 +330,7 @@ async function partA(context: BrowserContext, reqs: Req[]) {
   f = await ff("/g/form-spinner", "Continue");
   check(!f.ok, "fill_form: a spinner (progressbar without a value) is no evidence", f.why);
 
-  // Codex round 5, blocker 1: the verdict on a FILLED form for each link and button, and what a press can do.
+  // The verdict on a FILLED form for each link and button, and what a press can do.
   const filledVerdict = async (path: string, label: string, kind: "link" | "button" | "submit") => {
     await go(path);
     await page.locator("[name=fullname]").fill("Rhys Morgan");
@@ -338,9 +338,9 @@ async function partA(context: BrowserContext, reqs: Req[]) {
     return liveForwardVerdict(page, { label, kind });
   };
   await go("/g/link-plain");
-  check(!(await pageHasAnswers(page)), "round 5: a blank page holds no answers");
+  check(!(await pageHasAnswers(page)), "a blank page holds no answers");
   await page.locator("[name=fullname]").fill("Rhys Morgan");
-  check(await pageHasAnswers(page), "round 5: a page with something typed counts as holding answers");
+  check(await pageHasAnswers(page), "a page with something typed counts as holding answers");
   for (const [path, label, why] of [
     ["/g/link-onclick", "Continue", "an ordinary link whose onclick sends"],
     ["/g/link-listener", "Proceed", "an innocent label wired by addEventListener"],
@@ -353,14 +353,14 @@ async function partA(context: BrowserContext, reqs: Req[]) {
     ["/g/link-controls-form", "Next", "a link that controls a form"],
   ] as const) {
     const r = await filledVerdict(path, label, "link");
-    check(!r.ok, `round 5: filled form, ${why}: not pressed`, r.ok ? r.why : r.final);
+    check(!r.ok, `filled form, ${why}: not pressed`, r.ok ? r.why : r.final);
   }
   let r5 = await filledVerdict("/g/btn-handler", "Next", "button");
-  check(!r5.ok, "round 5: filled form, a type=button labelled Next with a handler and no later-step evidence: not pressed", r5.ok ? r5.why : r5.final);
+  check(!r5.ok, "filled form, a type=button labelled Next with a handler and no later-step evidence: not pressed", r5.ok ? r5.why : r5.final);
   r5 = await filledVerdict("/g/submit-onclick", "Continue", "submit");
-  check(!r5.ok, "round 5: filled form, a submit control with an onclick: not pressed", r5.ok ? r5.why : r5.final);
+  check(!r5.ok, "filled form, a submit control with an onclick: not pressed", r5.ok ? r5.why : r5.final);
   r5 = await filledVerdict("/g/link-plain", "Next", "link");
-  check(r5.ok, "round 5: filled page, a plain same-origin link with no script and no form still passes", r5.ok ? r5.why : r5.final);
+  check(r5.ok, "filled page, a plain same-origin link with no script and no form still passes", r5.ok ? r5.why : r5.final);
   // The plain link is FOLLOWED by address, so even a document-wide click handler that sends cannot run.
   await go("/g/link-delegated");
   await page.locator("[name=fullname]").fill("Rhys Morgan");
@@ -368,14 +368,14 @@ async function partA(context: BrowserContext, reqs: Req[]) {
   const nextD = (await observe(page)).elements.find((e) => e.label === "Next")!;
   const lvD = await linkVerdict(page, nextD.id, true);
   if (lvD.ok) await followLink(page, lvD.to);
-  check(lvD.ok && page.url().endsWith("/next") && leaks(reqs).length === before, "round 5: a verified link is followed by address: a document-wide click handler that sends never runs", `${lvD.ok ? lvD.why : lvD.why} | at ${page.url()}`);
+  check(lvD.ok && page.url().endsWith("/next") && leaks(reqs).length === before, "a verified link is followed by address: a document-wide click handler that sends never runs", `${lvD.ok ? lvD.why : lvD.why} | at ${page.url()}`);
   // A script button that passes the evidence test is still pressed with every write blocked.
   await go("/g/btn-wizard-send");
   await page.locator("[name=fullname]").fill("Rhys Morgan");
   const wv = await liveForwardVerdict(page, { label: "Next", kind: "button" });
   const wb = await page.locator("button", { hasText: "Next" }).first();
   const { blocked } = await withoutSends(page, () => wb.click());
-  check(wv.ok && blocked.length === 1 && leaks(reqs).length === before, "round 5: a script button behind a stepper runs with writes blocked: its send is aborted", `verdict ${wv.ok ? "ok" : wv.final} | blocked ${blocked.join(", ")}`);
+  check(wv.ok && blocked.length === 1 && leaks(reqs).length === before, "a script button behind a stepper runs with writes blocked: its send is aborted", `verdict ${wv.ok ? "ok" : wv.final} | blocked ${blocked.join(", ")}`);
 
   await page.close();
   check(leaks(reqs).length === 0, "Part A sent nothing", leaks(reqs).map((r) => `${r.method} ${r.url}`).join(", "));
@@ -492,7 +492,7 @@ const RUNS: Run[] = [
   },
   {
     id: "ff-link-continue",
-    name: 'fill_form trap (round 5): the only way on is a "Continue" LINK whose onclick sends: not pressed',
+    name: 'fill_form trap: the only way on is a "Continue" LINK whose onclick sends: not pressed',
     run: async (ctx) => {
       await ctx.page.goto(`${HOST}/ff/link-continue`);
       const r = await fillForm(ctx, { goal: "Make a complaint to this organisation using its online form.", values: PATIENT });

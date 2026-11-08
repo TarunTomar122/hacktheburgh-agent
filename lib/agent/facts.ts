@@ -79,7 +79,7 @@ const REQUIRED: (keyof CaseFacts)[] = [
   "events", // needed later for deadlines
 ];
 
-/** Only the NHS complaint needs these, so onboarding does not ask them (D42); the complaint step does. */
+/** Only the NHS complaint needs these, so onboarding does not ask them; the complaint step does. */
 export const NHS_ONLY: (keyof CaseFacts)[] = ["preferredContact", "emailRiskAccepted"];
 export const missingForOnboarding = (f: CaseFacts) => missingRequired(f).filter((k) => !NHS_ONLY.includes(k));
 

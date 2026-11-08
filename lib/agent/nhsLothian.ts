@@ -34,8 +34,8 @@ export type Step1Result = BrowserRun & { screenshot?: string; runDir: string };
 
 /**
  * Open NHS Lothian's form in this tab and fill it with the saved values, stopping before Submit. Shared by the
- * single-agent route below and by Kit in the complaint crew (D65). Uses the Decisions API, with the tool-calling
- * loop as the backup (D21, D46).
+ * single-agent route below and by Kit in the complaint crew. Uses the Decisions API, with the tool-calling
+ * loop as the backup.
  */
 export async function fillNhsForm(page: Page, facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; extra?: ExtraAnswers } = {}): Promise<BrowserRun> {
   if (!supportsLothian(facts)) throw new Error(SCOPE_NOTE);
@@ -78,7 +78,7 @@ export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { o
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
     if (opts.keepOpen && process.env.HEADLESS !== "1") {
       reviewing = true;
-      // Return the result at once; the form stays up for the user to check and submit, and the browser closes after that (D57).
+      // Return the result at once; the form stays up for the user to check and submit, and the browser closes after that.
       closeWhenSubmitted(page, browser);
     } else if (process.env.HEADLESS !== "1") await page.waitForTimeout(4000);
     return { ...run, screenshot, runDir };

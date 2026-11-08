@@ -1,7 +1,7 @@
 import type { Page } from "playwright";
 
 /**
- * Press guard (Codex round 5, blocker 1): what code may press on a page that holds the user's answers.
+ * Press guard: what code may press on a page that holds the user's answers.
  *
  * A link or button with an innocent label ("Continue", "Next", "Proceed", "Go on") can still carry a JavaScript handler
  * that sends the form. So on a page where any answer has been entered, code never presses a control just because its

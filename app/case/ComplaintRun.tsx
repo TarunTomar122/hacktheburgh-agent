@@ -18,7 +18,7 @@ import { usePlannerRun } from "./usePlannerRun";
 import { placeOf, useDemoAvailable } from "./useDemo";
 
 /**
- * Step 1, "Complain to NHS Lothian" (D65): the same crew story as "Prepare your case", with the crew that makes
+ * Step 1, "Complain to NHS Lothian": the same crew story as "Prepare your case", with the crew that makes
  * sense for a complaint. Robin reads NHS Lothian's rules and the time limit, Iona reads the guideline, Elliot writes
  * the complaint, Kit fills in NHS Lothian's form and stops. The patient checks it in the browser and presses Submit.
  */
@@ -124,7 +124,7 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
   const rest = summary.slice(first.length).trim();
   const ready = run.form.status === "ready_to_submit";
   const filledForm = ready || run.form.status === "needs_input";
-  // No online form: the crew prepared the message and found where it goes (D66 draft).
+  // No online form: the crew prepared the message and found where it goes.
   const byEmail = !filledForm && !!run.message;
   const to = run.message?.match(/^To: (.+)$/m)?.[1] ?? "";
   const subject = run.message?.match(/^Subject: (.+)$/m)?.[1] ?? "Complaint";

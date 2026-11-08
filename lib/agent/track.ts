@@ -3,7 +3,7 @@ import { COMPENSATION_CHOICE, OUTCOME_CHOICES } from "./inputs";
 import type { Tri } from "./legalAidTypes";
 
 /**
- * Which way to go after onboarding (D42). Two tracks, one recommended, each with a fit % and the reasons for it.
+ * Which way to go after onboarding. Two tracks, one recommended, each with a fit % and the reasons for it.
  * Client-safe: the story signals come from the server (lib/agent/trackSignals.ts, /api/agent/track).
  *
  * Fit = how well the track matches what the user told us. It is NOT a chance of success: we have no outcome data,

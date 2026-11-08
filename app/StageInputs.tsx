@@ -8,9 +8,9 @@ import { demoChoiceValue, demoFieldValue, demoName, demoOutcomes, demoStory } fr
 import { DemoFillButton, ErrorLine, OkRow } from "./StageControls";
 
 /**
- * The inputs of the onboarding interview as full-screen, one-question-at-a-time controls (D40), in the manner of Typeform:
+ * The inputs of the onboarding interview as full-screen, one-question-at-a-time controls, in the manner of Typeform:
  * big type, one thing to answer, OK or Enter to go on. Same props and the same answers as `InputPanel`, which stays as it is for the
- * compact version the case page uses ("ask only what is missing", D33). A form with several fields is asked one field at a time
+ * compact version the case page uses ("ask only what is missing"). A form with several fields is asked one field at a time
  * and sent as one answer at the end, so the server sees exactly what it saw before.
  */
 export default function StageInput({
@@ -130,7 +130,7 @@ function StageForm({
   const [values, setValues] = useState<Record<string, string>>({});
   const [i, setI] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
-  // A postcode found inside the address is taken out of it and its question skipped (D44).
+  // A postcode found inside the address is taken out of it and its question skipped.
   const [note, setNote] = useState<string | null>(null);
   const [autoPostcode, setAutoPostcode] = useState(false);
   // The date field keeps its own mode, so a demo fill remounts it to show the filled date in the right mode.

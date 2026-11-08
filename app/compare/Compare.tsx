@@ -11,7 +11,7 @@ import { CrewMark } from "../case/crew/Crew";
 import { usePlannerRun } from "../case/usePlannerRun";
 
 /**
- * One story, four countries (for judges): the same missed-fracture story, researched and then prepared live in four places,
+ * One story, four countries: the same missed-fracture story, researched and then prepared live in four places,
  * side by side. Nothing about any country is in the app: each column is the ordinary crew run for a fictional patient whose
  * only difference is where it happened. "Play the recorded runs" plays four real past runs at speed (safe on stage);
  * "Run it live" starts eight real runs (research, then the case) with fictional money answers so nothing waits for anyone.
@@ -57,7 +57,7 @@ export default function Compare() {
       <header className="space-y-4">
         <p className="text-xs text-muted">
           <Link href="/insights" className="font-medium text-brand hover:underline">
-            Elliot / for judges
+            Elliot / insights
           </Link>
         </p>
         <h1 className="display text-5xl text-ink">One story. Four countries.</h1>

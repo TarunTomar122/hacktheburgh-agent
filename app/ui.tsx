@@ -18,7 +18,7 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 }
 
 /**
- * Page title block: light serif headline and optional lede. No small label above the headline (Tarun: "a headline over a
+ * Page title block: light serif headline and optional lede. No small label above the headline ("a headline over a
  * headline"); `eyebrow` is accepted for older callers but not rendered.
  */
 export function PageTitle({ title, lede }: { eyebrow?: ReactNode; title: ReactNode; lede?: ReactNode }) {

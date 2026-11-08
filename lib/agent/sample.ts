@@ -55,14 +55,14 @@ export const SAMPLE_SPSO = {
   outcome: "I would like NHS Lothian to explain in writing why the fracture was missed at A&E, to apologise to me, and to review how wrist X-rays are checked so the same mistake does not happen to other patients.",
 };
 
-/* ------------------------------------------------------------------ demo personas (D24 rules: fictional, example.com, Ofcom drama numbers) */
+/* ------------------------------------------------------------------ demo personas (fictional, example.com, Ofcom drama numbers) */
 
 
 const [EXPLANATION, APOLOGY, CHANGES, SUPPORT] = OUTCOME_CHOICES;
 
 export type DemoPersona = { id: "complaint" | "compensation"; name: string; label: string; blurb: string; facts: CaseFacts; draft: Draft; messages: ChatMessage[] };
 
-/** Persona A: short-lived harm, wants answers not money. Should be recommended "Make a complaint" (D42). */
+/** Persona A: short-lived harm, wants answers not money. Should be recommended "Make a complaint". */
 const CALLUM: CaseFacts = {
   complainingFor: "me",
   title: "Mr",

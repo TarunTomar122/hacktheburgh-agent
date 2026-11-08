@@ -14,7 +14,7 @@ import { closeAgentBrowser } from "./streamAgent";
 import { usePlannerRun } from "./usePlannerRun";
 
 /**
- * Step 2 anywhere (night plan, "Elliot anywhere"): take the complaint to the independent body discovery found.
+ * Step 2 anywhere ("Elliot anywhere"): take the complaint to the independent body discovery found.
  * Before: who does what, and one honest line when step 1 is not done. During: the shared crew workspace.
  * After: when you can go, the time limit, what the crew prepared, and the one next action.
  */

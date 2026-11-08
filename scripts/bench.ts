@@ -119,7 +119,7 @@ const TASKS: Task[] = [
   { id: "spso-form", url: SPSO_FORM, decisionsOnly: true, goal: "Complete the SPSO online complaint form page by page using the saved values, clicking Next to move on. Never click Save for later and never submit the complaint.",
     values: spsoValues(SAMPLE_FACTS, SAMPLE_DRAFT, SAMPLE_SPSO), allowCheckboxes: true, ...SPSO_AGENT_OPTIONS,
     check: async (page) => { const t = await pageText(page); const missing = ["Review and send your complaint", "Ailsa", "Reid", "14 Example Street", "July 2026", "DEMO-0001"].filter((x) => !t.includes(x)); return /\/form\/review\/?$/.test(page.url()) && missing.length === 0 ? { pass: true, why: "reached the review page with the right details; nothing sent" } : { pass: false, why: `url ${page.url()} missing ${missing.join(", ") || "-"}` }; } },
-  // Step 4 (D45): find each firm's enquiry form (looking harder when no URL is known) and fill it, stopping before Send.
+  // Step 4: find each firm's enquiry form (looking harder when no URL is known) and fill it, stopping before Send.
   ...ENQ.map((e): Task => ({ id: `enq-${e.id}`, url: e.website, goal: "", values: [], decisionsOnly: true, check: async () => ({ pass: false, why: "custom" }), custom: (page) => enquiryCheck(page, e) })),
   { id: "lawsoc", url: "https://www.lawscot.org.uk/find-a-solicitor/", goal: "Search the directory for firms: set the location and area of law from the saved values, then run the search.", allowSubmit: true, maxSteps: 8,
     values: [v("search_location", "City or postcode to search in", "Edinburgh"), v("area_of_law", "Area of law needed", "Accident and injury")],

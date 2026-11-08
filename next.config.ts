@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
 /**
- * A new id each time `npm run dev` starts. lib/auth0.ts mixes it into the session key, so a restart signs everyone out (D77).
+ * A new id each time `npm run dev` starts. lib/auth0.ts mixes it into the session key, so a restart signs everyone out.
  * Made once per server start and kept in process.env: the dev server reads this config more than once, and a fresh id on
  * every read changed the inlined env each time, so Fast Refresh rebuilt and reloaded the page in a loop.
  */

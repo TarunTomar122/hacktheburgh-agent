@@ -26,7 +26,7 @@ const firm = (f: Partial<FirmFinding> & Pick<FirmFinding, "id" | "name" | "town"
   ...f,
 });
 
-/** Made-up score rows for the layout (D39). Each firm's `score` is the sum of its points; `fit` = score / 100. */
+/** Made-up score rows for the layout. Each firm's `score` is the sum of its points; `fit` = score / 100. */
 type Row = [ScoreItem["key"], string, number, number, ScoreItem["status"], string];
 const withScore = (f: FirmFinding, rows: Row[]): FirmFinding => {
   const breakdown = rows.map(([key, label, points, max, status, evidence]) => ({ key, label, points, max, status, evidence }));
@@ -69,7 +69,7 @@ export const FIXTURE_TILES: AgentTile[] = [
 const C = { calc: "#0060df", list: "#8600fa", lawsoc: "#e64d00", bm: "#009587", lind: "#d6336c" };
 const step = (i: number, t: number, agent: string, color: string, kind: TraceStep["kind"], text: string, o: Partial<TraceStep> = {}): TraceStep => ({ i, t, agent, color, kind, text, ...o });
 
-/** Made-up trace for the layout (D39). No screenshots: `shot` is left out. */
+/** Made-up trace for the layout. No screenshots: `shot` is left out. */
 export const FIXTURE_TRACE: TraceStep[] = [
   step(0, 300, "SLAB calculator", C.calc, "open", "Opened SLAB's civil legal aid calculator", { url: FIXTURE_TILES[0].url }),
   step(1, 900, "SLAB lawyer list", C.list, "open", "Opened SLAB's solicitor finder", { url: FIXTURE_TILES[1].url }),

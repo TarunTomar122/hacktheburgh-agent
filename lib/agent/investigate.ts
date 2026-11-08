@@ -9,7 +9,7 @@ import type { RouteMap } from "./routeTypes";
 import { exploreSite, normText, readPage, type PageReading } from "./workers/explore";
 
 /**
- * Iona's pre-action investigation (night plan, side backlog 2). Before the complaint is written, Iona looks for
+ * Iona's pre-action investigation. Before the complaint is written, Iona looks for
  * official, public, checkable material that makes it stronger, in the bodies of THIS place:
  *   decision    published decisions or case reports of the ombudsman / health complaints body about similar cases
  *               (or, for a claim, of the compensation scheme or courts), with what was decided and why;

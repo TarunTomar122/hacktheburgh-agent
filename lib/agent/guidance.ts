@@ -101,7 +101,7 @@ export function credibleSource(source: { url: string; title: string }): Promise<
 }
 
 /**
- * Iona's guidance step for any place (night plan, "Elliot anywhere"): on the guidance body discovery found, find the
+ * Iona's guidance step for any place ("Elliot anywhere"): on the guidance body discovery found, find the
  * recommendation about the patient's condition, quote it word for word (checked by code), and compare it with the
  * patient's own timeline. Shared by the complaint and compensation flows.
  */

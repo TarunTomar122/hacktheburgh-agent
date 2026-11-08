@@ -3,7 +3,7 @@ import { runStep3 } from "../../../../lib/agent/legalAid";
 import { Funding, fundingMissing } from "../../../../lib/agent/legalAidTypes";
 
 /**
- * POST { funding, facts? } -> newline-delimited JSON `Step3Event`s (lib/agent/legalAidTypes.ts, D36).
+ * POST { funding, facts? } -> newline-delimited JSON `Step3Event`s (lib/agent/legalAidTypes.ts).
  * Runs several browser agents in parallel tabs (SLAB calculator, SLAB lawyer list, Law Society, firm websites),
  * shown live in the app's grid. Nothing is submitted anywhere. Ends with one "result" or "error" event.
  */

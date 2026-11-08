@@ -8,7 +8,7 @@ import { MODELS, structured } from "../llm";
 import type { Wall, WorkerCtx } from "./types";
 
 /**
- * search_directory (night plan, generic worker). Uses a site's OWN search UI to find entries in its directory:
+ * search_directory. Uses a site's OWN search UI to find entries in its directory:
  * finds the right search form or tab, opens "advanced search" when a criterion needs a hidden filter, maps the
  * criteria onto its fields (free text, autocomplete boxes, dropdowns, radios, filter boxes), presses Search, reads
  * the results (opening "view details" sections when contact details are hidden), follows pagination or "load more",

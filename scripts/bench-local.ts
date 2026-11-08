@@ -1,4 +1,4 @@
-// Local vs cloud on the same private-data tasks (night plan, Phase 4b). Fictional personas only.
+// Local vs cloud on the same private-data tasks. Fictional personas only.
 //   npx tsx --env-file=.env.local scripts/bench-local.ts [--reps 3] [--personas scotland,wales] [--configs cloud,qwen3,lfm2,qwen3-think]
 //     [--tasks care_comparison,complaint_draft,time_limit] [--out docs/night-runs/some-name]
 // Configs force Qwen3's thinking off (LOCAL_THINK=0) or on (LOCAL_THINK=1), whatever the production default per task.

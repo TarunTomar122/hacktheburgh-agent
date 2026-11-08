@@ -13,7 +13,7 @@ import type { CrewId, PlanStep, Say } from "../../lib/agent/plannerTypes";
  * stateful step that makes it monotonic and eases it (so the number glides instead of jumping). A hook in
  * useRunProgress.ts drives `advance` from the run screen's clock.
  *
- * The weights and "typical" sizes below come from the recorded runs in demo/ and docs/night-runs/
+ * The weights and "typical" sizes below come from the recorded runs in demo/
  * (scripts/test-run-progress.ts replays them and prints the curve).
  */
 

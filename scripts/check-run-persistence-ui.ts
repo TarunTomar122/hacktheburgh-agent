@@ -1,4 +1,4 @@
-// Headless browser check (night plan): a run survives going to the Profile tab and back, and a page reload.
+// Headless browser check: a run survives going to the Profile tab and back, and a page reload.
 //   npx tsx scripts/check-run-persistence-ui.ts      (dev server on BASE, default http://localhost:3001; screenshots in docs/night-runs/persistence-check/)
 // Seeds a fictional profile, starts the discovery run from the screen, goes to Profile and back, reloads, and checks that
 // the crew's run screen is showing each time (not the start screen). Stops the run at the end. Nothing is sent.
