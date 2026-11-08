@@ -54,7 +54,12 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
       {/* The header's blue carries on into the page title, then stops with the stepped lines. */}
       <div className="bg-brand text-white">
         <div className="mx-auto max-w-3xl px-12 pb-14 pt-10">
-          <h1 className="display text-[48px] text-white">Your profile</h1>
+          <div className="flex items-start justify-between gap-6">
+            <h1 className="display text-[48px] text-white">Your profile</h1>
+            <button onClick={onClose} className="mt-3 shrink-0 rounded-ctl border border-white/50 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-white hover:bg-white/10">
+              Back to your case
+            </button>
+          </div>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-6 text-white/85">
             This is what the agent uses to fill in forms for you. Changes save as you type, on this device only.
           </p>

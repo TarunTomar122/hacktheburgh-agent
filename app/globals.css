@@ -114,6 +114,16 @@ body {
   }
 }
 
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
 @layer components {
   /* Headline voice: light serif, tight tracking (Wordsmith H1 is weight 300, -1.2px at 40px). */
   .display {
@@ -329,8 +339,13 @@ body {
   .fade-up {
     animation: fade-up 450ms ease-out both;
   }
+  /* A dot or cursor that breathes (landing page: "Live", "Reading"). */
+  .soft-pulse {
+    animation: soft-pulse 1.4s ease-in-out infinite;
+  }
   @media (prefers-reduced-motion: reduce) {
-    .fade-up {
+    .fade-up,
+    .soft-pulse {
       animation: none;
     }
   }

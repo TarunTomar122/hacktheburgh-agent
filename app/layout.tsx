@@ -3,7 +3,7 @@ import "./globals.css";
 import LiveView from "./LiveView";
 
 export const metadata: Metadata = {
-  title: "Case helper",
+  title: "Elliot",
   description: "Work out what to do next after a medical mistake",
 };
 

@@ -6,6 +6,7 @@ import type { Profile } from "../../lib/profile";
 import { cx, LockIcon } from "../ui";
 import { milestones, summarise } from "./progress";
 import { stepsFor } from "./steps";
+import type { Stage } from "./stage";
 
 const Check = ({ size = 10 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -23,16 +24,17 @@ export function Tick({ done }: { done: boolean }) {
 }
 
 /**
- * The chosen track (D42) as one slim sticky bar, in the manner of Linear/Stripe: the track and its fit on the left, the steps as
- * tabs, and a small progress meter on the right whose milestones open on click (progressive disclosure). Switching tracks lives
- * in the profile, not here (Tarun).
+ * The journey as one slim sticky bar, always there: Research, Choose a path, then the chosen path's steps. Done stages can be
+ * reopened; stages that are not open yet say why. `stage` is null while the profile is open, so no tab looks selected.
+ * Switching tracks lives in the profile, not here (Tarun).
  */
-export default function TrackBar({ profile, active, onSelect }: { profile: Profile; active: number; onSelect: (n: number) => void }) {
+export default function TrackBar({ profile, stage, onSelect }: { profile: Profile; stage: Stage | null; onSelect: (s: Stage) => void }) {
   const STEPS_ = stepsFor(profile.route && "map" in profile.route ? profile.route.map : undefined);
-  const chosen = profile.track!.chosen!;
-  const t = TRACKS[chosen];
-  const fit = profile.track?.rec?.tracks[chosen].fit;
-  const ms = milestones(profile).filter((m) => t.steps.includes(m.step));
+  const hasRoute = !!profile.route;
+  const chosen = profile.track?.chosen ?? null;
+  const t = chosen ? TRACKS[chosen] : null;
+  const fit = chosen ? profile.track?.rec?.tracks[chosen].fit : undefined;
+  const ms = t ? milestones(profile).filter((m) => t.steps.includes(m.step)) : [];
   const { done, total, pct, next } = summarise(ms);
   const ombudsmanOpen = profile.ombudsman?.unlocked === true;
   const [open, setOpen] = useState(false);
@@ -52,45 +54,71 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
     };
   }, [open]);
 
-  return (
-    <section aria-label="Your path" className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-8 py-2.5">
-        <div className="flex items-baseline gap-2.5">
-          <span className="text-[15px] font-medium text-ink">{t.title}</span>
-          {fit !== undefined && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand">{fit}% fit</span>}
-        </div>
+  const tab = (isActive: boolean, disabled: boolean) =>
+    cx("flex items-center gap-2 rounded-ctl px-3 py-1.5 text-[13px] transition-colors", isActive ? "bg-brand-soft text-brand" : disabled ? "cursor-not-allowed text-faint" : "text-ink-2 hover:bg-subtle hover:text-ink");
+  const box = (isActive: boolean, complete: boolean) => cx("flex size-5 items-center justify-center rounded-[4px] text-[11px] font-medium tabular-nums", isActive ? "bg-brand text-white" : complete ? "bg-teal-soft text-teal" : "bg-subtle text-muted");
 
-        <nav aria-label="Steps" className="flex flex-wrap items-center gap-1">
-          {STEPS_.filter((s) => t.steps.includes(s.n)).map((s, i) => {
-            const state = s.n === 2 && ombudsmanOpen ? "ready" : s.state;
-            // Step 4 needs firms picked in step 3; until then it is disabled and says why (Tarun).
-            const needsPick = s.n === 4 && !(profile.legalAid?.selected?.length);
-            const mine = ms.filter((m) => m.step === s.n);
-            const complete = mine.length > 0 && mine.every((m) => m.done);
-            const isActive = active === s.n;
-            return (
-              <button
-                key={s.n}
-                disabled={state === "soon" || needsPick}
-                onClick={() => onSelect(s.n)}
-                aria-current={isActive ? "step" : undefined}
-                title={needsPick ? "Pick up to 3 solicitors in the previous step first" : state === "locked" ? s.blurb : undefined}
-                className={cx(
-                  "flex items-center gap-2 rounded-ctl px-3 py-1.5 text-[13px] transition-colors",
-                  isActive ? "bg-brand-soft text-brand" : state === "soon" || needsPick ? "cursor-not-allowed text-faint" : "text-ink-2 hover:bg-subtle hover:text-ink",
-                )}
-              >
-                <span className={cx("flex size-5 items-center justify-center rounded-[4px] text-[11px] font-medium tabular-nums", isActive ? "bg-brand text-white" : complete ? "bg-teal-soft text-teal" : "bg-subtle text-muted")}>
-                  {complete ? <Check /> : i + 1}
-                </span>
-                <span className="font-medium">{s.title}</span>
-                {(state === "locked" || needsPick) && <LockIcon />}
-                {state === "soon" && <span className="text-[11px]">soon</span>}
-              </button>
-            );
-          })}
+  return (
+    <section aria-label="Your case" className="sticky top-0 z-20 border-b border-line bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-8 py-2.5">
+        {t && (
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-[15px] font-medium text-ink">{t.title}</span>
+            {fit !== undefined && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand">{fit}% fit</span>}
+          </div>
+        )}
+
+        <nav aria-label="Stages" className="flex flex-wrap items-center gap-1">
+          <button onClick={() => onSelect("research")} aria-current={stage === "research" ? "step" : undefined} className={tab(stage === "research", false)}>
+            <span className={box(stage === "research", hasRoute)}>{hasRoute ? <Check /> : "•"}</span>
+            <span className="font-medium">Research</span>
+          </button>
+          <button
+            disabled={!hasRoute}
+            onClick={() => onSelect("path")}
+            aria-current={stage === "path" ? "step" : undefined}
+            title={hasRoute ? undefined : "Opens when the research has finished"}
+            className={tab(stage === "path", !hasRoute)}
+          >
+            <span className={box(stage === "path", !!chosen)}>{chosen ? <Check /> : "•"}</span>
+            <span className="font-medium">Choose a path</span>
+            {!hasRoute && (
+              <>
+                <LockIcon />
+                <span className="text-[11px] font-normal">after the research</span>
+              </>
+            )}
+          </button>
+          {t && <span aria-hidden className="mx-1 h-5 w-px bg-line" />}
+          {t &&
+            STEPS_.filter((s) => t.steps.includes(s.n)).map((s, i) => {
+              const state = s.n === 2 && ombudsmanOpen ? "ready" : s.state;
+              // Step 4 needs firms picked in step 3; until then it is disabled and says why (Tarun).
+              const needsPick = s.n === 4 && !(profile.legalAid?.selected?.length);
+              const mine = ms.filter((m) => m.step === s.n);
+              const complete = mine.length > 0 && mine.every((m) => m.done);
+              const isActive = stage === s.n;
+              const disabled = state === "soon" || needsPick;
+              return (
+                <button
+                  key={s.n}
+                  disabled={disabled}
+                  onClick={() => onSelect(s.n)}
+                  aria-current={isActive ? "step" : undefined}
+                  title={needsPick ? "Pick up to 3 solicitors in the previous step first" : state === "locked" ? s.blurb : undefined}
+                  className={tab(isActive, disabled)}
+                >
+                  <span className={box(isActive, complete)}>{complete ? <Check /> : i + 1}</span>
+                  <span className="font-medium">{s.title}</span>
+                  {(state === "locked" || needsPick) && <LockIcon />}
+                  {needsPick && <span className="text-[11px] font-normal">pick solicitors first</span>}
+                  {state === "soon" && <span className="text-[11px]">soon</span>}
+                </button>
+              );
+            })}
         </nav>
 
+        {t && (
         <div ref={pop} className="relative ml-auto">
           <button
             onClick={() => setOpen((o) => !o)}
@@ -114,7 +142,7 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
                   <span className="font-medium text-ink">Next:</span> {next}
                 </p>
               )}
-              {STEPS_.filter((s) => t.steps.includes(s.n)).map((s) => (
+              {t && STEPS_.filter((s) => t.steps.includes(s.n)).map((s) => (
                 <div key={s.n} className="mb-3 last:mb-0">
                   <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">{s.title}</div>
                   <ul className="space-y-1.5">
@@ -132,6 +160,7 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
             </div>
           )}
         </div>
+        )}
       </div>
     </section>
   );

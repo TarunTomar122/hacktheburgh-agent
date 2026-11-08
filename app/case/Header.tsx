@@ -3,12 +3,12 @@
 import { cx, LogoLink, UserIcon } from "../ui";
 
 /** Wordsmith-blue top bar: logo and case name on the left, profile on the right. Followed by the stepped stripe (one thick line, then thinner ones). */
-export default function Header({ name, profileOpen, incomplete, stripes = true, onProfile, onLogo }: { name: string; profileOpen: boolean; incomplete: boolean; stripes?: boolean; onProfile: () => void; onLogo: (to: "home" | "profile") => void }) {
+export default function Header({ name, profileOpen, incomplete, stripes = true, onProfile }: { name: string; profileOpen: boolean; incomplete: boolean; stripes?: boolean; onProfile: () => void }) {
   return (
     <div className="shrink-0">
       <header className="flex h-16 items-center justify-between bg-brand px-8 text-white">
         <div className="flex items-center gap-6">
-          <LogoLink onGo={onLogo} />
+          <LogoLink />
           <span className="h-7 w-px bg-white/30" aria-hidden />
           <div className="leading-tight">
             <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/70">Case for</div>

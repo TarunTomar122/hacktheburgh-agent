@@ -72,7 +72,11 @@ Contact form (D44): a postcode found in the address skips the postcode screen an
 
 Each interview question is a full screen under the header: heading in `.display` (32-40 px, 26-30 px if the question is long), input below, `OK` + "or press Enter" (`OkRow`), errors as a red line under the input. Inputs: `.big-input` (serif light, 2px underline, brand on focus), `.choice-row` with `.keycap` (A, B, C) or `.check`. A 4 px brand progress bar sits under the stripes. Components: `app/StageInputs.tsx`, `app/StageControls.tsx`; `DateField` takes `big`.
 
-## Landing screen (D40)
+## Marketing landing page (`/`, 2026-11-08)
+
+`app/page.tsx` is a server component: blue header with a white "Start consultation" button (links to `/start`), serif hero with the `hl-blue` highlight, a mock of the route plus live log, "how it works" on cream, the crew cards (`public/crew/*-256.png`), a charcoal "every claim has a source" panel, and a closing blue band. Same tokens as everywhere else, no shadows or gradients. The onboarding moved to `/start` (`app/start/page.tsx` renders `app/Onboarding.tsx`); the logo on the onboarding screen links back to `/`. The route list, log lines and the quoted time limit on the landing page are illustrations, not real results.
+
+## Onboarding name screen (D40, now at `/start`)
 
 - **Shell:** the same blue 64px header and stripes as the case page (`Stripes` from `app/case/Header.tsx`), with the logo left and, from the `sm` breakpoint up, "Getting started / Preparing your case" (becomes "Case for / <first name>" once the name is known). Below `sm` only the logo shows. The dev-only "Skip: use demo patient" button sits on the right as a dashed white outline.
 - **Name screen (`app/NameStep.tsx`), in the manner of Typeform:** one question in the display serif ("First, what should I *call you*?", with the `hl-blue` highlight), one lede in `ink-2`, then a large field: borderless, serif 34/40px light, underlined with `line`, the underline turns `brand` on focus. Big `OK` button and an "or press Enter" hint. The field is focused on load, Enter submits, `OK` is disabled while empty. The typed text lives in the page, so a failed request returns here with the text kept and the error shown under the field. Footer line: "Nothing is sent to the NHS yet."

@@ -6,7 +6,6 @@
  */
 import Image from "next/image";
 import Link from "next/link";
-import { useProfile } from "../lib/profile";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
@@ -151,26 +150,12 @@ export function Logo({ className }: { className?: string }) {
 }
 
 /**
- * The logo as a link (D43, D50), by stage: no case yet -> the landing page; a case but no path chosen -> the suggestion page;
- * a path chosen -> the profile. On the case page, pass `onGo` to do it in place instead of reloading the page.
+ * The logo as a link: always the landing page, on every screen (it used to change by stage, which was confusing).
+ * Nothing is lost by leaving: the case is saved on this device, and the landing page offers "Continue your case".
  */
-export function LogoLink({ onGo }: { onGo?: (to: "home" | "profile") => void }) {
-  const profile = useProfile();
-  const stage = !profile ? "start" : profile.track?.chosen ? "profile" : "suggestion";
-  const label = stage === "start" ? "Back to the start" : stage === "suggestion" ? "Back to your suggestion" : "Open your profile";
+export function LogoLink() {
   return (
-    <Link
-      href={stage === "start" ? "/" : stage === "suggestion" ? "/case" : "/case#profile"}
-      aria-label={label}
-      title={label}
-      onClick={(e) => {
-        if (stage !== "start" && onGo) {
-          e.preventDefault();
-          onGo(stage === "profile" ? "profile" : "home");
-        }
-      }}
-      className="rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-white"
-    >
+    <Link href="/" aria-label="Elliot, home" title="Home" className="rounded-full outline-offset-4 focus-visible:outline-2 focus-visible:outline-white">
       <Logo />
     </Link>
   );

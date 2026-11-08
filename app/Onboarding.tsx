@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { OPENER, type ChatMessage } from "../lib/agent/chat";
@@ -13,7 +14,7 @@ import { Stripes } from "./case/Header";
 import NameStep from "./NameStep";
 import PersonaPicker from "./PersonaPicker";
 import StageInput from "./StageInputs";
-import { LogoLink } from "./ui";
+import { ArrowLeftIcon, LogoLink } from "./ui";
 
 // The order the questions come in (nextTarget in lib/agent/inputs.ts), for the progress bar.
 const STEPS: Target[] = ["name", "story", "details", "who", "contact", "outcome", "done"];
@@ -139,6 +140,11 @@ export default function Onboarding() {
               <div className="text-sm font-medium">{[facts.firstName, facts.lastName].filter(Boolean).join(" ") || "Preparing your case"}</div>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-white/85 transition-colors hover:text-white">
+              <ArrowLeftIcon />
+              Home
+            </Link>
           {SHOW_SKIP && (
             <button
               onClick={() => setPicking(true)}
@@ -153,6 +159,7 @@ export default function Onboarding() {
               Try a persona
             </button>
           )}
+          </div>
         </header>
         <Stripes />
       </div>

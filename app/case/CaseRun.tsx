@@ -192,15 +192,31 @@ type RunState = ReturnType<typeof usePlannerRun>["state"];
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
-export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COMPENSATION_KIT, currency = "£" }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; kit?: CrewKit; currency?: string }) {
+export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COMPENSATION_KIT, currency = "£", main }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; kit?: CrewKit; currency?: string; main?: React.ReactNode }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  // The clock stops while the run is paused: it adds each second to the total only when not paused, so a pause never counts.
+  const [elapsed, setElapsed] = useState(0);
+  const clock = useRef({ last: 0, paused: false, startedAt: null as number | null, seeded: false });
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    clock.current.paused = !!state.paused;
+    clock.current.startedAt = state.startedAt ?? null;
+  }, [state.paused, state.startedAt]);
+  useEffect(() => {
+    clock.current.last = Date.now();
+    const t = setInterval(() => {
+      const c = clock.current;
+      const n = Date.now();
+      const dt = n - c.last;
+      c.last = n;
+      if (c.startedAt === null) return;
+      if (!c.seeded) {
+        c.seeded = true;
+        setElapsed(n - c.startedAt);
+      } else if (!c.paused) setElapsed((e) => e + dt);
+    }, 1000);
     return () => clearInterval(t);
   }, []);
-  const elapsed = state.startedAt ? now - state.startedAt : 0;
   const pct = useRunProgress(state, shapeFromWorkers(kit.workers));
   // A screen that picked up a run that went on while it was away says so, briefly.
   const back = useFresh(state.reconnectedAt ?? null, 4000);
@@ -214,9 +230,9 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
   const question = state.asks[0];
   const needs = state.handoffs.filter((h) => !h.outcome);
   useEffect(() => {
-    document.title = needs.length ? `(${needs.length}) Needs you` : "Case helper";
+    document.title = needs.length ? `(${needs.length}) Needs you · Elliot` : "Elliot";
     return () => {
-      document.title = "Case helper";
+      document.title = "Elliot";
     };
   }, [needs.length]);
   const needsKey = needs.map((h) => h.id).join(",");
@@ -292,12 +308,23 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
           </div>
           <RunProgressBar pct={pct} />
         </div>
+        <div className={cx("px-6 py-3.5", question && "border-b border-line-soft")}>
+          <CrewRow state={state} ids={["elliot", ...kit.workers]} onOpen={(id) => setDrawer(id)} />
+        </div>
         {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} currency={currency} />}
       </section>
 
-      <CrewRow state={state} ids={["elliot", ...kit.workers]} onOpen={(id) => setDrawer(id)} />
-
-      <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} needs={needs} />
+      {main ? (
+        // One row: what the crew builds (3/4) beside the feed of what it did (1/4).
+        <div className="grid items-start gap-5 lg:grid-cols-4">
+          <div className="min-w-0 lg:col-span-3">{main}</div>
+          <div className="min-w-0 lg:sticky lg:top-4 lg:col-span-1">
+            <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} needs={needs} narrow />
+          </div>
+        </div>
+      ) : (
+        <Found says={state.says} trace={state.trace} runId={state.runId} onTrace={setScope} needs={needs} />
+      )}
 
       {/* The browsers working right now, small. Click one to watch it in a window. */}
       <section aria-label="Browsers working now">
@@ -367,16 +394,22 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
 const goalOf = (says: Say[], s: Say) => says.findLast((x) => x.kind === "assign" && x.to === s.from && x.tool === s.tool && x.i < s.i)?.text;
 
 /** What the crew has found so far: one line per finished job, newest first, with its proof one click away. */
-function Found({ says, trace, runId, onTrace, needs = [] }: { says: Say[]; trace: TraceStep[]; runId?: string; onTrace: (s: TraceScope) => void; needs?: RunState["handoffs"] }) {
+function Found({ says, trace, runId, onTrace, needs = [], narrow }: { says: Say[]; trace: TraceStep[]; runId?: string; onTrace: (s: TraceScope) => void; needs?: RunState["handoffs"]; narrow?: boolean }) {
   const open = needs.filter((h) => !h.outcome);
   const done = says.filter((s) => s.kind === "report").slice().reverse();
   // Only the latest report from the tab that is waiting on the patient; earlier ones are history.
   const waiting = new Set(open.map((h) => done.find((s) => s.tab === h.tab)?.i).filter((i) => i !== undefined));
-  if (!done.length && !open.length) return null;
+  if (!done.length && !open.length)
+    return narrow ? (
+      <section aria-label="What the crew found so far" className="rounded-card border border-line bg-white">
+        <h2 className="border-b border-line-soft px-4 py-5 text-[12px] text-muted">What the crew found so far</h2>
+        <p className="px-4 py-5 text-[13px] leading-5 text-muted">Each page the crew reads will show up here.</p>
+      </section>
+    ) : null;
   return (
-    <section aria-label="What the crew found so far">
-      <h2 className="mb-2 text-[12px] text-muted">What the crew found so far</h2>
-      <ol className="max-h-[21rem] divide-y divide-line-soft overflow-y-auto rounded-card border border-line bg-white">
+    <section aria-label="What the crew found so far" className={cx(narrow && "overflow-hidden rounded-card border border-line bg-white")}>
+      <h2 className={cx("text-[12px] text-muted", narrow ? "border-b border-line-soft px-4 py-5" : "mb-2")}>What the crew found so far</h2>
+      <ol className={cx("divide-y divide-line-soft overflow-y-auto", narrow ? "max-h-[70vh]" : "max-h-[21rem] rounded-card border border-line bg-white")}>
         {open.map((h) => (
           <li key={h.id} className="flex items-center gap-3 bg-amber-soft px-4 py-3">
             <CrewMark id={h.crew} size={30} />
@@ -387,33 +420,41 @@ function Found({ says, trace, runId, onTrace, needs = [] }: { says: Say[]; trace
           </li>
         ))}
         {done.map((s) => {
-          const steps = s.tab ? trace.filter((t) => t.agent === s.tab) : [];
-          const shot = steps.findLast((t) => t.shot)?.shot;
+          const tabSteps = s.tab ? trace.filter((t) => t.agent === s.tab) : [];
+          // A report with no recorded steps still opens: the modal then shows the report itself.
+          const steps: TraceStep[] = tabSteps.length ? tabSteps : [{ i: s.i, t: s.t, agent: CREW[s.from].name, color: CREW[s.from].color, kind: s.ok === false ? "fail" : "found", text: s.text, detail: s.detail }];
+          const shot = tabSteps.findLast((t) => t.shot)?.shot;
           return (
-            <li key={s.i} className="rise flex items-center gap-3 px-4 py-3">
-              <CrewMark id={s.from} size={30} />
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] leading-5 text-ink">
-                  {waiting.has(s.i) ? <span className="mr-1 text-[13px] font-medium text-amber">Needs you</span> : s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
-                  {s.text}
-                </p>
-                {s.facts && (
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {s.facts.map((f) => (
-                      <span key={f.label} title={whyFor(f.label)} className={cx("inline-flex cursor-help items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]", FACT[f.value].cls)}>
-                        <span aria-hidden>{FACT[f.value].mark}</span>
-                        {f.label}
-                      </span>
-                    ))}
-                  </div>
+            <li key={s.i} className="rise">
+              <button
+                onClick={() => onTrace({ title: goalOf(says, s) ?? `${CREW[s.from].name}: ${s.text}`, subtitle: `What ${CREW[s.from].name} tried and found`, steps })}
+                title="See what they tried and found"
+                className={cx("flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-subtle focus-visible:bg-subtle focus-visible:outline-none", narrow ? "items-start" : "items-center")}
+              >
+                <CrewMark id={s.from} size={30} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] leading-5 text-ink">
+                    {waiting.has(s.i) ? <span className="mr-1 text-[13px] font-medium text-amber">Needs you</span> : s.ok === false && <span className="mr-1 rounded-[3px] bg-danger-soft px-1 text-[11px] font-medium text-danger">Problem</span>}
+                    {s.text}
+                  </p>
+                  {s.facts && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {s.facts.map((f) => (
+                        <span key={f.label} title={whyFor(f.label)} className={cx("inline-flex cursor-help items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]", FACT[f.value].cls)}>
+                          <span aria-hidden>{FACT[f.value].mark}</span>
+                          {f.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {shot && !narrow && (
+                  <span className="shrink-0 overflow-hidden rounded-[4px] border border-line">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- screenshots served by our own route */}
+                    <img src={shotUrl(runId, shot)} alt="" className="h-[40px] w-[64px] object-cover object-top" />
+                  </span>
                 )}
-              </div>
-              {shot && (
-                <button onClick={() => onTrace({ title: goalOf(says, s) ?? `${CREW[s.from].name}: ${s.text}`, subtitle: `${CREW[s.from].name}'s steps`, steps })} title="How they found it" className="shrink-0 overflow-hidden rounded-[4px] border border-line hover:border-brand">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- screenshots served by our own route */}
-                  <img src={shotUrl(runId, shot)} alt="" className="h-[40px] w-[64px] object-cover object-top" />
-                </button>
-              )}
+              </button>
             </li>
           );
         })}
