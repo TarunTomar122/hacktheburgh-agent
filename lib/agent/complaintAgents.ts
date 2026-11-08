@@ -3,7 +3,7 @@ import { z } from "zod";
 import { dismissCookies } from "../browser";
 import { pointAt } from "../agentCursor";
 import type { CaseFacts } from "./facts";
-import { EFFORT, MODELS, structured } from "./llm";
+import { EFFORT, MODELS, modelFor, structured } from "./llm";
 import { pageText, type Note, type Tracker } from "./legalAid";
 import { hasSupport } from "./complaintSupport";
 
@@ -64,21 +64,25 @@ const TimeLimit = z.object({
 });
 export type TimeLimitReading = z.infer<typeof TimeLimit> & { url: string };
 
+/** No browser: the patient's timeline against a time limit stated on a page. Health data, so local by default. */
+export async function judgeTimeLimit(text: string, url: string, facts: CaseFacts, today = new Date().toISOString().slice(0, 10)): Promise<z.infer<typeof TimeLimit>> {
+  const timeline = facts.events.map((e) => `${e.date}: ${e.what}`).join("\n") || facts.incidentSummary || "no dates given";
+  return structured({
+    ...modelFor("reason", ["health"]), // the patient's timeline: on this Mac by default (the page itself is public)
+    instructions: "You check a patient's complaint against a time limit for a research agent. Use only the page text for the limit and only the patient's timeline for the dates. Never guess a date. The limit counts from the event or from when the patient found out they had a reason to complain, and never more than 12 months after the event, unless the page says it can be waived.",
+    input: `Today: ${today}\nPage: ${url}\n\n${text}\n\nPatient's timeline:\n${timeline}`,
+    schema: TimeLimit,
+    name: "time_limit",
+    data: ["health"],
+  });
+}
+
 /** Open Citizens Advice Scotland's page on NHS complaints and work out where the patient stands against the time limit, from their own timeline. */
 export async function checkTimeLimit(page: Page, facts: CaseFacts, note: Note, track: Tracker): Promise<TimeLimitReading> {
   const text = await open(page, TIME_LIMIT_PAGE, note, track, /time limit|six months/i);
   if (!/months/i.test(text)) throw new Error("The page with the time limit did not load");
   note("Counting from your dates");
-  const timeline = facts.events.map((e) => `${e.date}: ${e.what}`).join("\n") || facts.incidentSummary || "no dates given";
-  const today = new Date().toISOString().slice(0, 10);
-  const r = await structured({
-    model: MODELS.draft,
-    effort: "low",
-    instructions: "You check a patient's complaint against a time limit for a research agent. Use only the page text for the limit and only the patient's timeline for the dates. Never guess a date. The limit counts from the event or from when the patient found out they had a reason to complain, and never more than 12 months after the event, unless the page says it can be waived.",
-    input: `Today: ${today}\nPage: ${page.url()}\n\n${text}\n\nPatient's timeline:\n${timeline}`,
-    schema: TimeLimit,
-    name: "time_limit",
-  });
+  const r = await judgeTimeLimit(text, page.url(), facts);
   await note.log("check", `${r.status === "within" ? "Within" : r.status === "close" ? "Close to" : r.status === "outside" ? "Past" : "Could not tell about"} the time limit`, { detail: `${r.limit}\n\n${r.explanation}` });
   note(r.status === "within" ? "Within the time limit" : r.status === "close" ? "Close to the limit" : r.status === "outside" ? "Past the limit" : "Dates unclear");
   return { ...r, url: TIME_LIMIT_PAGE };

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { supportsLothian, hasFractureContext, factualComplaint } from "./complaintScope";
 import type { CaseFacts } from "./facts";
-import { EFFORT, MODELS, structured } from "./llm";
+import { modelFor, structured } from "./llm";
 
 export const Draft = z.object({
   details: z.string().describe("Body of the complaint for the 'details of your feedback' box"),
@@ -25,17 +25,27 @@ export type DraftEvidence = { guideline: string; point: string; question: string
 const EVIDENCE_RULE = `
 - An "evidence" item may be given: a clinical guideline recommendation and a question it raises. Add ONE short paragraph near the end that quotes the recommendation exactly and politely asks NHS Lothian to explain how that was followed in the patient's care. Do not say it was not followed. Do not say anyone was at fault.`;
 
+/**
+ * Code's check on the evidence paragraph: if the model left out the exact quote (local Qwen3 8B did in 12 of 12 bench
+ * drafts, docs/night-runs/local-vs-cloud.md), add the paragraph from a fixed, neutral template. English only.
+ */
+export function ensureEvidence(d: Draft, evidence: DraftEvidence | undefined, body: string, language = "English"): Draft {
+  if (!evidence || !/^english$/i.test(language) || d.details.includes(evidence.point.slice(0, 40))) return d;
+  return { ...d, details: `${d.details.trim()}\n\n${evidence.guideline} says: "${evidence.point}" Could ${body} please explain how this recommendation was considered in my care?` };
+}
+
 export async function draftComplaint(facts: CaseFacts, evidence?: DraftEvidence): Promise<Draft> {
   if (!supportsLothian(facts)) return factualComplaint(facts);
   if (!hasFractureContext(facts)) evidence = undefined;
-  return structured({
-    model: MODELS.draft,
-    effort: EFFORT.draft,
+  const d = await structured({
+    ...modelFor("draft", ["health", "identity"]), // the patient's story and name: on this Mac by default
     instructions: evidence ? INSTRUCTIONS + EVIDENCE_RULE : INSTRUCTIONS,
     input: `Facts:\n${JSON.stringify(facts, null, 2)}${evidence ? `\n\nEvidence:\n${JSON.stringify(evidence, null, 2)}` : ""}`,
     schema: Draft,
     name: "complaint_draft",
+    data: ["health", "identity"],
   });
+  return ensureEvidence(d, evidence, "NHS Lothian");
 }
 
 /**
@@ -52,5 +62,6 @@ Rules:
 - If desiredOutcome is null, return an empty string for outcome.${evidence ? `
 - An "evidence" item is given: a clinical guidance recommendation and a question it raises. Add ONE short paragraph near the end that quotes the recommendation exactly, names its source, and politely asks ${to.body} to explain how it was followed in the patient's care. Do not say it was not followed. Do not say anyone was at fault.` : ""}
 - Write in ${to.language ?? "English"}.`;
-  return structured({ model: MODELS.draft, effort: EFFORT.draft, instructions, input: `Facts:\n${JSON.stringify(facts, null, 2)}${evidence ? `\n\nEvidence:\n${JSON.stringify(evidence, null, 2)}` : ""}`, schema: Draft, name: "complaint_draft", data: ["health", "identity"] });
+  const d = await structured({ ...modelFor("draft", ["health", "identity"]), instructions, input: `Facts:\n${JSON.stringify(facts, null, 2)}${evidence ? `\n\nEvidence:\n${JSON.stringify(evidence, null, 2)}` : ""}`, schema: Draft, name: "complaint_draft", data: ["health", "identity"] });
+  return ensureEvidence(d, evidence, to.body, to.language);
 }

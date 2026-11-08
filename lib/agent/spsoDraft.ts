@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ChatMessage } from "./chat";
 import type { Draft } from "./draft";
 import type { CaseFacts } from "./facts";
-import { EFFORT, MODELS, structured } from "./llm";
+import { modelFor, structured } from "./llm";
 import { wordCount } from "./spsoAnswers";
 
 const SpsoText = z.object({
@@ -25,12 +25,12 @@ Rules:
 export async function draftOmbudsman(facts: CaseFacts, draft: Draft, messages: ChatMessage[]): Promise<SpsoText> {
   const transcript = messages.map((m) => `${m.role === "agent" ? "Assistant" : "User"}: ${m.content}`).join("\n");
   const out = await structured({
-    model: MODELS.draft,
-    effort: EFFORT.draft,
+    ...modelFor("draft", ["health", "identity"]), // the patient's story and chat: on this Mac by default
     instructions: INSTRUCTIONS,
     input: `Facts:\n${JSON.stringify(facts, null, 2)}\n\nTheir complaint to NHS Lothian:\n${draft.details}\n\nWhat they want (from the complaint): ${draft.outcome}\n\nConversation:\n${transcript}`,
     schema: SpsoText,
     name: "ombudsman_text",
+    data: ["health", "identity"],
   });
   // The form needs at least 15 words for the outcome; code checks, not the model.
   if (wordCount(out.outcome) < 15) throw new Error("The outcome came back shorter than the form allows. Try again.");

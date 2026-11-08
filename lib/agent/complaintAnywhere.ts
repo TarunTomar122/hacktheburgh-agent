@@ -113,7 +113,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             if (!r.ok) return `Could not read the rules: ${r.error}`;
             const today = new Date().toISOString().slice(0, 10);
             const lim = await structured({
-              ...modelFor("draft", ["health"]), // the patient's timeline: on this Mac by default
+              ...modelFor("reason", ["health"]), // the patient's timeline: on this Mac by default
               instructions: "Check a patient's complaint against a time limit, using only the page text for the limit and only the patient's timeline for the dates. Never guess a date.",
               input: `Today: ${today}\nPage answer: ${r.value.answer}\nQuotes: ${r.value.quotes.map((q) => q.quote).join(" | ")}\nRoute deadline: ${body?.deadline ?? ""}\nTimeline:\n${facts.events.map((e) => `${e.date}: ${e.what}`).join("\n")}`,
               schema: Limit,

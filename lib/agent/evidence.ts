@@ -3,7 +3,7 @@ import { z } from "zod";
 import { dismissCookies } from "../browser";
 import { pointAt } from "../agentCursor";
 import type { CaseFacts } from "./facts";
-import { EFFORT, MODELS, structured } from "./llm";
+import { EFFORT, MODELS, modelFor, structured } from "./llm";
 import { pageText, type Note, type Tracker } from "./legalAid";
 
 /**
@@ -144,12 +144,12 @@ export type CareComparison = z.infer<typeof Comparison>;
 export async function compareCare(facts: CaseFacts, g: GuidelineReading): Promise<CareComparison> {
   const story = [facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n");
   return structured({
-    model: MODELS.draft,
-    effort: "low",
+    ...modelFor("draft", ["health"]), // the patient's health story: on this Mac by default
     instructions:
       "Compare a clinical guideline with a patient's own account. List only POSSIBLE gaps between what the guideline recommends and what the patient says happened, as questions for a solicitor or medical expert. Never say anyone was negligent or that care was wrong. If nothing differs, return no gaps.",
     input: `Guideline (${g.guideline}, ${g.url}):\n${g.points.map((p) => `${p.id}: ${p.text}`).join("\n")}\n\nPatient's account:\n${story}`,
     schema: Comparison,
     name: "care_comparison",
+    data: ["health"],
   });
 }

@@ -13,7 +13,7 @@ import { makeLogger } from "./events";
 import type { CaseFacts } from "./facts";
 import { agent, pageText, Tracer, Tracker, type Emit, type Note } from "./legalAid";
 import type { FirmFinding, Step3Event, Step3Result } from "./legalAidTypes";
-import { EFFORT, MODELS, structured } from "./llm";
+import { modelFor, structured } from "./llm";
 import { observe, PLACEHOLDER } from "./observe";
 
 /**
@@ -56,12 +56,12 @@ export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, eviden
   const name = [facts.firstName, facts.lastName].filter(Boolean).join(" ");
   const funding = fundingSentence(la);
   return structured({
-    model: MODELS.draft,
-    effort: EFFORT.draft,
+    ...modelFor("draft", ["health", "identity"]), // the patient's story, name, email and phone: on this Mac by default
     instructions: DRAFT_RULES,
     input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D62): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
     schema: DraftSchema,
     name: "enquiry_draft",
+    data: ["health", "identity"],
   });
 }
 
