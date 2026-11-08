@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PERSONA_PICKER_ENABLED } from "../../lib/personas";
 import { minutes, readResearchTime, writeResearchTime } from "./speedPref";
 import { placeOf, useDemoAvailable } from "./useDemo";
@@ -39,6 +39,33 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
     onDone(r.route, state.demo);
   }, [state.status, state.discovery, state.demo, state.startedAt, onDone, profile.createdAt]);
 
+  // Straight after onboarding the research starts by itself: a new case (made in the last 10 minutes) with no research yet,
+  // once per case (a reload or coming back later never starts a second run).
+  // A short "starting" screen first, so the switch from onboarding to the crew is not abrupt.
+  const auto = useRef(false);
+  const [starting, setStarting] = useState(false);
+  useEffect(() => {
+    if (auto.current || saved || state.status !== "idle" || state.says.length) return;
+    const key = `research-autostart:${profile.createdAt}`;
+    if (localStorage.getItem(key) || Date.now() - Date.parse(profile.createdAt) > 10 * 60_000) return;
+    auto.current = true;
+    localStorage.setItem(key, "1");
+    // Not cleared when the props change (or by React's development double mount): once begun, the start happens unless the screen has gone.
+    setTimeout(() => setStarting(true), 0);
+    setTimeout(() => {
+      if (!mounted.current) return; // the screen went away meanwhile
+      void start(profile.facts, undefined, "discovery");
+      setStarting(false);
+    }, 1800);
+  }, [saved, state.status, state.says.length, profile.createdAt, profile.facts, start]);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   // Demo controls only when a recorded discovery run exists.
   const place = placeOf(profile);
   const hasDemo = useDemoAvailable("discovery", place);
@@ -64,6 +91,23 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
           </p>
         )}
       </>
+    );
+  }
+  if (starting) {
+    const pf = profile.facts as { region?: string | null; country?: string | null };
+    const at = [pf.region, pf.country].filter(Boolean).join(", ");
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-3xl flex-col items-center justify-center gap-6 py-10 text-center" role="status" aria-live="polite">
+        <div className="flex items-end gap-4">
+          {(["robin", "iona", "nell", "elliot"] as CrewId[]).map((id, i) => (
+            <span key={id} className="animate-bounce" style={{ animationDelay: `${i * 120}ms`, animationDuration: "1.2s" }}>
+              <CrewMark id={id} size={id === "elliot" ? 72 : 56} />
+            </span>
+          ))}
+        </div>
+        <h1 className="display text-[36px] text-ink">Starting the research</h1>
+        <p className="text-[15px] text-ink-2">The crew is finding how complaints and claims work{at ? ` in ${at}` : ""}.</p>
+      </div>
     );
   }
   const f = profile.facts;
