@@ -14,7 +14,7 @@ const LANE: Record<InvestigationLane, { title: string; none: string }> = {
 };
 const ORDER: InvestigationLane[] = ["decision", "policy", "inspection", "public_record"];
 
-export default function InvestigationList({ inv }: { inv: Investigation }) {
+export default function InvestigationList({ inv, claim }: { inv: Investigation; /** A claim, not a complaint: the footer must not say "your complaint". */ claim?: boolean }) {
   const lanes = ORDER.filter((l) => inv.items.some((x) => x.lane === l));
   return (
     <div className="space-y-5">
@@ -44,7 +44,7 @@ export default function InvestigationList({ inv }: { inv: Investigation }) {
         </div>
       ))}
       {inv.nothing.length > 0 && (
-        <details className="text-[13px] leading-5 text-muted">
+        <details open={!inv.items.length} className="text-[13px] leading-5 text-muted">
           <summary className="cursor-pointer">{inv.items.length ? "Not found: " : "Iona looked for "}{inv.nothing.map((n) => LANE[n.lane].none).join(", ")}</summary>
           <ul className="mt-2 space-y-1">
             {inv.nothing.map((n) => (
@@ -55,7 +55,11 @@ export default function InvestigationList({ inv }: { inv: Investigation }) {
           </ul>
         </details>
       )}
-      <p className="text-[13px] leading-5 text-muted">Official pages only, each opened by Iona and checked word for word. Your complaint cites at most two, and only those that back your side; only your records and the body itself can say how they apply to you.</p>
+      <p className="text-[13px] leading-5 text-muted">
+        {claim
+          ? "Official pages only, each opened by Iona and checked word for word. Only your records and a solicitor can say how they apply to you."
+          : "Official pages only, each opened by Iona and checked word for word. Your complaint cites at most two, and only those that back your side; only your records and the body itself can say how they apply to you."}
+      </p>
     </div>
   );
 }

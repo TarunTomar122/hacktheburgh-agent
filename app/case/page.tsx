@@ -143,7 +143,7 @@ export default function CasePage() {
               ) : stage === 4 ? (
                 // Step 4 is firm cards side by side: full width too, no side panel (D46).
                 <div className="mx-auto max-w-6xl px-8 py-10">
-                  <ContactLawyersStep profile={profile} onBack={() => go(3)} />
+                  <ContactLawyersStep profile={profile} onBack={() => go(3, false, "firms")} />
                 </div>
               ) : (
                 <div className="mx-auto grid max-w-6xl gap-12 px-8 py-10 @4xl:grid-cols-[minmax(0,1fr)_280px]">

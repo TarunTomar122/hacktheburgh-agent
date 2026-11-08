@@ -15,6 +15,7 @@ import InvestigationList from "./Investigation";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
+import { useViewParam } from "./stage";
 import { shapeFromWorkers } from "./runProgress";
 import { useRunProgress } from "./useRunProgress";
 import RunProgressBar from "./RunProgressBar";
@@ -65,7 +66,9 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   const [autoNow] = useState(() => !autoStarted(`case:${profile.createdAt}`));
   const place = placeOf(profile);
   const hasDemo = useDemoAvailable("step3", place);
-  const [view, setView] = useState<"case" | "firms" | "replay">("case");
+  const [viewParam, setViewParam] = useViewParam();
+  const view: "case" | "firms" | "replay" = viewParam === "firms" || viewParam === "replay" ? viewParam : "case";
+  const setView = (v: "case" | "firms" | "replay") => setViewParam(v === "case" ? null : v);
   const saved = profile.caseRun;
   const result = profile.legalAid?.result;
 
@@ -103,6 +106,16 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
   const outs = state.result?.enquiries ?? state.enquiries;
   const ready = outs.filter((o) => o.status === "ready_to_send" || o.status === "needs_input");
+  if (view === "firms" && result)
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <button className="text-[13px] text-brand hover:underline" onClick={() => setView("case")}>
+          ← Back to your case file
+        </button>
+        <FirmResults checker={routeMap ? (routeMap.steps.find((x) => x.kind === "funding")?.body ?? "The legal aid checker") : undefined} result={result} sample={false} selected={profile.legalAid?.selected ?? []} onSelected={(ids) => setLegalAid({ selected: ids })} onContinue={onReviewEnquiries} />
+      </div>
+    );
+  if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (live)
     return (
       <Workspace
@@ -127,16 +140,6 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
         }
       />
     );
-  if (view === "firms" && result)
-    return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <button className="text-[13px] text-brand hover:underline" onClick={() => setView("case")}>
-          ← Back to your case file
-        </button>
-        <FirmResults checker={routeMap ? (routeMap.steps.find((x) => x.kind === "funding")?.body ?? "The legal aid checker") : undefined} result={result} sample={false} selected={profile.legalAid?.selected ?? []} onSelected={(ids) => setLegalAid({ selected: ids })} onContinue={onReviewEnquiries} />
-      </div>
-    );
-  if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (saved && result)
     return (
       <div className="space-y-4">
@@ -904,7 +907,9 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   const s = result.stats;
   const gap = ev.gaps?.[0];
   const point = ev.guideline?.points[0];
-  const askedInMessage = !!profile.enquiry?.message && /NICE|guideline|MRI/i.test(profile.enquiry.message.body);
+  // Recorded when the message was drafted; older saved messages fall back to looking for the guideline in the text.
+  const msg = profile.enquiry?.message;
+  const askedInMessage = !!msg && (msg.askedGap ?? /guideline|guidance|\bNICE\b|\bNG\d+/i.test(msg.body));
   const similar = (ev.cases ?? []).filter((c) => c.kind === "medical_negligence");
   const other = (ev.cases ?? []).filter((c) => c.kind !== "medical_negligence");
   // Steps skipped from the demo controls, or never reached because the run was stopped early.
@@ -987,22 +992,15 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
           )}
         </FoldRow>
 
-        <FoldRow crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked yet"} summary={gap ? first1(gap.question) : point ? first1(point.text) : undefined}>
+        <FoldRow crew="iona" topic="Medical evidence" title={gap ? "A possible gap in your care" : point ? "What the guidance says" : "Evidence not checked yet"} summary={gap && point ? first1(point.text) : gap ? first1(gap.question) : point ? first1(point.text) : undefined}>
           {gap && point ? (
-            <div className="space-y-4">
-              <Said label="What doctors are advised to do">
-                <Quote source={/NG\d+/.test(ev.guideline!.name) ? `NICE guideline ${ev.guideline!.name.match(/NG\d+/)![0]}, ${point.id}` : ev.guideline!.name} href={ev.guideline!.url} inline>
-                  {point.text}
-                </Quote>
-              </Said>
-              <Said label="What you told us">{gap.timeline}</Said>
-              <Said label="Why it matters">This may be a gap in your care, or there may be a good reason for it. Only your medical records can show which, and a solicitor will check them.</Said>
-              <div className="rounded-[6px] bg-purple-soft px-4 py-3">
-                <p className="text-[13px] font-medium text-purple">The question to ask</p>
-                <p className="mt-1 text-[14px] leading-6 text-ink">{gap.question}</p>
-                <p className="mt-2 text-[12px] text-ink-2">{askedInMessage ? "Kit already put this in your enquiry. Nothing to do now." : "Mention this when a solicitor gets back to you."}</p>
-              </div>
-            </div>
+            <GapFinding
+              gap={gap}
+              point={point}
+              guideline={ev.guideline!}
+              source={/NG\d+/.test(ev.guideline!.name) ? `NICE guideline ${ev.guideline!.name.match(/NG\d+/)![0]}, ${point.id}` : ev.guideline!.name}
+              note={askedInMessage ? "Kit put a neutral question about this in your enquiry, so the solicitor can check your records. There is nothing for you to do." : "This is not in your enquiry. Mention it when a solicitor gets back to you, and they can check your records."}
+            />
           ) : point ? (
             <Quote source={ev.guideline!.name.split(":")[0]} href={ev.guideline!.url}>
               {point.text}
@@ -1045,8 +1043,8 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
         </FoldRow>
 
         {ev.investigation && (
-          <FoldRow crew="iona" topic="Supporting evidence" title={ev.investigation.items.length ? "Decisions and awards in similar cases" : "No published decisions found"} summary={ev.investigation.items.length ? `${ev.investigation.items.length} found` : undefined}>
-            <InvestigationList inv={ev.investigation} />
+          <FoldRow crew="iona" topic="Supporting evidence" title={ev.investigation.items.length ? "Decisions and awards in similar cases" : "No similar published decision found"} summary={ev.investigation.items.length ? `${ev.investigation.items.length} found` : "Iona searched, and the reason is below."}>
+            <InvestigationList inv={ev.investigation} claim />
           </FoldRow>
         )}
       </div>
@@ -1111,6 +1109,30 @@ export function Quote({ source, href, inline, children }: { source: string; href
         )}
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * A possible gap between the guidance and the patient's own timeline, as a finding for the patient to read, not a question
+ * to answer: what the guidance says, what they told us, what it may mean, and what we did with it. The question itself is
+ * for the solicitor (or the health body) and goes in the message; `note` says whether it did.
+ */
+export function GapFinding({ gap, point, guideline, source, note }: { gap: { timeline: string; question: string }; point: { text: string }; guideline: { url: string }; source: string; note: React.ReactNode }) {
+  return (
+    <div className="space-y-4">
+      <Said label="What the guidance says">
+        <Quote source={source} href={guideline.url} inline>
+          {point.text}
+        </Quote>
+      </Said>
+      <Said label="What you told us">{gap.timeline}</Said>
+      <Said label="What this may mean">Your timeline does not show this was done. That may be a gap in your care, or there may be a good reason for it. Only your medical records can show which.</Said>
+      <div className="rounded-[6px] bg-purple-soft px-4 py-3">
+        <p className="text-[13px] font-medium text-purple">What we did with it</p>
+        <p className="mt-1 text-[14px] leading-6 text-ink">{note}</p>
+        <p className="mt-2 text-[12px] leading-5 text-ink-2">The question for them: {gap.question}</p>
+      </div>
+    </div>
   );
 }
 

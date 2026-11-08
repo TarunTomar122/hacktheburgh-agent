@@ -21,3 +21,26 @@ npm warn Unknown user config "email". This will stop working in the next major v
 [516s] case [elliot] Prepare forms for shortlisted firms
 [897s] case [kit] Could not finish: filled Osbornes Law's enquiry form
 [897s] case [kit] Could not finish: filled Hodge Jones & Allen's enquiry form
+APIConnectionError: Connection error.
+    at OpenAI.makeRequest (/Users/tarat/hacktheburgh-agent/node_modules/openai/src/client.ts:1885:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async respond (/Users/tarat/hacktheburgh-agent/lib/agent/llm.ts:151:15)
+    at async runCrew (/Users/tarat/hacktheburgh-agent/lib/agent/crewRun.ts:395:29)
+    at async main (/Users/tarat/hacktheburgh-agent/scripts/e2e-case.ts:55:13) {
+  status: undefined,
+  headers: undefined,
+  requestID: undefined,
+  error: undefined,
+  code: undefined,
+  param: undefined,
+  type: undefined,
+  cause: [TypeError: fetch failed] {
+    [cause]: Error: getaddrinfo ENOTFOUND api.openai.com
+        at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+      errno: -3008,
+      code: 'ENOTFOUND',
+      syscall: 'getaddrinfo',
+      hostname: 'api.openai.com'
+    }
+  }
+}

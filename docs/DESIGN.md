@@ -67,6 +67,10 @@ Sizes in use: page title 40px, profile title 48px, section title 22px, progress 
 - **Live grid (D36):** with several agent tabs, the right-hand live panel shows one tile per agent (2 columns, 3 when the panel is wide). **A tile is only the live picture** (no border, header or label; the agent's name and colour are in its cursor pill inside the page); a failed agent gets a thin red wash with its note; the counter "N agents · N sites · N pages · N actions" sits under the panel header. Clicking a tile focuses it (full size, take control); "Back to grid" returns.
 - **Progress:** big serif percentage, thin bar, "N of M milestones", and "Next: ...". Milestones are defined in `app/case/progress.ts`. Honest rules: only things we can know (profile data, the agent reaching the review page) plus self-reported "I've pressed Send". Steps not built count as milestones that cannot be done yet, so the percentage cannot reach 100% early.
 
+## Case navigation (2026-11-08)
+
+One sticky bar (`app/case/TrackBar.tsx`) is on every case screen: Research, Choose a path, then the chosen path's steps. Done stages are ticked and reopen; stages not open yet say why inside the tab ("after the research", "pick solicitors first"). There is no Back/Next footer on pages: Wordsmith's own site has none, and the bar does the job. Where you are lives in the address (`/case?step=3`, with `&view=firms` for step 3's list of all firms), kept by `app/case/stage.ts`, so reload and the browser Back button keep your place. The logo always goes to the landing page; the landing page's button reads "Continue your case" when a case is saved. The profile page keeps its blue band and has "Back to your case" in it.
+
 ## Onboarding screens (D41)
 Contact form (D44): a postcode found in the address skips the postcode screen and the next screen carries a small brand-coloured note saying so.
 

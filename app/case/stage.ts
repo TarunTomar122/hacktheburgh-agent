@@ -24,20 +24,42 @@ function subscribe(cb: () => void) {
   };
 }
 
-/** The stage named in the address (or null), and a way to move: a new history entry, or `replace` to swap the current one. */
-export function useStageParam(): [Stage | null, (s: Stage | null, replace?: boolean) => void] {
+function write(patch: (q: URLSearchParams) => void, replace: boolean) {
+  const url = new URL(window.location.href);
+  patch(url.searchParams);
+  if (replace) window.history.replaceState(null, "", url);
+  else window.history.pushState(null, "", url);
+  window.dispatchEvent(new Event(EVENT));
+}
+
+/**
+ * The stage named in the address (or null), and a way to move: a new history entry, or `replace` to swap the current one.
+ * `view` names a page inside a stage (step 3's list of all firms is `firms`); moving without one clears it.
+ */
+export function useStageParam(): [Stage | null, (s: Stage | null, replace?: boolean, view?: string | null) => void] {
   const raw = useSyncExternalStore(
     subscribe,
     () => new URLSearchParams(window.location.search).get("step") ?? "",
     () => "",
   );
-  const go = useCallback((s: Stage | null, replace = false) => {
-    const url = new URL(window.location.href);
-    if (s === null) url.searchParams.delete("step");
-    else url.searchParams.set("step", String(s));
-    if (replace) window.history.replaceState(null, "", url);
-    else window.history.pushState(null, "", url);
-    window.dispatchEvent(new Event(EVENT));
+  const go = useCallback((s: Stage | null, replace = false, view: string | null = null) => {
+    write((q) => {
+      if (s === null) q.delete("step");
+      else q.set("step", String(s));
+      if (view) q.set("view", view);
+      else q.delete("view");
+    }, replace);
   }, []);
   return [parseStage(raw || null), go];
+}
+
+/** The page inside the stage named in the address, if any, and a way to change it. */
+export function useViewParam(): [string | null, (v: string | null) => void] {
+  const raw = useSyncExternalStore(
+    subscribe,
+    () => new URLSearchParams(window.location.search).get("view") ?? "",
+    () => "",
+  );
+  const set = useCallback((v: string | null) => write((q) => (v ? q.set("view", v) : q.delete("view")), false), []);
+  return [raw || null, set];
 }

@@ -58,7 +58,7 @@ function fundingSentence(la: LegalAidSummary): string {
 export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, evidence?: { guideline: string; point: string; question: string }, opts: { place?: string; funding?: string } = {}): Promise<EnquiryMessage> {
   const name = [facts.firstName, facts.lastName].filter(Boolean).join(" ");
   const funding = opts.funding ?? fundingSentence(la);
-  return structured({
+  const draft = await structured({
     ...modelFor("draft", ["health", "identity"]), // the patient's story, name, email and phone: on this Mac by default
     instructions: DRAFT_RULES(opts.place ?? "Scotland"),
     input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D62): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
@@ -66,6 +66,9 @@ export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, eviden
     name: "enquiry_draft",
     data: ["health", "identity"],
   });
+  // Recorded in code from what the message says, so the case file can tell the patient whether the question went to the solicitor.
+  const askedGap = !!evidence && /guideline|guidance|\bNICE\b|\bNG\d+/i.test(draft.body);
+  return { ...draft, askedGap };
 }
 
 /* ------------------------------------------------------------------ open tabs, kept for the send */

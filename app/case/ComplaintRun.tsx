@@ -12,7 +12,7 @@ import AskMissing from "./AskMissing";
 import InvestigationList from "./Investigation";
 import { CrewMark } from "./crew/Crew";
 import StepStrip, { type Step } from "./crew/StepStrip";
-import { DemoBar, DemoButton, Quote, Row, Said, Workspace, type CrewKit } from "./CaseRun";
+import { DemoBar, DemoButton, GapFinding, Quote, Row, Said, Workspace, type CrewKit } from "./CaseRun";
 import { closeAgentBrowser } from "./streamAgent";
 import { usePlannerRun } from "./usePlannerRun";
 import { placeOf, useDemoAvailable } from "./useDemo";
@@ -243,22 +243,19 @@ function ComplaintFile({ body, profile, run, sample, onAgain, onContinue, onSkip
               </Quote>
             </div>
           ) : (
-            <p className="text-[15px] leading-6 text-ink">Robin did not check the time limit this time. The body's own complaints page says how long you have.</p>
+            <p className="text-[15px] leading-6 text-ink">Robin did not check the time limit this time. The body&apos;s own complaints page says how long you have.</p>
           )}
         </Row>
 
-        <Row crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked"}>
+        <Row crew="iona" topic="Medical evidence" title={gap ? "A possible gap in your care" : point ? "What the guidance says" : "Evidence not checked"}>
           {gap && point ? (
-            <div className="space-y-4">
-              <Said label="What doctors are advised to do">
-                <Quote source={`NICE guideline ${ev.guideline!.name.match(/NG\d+/)?.[0] ?? ""}, ${point.id}`.replace(" ,", ",")} href={ev.guideline!.url} inline>
-                  {point.text}
-                </Quote>
-              </Said>
-              <Said label="What you told us">{gap.timeline}</Said>
-              <Said label="The question">{gap.question}</Said>
-              <p className="text-[13px] leading-5 text-muted">{ev.caveat ?? "Only your medical records show what was actually done."} Your complaint asks this politely; it does not say anyone was at fault.</p>
-            </div>
+            <GapFinding
+              gap={gap}
+              point={point}
+              guideline={ev.guideline!}
+              source={`NICE guideline ${ev.guideline!.name.match(/NG\d+/)?.[0] ?? ""}, ${point.id}`.replace(" ,", ",")}
+              note={`${ev.caveat ?? "Only your medical records show what was actually done."} Your complaint asks about it politely, without saying anyone was at fault, so ${body} can answer.`}
+            />
           ) : point ? (
             <Quote source={`NICE guideline, ${point.id}`} href={ev.guideline!.url} inline>
               {point.text}

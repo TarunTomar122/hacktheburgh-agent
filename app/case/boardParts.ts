@@ -95,9 +95,9 @@ export function boardParts(i: BoardInput): Part[] {
       const point = ev.guideline?.points[0];
       const nothing = ev.investigation && !ev.investigation.items.length ? "No published decisions or awards found" : undefined;
       const found = ev.investigation?.items.length ? `${ev.investigation.items.length} published decision${ev.investigation.items.length === 1 ? "" : "s"} or award${ev.investigation.items.length === 1 ? "" : "s"} found` : undefined;
-      const summary = gap ? sentence(gap.question) : point ? sentence(point.text) : found ?? nothing;
+      const summary = gap && point ? sentence(point.text) : gap ? sentence(gap.question) : point ? sentence(point.text) : found ?? nothing;
       if (status === "skipped") return { ...base, headline: "Not checked this time" };
-      if (gap) return { ...base, summary, headline: "One question worth asking", chip: ev.guideline && NO_GUIDELINE_TOPIC.test(ev.guideline.name) ? "From published guidance" : "From the guidance" };
+      if (gap) return { ...base, summary, headline: "A possible gap in your care", chip: ev.guideline && NO_GUIDELINE_TOPIC.test(ev.guideline.name) ? "From published guidance" : "From the guidance" };
       if (point) return { ...base, summary, headline: "What the guidance says", chip: "From published guidance" };
       return { ...base, summary, headline: status === "working" ? "Reading the clinical guidance" : status === "done" ? "No guidance point found for your injury" : "Not started" };
     }

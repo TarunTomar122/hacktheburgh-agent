@@ -15,7 +15,8 @@ import type { AgentTile, Stats, TraceStep } from "./legalAidTypes";
 export const MAX_ENQUIRIES = 3;
 
 /** The one message sent to every selected firm. Written from the profile; the user can edit it before filling. */
-export type EnquiryMessage = { subject: string; body: string };
+/** askedGap: the draft was given a guideline question and its text names the guideline (set in code by draftEnquiry, so the screen can say so). */
+export type EnquiryMessage = { subject: string; body: string; askedGap?: boolean };
 
 export type EnquiryStatus =
   | "queued"

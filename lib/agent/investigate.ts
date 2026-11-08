@@ -79,8 +79,9 @@ const LANES: Lane[] = [
     id: "decision",
     label: "Decisions",
     cap: 3,
-    seeds: (r, f) => urlsOf(stepOf(r, f === "compensation" ? ["compensation"] : ["escalation"])),
-    bodyOf: (r, f) => stepOf(r, f === "compensation" ? ["compensation"] : ["escalation"])[0]?.body ?? "the independent health complaints body",
+    // A claim looks at the compensation body and also the independent complaints body: its findings on similar care show the standard of care.
+    seeds: (r, f) => urlsOf(stepOf(r, f === "compensation" ? ["compensation", "escalation"] : ["escalation"])),
+    bodyOf: (r, f) => [...new Set(stepOf(r, f === "compensation" ? ["compensation", "escalation"] : ["escalation"]).map((x) => x.body).filter(Boolean))].join(" or ") || "the independent health complaints body",
     want: "published decisions, case reports or case summaries of the body about a complaint or claim like this one, saying what it decided and why",
     goal: (b) => `published decisions, case reports or case summaries of ${b.body} about ${b.issue}`,
     ask: (b) =>
@@ -153,7 +154,7 @@ const cleanQuote = (q: string) => {
 
 /* ------------------------------------------------------------------ the model's small jobs (public data only) */
 
-const Queries = z.object({ queries: z.array(z.string()).describe("Two web search queries, 3 to 9 words each") });
+const Queries = z.object({ queries: z.array(z.string()).describe("Three web search queries, 3 to 9 words each, from the most specific to the broadest") });
 const Picks = z.object({ picks: z.array(z.object({ id: z.number(), official: z.boolean().describe("Published by a government, health service, ombudsman, regulator, court, or the provider itself") })).describe("Up to 3 result ids, best first; empty if none is likely") });
 const Judged = z.object({
   items: z.array(
@@ -172,13 +173,13 @@ async function queriesFor(lane: Lane, b: Brief): Promise<string[]> {
   const r = await structured({
     ...modelFor("check", []),
     instructions:
-      "You write web search queries for a research agent looking for OFFICIAL public pages in one place. Return two short queries in the language the place's official sites use (usually English), using the organisations' names and the condition. Never include a person's name, a date or any personal detail. If a site address is given, make the second query restricted to it with site:address.",
+      "You write web search queries for a research agent looking for OFFICIAL public pages in one place. Return three short queries in the language the place's official sites use (usually English), ordered from the most specific to the broadest. First: the organisations' names with the condition. Second: the kind of failure in care without the exact condition or hospital (for example a missed fracture, a delayed diagnosis, a missed follow-up). Third: the general area of care and the kind of public document wanted. Never include a person's name, a date or any personal detail. If a site address is given, make the second query restricted to it with site:address.",
     input: `Looking for: ${lane.want}\nPlace: ${b.place}\nProvider: ${b.provider}\nHospital: ${b.hospital}\nBody: ${b.body}\nCondition: ${b.condition}\nWhat went wrong: ${b.issue}\nOfficial site addresses to prefer: ${b.hosts.join(", ") || "none known"}`,
     schema: Queries,
     name: `investigate_queries_${lane.id}`,
     data: [],
   });
-  return r.queries.map((q) => q.trim()).filter(Boolean).slice(0, 2);
+  return r.queries.map((q) => q.trim()).filter(Boolean).slice(0, 3);
 }
 
 /* ------------------------------------------------------------------ one lane */
@@ -201,6 +202,36 @@ async function runLane(kit: CrewKit, thought: Thought, lane: Lane, route: RouteM
   // Only real walls are reported as "stopped": a page that was just not there or led nowhere is not one.
   const wall = (w: { kind: string; url: string }) => void (/^(login|captcha|bot_check|payment|phone_or_post_only)$/.test(w.kind) && walls.push(`${hostOf(w.url)}: ${w.kind.replace(/_/g, " ")}`));
 
+  // What passes the judge from the pages read so far: quotes that code checked on pages from official sites only.
+  const judge = async (): Promise<InvestigationItem[]> => {
+    const cand = reads.flatMap((x, i) => (x.official ? x.read.quotes.filter((q) => q.checked && cleanQuote(q.quote)).map((q, j) => ({ id: `${i}.${j}`, read: x.read, quote: q.quote })) : []));
+    if (!cand.length) return [];
+    const j = await structured({
+      ...modelFor("draft", []),
+      instructions: `You judge whether passages from OFFICIAL pages are useful to a patient writing a complaint. The lane is: ${lane.want}. Be strict: boilerplate, forms, navigation text, unrelated cases, and passages that only give dates, methods or authorship are "none". For a decision, the "why" must say what the body decided (upheld, not upheld, or that the passage does not show the outcome).`,
+      input: `The patient's case (generic): ${brief.issue}\nOrganisation: ${brief.body}\n\nPassages:\n${cand.map((c) => `[${c.id}] (${c.read.title.slice(0, 80)}, ${hostOf(c.read.url)}) "${c.quote}"`).join("\n")}`,
+      schema: Judged,
+      name: `investigate_judge_${lane.id}`,
+      data: [],
+    }).catch(() => ({ items: [] }));
+    const byId = new Map(cand.map((c) => [c.id, c]));
+    if (process.env.INVESTIGATE_DEBUG) console.log(`[investigate:${lane.id}] judged ${j.items.length} of ${cand.length} passages:\n${j.items.map((x) => `  ${x.id} ${x.fit} kind_ok=${x.kind_ok} about=${x.about_provider} stance=${x.stance} "${byId.get(x.id)?.quote.slice(0, 90)}"`).join("\n")}`);
+    const passing = j.items
+      // Close ones, or related ones that give the patient a standard to point to (a related one that only says the body decided otherwise is left out); one per page.
+      .filter((x) => (x.fit === "close" || (x.fit === "partial" && (x.stance !== "against" || lane.id === "inspection"))) && x.kind_ok && x.about_provider && byId.has(x.id))
+      .sort((a, b) => Number(b.fit === "close") - Number(a.fit === "close") || Number(b.stance === "supports") - Number(a.stance === "supports"));
+    // A decision that says what was found beats one that only describes the case: keep the describing ones only when nothing decisive was found.
+    const decisive = passing.filter((x) => x.stance !== "neutral");
+    return (lane.id === "decision" && decisive.length ? decisive : passing)
+      .filter((x, i, all) => all.filter((y, k) => k <= i && byId.get(y.id)!.read.url === byId.get(x.id)!.read.url).length <= (lane.id === "decision" ? 2 : 1))
+      .slice(0, lane.cap)
+      .map((x) => {
+        const c = byId.get(x.id)!;
+        return { lane: lane.id, title: c.read.title.replace(/\s+/g, " ").slice(0, 120) || hostOf(c.read.url), publisher: hostOf(c.read.url), url: c.read.url, quote: c.quote, why: numbersBacked(x.why, c.quote) ? x.why.trim() : "", fit: x.fit as "close" | "partial", stance: x.stance };
+      });
+  };
+
+  let found: InvestigationItem[] = [];
   await kit.inTab(
     thought,
     "iona",
@@ -218,12 +249,12 @@ async function runLane(kit: CrewKit, thought: Thought, lane: Lane, route: RouteM
       };
 
       // 1. search, with queries made from the organisations' names: one at a time, the second only if the first led nowhere
-      const good = () => reads.some((x) => x.official && x.read.quotes.some((q) => q.checked && cleanQuote(q.quote)));
+      // The search goes on, from the specific query to the broad one, until a passage actually passes the judge (not just until one has a quote).
       // Sites to prefer in the queries: the body's own (the lane's seeds); with no seed (inspections), any the route map found official.
       const prefer = seeds.length ? seeds.map(hostOf) : brief.hosts;
       const qs = left() > 60_000 ? await queriesFor(lane, { ...brief, hosts: prefer }).catch(() => []) : [];
       for (const q of qs) {
-        if (good() || left() < 70_000) break;
+        if (found.length || left() < 70_000) break;
         searched.push(q);
         const hits = await webSearch(p, q, note, kit.track).catch(() => []);
         hitCount += hits.length;
@@ -237,44 +268,21 @@ async function runLane(kit: CrewKit, thought: Thought, lane: Lane, route: RouteM
           data: [],
         }).catch(() => ({ picks: [] }));
         for (const k of pick.picks.slice(0, 3)) if (hits[k.id] && k.official && officialHost(hits[k.id].url) && left() > 25_000) await readOne(hits[k.id].url, true);
+        found = await judge();
       }
       // 2. nothing usable yet: go through the body's own site, with its own menus and search
-      if (!good() && seeds.length && left() > 50_000) {
-        const found = await exploreSite(ctx, seeds[0], lane.goal(brief), { want: "page", maxHops: 4 });
-        if (found.wall) wall(found.wall);
-        if (found.ok && left() > 25_000) await readOne(found.url, true);
+      if (!found.length && seeds.length && left() > 50_000) {
+        const site = await exploreSite(ctx, seeds[0], lane.goal(brief), { want: "page", maxHops: 4 });
+        if (site.wall) wall(site.wall);
+        if (site.ok && left() > 25_000) await readOne(site.url, true);
       }
     },
     Math.max(30_000, left() + 20_000),
   );
 
-  // Quotes that code checked on pages from official sites only.
-  const cand = reads.flatMap((x, i) => (x.official ? x.read.quotes.filter((q) => q.checked && cleanQuote(q.quote)).map((q, j) => ({ id: `${i}.${j}`, read: x.read, quote: q.quote })) : []));
+  const items = await judge();
   const opened = [...new Set(reads.map((x) => x.read.url))];
   const dropped = reads.filter((x) => !x.official && x.read.quotes.some((q) => q.checked)).map((x) => hostOf(x.read.url));
-  let items: InvestigationItem[] = [];
-  if (cand.length) {
-    const j = await structured({
-      ...modelFor("draft", []),
-      instructions: `You judge whether passages from OFFICIAL pages are useful to a patient writing a complaint. The lane is: ${lane.want}. Be strict: boilerplate, forms, navigation text, unrelated cases, and passages that only give dates, methods or authorship are "none". For a decision, the "why" must say what the body decided (upheld, not upheld, or that the passage does not show the outcome).`,
-      input: `The patient's case (generic): ${brief.issue}\nOrganisation: ${brief.body}\n\nPassages:\n${cand.map((c) => `[${c.id}] (${c.read.title.slice(0, 80)}, ${hostOf(c.read.url)}) "${c.quote}"`).join("\n")}`,
-      schema: Judged,
-      name: `investigate_judge_${lane.id}`,
-      data: [],
-    }).catch(() => ({ items: [] }));
-    const byId = new Map(cand.map((c) => [c.id, c]));
-    if (process.env.INVESTIGATE_DEBUG) console.log(`[investigate:${lane.id}] judged ${j.items.length} of ${cand.length} passages:\n${j.items.map((x) => `  ${x.id} ${x.fit} kind_ok=${x.kind_ok} about=${x.about_provider} stance=${x.stance} "${byId.get(x.id)?.quote.slice(0, 90)}"`).join("\n")}`);
-    items = j.items
-      // Only passages that fit: close ones, or related ones that give the patient a standard to point to; one per page.
-      .filter((x) => (x.fit === "close" || (x.fit === "partial" && (x.stance === "supports" || lane.id === "inspection"))) && x.kind_ok && x.about_provider && byId.has(x.id))
-      .sort((a, b) => Number(b.fit === "close") - Number(a.fit === "close") || Number(b.stance === "supports") - Number(a.stance === "supports"))
-      .filter((x, i, all) => all.filter((y, k) => k <= i && byId.get(y.id)!.read.url === byId.get(x.id)!.read.url).length <= (lane.id === "decision" ? 2 : 1))
-      .slice(0, lane.cap)
-      .map((x) => {
-        const c = byId.get(x.id)!;
-        return { lane: lane.id, title: c.read.title.replace(/\s+/g, " ").slice(0, 120) || hostOf(c.read.url), publisher: hostOf(c.read.url), url: c.read.url, quote: c.quote, why: numbersBacked(x.why, c.quote) ? x.why.trim() : "", fit: x.fit as "close" | "partial", stance: x.stance };
-      });
-  }
   const note = items.length
     ? ""
     : [

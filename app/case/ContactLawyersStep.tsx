@@ -170,16 +170,33 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
   const rank: Partial<Record<EnquiryOutcome["status"], number>> = { ready_to_send: 0, sent: 1, send_blocked: 2, needs_input: 3, partial: 3, could_not_fill: 6, filling: 4, finding_form: 4, queued: 5, failed: 6, no_form: 7 };
   const active = outcomes.filter((o) => !swapped(o)).sort((a, b) => (rank[a.status] ?? 5) - (rank[b.status] ?? 5));
   const swappedOut = outcomes.filter(swapped);
+  const toCheck = active.filter((o) => (o.status === "ready_to_send" || o.status === "needs_input" || o.status === "partial") && !isSent(o.firmId)).length;
+  const sentCount = firms.filter((f) => isSent(f.id)).length;
+  const summary = running
+    ? "The agents are finding and filling each firm's form. You can watch them below."
+    : [toCheck ? `${toCheck} ${toCheck === 1 ? "enquiry is" : "enquiries are"} filled and waiting for you to check` : null, sentCount ? `${sentCount} sent` : null].filter(Boolean).join(" · ") || "Nothing is waiting for you right now.";
 
   return (
     <div className="@container space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="display text-[40px] text-ink">Contact lawyers</h1>
-        {trace.length > 0 && !running && (
-          <Button variant="secondary" size="sm" onClick={() => setScope({ title: "Everything the agents did", steps: trace, whole: true })}>
-            See how the forms were filled
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div className="max-w-2xl space-y-3">
+          <h1 className="display text-[40px] text-ink">Contact lawyers</h1>
+          <p className="text-[16px] leading-7 text-ink-2">
+            {!started
+              ? "Kit fills in each firm's own enquiry form with your message, then stops before Send. You check every one first."
+              : summary}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {trace.length > 0 && !running && (
+            <Button variant="secondary" size="sm" onClick={() => setScope({ title: "Everything the agents did", steps: trace, whole: true })}>
+              See how the forms were filled
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={onBack}>
+            Compare all firms
           </Button>
-        )}
+        </div>
       </div>
 
       {started && pending.length > 0 && (
@@ -220,20 +237,12 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
           </aside>
         </div>
       ) : (
-        <>
-          {running && <AgentsPanel tiles={tiles} stats={stats} status={status} live={lines} />}
-          {error && <p className="text-sm text-danger">{error}</p>}
-          {profile.enquiry?.sample && !running && <p className="text-xs text-amber">Sample data (fixture): nothing was visited and nothing can be sent.</p>}
+        <div className="grid gap-8 @4xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-4">
+            {running && <AgentsPanel tiles={tiles} stats={stats} status={status} live={lines} />}
+            {error && <p className="text-sm text-danger">{error}</p>}
+            {profile.enquiry?.sample && !running && <p className="text-xs text-amber">Sample data (fixture): nothing was visited and nothing can be sent.</p>}
 
-          {canSkip && (
-            <div className="flex justify-end">
-              <Button variant="secondary" size="sm" onClick={skipSending} title="Demo: nothing is sent. Marks every enquiry as sent.">
-                Skip and mark as sent (demo)
-              </Button>
-            </div>
-          )}
-
-          <div className="grid gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
             {active.map((o) => {
               const firm = result?.firms.find((f) => f.id === o.firmId);
               const rec = records.find((r) => r.firmId === o.firmId);
@@ -251,29 +260,47 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
                 />
               );
             })}
+
+            {swappedOut.length > 0 && (
+              <ul className="space-y-1 text-[13px] text-muted">
+                {swappedOut.map((o) => (
+                  <li key={o.firmId}>
+                    <span className="text-ink-2">{o.firmName}</span> had no online form, so the agent {o.note.replace(/^.*swapped in/i, "swapped in")}.
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {swappedOut.length > 0 && (
-            <ul className="space-y-1 text-[13px] text-muted">
-              {swappedOut.map((o) => (
-                <li key={o.firmId}>
-                  <span className="text-ink-2">{o.firmName}</span> had no online form, so the agent {o.note.replace(/^.*swapped in/i, "swapped in")}.
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {!running && (
-            <details className="group rounded-card border border-line bg-white">
-              <summary className="cursor-pointer list-none px-5 py-3 text-[13px] text-ink-2 hover:text-ink">
-                <span className="mr-2 inline-block transition-transform group-open:rotate-90">›</span>The message we used
-              </summary>
-              <div className="border-t border-line-soft p-5">
-                <MessageDoc message={message} writing={false} disabled />
-              </div>
-            </details>
-          )}
-        </>
+          <aside className="space-y-4 self-start @4xl:sticky @4xl:top-20">
+            <section className="rounded-card border border-line bg-white p-5">
+              <Eyebrow>What happens next</Eyebrow>
+              <ol className="mt-3 space-y-3 text-[14px] leading-6 text-ink-2">
+                {["Open each filled form and check it. You can change anything.", "Say OK and the agent presses Send on that firm's own site.", "If nobody replies in 3 working days, we remind you to follow up."].map((t, i) => (
+                  <li key={t} className="flex gap-3">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-brand-soft text-[11px] font-medium text-brand">{i + 1}</span>
+                    {t}
+                  </li>
+                ))}
+              </ol>
+              {canSkip && (
+                <button className="mt-4 text-[13px] text-muted hover:text-brand hover:underline" onClick={skipSending} title="Demo: nothing is sent. Marks every enquiry as sent.">
+                  Skip and mark as sent (demo)
+                </button>
+              )}
+            </section>
+            {!running && (
+              <details className="group rounded-card border border-line bg-white">
+                <summary className="cursor-pointer list-none px-5 py-4 text-[14px] text-ink hover:text-brand">
+                  <span className="mr-2 inline-block text-muted transition-transform group-open:rotate-90">›</span>The message we used
+                </summary>
+                <div className="border-t border-line-soft p-4">
+                  <MessageDoc message={message} writing={false} disabled />
+                </div>
+              </details>
+            )}
+          </aside>
+        </div>
       )}
 
       {review && selected.includes(review.firmId) && !contacted(review.firmId) && (
@@ -457,75 +484,92 @@ function FirmCard({
                 : o.status === "no_form"
                   ? "No online enquiry form on their website, and no other checked firm to swap in. A phone call works just as well."
                   : o.note;
+  const where = [firm?.town, firm?.distanceMiles != null ? `${firm.distanceMiles < 1 ? firm.distanceMiles.toFixed(1) : Math.round(firm.distanceMiles)} miles away` : null].filter(Boolean).join(" · ");
+  const chips = [firm?.legalAid ? "Takes legal aid" : null, firm?.actsForPatients === "yes" ? "Acts for patients" : null, firm?.noWinNoFee === "yes" ? "No win, no fee" : null, o.formUrl || firm?.enquiryUrl ? "Online form found" : null].filter((c): c is string => !!c);
+  const initials = o.firmName.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w)).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  const stuck = o.status === "failed" || o.status === "send_blocked" || o.status === "no_form" || o.status === "partial" || o.status === "could_not_fill";
+  const action = (
+    <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      {o.status === "ready_to_send" && !sent && <Button onClick={onReview}>Review and send</Button>}
+      {o.status === "needs_input" && !sent && <Button onClick={onReview}>Add the missing details</Button>}
+      {o.status === "partial" && !sent && (
+        <Button variant="secondary" onClick={onReview}>
+          Check what was filled
+        </Button>
+      )}
+      {(o.status === "failed" || o.status === "could_not_fill") && (
+        <Button variant="secondary" disabled={running} onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+      {(o.status === "no_form" || o.status === "could_not_fill") && firm?.phone && (
+        <a href={`tel:${firm.phone.replace(/\s+/g, "")}`} className="inline-flex items-center justify-center rounded-ctl border border-line px-5 py-3 text-sm font-medium text-ink hover:border-faint">
+          Call them: {firm.phone}
+        </a>
+      )}
+      {sent && rec?.status !== "replied" && (
+        <Button variant="secondary" onClick={() => onReply("replied")}>
+          They replied
+        </Button>
+      )}
+      <button onClick={onOpen} className="px-2 text-[13px] text-brand hover:underline">
+        Details
+      </button>
+    </div>
+  );
   return (
     <article
       onClick={onOpen}
       className={cx(
-        "flex cursor-pointer flex-col rounded-card border bg-white p-5 transition-colors hover:border-brand/40",
+        "cursor-pointer rounded-card border bg-white p-6 transition-colors hover:border-brand/40",
         o.status === "ready_to_send" || o.status === "needs_input" ? "border-brand/50" : due ? "border-amber/50" : "border-line",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="min-h-12 text-[16px] font-medium leading-6 text-ink">{o.firmName}</h3>
-          <p className="min-h-4 text-xs text-muted">
-            {[firm?.town, firm?.distanceMiles != null ? `${firm.distanceMiles < 1 ? firm.distanceMiles.toFixed(1) : Math.round(firm.distanceMiles)} miles` : null].filter(Boolean).join(" · ")}
+      <div className="flex items-start gap-4">
+        <span aria-hidden className="flex size-12 shrink-0 items-center justify-center rounded-card bg-brand-soft font-serif text-[20px] text-brand">
+          {initials || "·"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+            <h3 className="text-[18px] font-medium leading-7 text-ink">{o.firmName}</h3>
+            {firm?.fit !== undefined && <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-0.5 text-[12px] font-medium tabular-nums text-brand">{firm.fit}% fit</span>}
+          </div>
+          <p className="text-[13px] leading-5 text-muted">
+            {where || "Location not listed"}
             {o.swappedFor ? ` · in place of ${o.swappedFor}` : ""}
           </p>
+          {chips.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {chips.map((c) => (
+                <span key={c} className="inline-flex items-center gap-1 rounded-[4px] bg-teal-soft px-2 py-0.5 text-[12px] text-teal">
+                  <span aria-hidden>✓</span>
+                  {c}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-        {firm?.fit !== undefined && <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium tabular-nums text-brand">{firm.fit}% fit</span>}
       </div>
 
       {/* Where it is: four stages, the current one pulses while an agent works on it. */}
-      <ol className="mt-5 grid grid-cols-4 gap-1.5" aria-label="Progress">
+      <ol className="mt-6 grid grid-cols-4 gap-2" aria-label="Progress">
         {STAGES.map((label, i) => {
           const done = sent ? true : i < at;
-          const stuck = o.status === "failed" || o.status === "send_blocked" || o.status === "no_form" || o.status === "partial" || o.status === "could_not_fill";
           const now = !sent && i === at && !stuck;
           return (
             <li key={label}>
               <div className={cx("h-1.5 rounded-full", done ? "bg-teal" : now ? (busy ? "animate-pulse bg-brand" : "bg-brand") : stuck && i === at ? (o.status === "no_form" || o.status === "partial" || o.status === "could_not_fill" ? "bg-amber/60" : "bg-danger/60") : "bg-line-soft")} />
-              <div className={cx("mt-1.5 text-[11px] leading-4", done || now ? "text-ink-2" : "text-faint")}>{label}</div>
+              <div className={cx("mt-1.5 text-[12px] leading-4", done || now ? "text-ink-2" : "text-faint")}>{label}</div>
             </li>
           );
         })}
       </ol>
 
-      <p className={cx("mt-4 flex-1 text-[13px] leading-5", o.status === "failed" || o.status === "send_blocked" ? "text-danger" : due || o.status === "partial" || o.status === "could_not_fill" ? "text-amber" : "text-ink-2")}>
-        {due ? `No reply since ${nice(rec?.sentAt)}. Worth a short follow-up now.` : line}
-      </p>
-
-      <div className="mt-4" onClick={(e) => e.stopPropagation()}>
-        {o.status === "ready_to_send" && !sent && (
-          <Button className="w-full" size="sm" onClick={onReview}>
-            Review and send
-          </Button>
-        )}
-        {o.status === "needs_input" && !sent && (
-          <Button className="w-full" size="sm" onClick={onReview}>
-            Add the missing details
-          </Button>
-        )}
-        {o.status === "partial" && !sent && (
-          <Button className="w-full" size="sm" variant="secondary" onClick={onReview}>
-            Check what was filled
-          </Button>
-        )}
-        {(o.status === "failed" || o.status === "could_not_fill") && (
-          <Button className="w-full" size="sm" variant="secondary" disabled={running} onClick={onRetry}>
-            Try again
-          </Button>
-        )}
-        {(o.status === "no_form" || o.status === "could_not_fill") && firm?.phone && (
-          <a href={`tel:${firm.phone.replace(/\s+/g, "")}`} className="flex w-full items-center justify-center rounded-ctl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-faint">
-            Call them: {firm.phone}
-          </a>
-        )}
-        {sent && rec?.status !== "replied" && (
-          <Button className="w-full" size="sm" variant="secondary" onClick={() => onReply("replied")}>
-            They replied
-          </Button>
-        )}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-line-soft pt-5">
+        <p className={cx("min-w-0 max-w-[48ch] flex-1 text-[14px] leading-6", o.status === "failed" || o.status === "send_blocked" ? "text-danger" : due || o.status === "partial" || o.status === "could_not_fill" ? "text-amber" : "text-ink-2")}>
+          {due ? `No reply since ${nice(rec?.sentAt)}. Worth a short follow-up now.` : line}
+        </p>
+        {action}
       </div>
     </article>
   );
