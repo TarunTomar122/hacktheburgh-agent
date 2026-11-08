@@ -8,6 +8,7 @@ import { setCaseRun, setEnquiry, setLegalAid, skipStep, upsertEnquiries, type Ca
 import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip, { routeSteps } from "./crew/StepStrip";
+import AutoStart, { autoStarted } from "./AutoStart";
 import CaseBoard from "./CaseBoard";
 import FirmResults from "./FirmResults";
 import InvestigationList from "./Investigation";
@@ -60,6 +61,8 @@ const SLAB_CALC = "https://www.slab.org.uk/new-to-legal-aid/eligibility-estimato
 
 export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profile; onReviewEnquiries: () => void }) {
   const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "case", caseId: profile.createdAt });
+  // Decided once when the screen opens (not on every render): the first visit to this step starts the case by itself.
+  const [autoNow] = useState(() => !autoStarted(`case:${profile.createdAt}`));
   const place = placeOf(profile);
   const hasDemo = useDemoAvailable("step3", place);
   const [view, setView] = useState<"case" | "firms" | "replay">("case");
@@ -144,6 +147,9 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
         <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={go} />
       </div>
     );
+  // Straight after choosing the path, the case starts by itself (once per case), like the research.
+  if (routeMap && !saved && state.status === "idle" && !state.says.length && autoNow)
+    return <AutoStart id={`case:${profile.createdAt}`} title="Preparing your case" line="Nell checks the money, Robin finds solicitors, Iona the evidence, and Kit fills the forms." crew={["nell", "robin", "iona", "kit", "elliot"]} onStart={go} />;
   return (
     <Intro
       routeMap={routeMap}

@@ -160,7 +160,18 @@ export default function LiveView() {
   // Browsers stay on screen after their run (the last picture of each), and the next run adds to them.
   const kept = useRef<LivePage[]>([]);
   const lastLive = useRef<LivePage[]>([]);
-  const runNo = useRef(0);
+  /** Keep closed browsers as tiles: their last picture, address and what they did. Tabs that never showed a page are left out. */
+  function archive(list: LivePage[]) {
+    const fresh: LivePage[] = [];
+    for (const p of list) {
+      const id = `${KEPT}-${p.pageId}`;
+      if (p.pageId.startsWith(KEPT) || kept.current.some((k) => k.pageId === id) || fresh.some((k) => k.pageId === id) || !srcs.current.has(p.pageId)) continue;
+      for (const m of [srcs.current, sizes.current, urls.current] as Map<string, unknown>[]) if (m.has(p.pageId)) m.set(id, m.get(p.pageId));
+      snaps.current.set(id, summarize(traceRef.current, p.label));
+      fresh.push({ ...p, url: urls.current.get(p.pageId) ?? p.url, pageId: id, state: p.state === "failed" ? "failed" : "done" });
+    }
+    if (fresh.length) kept.current = [...kept.current, ...fresh];
+  }
   const traceRef = useRef<TraceLite[]>([]);
   const snaps = useRef(new Map<string, Summary>());
   const [, bump] = useState(0);
@@ -211,8 +222,9 @@ export default function LiveView() {
         }
       } else if (msg.type === "pages") {
         if (msg.pages.length > 0) clearTimeout(closeTimer.current);
-        // Browsers close one by one before the run ends: remember the last list that had any, so they can be kept.
-        if (msg.pages.length > 0) lastLive.current = msg.pages;
+        // A browser tab closes as soon as its job is done: on the crew screen its tile stays, with its last picture.
+        if (document.getElementById("live-slot")) archive(lastLive.current.filter((p) => !msg.pages.some((q) => q.pageId === p.pageId)));
+        lastLive.current = msg.pages;
         const all = kept.current.length ? [...kept.current, ...msg.pages] : msg.pages;
         setPages(all);
         if (msg.pages.length > 0) {
@@ -230,17 +242,7 @@ export default function LiveView() {
       } else if (msg.type === "end") {
         if (modeRef.current === "live" && document.getElementById("live-slot")) {
           // Inline: the browsers are gone, their last pictures stay, and the next run adds more.
-          const n = ++runNo.current;
-          const now = pagesRef.current.filter((p) => !p.pageId.startsWith(KEPT));
-          const fresh = (now.length ? now : lastLive.current)
-            .filter((p) => !p.pageId.startsWith(KEPT))
-            .map((p) => {
-              const id = `${KEPT}${n}-${p.pageId}`;
-              for (const m of [srcs.current, sizes.current, urls.current] as Map<string, unknown>[]) if (m.has(p.pageId)) m.set(id, m.get(p.pageId));
-              snaps.current.set(id, summarize(traceRef.current, p.label));
-              return { ...p, pageId: id, state: p.state === "failed" ? ("failed" as const) : ("done" as const) };
-            });
-          kept.current = [...kept.current, ...fresh];
+          archive([...lastLive.current, ...pagesRef.current.filter((p) => !p.pageId.startsWith(KEPT))]);
           lastLive.current = [];
           setPages(kept.current);
           modeRef.current = "ended";
