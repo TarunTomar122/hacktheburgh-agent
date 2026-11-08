@@ -4,15 +4,23 @@
 **Branch base:** `main` at the time of branching (`774222b` plus later teammate commits pulled before branching).
 
 ## Resume here (kept current; read this first after any pause or limit reset)
-- **State at 01:10:** all generic workers committed (`workers/explore.ts` 13/14 live cases right; `searchDirectory.ts` 4 registers; `questionnaire.ts` SLAB + GOV.UK checkers; `fillForm.ts` committed as a snapshot while its builder finishes). Discovery wired into the app (runs first, saved as `profile.route`). Generic flows committed: `complaintAnywhere.ts` (step 1 when a route exists), `compensationAnywhere.ts` (step 3 when a route exists; same result shape so the case file and step 4 work). Search falls back Brave → Yahoo → DuckDuckGo → Bing on bot checks.
-- **Benchmark so far:** Wales discovery 1 = 5.2/10. Wales discovery 2 + England discovery 1 running (logs in `docs/night-runs/`).
-- **Running:** fillForm builder (decisionAgent `hideValues`), Scotland answer key research.
-- **Next:** grade Wales 2 / England 1; run the generic complaint and compensation crews end to end on Wales and England (scripts like `scripts/agent-discovery.ts` but for the flows, with a saved `route.json`); fix what breaks; Northern Ireland + Scotland discovery; Codex + Cursor review of the integrated flows (target 9/10); countries (personas needed); local models (Ollama has qwen3:8b; LFM2 pull status in /tmp/ollama-pull.log); recordings for playback in `demo/`; morning summary.
-- **Heartbeat:** session cron every 30 min (:13, :43) + one-shot wrap-up 06:47. Survives usage limits as long as this Claude session stays open.
+- **State at 00:15 (8 Nov):** every generic worker is committed (explore, fillForm, searchDirectory, questionnaire). Discovery runs first in the app and is saved as `profile.route`. Generic complaint (step 1), compensation (step 3, now reads the place's own scheme) are wired; generic escalation (step 2) is being built. Crew engine runs dependent tools in stages. Retry after errors.
+- **Benchmarks:** Wales 5.2 → 6.2, England 6.1 (graded against the answer keys). Deadlines fix (national rules + the provider's own page) committed after these runs.
+- **Running:** NI discovery 2 (`docs/night-runs/ni-discovery-2/`), Wales compensation crew (`docs/night-runs/wales-compensation-1/`); builders: worker safety (questionnaire/searchDirectory, uncommitted), escalation step (page.tsx step 2, route.ts, usePlannerRun, new escalationAnywhere.ts/EscalationRun.tsx, uncommitted), local models (llm.ts, draft.ts, evidence.ts, enquiry.ts, complaintAgents.ts, spsoDraft.ts, uncommitted); Cursor round-2 review pending.
+- **Machine:** do NOT record video in long runs (it leaked 161 ffmpeg processes and pushed load to 700); disk ~25 GB free; kill stale `tsc` piles with `pkill -f "tsc --noEmit"`.
+- **Next:** commit each builder when it reports; Scotland discovery (check the generic path finds NHS Lothian's form); Kit filling a real complaint form via the generic flow (NI or Scotland); countries (personas ready: ireland, new-zealand, california); Codex+Cursor round 3; short video recordings of the best runs; demo recordings in `demo/`; morning summary; then UI hill-climb.
+- **Heartbeat:** session cron every 30 min (:13, :43) + one-shot wrap-up 06:47.
 
 ## Morning summary (kept current through the night)
 
-_Nothing done yet. This section is rewritten at every checkpoint: what works, what does not, scores from Codex and Cursor, what to look at first._
+**What works end to end in the app (night branch):**
+- Onboarding for any country (country/region, international address and phone, one-line place confirmation).
+- Discovery ("How it works where you live"): the crew works out the system live (search with fallbacks, explore sites, read pages and PDFs, code-checked quotes, provenance), shown as a crew run and a route map with sources. Wales 6.2/10 and England 6.1/10 against researched answer keys.
+- Step 1 complaint crew for any place (reads the provider's rules and time limit, finds local guidance, drafts to the right body, fills its online form or prepares the message and finds where it goes).
+- Step 3 compensation crew for any place (the place's own funding checker, its scheme, its lawyer register with its own filters, cross-site firm checks, enquiries carrying the checker's quote), same case file and step 4 review.
+- Model ledger: every model call recorded with agent, model, local/cloud, tokens, data kinds.
+
+**Not done yet / honest gaps:** see Results and Review log; step 2 escalation and local models in progress at 00:15.
 
 ---
 
