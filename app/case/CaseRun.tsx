@@ -850,6 +850,30 @@ function QuestionCard({ q, more, onAnswer, currency }: { q: AskSpec; more: numbe
 
 /* ------------------------------------------------------------------ after */
 
+const clamp = (t: string, n: number) => (t.length <= n ? t : `${t.slice(0, n - 1).replace(/\s+\S*$/, "")}…`);
+const first1 = (t: string) => t.match(/^.*?[.!?](\s|$)/)?.[0]?.trim() ?? t;
+
+/** A part of the case file that opens on click: the headline and one short line first, the detail only when asked for. */
+function FoldRow({ crew, topic, title, summary, children }: { crew: CrewId; topic: string; title: string; summary?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section>
+      <button className="flex w-full items-start gap-4 px-6 py-4 text-left hover:bg-subtle/40" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="flex w-40 shrink-0 items-start gap-2 text-[13px] leading-6 text-muted">
+          <CrewMark id={crew} size={24} />
+          <span>{topic}</span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-medium leading-6 text-ink">{title}</span>
+          {summary && <span className="mt-0.5 block text-[13px] leading-5 text-muted">{summary}</span>}
+        </span>
+        <span aria-hidden className="mt-1 text-[13px] text-muted">{open ? "−" : "+"}</span>
+      </button>
+      {open && <div className="rise px-6 pb-6 pl-[calc(1.5rem+10rem+1rem)]">{children}</div>}
+    </section>
+  );
+}
+
 function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart }: { profile: Profile; run: CaseRunRecord; result: Step3Result; onFirms: () => void; onReplay: () => void; onReview: () => void; onRestart: () => void }) {
   const [full, setFull] = useState(false);
   const summary = run.says.findLast((s) => s.kind === "done")?.text ?? "";
@@ -872,17 +896,18 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
 
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
   const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
-  const checker = fundingStep ? `the official checker (${fundingStep.body})` : routeMap ? "the legal aid checker" : "SLAB's calculator";
-  const registerName = routeMap?.steps.find((x) => x.kind === "lawyers")?.body ?? (routeMap ? "the official register" : "the Law Society register");
+  const checker = fundingStep ? (fundingStep.body.length <= 60 ? `the official checker (${fundingStep.body})` : "the official checker") : routeMap ? "the legal aid checker" : "SLAB's calculator";
+  const registerRaw = routeMap?.steps.find((x) => x.kind === "lawyers")?.body;
+  const registerName = registerRaw && registerRaw.length <= 60 ? registerRaw : routeMap ? "the official register" : "the Law Society register";
   const checkerUrl = fundingStep?.url ?? (routeMap ? undefined : SLAB_CALC);
   const funding =
     result.verdict === "likely"
-      ? { title: "Legal aid looks likely", text: `${checker} says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you.` }
+      ? { title: "Legal aid looks likely", short: "Legal aid could pay your solicitor.", text: `${checker} says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you.` }
       : result.verdict === "unlikely"
         ? { title: "Legal aid looks unlikely", text: `${checker} says you probably do not qualify. Many firms take claims like yours on a no win, no fee basis instead; Robin checked which ones say so.` }
         : result.verdict === "skipped" || skipped("nell") || !reached("nell")
-          ? { title: "Funding not checked", text: skipped("nell") || !reached("nell") ? "Nell did not check legal aid this time. A solicitor can check it with you, or run the crew again." : "You skipped the money questions. A solicitor can check legal aid with you." }
-          : { title: "Funding is unclear", text: `We could not read an estimate from ${checker}. A solicitor can check legal aid with you.` };
+          ? { title: "Funding not checked", short: "A solicitor can check it with you.", text: skipped("nell") || !reached("nell") ? "Nell did not check legal aid this time. A solicitor can check it with you, or run the crew again." : "You skipped the money questions. A solicitor can check legal aid with you." }
+          : { title: "Funding is unclear", short: "The checker gave no estimate. A solicitor can check it with you.", text: `We could not read an estimate from ${checker}. A solicitor can check legal aid with you.` };
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -911,27 +936,27 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
       </section>
 
       <div className="divide-y divide-line rounded-card border border-line bg-white">
-        <Row crew="nell" topic="Paying for a solicitor" title={funding.title}>
+        <FoldRow crew="nell" topic="Paying for a solicitor" title={funding.title} summary={funding.short}>
           <p className="text-[15px] leading-6 text-ink">{funding.text}</p>
           {result.calculatorText && (
             <Quote source={checker.replace(/^./, (c) => c.toUpperCase())} href={checkerUrl}>
               {result.calculatorText}
             </Quote>
           )}
-        </Row>
+        </FoldRow>
 
         {(result as PlannerResult).scheme && !/does not (describe|say|mention)/i.test((result as PlannerResult).scheme!.text) && (
-          <Row crew="robin" topic="Compensation scheme" title={(result as PlannerResult).scheme!.body}>
+          <FoldRow crew="robin" topic="Compensation scheme" title={clamp((result as PlannerResult).scheme!.body, 80)} summary={clamp(first1((result as PlannerResult).scheme!.text), 110)}>
             <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text}</p>
             {(result as PlannerResult).scheme!.quote && (
               <Quote source={(result as PlannerResult).scheme!.body} href={(result as PlannerResult).scheme!.url}>
                 {(result as PlannerResult).scheme!.quote}
               </Quote>
             )}
-          </Row>
+          </FoldRow>
         )}
 
-        <Row crew="robin" topic="Solicitors" title={top.length ? `${top.length} solicitor${top.length === 1 ? "" : "s"} who could take your case` : "No solicitors checked yet"}>
+        <FoldRow crew="robin" topic="Solicitors" title={top.length ? `${top.length} solicitor${top.length === 1 ? "" : "s"} who could take your case` : "No solicitors checked yet"} summary={top.length ? `${top.map((f) => f.name).join(", ")}` : undefined}>
           <p className="text-[15px] leading-6 text-ink">{top.length ? `Robin checked each firm's own website and ${registerName}. These fit you best.` : "Robin did not get to check any firms before the run ended."}</p>
           <ul className="mt-2 divide-y divide-line-soft">
             {top.map((f) => (
@@ -943,9 +968,9 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
               See all {result.firms.length} firms Robin looked at
             </button>
           )}
-        </Row>
+        </FoldRow>
 
-        <Row crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked yet"}>
+        <FoldRow crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked yet"} summary={gap ? clamp(gap.question, 110) : point ? clamp(point.text, 110) : undefined}>
           {gap && point ? (
             <div className="space-y-4">
               <Said label="What doctors are advised to do">
@@ -1000,12 +1025,12 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
               )}
             </p>
           )}
-        </Row>
+        </FoldRow>
 
         {ev.investigation && (
-          <Row crew="iona" topic="Supporting evidence" title={ev.investigation.items.length ? "Decisions and awards in similar cases" : "No published decisions found"}>
+          <FoldRow crew="iona" topic="Supporting evidence" title={ev.investigation.items.length ? "Decisions and awards in similar cases" : "No published decisions found"} summary={ev.investigation.items.length ? `${ev.investigation.items.length} found` : undefined}>
             <InvestigationList inv={ev.investigation} />
-          </Row>
+          </FoldRow>
         )}
       </div>
 
