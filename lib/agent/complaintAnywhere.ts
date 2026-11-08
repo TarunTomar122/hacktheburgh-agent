@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CaseFacts } from "./facts";
-import { missingRequired } from "./facts";
+import { missingRequired, NHS_ONLY } from "./facts";
 import { modelFor, structured } from "./llm";
 import { draftComplaintTo, type Draft } from "./draft";
 import type { GuidelineReading } from "./evidence";
@@ -139,7 +139,9 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
           }
           case "fill_form": {
             if (!draft) return "Write the complaint first (draft_complaint).";
-            if (missingRequired(facts).filter((k) => k !== "preferredContact").length) return `Blocked: the profile is missing ${missingRequired(facts).join(", ")}.`;
+            // Only the generic essentials: one provider's own extra questions (e.g. an email-risk consent) are the form's to ask, not ours to require.
+            const missing = missingRequired(facts).filter((k) => !NHS_ONLY.includes(k));
+            if (missing.length) return `Blocked: the profile is missing ${missing.join(", ")}.`;
             if (fills >= 2) return "Blocked: the form was already filled twice. Finish now.";
             fills++;
             for (const x of (a.answers as { label: string; value: string }[] | undefined) ?? []) if (x?.label && x?.value) extra.push({ label: String(x.label), value: String(x.value) });
