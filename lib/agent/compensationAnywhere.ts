@@ -64,7 +64,7 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
       prefix: "step3",
       system: `You lead a crew helping a patient in ${placeName} find out how a compensation claim could be paid for, and contact the right lawyers. Discovery already worked out the route (below); use its pages and register. Work in this order, adapting when results call for it (say why with update_plan):
 1. Nell: check_funding, and Robin: read_scheme if the compensation part is a scheme (same turn). Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
-If the register is blocked (CAPTCHA, login), web_search for another official or specialist directory of lawyers who do this work in this place, then search_register with its url. Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
+If the register is blocked (CAPTCHA, login), web_search for another official or specialist directory of lawyers who do this work in this place, then search_register with its url. Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Prefer firms based in or near the patient's own place when checking and shortlisting (a regional directory can list firms far away). Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
 ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, points: s.points })), null, 1).slice(0, 6000)}`,
       tools: TOOLS,
       firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
@@ -98,7 +98,9 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             if (!url) return "Could not check funding: discovery found no funding page.";
             const known: Value[] = [
               { key: "case_type", description: "What the problem is about (area of law)", value: "Clinical negligence: harm from hospital care" },
-              { key: "country", description: "Where the patient lives", value: placeName },
+              { key: "country", description: "Where the patient lives", value: placeName, public: true },
+              // Place, not identity: the checker may use it to find local help (questionnaire types only the postcode or its first part).
+              ...(facts.postcode ? [{ key: "postcode", description: "The patient's postcode (place only)", value: facts.postcode }] : []),
             ];
             if (f?.how === "online_form") {
               const r = await kit.inTab(thought, "nell", short(f.body, 26), (p, note) => runQuestionnaire({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: "nell" }) }, { url, goal: "Find out whether the patient could get legal aid or other funded help for a clinical negligence claim", known }), 8 * 60 * 1000);
@@ -122,9 +124,20 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           }
           case "read_scheme": {
             const c = step("compensation");
-            const url = c?.url ?? c?.sources[0]?.url;
-            if (!url) return "Could not read the scheme: discovery found no compensation page.";
-            const r = await kit.inTab(thought, "robin", short(c?.body ?? "Scheme", 26), (p, note) => readPage({ page: p, note, track: kit.track }, url, "How does a patient get compensation through this scheme: how does a claim start, who decides, is there a cap or threshold, what are the time limits, does the patient get free legal advice, and does using it stop them going to court?"), 90_000);
+            // Try the scheme's page, then each of its sources, until one really describes the scheme (not a general complaints page).
+            const urls = [...new Set([c?.url, ...(c?.sources.map((x) => x.url) ?? [])].filter((u): u is string => !!u))].slice(0, 4);
+            if (!urls.length) return "Could not read the scheme: discovery found no compensation page.";
+            const question = "How does a patient get compensation through this scheme: how does a claim start, who decides, is there a cap or threshold, what are the time limits, does the patient get free legal advice, and does using it stop them going to court?";
+            const r = await kit.inTab(thought, "robin", short(c?.body ?? "Scheme", 26), async (p, note) => {
+              let best: Awaited<ReturnType<typeof readPage>> | null = null;
+              for (const u of urls) {
+                const v = await readPage({ page: p, note, track: kit.track }, u, question);
+                const checked = v.quotes.filter((x) => x.checked).length;
+                if (!best || checked > best.quotes.filter((x) => x.checked).length) best = v;
+                if (checked >= 2 && !/does not (describe|say|mention)/i.test(v.answer)) return v;
+              }
+              return best!;
+            }, 180_000);
             if (!r.ok) return `Could not read the scheme: ${r.error}`;
             const q = r.value.quotes.find((x) => x.checked);
             scheme = { body: c?.body ?? r.value.title, text: r.value.answer, quote: q, url: r.value.url };
