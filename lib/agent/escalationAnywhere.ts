@@ -186,7 +186,8 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.filter((s)
               explanation = `Not yet: complain to ${provider} first and wait for their final response. ${x.when}`.trim();
             }
             // One recommendation, reconciled in code: "you can go" never stands next to "past the time limit" without saying so.
-            if (st === "ready" && x.limitStatus === "outside") explanation = `${explanation} But this may be past ${bodyName}'s time limit (${x.limit || "see their page"}); they can sometimes accept a late complaint, so say why it is late.`;
+            if (st === "ready" && x.limitStatus === "outside") st = "unclear";
+            if (st === "unclear" && x.limitStatus === "outside") explanation = `${explanation} But this may be past ${bodyName}'s time limit (${x.limit || "see their page"}); they can sometimes accept a late complaint, so say why it is late.`;
             if (st === "ready" && !x.limit) explanation = `${explanation} We could not confirm ${bodyName}'s time limit on its page.`;
             ready = { status: st, when: x.when, explanation, include: x.include.slice(0, 5), url: page.url };
             process = { summary: page.answer, steps: x.steps.slice(0, 4), support: "", url: page.url };

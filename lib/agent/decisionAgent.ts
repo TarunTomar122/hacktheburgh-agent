@@ -145,7 +145,8 @@ export async function runDecisionAgent(opts: {
     }
     // Without allowSubmit, code refuses anything that could send: a real submit, OR any button or link whose label means
     // send / submit / confirm / pay / apply / sign (JavaScript "Send enquiry" buttons are type=button, Codex round 4).
-    const sends = !!el && (el.kind === "submit" || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim())));
+    // A one-page form (no `advance` given, e.g. a firm's enquiry form) never needs a button: any button there could send it.
+    const sends = !!el && (el.kind === "submit" || (el.kind === "button" && !opts.advance) || ((el.kind === "button" || el.kind === "link") && SENDS_RE.test(el.label.trim())));
     if (!el || (sends && !opts.allowSubmit && !(el.kind === "submit" && opts.advance?.test(el.label.trim()) && !SENDS_RE.test(el.label.trim())))) return finish(page, opts, stats, step, unsure);
     try {
       await pointAt(page, page.locator(`[data-aid="${el.id}"]`));

@@ -228,16 +228,27 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               const acronym = (x: string) => x.split(" ").filter((w) => w.length > 2).map((w) => w[0]).join("");
               return parts.some((x) => title.includes(x) || hostWords.split(" ").some((h) => h.length > 3 && (x.replace(/ /g, "").includes(h) || acronym(x) === h)));
             };
-            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s) && !/\/(enacted|as-enacted|original)(\/|$)|\bas enacted\b/i.test(String(s.url)), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
             const checkedText = sources.filter((x) => x.checked).map((x) => normText(x.quote)).join(" ");
             // Numbers count with their unit ("12 months" does not back "12 days"); number words too ("six months").
             const NUM = /(\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty)\s*(working days?|days?|weeks?|months?|years?|%|per ?cent|£|€|\$)?/gi;
-            const backed = (claim?: string) => !claim || [...claim.matchAll(NUM)].filter((m) => /\d/.test(m[1]) || m[2]).every((m) => checkedText.includes(normText(m[2] ? `${m[1]} ${m[2]}` : m[1])) || (!!m[2] && checkedText.includes(normText(`${m[1]}${m[2]}`))));
+            // Numbers count only as whole tokens with their unit ("12 years" does not back "2 years"; "30 days" does not back "0 days").
+            const backed = (claim?: string) =>
+              !claim ||
+              [...claim.matchAll(NUM)]
+                .filter((m) => /\d/.test(m[1]) || m[2])
+                .every((m) => {
+                  const n = normText(m[1]);
+                  const u = m[2] ? normText(m[2]).replace(/s$/, "") : "";
+                  const re = new RegExp(`(^|[^\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${u ? `\\s*${u}` : "(?![\\p{N}])"}`, "u");
+                  return re.test(checkedText);
+                });
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),
-              what: String(a.what ?? ""),
+              // The card's sentence too: if its numbers are not in a checked quote, keep it but without them (say "see the source").
+              what: backed(String(a.what ?? "")) ? String(a.what ?? "") : `${String(a.what ?? "").replace(NUM, (m0, n, u) => (/\d/.test(n) || u ? "[see source]" : m0))}`,
               deadline: a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined,
               // "online form" only where the crew really reached a form; a URL only if this run opened that page (code checks).
               how: ((h) => (h === "online_form" && !(a.url && forms.has(keyOf(String(a.url)))) ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"),
