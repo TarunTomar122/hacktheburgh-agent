@@ -108,7 +108,7 @@ export const LIMITS: Record<LimitKind, { rule: string; source: { name: string; u
     source: { name: "Scottish Public Services Ombudsman", url: "https://spso.org.uk/time-limit-for-making-complaints-to-spso" },
   },
   claim: {
-    rule: "A compensation claim must usually be started in court within 3 years of the harm, or of when you knew (or should have known) about it. For a child, the 3 years start at their 16th birthday; if someone has died, they run from the date of death.",
+    rule: "In Scotland, a compensation claim must usually be started in court within 3 years of the harm, or of when you knew (or should have known) about it. For a child, the 3 years start at their 16th birthday; if someone has died, they run from the date of death.",
     source: { name: "MDDUS claims guide (Scotland)", url: "https://www.mddus.com/-/media/files/medical-advisory-guides/claims-guide---scotland.pdf" },
   },
 };

@@ -8,6 +8,14 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Time-limit notes: Scotland wording, email complaint, docs corrected
+
+- The court-claim note now starts "In Scotland,": its rules (children from 16) are Scottish, and the compensation path does not check the case is in Scotland.
+- The email complaint (explanation or apology, `ComplaintEmail.tsx`) shows the NHS time-limit note when the place is a confirmed NHS Lothian site (same check as step 1).
+- Corrected earlier entries below: no demo persona shows a yellow note. Demo: NHS Complaint is green (by 3 April 2027); "close, 1 January 2027" was the scripts' sample patient.
+- Kept as is, Om's call: the filled form's browser still closes after 10 minutes of review.
+- `tsc`, eslint and `scripts/test-time-limit.ts` (43 checks) pass.
+
 ### 2026-11-08 - Om + Claude - DONE - "Delete all my data" signs you out to the login screen
 
 Before, it went to the start page (onboarding) with the user still signed in. Now, for a signed-in user, it waits for the server's delete to finish (`clearProfile()` returns a promise, at most 8 s; a failed delete is still retried at the next sign-in via the pending marker, D81) and then goes to `/auth/logout`, which ends on `/welcome` (the same route as the Log out button). The case page's "no case, go to the start page" jump waits while this happens. A demo case, or a case kept only in the browser (no accounts), still goes to the start page. The confirm text now says "You will be signed out." Files: `lib/profile.ts`, `app/case/ProfileTab.tsx`, `app/case/page.tsx`. `tsc` and eslint clean; not yet tried in a browser.
@@ -40,13 +48,13 @@ A double click, or starting a second step while one was filling, started a secon
 
 ### 2026-11-08 - Om + Claude - DONE - Time-limit notes on steps 1, 2, 3 and 4 (D85)
 
-Added the ombudsman (12 months) and court-claim (3 years) counts to `lib/agent/timeLimit.ts` (`countLimit`, `LIMITS`) and made `TimeLimitNote` take a `kind`. Shown on step 1 (NHS), step 2 (active and locked), the step 3 intro and step 4. Demo persona: NHS close (1 January 2027), ombudsman in time (1 July 2027), claim in time (1 July 2029). `scripts/test-time-limit.ts` now 28 checks, all pass; `tsc` and eslint clean. Not yet seen in a browser.
+Added the ombudsman (12 months) and court-claim (3 years) counts to `lib/agent/timeLimit.ts` (`countLimit`, `LIMITS`) and made `TimeLimitNote` take a `kind`. Shown on step 1 (NHS), step 2 (active and locked), the step 3 intro and step 4. Demo personas (corrected 06:55): Demo: NHS Complaint (Callum, 3 October 2026) NHS green until 3 April 2027, ombudsman green until 3 October 2027; Demo: Compensation (Ailsa, early July 2026) claim green until 1 July 2029. No demo persona shows yellow or red. `scripts/test-time-limit.ts` now 28 checks, all pass; `tsc` and eslint clean. Not yet seen in a browser.
 
 ### 2026-11-08 - Om + Claude - DONE - Step 1 shows the complaint time limit
 
 - **Correction to the entry below:** the crew's time-limit check is not on screen. Since D69, step 1 is the earlier page and `ComplaintRun.tsx` is not rendered, so the "close" result was never visible.
 - New `app/case/TimeLimitNote.tsx`, on step 1 under the title and above "Fill in NHS Lothian's form": the rule in one sentence, the count from `countTimeLimit` (same code as the crew, from the saved timeline; nothing fetched), and a link to Citizens Advice Scotland as the source. Tones: in time (green), close (amber), may be too late (red), could not be counted (blue).
-- Demo persona: "Time limit: close", counted from 1 July 2026, deadline 1 January 2027.
+- Corrected 06:55: "Demo: NHS Complaint" (Callum, 3 October 2026) shows "Time limit: you are in time", by 3 April 2027. "Close, 1 January 2027" is the scripts' sample patient (early July 2026), not a demo button.
 - Sources checked 2026-11-08: Citizens Advice Scotland (6 months from the event or from finding out, at most 12 months after the event); gov.scot NHS complaints guidance (same rule); SPSO Act 2002 s10(1) (12 months from first notice of the matter, for step 2, not shown yet).
 - `TIME_LIMIT_SOURCE` moved into `lib/agent/timeLimit.ts` so the page does not import the crew's browser code. `tsc` and eslint clean; not yet seen in a browser.
 
@@ -55,7 +63,7 @@ Added the ombudsman (12 months) and court-claim (3 years) counts to `lib/agent/t
 The complaint crew's time-limit check asked the model (low effort) whether the patient was within the limit, so a wrong date sum could tell a patient they were in time when they were not.
 - New `lib/agent/timeLimit.ts` (no imports): reads the timeline's dates (ISO, `dd/mm/yyyy`, "3 July 2026", "July 3, 2026", "early/mid/late July 2026", "2026-07"; vague dates read as their earliest possible day), counts from the EARLIEST date, and applies the Scottish rule the Citizens Advice Scotland page states: 6 months, at most 12 months after the event. `close` = fewer than 8 weeks left. Dates that do not give at least a month and year, or a date after today, give `unclear`.
 - `checkTimeLimit` (`lib/agent/complaintAgents.ts`): the model now only quotes the limit from the page; status and explanation come from the code. If the page stops saying "six months", the result is `unclear` with a note to check the page.
-- **Behaviour change:** the app does not store when the patient found out, so it no longer counts from a later "found out" date. The demo persona (fall in early July 2026) now shows "close" (deadline 1 January 2027) instead of "within" (the model had counted from the mid-August X-ray). The recorded replay in `demo/` keeps the old wording.
+- **Behaviour change:** the app does not store when the patient found out, so it no longer counts from a later "found out" date. The scripts' sample patient (fall in early July 2026; not a demo button, corrected 06:55) now shows "close" (deadline 1 January 2027) instead of "within" (the model had counted from the mid-August X-ray). The recorded replay in `demo/` keeps the old wording.
 - `scripts/test-time-limit.ts`: 21 checks, all pass (run here with Node's type stripping). `tsc` and eslint clean. Not run live in the crew.
 
 ### 2026-11-08 - Om + Claude - DONE - Timeouts on model calls

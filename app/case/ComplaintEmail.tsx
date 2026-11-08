@@ -4,6 +4,8 @@ import { useState } from "react";
 import { buildComplaintEmail, complaintEmailGoals, emailSource } from "../../lib/agent/complaintEmail";
 import { setComplaintEmail, setTrack, type Profile } from "../../lib/profile";
 import { Button, control } from "../ui";
+import { supportsLothian } from "../../lib/agent/complaintScope";
+import TimeLimitNote from "./TimeLimitNote";
 
 export default function ComplaintEmail({ profile }: { profile: Profile }) {
   const draft = profile.complaintEmail;
@@ -18,6 +20,8 @@ export default function ComplaintEmail({ profile }: { profile: Profile }) {
     <h1 className="display text-[40px]">Start with an email</h1>
     <p className="text-ink-2">Review this draft for the hospital or clinic involved. Find and verify its complaints-team email address before sending. No recipient has been checked and nothing has been sent.</p>
     <p className="text-sm text-muted">This prepares one email. A reply may lead to further questions or a formal complaint; it does not guarantee an explanation or apology.</p>
+    {/* The NHS complaint time limit applies to an email complaint too; only shown where the place is a confirmed NHS Lothian site (Scottish rule). */}
+    {supportsLothian(profile.facts) && <TimeLimitNote profile={profile} kind="nhs" />}
     <fieldset className="space-y-3">
       <legend className="mb-3 font-medium">What would you like to ask for?</legend>
       <label className="flex items-center gap-3">
