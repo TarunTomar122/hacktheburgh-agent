@@ -8,6 +8,14 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Complaint time limit counted in code
+
+The complaint crew's time-limit check asked the model (low effort) whether the patient was within the limit, so a wrong date sum could tell a patient they were in time when they were not.
+- New `lib/agent/timeLimit.ts` (no imports): reads the timeline's dates (ISO, `dd/mm/yyyy`, "3 July 2026", "July 3, 2026", "early/mid/late July 2026", "2026-07"; vague dates read as their earliest possible day), counts from the EARLIEST date, and applies the Scottish rule the Citizens Advice Scotland page states: 6 months, at most 12 months after the event. `close` = fewer than 8 weeks left. Dates that do not give at least a month and year, or a date after today, give `unclear`.
+- `checkTimeLimit` (`lib/agent/complaintAgents.ts`): the model now only quotes the limit from the page; status and explanation come from the code. If the page stops saying "six months", the result is `unclear` with a note to check the page.
+- **Behaviour change:** the app does not store when the patient found out, so it no longer counts from a later "found out" date. The demo persona (fall in early July 2026) now shows "close" (deadline 1 January 2027) instead of "within" (the model had counted from the mid-August X-ray). The recorded replay in `demo/` keeps the old wording.
+- `scripts/test-time-limit.ts`: 21 checks, all pass (run here with Node's type stripping). `tsc` and eslint clean. Not run live in the crew.
+
 ### 2026-11-08 - Om + Claude - DONE - Timeouts on model calls
 
 A stuck model call could freeze a run for up to 10 minutes with no message (the OpenAI SDK's defaults are a 10-minute timeout and 2 retries; `decide()` used a plain `fetch` with no timeout).
