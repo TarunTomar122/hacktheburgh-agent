@@ -8,6 +8,14 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - NHS Submit detection confirmed; new fills reset "sent" (D84)
+
+- **Found:** the 03:58 "no POST" was not the site. Clicks in the live panel only reach the page in Take control mode; without it the click is dropped. With Take control, a real Submit at 05:25 was detected end to end (see D84 for the log). This sent a real complaint to NHS Lothian.
+- **Fixed:** a new fill clears the step's filled/sent marks (`app/case/page.tsx`, `ComplaintRun.tsx`, `OmbudsmanStep.tsx`, `YellowCardStep.tsx`); done boxes say "browser panel" and tell the user to Take control first.
+- **Diagnostics kept** (dev terminal): `[submit-watch]` start line, clicks and form submit events that reach the page, every POST (separate caps for captcha/analytics so they cannot crowd out the form's POST), form messages; `[live-input]` lines for each panel click (with the element hit), Close and Back. Files: `lib/browser.ts`, `lib/liveview.ts`.
+- **Still unverified:** SPSO and Yellow Card confirmation wording (never submitted).
+- `tsc --noEmit` clean except the known `scripts/test-restart-logout.ts` error; eslint clean on `app/case`, `lib/browser.ts`, `lib/liveview.ts`. UI checked by Om on the Mac.
+
 ### 2026-11-08 - Om + Claude - DONE - Yellow Card only reports "ready" on Step 4 of 4
 
 Run 2026-11-08 04:09 ended `ready_to_submit` on `/new-report` while the page was still a loading spinner: an empty page has no required fields, so the engine called it done, and the app would have marked step 6 filled. The old guard only caught `/`, `/report-guide` and `/about-you`.

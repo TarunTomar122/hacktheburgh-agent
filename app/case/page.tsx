@@ -137,6 +137,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
   async function fill(extra?: ExtraAnswers) {
     if (!draft || filling || !supportsLothian(profile.facts)) return;
     setFilling(true);
+    setProgress({ nhsFilled: false, nhsSent: false }); // a new form has not been sent yet, whatever an earlier one did
     window.dispatchEvent(new Event("live-open")); // show the agent's browser beside the page, as soon as it starts
     setError(null);
     setResult(null);
@@ -234,8 +235,8 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
 
       {result &&
         (result.status === "ready_to_submit" ? (
-          <Callout tone="ok" title="Done. It is waiting for you in the other window.">
-            <p>Check it there, change anything you like, then press Submit yourself. Nothing has been sent.</p>
+          <Callout tone="ok" title="Done. It is waiting for you in the browser panel.">
+            <p>Check it there, change anything you like, then press Submit yourself. Nothing has been sent. Click &ldquo;Take control&rdquo; in the panel first: your clicks only reach the form while it is on.</p>
             <div className="mt-3">
               {profile.progress?.nhsSent ? (
                 <span className="font-medium text-teal">Marked as sent. Nice work.</span>

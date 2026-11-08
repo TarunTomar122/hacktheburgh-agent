@@ -410,4 +410,10 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 - **Not seen:** the Yellow Card confirmation page (never submitted while probing). `SUBMITTED_TEXT` now also matches "thank you for your report / reporting", which is a guess. If it does not trigger, send the confirmation page's wording and add it.
 - **Compensation path (steps 3 and 4):** nothing to detect. The agent sends the firms' forms itself after the user's OK in step 4, and that step already marks each as sent.
 
-<!-- Add new entries above this line. Next number: D84 -->
+## D84 - A new fill clears the step's "filled" and "sent" marks; the panel says to Take control before Submit (Om, 2026-11-08)
+
+- **What:** starting a fill (NHS step, the complaint crew's "Fill in the form", ombudsman, Yellow Card) sets that step's `*Filled` and `*Sent` back to false. Before, a "sent" mark from an earlier run stayed, so a fresh, unsent form showed "Marked as sent" and "Continue to Ombudsman" as the main button. Demo replays and "Skip" are unchanged.
+- **Copy:** the done boxes say the form waits "in the browser panel" (there is no other window since D34) and that clicks only reach the form while "Take control" is on.
+- **D83 result:** detection confirmed on the live NHS Lothian form at 05:25 (a real submission): the click reached Submit, POST to `nhslothian.scot/yourrights/wp-admin/admin-ajax.php`, form message "Thank you for your feedback!", `submitted` announced. No reCAPTCHA POST was seen. The 03:58 failure was the click never reaching the page: the live panel only forwards clicks in Take control mode.
+
+<!-- Add new entries above this line. Next number: D85 -->

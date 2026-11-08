@@ -114,6 +114,7 @@ function Unlocked({ profile }: { profile: Profile }) {
     const approved = { ...answers, readConfirmed: true };
     set({ readConfirmed: true }); // the approval below includes "I have read the SPSO page"
     setRunning(true);
+    markProgress({ spsoFilled: false, spsoSent: false }); // a new form has not been sent yet, whatever an earlier one did
     window.dispatchEvent(new Event("live-open"));
     setError(null);
     setResult(null);
@@ -191,8 +192,8 @@ function Unlocked({ profile }: { profile: Profile }) {
 
       {result &&
         (result.status === "ready_to_submit" ? (
-          <Callout tone="ok" title="Done. It is waiting for you in the other window.">
-            Check each section there and use its &ldquo;edit&rdquo; link to change anything. Then press Send yourself.
+          <Callout tone="ok" title="Done. It is waiting for you in the browser panel.">
+            Check each section there and use its &ldquo;edit&rdquo; link to change anything. Then press Send yourself. Click &ldquo;Take control&rdquo; in the panel first: your clicks only reach the form while it is on.
             <div className="mt-3">
               {profile.progress?.spsoSent ? (
                 <span className="font-medium text-teal">Marked as sent. Nice work.</span>

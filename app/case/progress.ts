@@ -8,7 +8,7 @@ export type Milestone = { step: number; label: string; done: boolean };
  * What counts as progress. Only things we can know:
  *  - from the profile (details complete, draft written, NHS reply received),
  *  - from the agent (form filled up to the review page),
- *  - self-reported by the user ("I've sent it"), because we cannot see them press Send in the other window.
+ *  - self-reported by the user ("I've sent it"), when the agent's browser did not see them press Send (D83 detects it on the NHS form).
  * Step 5 is not built and step 4 cannot send yet, so those milestones cannot be done yet. The percentage counts them, so it never reaches 100% early.
  */
 export function milestones(p: Profile): Milestone[] {
