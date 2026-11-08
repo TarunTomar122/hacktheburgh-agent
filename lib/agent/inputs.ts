@@ -212,7 +212,8 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
       if (f.events.length === 0 || f.events.some((e) => blank(e.date))) {
         fields.push({ key: "eventDate", label: "When did it happen?", kind: "date", required: true, hint: "A rough date is fine." });
       }
-      if (f.events.length === 0) {
+      // Only when the story did not give us anything to use: the story is always asked first, so this is a fallback, not a second question.
+      if (f.events.length === 0 && blank(f.incidentSummary)) {
         fields.push({ key: "eventWhat", label: "What happened on the date you just entered?", kind: "text", required: true, hint: "Describe the event you are dating, such as the accident or a medical appointment. For example: ‘I went to A&E and was advised to use ice.’" });
       }
       if (blank(f.incidentLocation)) {
@@ -336,7 +337,7 @@ export function patchFromAnswer(
       const p: Partial<CaseFacts> = {};
       if (s("incidentLocation")) p.incidentLocation = s("incidentLocation");
       if (s("eventDate")) {
-        if (f.events.length === 0) p.events = [{ date: s("eventDate"), what: s("eventWhat") || "Care was received" }];
+        if (f.events.length === 0) p.events = [{ date: s("eventDate"), what: s("eventWhat") || shortStory(f.incidentSummary) || "Care was received" }];
         else p.events = f.events.map((e) => (blank(e.date) ? { ...e, date: s("eventDate") } : e));
       }
       return p;
@@ -356,6 +357,14 @@ export function patchFromAnswer(
     default:
       return {};
   }
+}
+
+/** The first sentence of the story, cut to a timeline-sized line: used as the event's description so the person is not asked what happened twice. */
+export function shortStory(summary: string | null | undefined): string {
+  const t = (summary ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  const first = t.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? t;
+  return first.length <= 140 ? first : first.slice(0, 137).trimEnd() + "...";
 }
 
 /** The line shown in the chat as the user's own message after they use a widget. */
