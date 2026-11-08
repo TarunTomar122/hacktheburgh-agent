@@ -1,0 +1,12 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Progress: {"complaintSent":true,"finalResponse":"yes","complaintText":"804 chars","providerReply":"Belfast Health and Social Care Trust wrote that the wrist was examined and X-rayed in line with its procedures, the X-ray was reported as showing no fracture at the time, and it apologised that I had a poor experience. It did not explain why no follow-up was arranged."}
+[3s] [elliot] Start with the route rules so we can check eligibility before drafting the complaint for NIPSO.
+[5s] [elliot → robin] Use NIPSO's own pages to confirm what must happen first, whether the patient can go now, and how to apply.
+  finding (robin): You can go to Northern Ireland Public Services Ombudsman (NIPSO) now <https://www.nipso.org.uk/make-complaint/online-complaints-form>
+[63s] [robin → elliot] You can go now. You can now bring your complaint to the Northern Ireland Public Services Ombudsman (NIPSO). We could not confirm Northern Ireland Public Services Ombudsman (NIPSO)'s time limit on its page.
+[67s] [elliot] The rules check shows the patient is ready to go to NIPSO now, but the online form is unavailable, so we should prepare the case next and then try the live route.
+  finding (elliot): Case written for Northern Ireland Public Services Ombudsman (NIPSO) (251 words)
+[89s] [elliot → you] Written for Northern Ireland Public Services Ombudsman (NIPSO): what happened, your complaint, what Belfast Health and Social Care Trust said and what you would like.
+[92s] [elliot → kit] Check NIPSO's current complaint route and try to open the online complaint form, stopping before any submit.
+[198s] [kit → elliot] I hit a problem: No online form: No online form found after 4 moves (106s); the site's own route is offline. This page says the online complaints form is currently unavailable …

@@ -48,6 +48,11 @@ Why this is real browser work, not more of the same: the *shape* of the process 
 - `docs/research/jurisdictions/` is an **answer key** for grading the agent after a run. It is never given to the agent.
 - The existing Scotland site code (SLAB calculator and finder, Law Society register, NHS Lothian form) may only help **after** the agent has reached that site by itself, and the generic path must work without it. Prefer making it generic.
 
+## Update 03:55 (Tarun)
+- Reviews: no two-reviewer 9/10 loops any more; ONE Codex review per complicated task is enough. Cursor agents (grok-4.7) are used for implementation too, to save Claude tokens; Claude subagents only Sonnet 5.5.
+- Every feature must show in the UI and be tested (deterministic test + headless screenshots).
+- New: human hand-off (take over a blocked login/CAPTCHA tab, sign in, Continue) in progress (Cursor agent).
+
 ## Heartbeat
 A heartbeat fires every 30 minutes (session cron, :13 and :43) and checks: on track with this plan, very high-quality UI with no clutter, everything fully integrated end to end, Codex and Cursor scores at 9/10, ambition, safety, notes pushed. A one-shot wrap-up fires at 06:47 to make the morning summary current.
 

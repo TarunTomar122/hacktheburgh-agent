@@ -13,22 +13,134 @@ PASS draft: not English, left to the model (no English template)
 [2s] TAB Iona · Policies
 [2s] TAB Iona · Inspections
 [2s] TAB Iona · Public records
-[5s] model iona cloud gpt-5.4-mini investigate_queries_inspection data=[]
-[5s] model iona cloud gpt-5.4-mini investigate_queries_public_record data=[]
-[5s] model iona cloud gpt-5.4-mini investigate_queries_decision data=[]
-[5s] model iona cloud gpt-5.4-mini investigate_queries_policy data=[]
-[122s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
-[194s] FINDING (iona) No official public material found to cite
+[4s] model iona cloud gpt-5.4-mini investigate_queries_public_record data=[]
+[4s] model iona cloud gpt-5.4-mini investigate_queries_decision data=[]
+[4s] model iona cloud gpt-5.4-mini investigate_queries_policy data=[]
+[4s]   · Iona · Public records: read Exa search "NHS Lothian scaphoid fracture missed X-ray": 10 results
+[5s]   · Iona · Decisions: read Exa search "Scottish Public Services Ombudsman NHS Lothian scaphoid fracture Royal Infirmary of Edinburgh": 10 results
+[5s]   · Iona · Policies: read Exa search "NHS Lothian suspected scaphoid fracture guidance": 10 results
+[7s] model iona cloud gpt-5.4-mini investigate_queries_inspection data=[]
+[7s] model iona cloud gpt-5.4-mini investigate_pick_decision data=[]
+[7s] model iona cloud gpt-5.4-mini investigate_pick_policy data=[]
+[8s]   · Iona · Inspections: read Exa search "NHS Lothian inspection report emergency department": 10 results
+[8s]   · Iona · Decisions: fail Could not read spso.org.uk: PDF not readable (its text could not be extracted reliably); look for an HTML version
+[8s]   · Iona · Decisions: open Opened a PDF (2k characters of text)
+[9s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
+[9s] model iona cloud gpt-5.4-mini investigate_pick_public_record data=[]
+[10s] model iona cloud gpt-5.4-mini read_page data=[health]
+[10s]   · Iona · Decisions: read Read 202000038.pdf: Yes. This is a published SPSO decision report about a clinical treatment/diagnosis complaint involving an initial A&E attendance a
+[13s]   · Iona · Policies: open Opened https://www.rightdecisions.scot.nhs.uk/refhelp-nhs-ayrshire-and-arran/orthopaedicsmsk/forearm-wrist-and-hand/fracture/scaphoid-fracture/
+[14s] model iona cloud gpt-5.4 investigate_judge_decision data=[]
+[14s] model iona cloud gpt-5.4-mini read_page data=[health]
+[14s]   · Iona · Policies: read Read Scaphoid fracture | Right Decisions: This page is not a policy, protocol, procedure, or guidance from NHS Lothian; it is an NHS Ayrshire and Arra
+[15s]   · Iona · Public records: open Opened https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
+[16s]   · Iona · Inspections: open Opened https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+[17s] model iona cloud gpt-5.4-mini read_page data=[health]
+[17s]   · Iona · Public records: read Read Suspected Scaphoid Injury: No. This is a patient information page from Gloucestershire Hospitals NHS Foundation Trust, not a freedom-of-informati
+[18s] model iona cloud gpt-5.4-mini read_page data=[health]
+[18s]   · Iona · Inspections: read Read Royal Infirmary of Edinburgh – safe delivery of care inspec…: Yes. This is an inspection report by Healthcare Improvement Scotland about the Roya
+[19s]   · Iona · Policies: open Opened https://www.rightdecisions.scot.nhs.uk/nhs-tayside-ed-guidance/trauma-and-orthopaedics/specific-fracture-management-in-ed/
+[21s] model iona cloud gpt-5.4-mini read_page data=[health]
+[21s]   · Iona · Policies: read Read Specific fracture management in ED | Right Decisions: Yes. This is an NHS Tayside ED Guidance page, and it includes instructions for what to do w
+[21s]   · Iona · Public records: open Opened https://www.nice.org.uk/guidance/ng38/ifp/chapter/finding-out-if-you-have-broken-a-bone
+[22s] model iona cloud gpt-5.4-mini read_page data=[health]
+[22s]   · Iona · Public records: read Read Finding out if you have broken a bone | Information for the…: No. This is a NICE public guidance page, not a freedom-of-information response, dis
+[23s]   · Iona · Inspections: open Opened https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-december-2023/
+[25s] model iona cloud gpt-5.4-mini read_page data=[health]
+[25s]   · Iona · Inspections: read Read Royal Infirmary of Edinburgh – safe delivery of care inspec…: Yes. This is a Healthcare Improvement Scotland inspection report about Royal Infirm
+[26s]   · Iona · Policies: open Opened https://www.nice.org.uk/guidance/ng38/chapter/Recommendations
+[26s]   · Iona · Inspections: fail Could not read healthcareimprovementscotland.scot: PDF not readable (its text could not be extracted reliably); look for an HTML version
+[27s]   · Iona · Public records: open Opened https://www.rightdecisions.scot.nhs.uk/emergency-medicine-rie/patient-information-leaflets/ttc-trauma-triage-clinic/72b-scaphoid-fractures/
+[27s] model iona cloud gpt-5.4-mini read_page data=[health]
+[27s]   · Iona · Policies: read Read Recommendations | Fractures (non-complex): assessment and m…: This is a NICE guideline, not a document published by NHS Lothian (or its health au
+[28s]   · Iona · Policies: read Exa search "suspected scaphoid fracture site:nhslothian.scot": 10 results
+[29s] model iona cloud gpt-5.4-mini read_page data=[health]
+[29s]   · Iona · Public records: read Read 72B Scaphoid Fractures | Right Decisions: No. This page is a patient information leaflet entry from NHS Lothian, not a freedom-of-information res
+[30s] model iona cloud gpt-5.4-mini investigate_pick_policy data=[]
+[30s] model iona cloud gpt-5.4 investigate_judge_inspection data=[]
+[33s] model iona cloud gpt-5.4 investigate_judge_public_record data=[]
+[34s]   · Iona · Policies: open Opened https://policyonline.nhslothian.scot/policy_entry/scaphoid_fractures/#
+[36s] model iona cloud gpt-5.4-mini read_page data=[health]
+[36s]   · Iona · Policies: read Read Scaphoid Fractures – Policy Online: No. The page identifies the document as a patient information leaflet, not a policy/protocol/procedure/guidan
+[36s]   · Iona · Policies: open Opened a PDF (2k characters of text)
+[38s] model iona cloud gpt-5.4-mini read_page data=[health]
+[38s]   · Iona · Policies: read Read Scaphoid_Fractures.pdf: Yes. This is patient information published by NHS Lothian, and it includes follow-up and contact instructions relevant to
+[44s]   · Iona · Policies: open Opened https://policyonline.nhslothian.scot/policy_entry/possible-scaphoid-fracture-rhcyp/
+[46s] model iona cloud gpt-5.4-mini read_page data=[health]
+[46s]   · Iona · Policies: read Read Possible Scaphoid Fracture (RHCYP) – Policy Online: Yes. The page identifies it as a “Patient Information Leaflet,” so it is patient-facing guida
+[51s] model iona cloud gpt-5.4 investigate_judge_policy data=[]
+[51s] FINDING (iona) Decision: "We found that C was appropriately assessed and did not meet the criteria in the relevant guidelines for their …"
+          https://www.spso.org.uk/sites/spso/files/decision_summaries/202000038.pdf
+[51s] FINDING (iona) Provider policy: "You will receive a telephone consultation or fracture clinic review in the next 2 weeks."
+          https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf
+[51s] FINDING (iona) Provider policy: "Please ensure the Emergency Department/Minor Injury Unit reception staff have your mobile and phone home numbe…"
+          https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf
+[51s] FINDING (iona) Inspection: "We carried out an unannounced inspection to the Royal Infirmary of Edinburgh, NHS Lothian on Monday 20 to Wedn…"
+          https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+[51s] FINDING (iona) Inspection: "As a result of serious concerns about patient safety within the emergency department identified during this in…"
+          https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+[51s] FINDING (iona) Public record: "Unfortunately, X rays only show about 70-80% of scaphoid fractures."
+          https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
+[51s] FINDING (iona) Public record: "You will have been directed to this page because you have injured your wrist, but your X‑rays didn’t show a cl…"
+          https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
 
-0 item(s) in 191s.
-[Decision] nothing found. Searched "SPSO scaphoid fracture missed X-ray emergency department" and "SPSO scaphoid fracture missed X-ray emergency department site:spso.org.uk" (10 results). No official page was opened.
-[Provider policy] nothing found. Searched "NHS Lothian scaphoid fracture guidance" and "NHS Lothian scaphoid fracture site:nhslothian.scot" (9 results). No official page was opened.
-[Inspection] nothing found. Searched "NHS Lothian scaphoid fracture report" and "site:healthcareimprovementscotland.scot NHS Lothian emergency fracture" (16 results). No official page was opened.
-[Public record] nothing found. Searched "NHS Lothian scaphoid fracture disclosure" and "scaphoid fracture NHS Lothian site:nhslothian.scot" (9 results). No official page was opened.
+7 item(s) in 49s.
+[Decision, partial] 202000038.pdf (https://www.spso.org.uk/sites/spso/files/decision_summaries/202000038.pdf)
+  "We found that C was appropriately assessed and did not meet the criteria in the relevant guidelines for their injury to have been considered high-risk and requiring imaging."
+  This discusses a decision not to do imaging in line with emergency injury guidelines, which is relevant to a missed fracture after a sprain diagnosis.
+[Provider policy, close] Scaphoid_Fractures.pdf (https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf)
+  "You will receive a telephone consultation or fracture clinic review in the next 2 weeks."
+  This says patients with a possible scaphoid fracture should get a telephone or fracture clinic review within the next 2 weeks after Emergency Department discharge.
+[Provider policy, partial] Scaphoid_Fractures.pdf (https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf)
+  "Please ensure the Emergency Department/Minor Injury Unit reception staff have your mobile and phone home numbers."
+  This asks Emergency Department or Minor Injury Unit staff to record phone numbers, which supports arranging follow-up after the injury.
+[Inspection, partial] Royal Infirmary of Edinburgh – safe delivery of care inspection report: May 2023 – Healthcare Improvement Scotland (https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/)
+  "We carried out an unannounced inspection to the Royal Infirmary of Edinburgh, NHS Lothian on Monday 20 to Wednesday 22 February 2023 using our safe delivery of care inspection methodology."
+  This is an official inspection of the same hospital, but the quoted text only states the visit dates and method, not any emergency diagnosis or X-ray findings.
+[Inspection, partial] Royal Infirmary of Edinburgh – safe delivery of care inspection report: May 2023 – Healthcare Improvement Scotland (https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/)
+  "As a result of serious concerns about patient safety within the emergency department identified during this inspection we wrote to NHS Lothian to formal escalate our concerns in accordance with level 1 of our escalation process in the Healthcare Improvement Scotland and Scottish Government: operating framework."
+  This says the regulator formally escalated serious patient safety concerns in the emergency department, which may support a complaint about unsafe emergency care.
+[Public record, close] Suspected Scaphoid Injury (https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/)
+  "Unfortunately, X rays only show about 70-80% of scaphoid fractures."
+  It says X rays only show about 70-80% of scaphoid fractures, supporting that some wrist fractures are not visible on first imaging.
+[Public record, partial] Suspected Scaphoid Injury (https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/)
+  "You will have been directed to this page because you have injured your wrist, but your X‑rays didn’t show a clear fracture (break)."
+  It covers a wrist injury where initial X-rays did not show a clear fracture, which is similar but limited to suspected scaphoid injuries.
 
-searched: "SPSO scaphoid fracture missed X-ray emergency department" | "SPSO scaphoid fracture missed X-ray emergency department site:spso.org.uk" | "NHS Lothian scaphoid fracture guidance" | "NHS Lothian scaphoid fracture site:nhslothian.scot" | "NHS Lothian scaphoid fracture report" | "site:healthcareimprovementscotland.scot NHS Lothian emergency fracture" | "NHS Lothian scaphoid fracture disclosure" | "scaphoid fracture NHS Lothian site:nhslothian.scot"
-opened: 
+searched: "Scottish Public Services Ombudsman NHS Lothian scaphoid fracture Royal Infirmary of Edinburgh" | "NHS Lothian suspected scaphoid fracture guidance" | "suspected scaphoid fracture site:nhslothian.scot" | "NHS Lothian inspection report emergency department" | "NHS Lothian scaphoid fracture missed X-ray"
+opened: https://www.spso.org.uk/sites/spso/files/decision_summaries/202000038.pdf | https://www.rightdecisions.scot.nhs.uk/refhelp-nhs-ayrshire-and-arran/orthopaedicsmsk/forearm-wrist-and-hand/fracture/scaphoid-fracture/ | https://www.rightdecisions.scot.nhs.uk/nhs-tayside-ed-guidance/trauma-and-orthopaedics/specific-fracture-management-in-ed/ | https://www.nice.org.uk/guidance/ng38/chapter/Recommendations | https://policyonline.nhslothian.scot/policy_entry/scaphoid_fractures/# | https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf | https://policyonline.nhslothian.scot/policy_entry/possible-scaphoid-fracture-rhcyp/ | https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/ | https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-december-2023/ | https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/ | https://www.nice.org.uk/guidance/ng38/ifp/chapter/finding-out-if-you-have-broken-a-bone | https://www.rightdecisions.scot.nhs.uk/emergency-medicine-rie/patient-information-leaflets/ttc-trauma-triage-clinic/72b-scaphoid-fractures/
+PASS opened in this run: https://www.spso.org.uk/sites/spso/files/decision_summaries/202000038.pdf
+PASS numbers in "why" are in the quote: This discusses a decision not to do imaging in line with eme
+NOTE  https://www.spso.org.uk/sites/spso/files/decision_summaries/202000038.pdf is a PDF: its quote was checked by the reader against the extracted text, not re-loaded here
+PASS opened in this run: https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf
+PASS numbers in "why" are in the quote: This says patients with a possible scaphoid fracture should 
+NOTE  https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf is a PDF: its quote was checked by the reader against the extracted text, not re-loaded here
+PASS opened in this run: https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf
+PASS numbers in "why" are in the quote: This asks Emergency Department or Minor Injury Unit staff to
+NOTE  https://policyonline.nhslothian.scot/wp-content/uploads/2023/03/Scaphoid_Fractures.pdf is a PDF: its quote was checked by the reader against the extracted text, not re-loaded here
+PASS opened in this run: https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+PASS numbers in "why" are in the quote: This is an official inspection of the same hospital, but the
+PASS quote found again on a fresh load: https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+PASS opened in this run: https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+PASS numbers in "why" are in the quote: This says the regulator formally escalated serious patient s
+PASS quote found again on a fresh load: https://www.healthcareimprovementscotland.scot/publications/royal-infirmary-of-edinburgh-safe-delivery-of-care-inspection-report-may-2023/
+PASS opened in this run: https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
+PASS numbers in "why" are in the quote: It says X rays only show about 70-80% of scaphoid fractures,
+PASS quote found again on a fresh load: https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
+PASS opened in this run: https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
+PASS numbers in "why" are in the quote: It covers a wrist injury where initial X-rays did not show a
+PASS quote found again on a fresh load: https://www.gloshospitals.nhs.uk/our-services/services-we-offer/trauma-orthopaedics/hand-clinic/wrist-trauma/suspected-scaphoid-injury/
 PASS every lane either has items or an honest 'nothing found' note
-PASS time-boxed: 191s
+PASS time-boxed: 49s
+[84s] model iona local local:qwen3:8b complaint_draft data=[health,identity]
+PASS the drafted complaint carries each supporting quote word for word
+
+--- DRAFT (supporting evidence is the last paragraph) ---
+On early July 2026, I fell on my outstretched hand and attended the A&E department at the Royal Infirmary of Edinburgh. I was X-rayed and told it was a sprain, and I was sent home. The pain did not go away, and in mid August 2026, my GP sent me back for a second X-ray, which showed a scaphoid fracture. By November 2026, the fracture has not healed, and I now need surgery. I have also missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist. I would like an explanation of what went wrong, treatment or support to put things right, and compensation for what happened.
+
+For reference, policyonline.nhslothian.scot (Scaphoid_Fractures.pdf) published: "You will receive a telephone consultation or fracture clinic review in the next 2 weeks."
+For reference, gloshospitals.nhs.uk (Suspected Scaphoid Injury) published: "Unfortunately, X rays only show about 70-80% of scaphoid fractures."
+I would be grateful if NHS Lothian would take these into account when looking at my complaint.
+
 
 all checks passed
