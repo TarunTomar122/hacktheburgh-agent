@@ -72,6 +72,7 @@ export function boardParts(i: BoardInput): Part[] {
       const note = [...(i.findings ?? [])].reverse().find((f) => f.crew === "nell")?.text;
       const summary = i.result?.calculatorText ? lineOf(i.result.calculatorText) : note ? lineOf(note) : undefined;
       if (status === "skipped") return { ...base, headline: "Not checked this time" };
+      if (v === "skipped") return { ...base, headline: "You skipped the checker's questions", summary: "A solicitor can check legal aid with you." };
       if (v === "likely") return { ...base, summary, headline: "Legal aid looks likely", chip: `Quoted from ${where}` };
       if (v === "unlikely") return { ...base, summary, headline: "Legal aid looks unlikely", chip: `Quoted from ${where}` };
       if (v) return { ...base, summary, headline: "Could not tell if legal aid would pay", chip: "No estimate from the checker" };

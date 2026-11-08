@@ -1,3 +1,4 @@
+import type { Funding } from "./legalAidTypes";
 import type { CaseFacts } from "./facts";
 import type { Emit } from "./planner";
 import { webSearch } from "./planner";
@@ -40,7 +41,21 @@ const TOOLS = [
   FINISH_TOOL,
 ];
 
-export async function runCompensationAnywhere(facts: CaseFacts, routeIn: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<PlannerResult> {
+/** What the patient has already told us about their money, as known values (the same period and unit as said), so the checker is not asked what we know. */
+function fundingKnown(f?: Partial<Funding>): Value[] {
+  if (!f || f.skipped) return [];
+  const yn = (b: boolean) => (b ? "Yes" : "No");
+  const out: Value[] = [];
+  if (typeof f.onBenefits === "boolean") out.push({ key: "on_benefits", description: "Whether the patient gets Income Support, income-based JSA, income-related ESA or Universal Credit", value: yn(f.onBenefits) });
+  if (typeof f.partner === "boolean") out.push({ key: "partner", description: "Whether the patient has a partner (spouse or civil partner) they live with", value: yn(f.partner) });
+  if (typeof f.dependants === "number") out.push({ key: "dependants", description: "How many children or other people depend on the patient financially", value: String(f.dependants) });
+  if (typeof f.netIncomeYearly === "number") out.push({ key: "net_income_yearly", description: "The patient's income after tax for a whole YEAR", value: String(f.netIncomeYearly) });
+  if (typeof f.outgoingsYearly === "number") out.push({ key: "outgoings_yearly", description: "The patient's essential outgoings for a whole YEAR", value: String(f.outgoingsYearly) });
+  if (typeof f.savings === "number") out.push({ key: "savings", description: "The patient's total savings and capital", value: String(f.savings) });
+  return out;
+}
+
+export async function runCompensationAnywhere(facts: CaseFacts, routeIn: RouteMap, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string; /** What the patient already told us about their money (from an earlier answer): the checker is answered from it, not asked again. */ funding?: Partial<Funding> } = {}): Promise<PlannerResult> {
   const route = cleanRoute(routeIn); // a sentence saved as a name becomes a short name
   const step = (k: RouteMap["steps"][number]["kind"]) => route.steps.find((s) => s.kind === k);
   const placeName = [route.place.region, route.place.country].filter(Boolean).join(", ");
@@ -110,7 +125,9 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const url = f?.url ?? f?.sources[0]?.url;
             if (!url) return "Could not check funding: discovery found no funding page.";
             const known: Value[] = [
-              { key: "case_type", description: "What the problem is about (area of law)", value: "Clinical negligence: harm from hospital care" },
+              { key: "case_type", description: "What kind of legal case this is (civil, criminal or children's): a CIVIL case, a claim about harm from medical care (clinical negligence)", value: "Civil" },
+              ...(facts.complainingFor === "me" ? [{ key: "who_for", description: "Who needs the help: the patient themself, an adult", value: "Myself" }] : []),
+              ...fundingKnown(opts.funding),
               { key: "country", description: "Where the patient lives", value: placeName, public: true },
               // Place, not identity: the checker may use it to find local help (questionnaire types only the postcode or its first part).
               ...(facts.postcode ? [{ key: "postcode", description: "The patient's postcode (place only)", value: facts.postcode }] : []),
@@ -133,6 +150,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               fundingSource = f?.body ?? "The legal aid checker";
               calculatorText = r.value.result;
               verdict = /\b(not (likely|eligible)|unlikely|ineligible|disqualif\w*|do(es)? not qualify|not qualify|cannot get|can't get|won't get)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
+              if (!r.value.result.trim() && !r.value.answers.length) verdict = "skipped"; // the checker got no answers (skipped), so there is no estimate to read
               kit.finding(`${fundingSource}: ${r.value.result}`, checkerUrl, "nell");
               kit.emit({ type: "verdict", verdict });
               return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nThe checker asked ${r.value.answers.length} question(s); the patient's answers stay on their device.`;

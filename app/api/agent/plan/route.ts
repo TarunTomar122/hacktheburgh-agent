@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   try {
     run = await startRun(d.flow ?? "compensation", slot, (onEvent) => {
       if (d.flow === "discovery") return runDiscovery(d.facts, { onEvent, ...(d.focus && d.route ? { focus: d.focus, base: d.route as RouteMap } : {}) });
-      if (d.flow === "compensation_anywhere" && d.route) return runCompensationAnywhere(d.facts, d.route as RouteMap, { onEvent, keepOpen: true });
+      if (d.flow === "compensation_anywhere" && d.route) return runCompensationAnywhere(d.facts, d.route as RouteMap, { onEvent, keepOpen: true, funding: d.funding });
       if (d.flow === "escalation_anywhere" && d.route) return runEscalationAnywhere(d.facts, d.route as RouteMap, { onEvent, keepOpen: true, progress: d.progress });
       if (d.flow === "complaint_anywhere" && d.route) return runComplaintAnywhere(d.facts, d.route as RouteMap, { onEvent, keepOpen: true });
       if (d.flow === "complaint") return runComplaint(d.facts, { onEvent, keepOpen: true });

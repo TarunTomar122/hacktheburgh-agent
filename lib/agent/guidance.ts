@@ -55,12 +55,12 @@ export async function ageBandOf(facts: CaseFacts): Promise<z.infer<typeof AgeBan
  * published the page and the quotes. The patient's name, address and story are not in this call. Health facts (age band,
  * condition) make it a local call unless LOCAL_MODELS=0 (modelFor).
  */
-export async function checkApplicability(patient: { ageBand: string; condition: string; setting: string; place: string }, source: { body: string; title: string; url: string }, quotes: string[]): Promise<ApplicabilityVerdict[]> {
+export async function checkApplicability(patient: { ageBand: string; condition: string; setting: string; place: string }, source: { body: string; title: string; url: string }, quotes: string[], opts: { otherPlaceOk?: boolean } = {}): Promise<ApplicabilityVerdict[]> {
   const r = await structured({
     ...modelFor("check", ["health"]),
     instructions:
       "You check whether a quoted clinical recommendation applies to a particular patient. Judge only the quote and the page that carries it. " +
-      "It does NOT apply if it is about a different population (for example children when the patient is an adult, or the reverse), a different condition, a different care setting, or a different country's system. " +
+      "It does NOT apply if it is about a different population (for example children when the patient is an adult, or the reverse), a different condition, or a different care setting" + (opts.otherPlaceOk ? ". It MAY apply even if another country published it, when it is general clinical practice for this condition (how to examine, image or treat it) and not about that country's own services, funding or law; the patient is told where it comes from. " : ", or a different country's system. ") + " " +
       "If the page or its publisher is for another population (for example a children's service) and the quote does not say otherwise, that counts. " +
       "'applies' needs positive reasons on age group, condition and setting; if you cannot tell, answer unclear. Give every quote a verdict.",
     input: `Patient: age group ${patient.ageBand}; condition: ${patient.condition}; care setting: ${patient.setting}; place: ${patient.place}.\nPage: ${source.title} (${source.body}, ${source.url})\nQuotes:\n${quotes.map((q, i) => `${i + 1}: ${q}`).join("\n")}`,
@@ -98,13 +98,13 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   /** Who published a page: the guidance body when it is on the body's own site, otherwise the page's own title or site (never the body by default). */
   const publisherOf = (url: string, title: string) => (g?.body && hostOf(url) && hostOf(start) && (hostOf(url) === hostOf(start) || hostOf(url).endsWith(`.${hostOf(start)}`)) ? g.body : title || hostOf(url));
   type Cand = { url: string; title: string; quotes: string[] };
-  type Judged = { cand: Cand; verdicts: ApplicabilityVerdict[]; applicable: string[]; rejected: ApplicabilityVerdict[] };
+  type Judged = { cand: Cand; verdicts: ApplicabilityVerdict[]; applicable: string[]; rejected: ApplicabilityVerdict[]; foreign: boolean };
   /** Does this page's recommendation apply to this patient (age group, condition, setting, place)? A page that does not is not the end of the search. */
-  const judge = async (cand: Cand): Promise<Judged | { error: string }> => {
+  const judge = async (cand: Cand, foreign = false): Promise<Judged | { error: string }> => {
     try {
       const band = await ageBandOf(facts);
-      const verdicts = await checkApplicability({ ageBand: band.band.replace(/_/g, " "), condition, setting, place: where || "not stated" }, { body: publisherOf(cand.url, cand.title), title: cand.title, url: cand.url }, cand.quotes);
-      return { cand, verdicts, applicable: cand.quotes.filter((_, i) => verdicts[i].verdict === "applies"), rejected: verdicts.filter((v) => v.verdict !== "applies") };
+      const verdicts = await checkApplicability({ ageBand: band.band.replace(/_/g, " "), condition, setting, place: where || "not stated" }, { body: publisherOf(cand.url, cand.title), title: cand.title, url: cand.url }, cand.quotes, { otherPlaceOk: foreign });
+      return { cand, verdicts, applicable: cand.quotes.filter((_, i) => verdicts[i].verdict === "applies"), rejected: verdicts.filter((v) => v.verdict !== "applies"), foreign };
     } catch (e) {
       // Not able to check = not able to use: an unchecked recommendation never enters the complaint.
       return { error: `Found guidance on ${cand.url} but could not check that it applies to this patient (${e instanceof Error ? e.message.slice(0, 120) : "check failed"}), so it is not used.` };
@@ -115,13 +115,13 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
     const tried: Judged[] = [];
     const seen = new Set<string>();
     /** Read a page; if it has clean quotes, judge them. Returns the judgement when something applies. */
-    const tryPage = async (url: string): Promise<Judged | { error: string } | null> => {
+    const tryPage = async (url: string, foreign = false): Promise<Judged | { error: string } | null> => {
       if (seen.has(url)) return null;
       seen.add(url);
       const page = await readPage(ctx, url, ask);
       const quotes = page.quotes.filter(clean).map((q) => q.quote);
       if (!quotes.length) return null;
-      const j = await judge({ url: page.url, title: page.title, quotes });
+      const j = await judge({ url: page.url, title: page.title, quotes }, foreign);
       if ("error" in j) return j;
       tried.push(j);
       return j.applicable.length ? j : null;
@@ -145,8 +145,19 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
         if (j) return { best: j, tried };
       }
     }
+    // Nothing from this place's own bodies fits: general clinical practice for the condition from anywhere reputable, clearly labelled as not from here.
+    await note.log("recover", `Nothing from ${where || "this place"} fits; looking for general clinical guidance on ${condition}`);
+    const general = await webSearch(p, `${condition} clinical guideline management recommendation`, note, kit.track).catch(() => []);
+    let more = 0;
+    for (const h of general) {
+      if (more >= 3) break;
+      if (seen.has(h.url)) continue;
+      more++;
+      const j = await tryPage(h.url, true);
+      if (j) return { best: j, tried };
+    }
     return { best: null, tried };
-  }, 300_000);
+  }, 360_000);
   if (!r.ok) return none(`Could not find the guidance: ${r.error}`);
   const best = r.value.best;
   if (best && "error" in best) return none(best.error);
@@ -160,7 +171,7 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   const applicable = best.applicable.map((quote) => ({ quote }));
   const rejected = best.rejected;
   const src = best.cand;
-  const guideline: GuidelineReading = { guideline: publisherOf(src.url, src.title), url: src.url, points: applicable.map((q, i) => ({ id: `${i + 1}`, text: q.quote })) };
+  const guideline: GuidelineReading = { guideline: best.foreign ? `${publisherOf(src.url, src.title)} (published outside ${where || "your place"})` : publisherOf(src.url, src.title), url: src.url, points: applicable.map((q, i) => ({ id: `${i + 1}`, text: q.quote })) };
   proof.guideline = { name: guideline.guideline, url: guideline.url, points: guideline.points };
   const c = await compareCare(facts, guideline);
   proof.gaps = c.gaps;

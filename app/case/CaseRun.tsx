@@ -93,7 +93,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
 
   // Night plan ("Elliot anywhere"): with a route map, the generic crew works with the place's own checker and register.
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
-  const go = () => (routeMap ? start(profile.facts, undefined, "compensation_anywhere", routeMap) : start(profile.facts, profile.legalAid?.funding));
+  const go = () => (routeMap ? start(profile.facts, profile.legalAid?.funding, "compensation_anywhere", routeMap) : start(profile.facts, profile.legalAid?.funding));
   // The crew screen stays after the run, like the research screen: the case fills in on the left, what the crew did on the right.
   const [fileOpen, setFileOpen] = useState(false);
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0) || (state.status === "done" && state.says.length > 0 && !fileOpen);
