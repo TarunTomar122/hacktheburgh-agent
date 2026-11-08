@@ -1,0 +1,34 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+PASS numbers: 12 weeks is in the quote
+PASS numbers: 2 is not a whole token of 12
+PASS numbers: a number word the quote lacks is rejected
+PASS numbers: no numbers, nothing to back
+PASS draft: a missing quote is added word for word with its source
+PASS draft: a quote already in the letter is not added twice
+PASS draft: not English, left to the model (no English template)
+[2s] model iona local local:qwen3:8b investigation_issue data=[health]
+[2s] BRIEF (de-identified, made on this Mac): {"condition":"suspected scaphoid fracture","issue":"a fracture missed on X-ray at an emergency department and the patient sent home as a sprain"}
+[2s] TAB Iona · Decisions
+[2s] TAB Iona · Policies
+[2s] TAB Iona · Inspections
+[2s] TAB Iona · Public records
+[5s] model iona cloud gpt-5.4-mini investigate_queries_inspection data=[]
+[5s] model iona cloud gpt-5.4-mini investigate_queries_public_record data=[]
+[5s] model iona cloud gpt-5.4-mini investigate_queries_decision data=[]
+[5s] model iona cloud gpt-5.4-mini investigate_queries_policy data=[]
+[122s] model iona cloud gpt-5.4-mini investigate_pick_inspection data=[]
+[194s] FINDING (iona) No official public material found to cite
+
+0 item(s) in 191s.
+[Decision] nothing found. Searched "SPSO scaphoid fracture missed X-ray emergency department" and "SPSO scaphoid fracture missed X-ray emergency department site:spso.org.uk" (10 results). No official page was opened.
+[Provider policy] nothing found. Searched "NHS Lothian scaphoid fracture guidance" and "NHS Lothian scaphoid fracture site:nhslothian.scot" (9 results). No official page was opened.
+[Inspection] nothing found. Searched "NHS Lothian scaphoid fracture report" and "site:healthcareimprovementscotland.scot NHS Lothian emergency fracture" (16 results). No official page was opened.
+[Public record] nothing found. Searched "NHS Lothian scaphoid fracture disclosure" and "scaphoid fracture NHS Lothian site:nhslothian.scot" (9 results). No official page was opened.
+
+searched: "SPSO scaphoid fracture missed X-ray emergency department" | "SPSO scaphoid fracture missed X-ray emergency department site:spso.org.uk" | "NHS Lothian scaphoid fracture guidance" | "NHS Lothian scaphoid fracture site:nhslothian.scot" | "NHS Lothian scaphoid fracture report" | "site:healthcareimprovementscotland.scot NHS Lothian emergency fracture" | "NHS Lothian scaphoid fracture disclosure" | "scaphoid fracture NHS Lothian site:nhslothian.scot"
+opened: 
+PASS every lane either has items or an honest 'nothing found' note
+PASS time-boxed: 191s
+
+all checks passed

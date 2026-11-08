@@ -1,0 +1,42 @@
+{
+  "runId": "investigate-scotland-2026-11-08T03-38-21-922Z",
+  "focus": "complaint",
+  "brief": {
+    "condition": "suspected scaphoid fracture",
+    "issue": "a fracture missed on X-ray at an emergency department and the patient sent home as a sprain"
+  },
+  "investigation": {
+    "items": [],
+    "nothing": [
+      {
+        "lane": "decision",
+        "note": "Searched \"SPSO scaphoid fracture missed X-ray emergency department\" and \"SPSO scaphoid fracture missed X-ray emergency department site:spso.org.uk\" (10 results). No official page was opened."
+      },
+      {
+        "lane": "policy",
+        "note": "Searched \"NHS Lothian scaphoid fracture guidance\" and \"NHS Lothian scaphoid fracture site:nhslothian.scot\" (9 results). No official page was opened."
+      },
+      {
+        "lane": "inspection",
+        "note": "Searched \"NHS Lothian scaphoid fracture report\" and \"site:healthcareimprovementscotland.scot NHS Lothian emergency fracture\" (16 results). No official page was opened."
+      },
+      {
+        "lane": "public_record",
+        "note": "Searched \"NHS Lothian scaphoid fracture disclosure\" and \"scaphoid fracture NHS Lothian site:nhslothian.scot\" (9 results). No official page was opened."
+      }
+    ],
+    "searched": [
+      "SPSO scaphoid fracture missed X-ray emergency department",
+      "SPSO scaphoid fracture missed X-ray emergency department site:spso.org.uk",
+      "NHS Lothian scaphoid fracture guidance",
+      "NHS Lothian scaphoid fracture site:nhslothian.scot",
+      "NHS Lothian scaphoid fracture report",
+      "site:healthcareimprovementscotland.scot NHS Lothian emergency fracture",
+      "NHS Lothian scaphoid fracture disclosure",
+      "scaphoid fracture NHS Lothian site:nhslothian.scot"
+    ],
+    "opened": [],
+    "tookMs": 191265
+  },
+  "support": []
+}
