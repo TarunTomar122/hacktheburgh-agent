@@ -652,9 +652,11 @@ export default function LiveView() {
     const isKept = !!page?.pageId.startsWith(KEPT);
     const info = page ? (isKept ? snaps.current.get(page.pageId) : summarize(traceRef.current, page.label)) : undefined;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-label={page?.label ?? "Browser"}>
-        <button aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={() => focus(null)} />
-        <div className="rise relative flex flex-col gap-3 rounded-card bg-white p-5">
+      // Taller than the screen (a question, the info and the page): it scrolls, and starts at the top so nothing is cut off.
+      <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label={page?.label ?? "Browser"}>
+        <button aria-label="Close" className="fixed inset-0 bg-ink/30" onClick={() => focus(null)} />
+        <div className="flex min-h-full items-start justify-center p-6 sm:items-center">
+        <div className="rise relative flex max-w-full flex-col gap-3 rounded-card bg-white p-5">
           <div className="flex items-center gap-3">
             {who && (
               // eslint-disable-next-line @next/next/no-img-element -- tiny static avatar
@@ -726,6 +728,7 @@ export default function LiveView() {
           <div className="flex" style={{ width: size.width, height: size.height }}>
             {bigView()}
           </div>
+        </div>
         </div>
       </div>
     );
