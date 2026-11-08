@@ -279,10 +279,19 @@ function PathSection({ profile, onContinue, onSwitched }: { profile: Profile; on
   const chosen = profile.track?.chosen ?? null;
   const rec = profile.track?.rec;
   if (!chosen) {
+    // The suggestion only exists once the crew has worked out how things work where the care happened.
+    const discovering = !profile.route;
     return (
-      <section className="space-y-2">
+      <section className="space-y-3">
         <SectionTitle>Your path</SectionTitle>
-        <p className="text-sm text-ink-2">You have not chosen a path yet. Close your profile to see what we suggest.</p>
+        <p className="text-sm text-ink-2">
+          {discovering
+            ? "Not chosen yet. First the crew works out how complaints and claims work where your care happened. Then we suggest a path and you choose it."
+            : "You have not chosen a path yet. We have a suggestion ready for you."}
+        </p>
+        <Button variant="secondary" size="sm" onClick={onContinue}>
+          {discovering ? "Back to the crew" : "See what we suggest"}
+        </Button>
       </section>
     );
   }
