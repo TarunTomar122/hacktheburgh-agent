@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Clean edge under the blue (D86)
+
+Removed the stepped stripes under the blue header and the profile's blue band, at Om's request: `Stripes` (`app/case/Header.tsx`) draws nothing, so the case pages, profile, start page and `/welcome` all change. Supersedes the stripes of D31; `docs/DESIGN.md` updated. `tsc` and eslint clean; not yet seen in a browser.
+
 ### 2026-11-08 - Om + Claude - DONE - Relative dates become calendar dates; "Save profile" button
 
 Om's case said "I had pineapple pizza yesterday": the interview saved the date as the word "yesterday" (it copies the user's wording and is not told today's date), so every time-limit note said "could not be counted".

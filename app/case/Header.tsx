@@ -37,13 +37,10 @@ export default function Header({ name, profileOpen, incomplete, stripes = true, 
   );
 }
 
-/** One thick line, then thinner and fainter ones. */
+/**
+ * Where the blue ends. D86 (Om, 2026-11-08): a clean edge, blue straight onto white. It used to be one thick line, then thinner and
+ * fainter ones (D31). Kept as a component so every page changes in one place; it draws nothing now.
+ */
 export function Stripes() {
-  return (
-    <div aria-hidden className="bg-white">
-      <div className="h-1 bg-brand" />
-      <div className="mt-0.5 h-0.5 bg-brand/60" />
-      <div className="mt-0.5 h-px bg-brand/30" />
-    </div>
-  );
+  return null;
 }

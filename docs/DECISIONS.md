@@ -426,4 +426,10 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 - **Colours:** green = in time, yellow = close, red = past the usual limit (each note says how it can still be accepted), blue = dates too vague to count.
 - **Known limits:** counts from the earliest date, never from when the patient found out (not recorded), so deadlines shown can be earlier than the real ones, never later. Age and death are not known, so the claim note states those rules instead of applying them.
 
-<!-- Add new entries above this line. Next number: D86 -->
+## D86 - The blue ends in a clean edge, no stepped stripes (Om, 2026-11-08). Supersedes the stripes of D31
+
+- **What:** the stepped lines under the blue header and the profile's blue band (one thick line, then two thinner, fainter ones; D31, `docs/DESIGN.md`) are removed. The blue now meets the white directly. Om found the lines distracting.
+- **How:** `Stripes` in `app/case/Header.tsx` draws nothing, so every page that used it changes at once: the case pages, the profile page, the start page and `/welcome`. Putting the stripes back is restoring that one component.
+- `docs/DESIGN.md` updated to match. Not yet seen in a browser.
+
+<!-- Add new entries above this line. Next number: D87 -->
