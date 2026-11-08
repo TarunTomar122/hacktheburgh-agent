@@ -382,11 +382,17 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
       if (pending.length) return done({ status: "needs_input", unfilled: [...unfilled, ...pending.map((p) => `Your agreement: ${p}`)], summary: `Page ${pages.length} needs your agreement ("${short(pending[0], 100)}") before the form can move on. That box is yours to tick.` });
       if (scan.captcha) return done({ status: "blocked", wall: { kind: "captcha", detail: scan.captchaDetail, url: page.url() }, summary: "This page has a CAPTCHA before the next step. Filled what was there and handed over to you." });
 
+      // The verdict again, on the live page, immediately before the click: never one from before the page was filled.
+      const live = await liveForwardVerdict(page, view2.forward);
+      if (!live.ok) {
+        await log("check", `Not pressing "${short(view2.forward.label, 40)}": ${live.final}`);
+        return stopAtFinal({ ...view2, final: true, finalWhy: live.final }, live.fwd?.label ?? view2.forward.label, unfilled.length ? "Filled what we could" : "Filled the form", scan);
+      }
       // Move on, then check the page did not answer with validation errors.
-      note(`Clicking "${short(view2.forward.label, 40)}"`);
+      note(`Clicking "${short(live.fwd.label, 40)}"`);
       const sigBefore = fieldSig(obs);
-      await clickForward(page, view2.forward, "next");
-      const fixed = await recoverErrors(sigBefore, view2.forward);
+      await clickForward(page, live.fwd, "next");
+      const fixed = await recoverErrors(sigBefore, live.fwd);
       if (fixed === "stuck") return done({ status: "needs_input", summary: stuckWhy });
     }
     return done({ status: "failed", summary: `The form went on for more than ${maxPages} pages; stopped.` });
@@ -693,9 +699,10 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
         unfilled.push(`${label}: ${f.message || "rejected by the form"}`);
       }
       if (unfilled.length) { stuckWhy = "The form rejected answers we cannot fix without you; stopped before moving on."; return "stuck"; }
-      const again = (await observe(page)).elements.find((e) => e.label === forward.label && e.kind === forward.kind);
-      if (!again) return "stuck";
-      await clickForward(page, { ...forward, id: again.id }, "retry");
+      // The fixes may have changed a conditional answer: the verdict again, on the live page, before pressing once more.
+      const live = await liveForwardVerdict(page, forward);
+      if (!live.ok) { stuckWhy = `After fixing what the form rejected, "${short(forward.label, 40)}" may now send the form (${live.final}); stopped before pressing it.`; return "stuck"; }
+      await clickForward(page, live.fwd, "retry");
     }
     return "stuck";
   }
@@ -726,7 +733,14 @@ export async function fillForm(ctx: WorkerCtx, opts: FillFormOpts): Promise<Fill
     }
   }
 
-  async function clickForward(p: Page, f: Fwd, why: "start" | "next" | "retry") {
+  async function clickForward(p: Page, given: Fwd, why: "start" | "next" | "retry") {
+    let f = given;
+    // Backstop for every click on a filled form page: the final/not-final verdict, recomputed on the live page now.
+    if (why !== "start") {
+      const live = await liveForwardVerdict(p, f);
+      if (!live.ok) throw new Error(`refused to click "${short(f.label, 40)}": ${live.final}`);
+      f = live.fwd;
+    }
     const loc = p.locator(`[data-aid="${f.id}"]`);
     const href = f.kind === "link" ? await loc.getAttribute("href").catch(() => null) : null;
     const target = f.kind === "link" ? await loc.getAttribute("target").catch(() => null) : null;
@@ -893,11 +907,11 @@ async function classify(page: Page, obs: Observation, goal: string, values: Valu
     else if (kind === "form" && !forwardIsPlainLink && (lastP >= 0.85 || (!nextish && lastP >= 0.4))) { final = true; finalWhy = `the model thinks this is the last page (${lastP.toFixed(2)})`; }
     else if (kind === "form" && !nextish && !answers.length) { final = true; finalWhy = "could not tell, so treated as final"; }
     // A form page carries the patient's answers. Whatever its label ("Continue", "Next", "Proceed"), the button that
-    // sends this form is FINAL unless code sees positive evidence of a later step: a stepper or "step 1 of 4" short of
-    // the end, a progress bar short of full, or (for a script button that submits nothing) the form's own further
-    // questions waiting hidden on this page. When unsure: final, stop.
+    // sends this form is FINAL unless code sees positive evidence of a later step in THIS form: its stepper or "step 1
+    // of 4" short of the end, its progress bar short of full, or (for a script button that submits nothing) its own
+    // further questions waiting hidden on this page. Recomputed on the live page before every click. When unsure: final.
     if (!final && kind === "form" && anyFields && !forwardIsPlainLink) {
-      const later = await laterStepEvidence(page, forward.id, stepper);
+      const later = await laterStepEvidence(page, forward.id);
       if (later) why.push(`later step: ${later}`);
       else { final = true; finalWhy = `"${short(label, 30)}" may send this form: nothing on the page shows a later step`; }
     }
@@ -906,39 +920,131 @@ async function classify(page: Page, obs: Observation, goal: string, values: Valu
 }
 
 /**
- * Positive evidence, found by code, that pressing the forward control leads to another page of the form rather than
- * sending it: a stepper / "step n of N" short of the end, a progress bar short of full, or, when the control submits
- * no <form> (a script wizard's own button), further questions of the same form hidden on this page. Null when none.
+ * Positive evidence, found by code on the LIVE page, that pressing the forward control leads to another page of the
+ * same form rather than sending it. Only indicators that belong to the active form count: inside its <form> (or, for a
+ * script wizard, the smallest box around the control that holds its questions), or elsewhere in the same main content
+ * when they are a stepper (aria-current="step", "step n of N") or a progress bar labelled as the form's steps. Anything
+ * in a sidebar, banner, footer, dialog, cookie bar or another <form> is ignored, as are spinners (no value), empty bars
+ * and bars labelled as uploads, profiles and the like. An indicator at its end (last step, full bar), or a bar that
+ * disagrees with the stepper, means no evidence. When the control submits no <form> (a script wizard's own button),
+ * further questions of the same form hidden on the page also count. Null when there is no evidence: then it is final.
  */
-async function laterStepEvidence(page: Page, id: string | number, stepper: { n: number; total: number } | null): Promise<string | null> {
-  if (stepper && stepper.n < stepper.total) return `step ${stepper.n} of ${stepper.total}`;
+export async function laterStepEvidence(page: Page, id: string | number): Promise<string | null> {
   return page
     .locator(`[data-aid="${id}"]`)
-    .evaluate((node) => {
+    .evaluate((node, { stepSrc }) => {
+      const STEP = new RegExp(stepSrc, "iu");
+      const STEPISH = /\b(?:steps?|stages?|pages?|sections?|parts?|questions?)\b|form progress|progress (?:through|of|in) (?:the |this |your )?(?:form|application|complaint|claim)|wizard|schritt|étape|paso|passo|stap|steg/iu;
+      const UNRELATED = /upload|download|\bfiles?\b|attach|loading|profile|account|password|strength|cookie|storage|quota|video|audio|media|playback|reading|scroll|install|sync|battery/iu;
+      const FIELD = "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=image]):not([type=reset]):not([type=search]), select, textarea";
       const vis = (e: Element) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
-      for (const p of Array.from(document.querySelectorAll("progress, [role=progressbar]"))) {
-        if (!vis(p)) continue;
-        const now = p.tagName === "PROGRESS" ? (p as HTMLProgressElement).value : Number(p.getAttribute("aria-valuenow"));
-        const max = p.tagName === "PROGRESS" ? (p as HTMLProgressElement).max : Number(p.getAttribute("aria-valuemax") || 100);
-        if (Number.isFinite(now) && Number.isFinite(max) && max > 0 && now < max) return `progress ${now} of ${max}`;
-      }
+      const txt = (e: Element | null | undefined) => (e?.textContent ?? "").replace(/\s+/g, " ").trim();
       const el = node as HTMLButtonElement;
+      const form: HTMLFormElement | null = el.form ?? el.closest("form");
+
+      // The active form: its <form>, else the smallest box around the control holding a visible question of no other form.
+      let box: Element | null = form;
+      if (!box) for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+        if (Array.from(a.querySelectorAll(FIELD)).some((f) => vis(f) && !f.closest("form"))) { box = a; break; }
+      }
+      if (!box) box = el.parentElement ?? el;
+      const active = box;
+      // Its main content: <main> around it, else the largest box around it holding no other visible questions.
+      let region: Element = active.closest("main, [role=main]") ?? active;
+      if (region === active) for (let a = active.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+        if (Array.from(a.querySelectorAll(FIELD)).some((f) => vis(f) && !active.contains(f))) break;
+        region = a;
+      }
+      const OFF = "aside, [role=complementary], [role=banner], [role=contentinfo], [role=navigation]:not([aria-label*=step i]):not([aria-label*=progress i]), dialog, [role=dialog], [role=alertdialog], [aria-modal=true], [id*=cookie i], [class*=cookie i], [data-ff-side-login]";
+      const foreign = (e: Element) => {
+        const off = e.closest(OFF);
+        if (off && !off.contains(active)) return true;
+        const hf = e.closest("header, footer");
+        if (hf && !hf.contains(active) && !hf.parentElement?.closest("main, [role=main], article, section, form")) return true;
+        const f = e.closest("form");
+        return !!f && f !== form;
+      };
+
+      const steps: { n: number; total: number }[] = [];
+      for (const cur of Array.from(region.querySelectorAll('[aria-current="step"]'))) {
+        const li = cur.closest("li");
+        if (!li?.parentElement || foreign(cur) || !vis(li)) continue;
+        const items = Array.from(li.parentElement.children).filter((x) => x.tagName === "LI" && vis(x));
+        if (items.length >= 2) steps.push({ n: items.indexOf(li) + 1, total: items.length });
+      }
+      for (const t of Array.from(region.querySelectorAll("*"))) {
+        const s = txt(t);
+        if (s.length > 120 || /^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(t.tagName) || !STEP.test(s)) continue;
+        if (Array.from(t.children).some((c) => STEP.test(txt(c))) || foreign(t) || !vis(t)) continue; // the innermost element only
+        const m = s.match(STEP);
+        if (m && +m[2] >= 2 && +m[1] >= 1 && +m[1] <= +m[2]) steps.push({ n: +m[1], total: +m[2] });
+      }
+      const bars: number[] = [];
+      for (const p of Array.from(region.querySelectorAll("progress, [role=progressbar]"))) {
+        if (foreign(p) || !vis(p)) continue;
+        const isP = p.tagName === "PROGRESS";
+        if (isP ? !p.hasAttribute("value") : p.getAttribute("aria-valuenow") === null) continue; // a spinner: no value
+        const now = isP ? (p as HTMLProgressElement).value : Number(p.getAttribute("aria-valuenow"));
+        const max = isP ? (p as HTMLProgressElement).max : Number(p.getAttribute("aria-valuemax") || 100);
+        const min = isP ? 0 : Number(p.getAttribute("aria-valuemin") || 0);
+        if (!Number.isFinite(now) || !Number.isFinite(max) || !Number.isFinite(min) || max <= min) continue;
+        const by = (p.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((i) => txt(document.getElementById(i))).join(" ");
+        const near = txt(p.parentElement);
+        const name = [p.getAttribute("aria-label"), by, p.getAttribute("aria-valuetext"), p.getAttribute("title"), p.id, p.className.toString(), ...Array.from((p as HTMLProgressElement).labels ?? []).map(txt), near.length <= 200 ? near : ""].join(" ");
+        if (UNRELATED.test(name)) continue;
+        if (!active.contains(p) && !STEPISH.test(name)) continue; // outside the form: only a bar that says it counts the form's steps
+        bars.push((now - min) / (max - min));
+      }
+
+      // The form says this is its last step: no evidence. Signals that disagree: unsure, so no evidence.
+      if (steps.some((s) => s.n >= s.total) || bars.some((b) => b >= 0.999)) return null;
+      const started = bars.filter((b) => b > 0);
+      if (steps.length && started.some((b) => steps.some((s) => b < (s.n - 1) / s.total - 0.2 || b > s.n / s.total + 0.2))) return null;
+      if (steps.length) return `step ${steps[0].n} of ${steps[0].total} of this form`;
+      if (started.length) return `this form's progress bar at ${Math.round(started[0] * 100)}%`;
+
       const t = (el.getAttribute("type") || "").toLowerCase();
-      const form = el.form ?? el.closest("form");
       const submits = !!form && ((el.tagName === "INPUT" && (t === "submit" || t === "image")) || (el.tagName === "BUTTON" && (t === "" || t === "submit")));
       if (submits) return null; // a submit button sends everything in its form: hidden questions are no evidence
-      const scope = form ?? el.closest("main") ?? document.body;
-      const hidden = Array.from(scope.querySelectorAll("input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea")).filter((f) => !vis(f) && !(f as HTMLInputElement).disabled && !((f as HTMLInputElement).labels?.[0] && vis((f as HTMLInputElement).labels![0])));
+      const hidden = Array.from(active.querySelectorAll(FIELD)).filter((f) => !foreign(f) && !vis(f) && !(f as HTMLInputElement).disabled && !((f as HTMLInputElement).labels?.[0] && vis((f as HTMLInputElement).labels![0])));
       return hidden.length >= 1 ? `${hidden.length} more question(s) of this form wait hidden on the page` : null;
-    })
+    }, { stepSrc: STEPPER_RE.source })
     .catch(() => null);
 }
 
-/** After filling, buttons can change (a conditional question reveals a new step). Re-find the forward button by label, or ask again. */
+/**
+ * The final/not-final verdict, recomputed from the LIVE page immediately before a forward click on a form page (one that
+ * holds the patient's answers): never a verdict from before the page was filled, since a conditional answer can remove
+ * the later steps while "Continue" stays. Re-finds the control (ids change on every observe), then: a label that sends
+ * is final; a plain link carries no answers; otherwise final unless laterStepEvidence finds a later step now.
+ */
+export async function liveForwardVerdict(page: Page, f: { label: string; kind: El["kind"] }): Promise<{ ok: true; fwd: Fwd; why: string } | { ok: false; fwd?: Fwd; final: string }> {
+  const obs = await observe(page);
+  const el = obs.elements.find((e) => e.label.trim() === f.label.trim() && e.kind === f.kind && !e.disabled);
+  if (!el) return { ok: false, final: `"${short(f.label, 30)}" is no longer on the page as it was` };
+  const fwd: Fwd = { id: el.id, label: el.label.trim(), kind: el.kind };
+  const loc = page.locator(`[data-aid="${el.id}"]`);
+  const live = ((await loc.innerText({ timeout: 2000 }).catch(() => "")) || (await loc.getAttribute("value").catch(() => "")) || fwd.label).trim();
+  if (FINAL_RE.test(fwd.label) || FINAL_RE.test(live)) return { ok: false, fwd, final: `its label "${short(live || fwd.label, 30)}" sends` };
+  const href = el.kind === "link" ? await loc.getAttribute("href").catch(() => null) : null;
+  if (href && !/^\s*(javascript:|#)/i.test(href)) return { ok: true, fwd, why: "a plain link: it carries no answers" };
+  const later = await laterStepEvidence(page, el.id);
+  if (!later) return { ok: false, fwd, final: `"${short(fwd.label, 30)}" may send this form: on the page as filled, nothing of this form shows a later step` };
+  return { ok: true, fwd, why: later };
+}
+
+/**
+ * After filling, buttons can change (a conditional question reveals or removes a step). A changed button: classify
+ * again. The same button: its verdict is recomputed on the live page (a pre-fill "not final" is never reused).
+ */
 async function refreshForward(page: Page, obs: Observation, view: View, goal: string, values: Value[], options: Set<string>, scan: Scan): Promise<View> {
   const same = view.forward && obs.elements.find((e) => e.label.trim() === view.forward!.label && e.kind === view.forward!.kind && !e.disabled);
-  if (same) return { ...view, forward: { id: same.id, label: view.forward!.label, kind: same.kind } };
-  return classify(page, obs, goal, values, options, scan);
+  if (!same) return classify(page, obs, goal, values, options, scan);
+  const fwd: Fwd = { id: same.id, label: view.forward!.label, kind: same.kind };
+  if (view.final) return { ...view, forward: fwd };
+  const live = await liveForwardVerdict(page, fwd);
+  if (!live.ok) return { ...view, forward: live.fwd ?? fwd, final: true, finalWhy: live.final, why: [...view.why, `after filling: ${live.final}`] };
+  return { ...view, forward: live.fwd, why: [...view.why, `after filling, later step: ${live.why}`] };
 }
 
 /* ------------------------------------------------------------------ small helpers */
