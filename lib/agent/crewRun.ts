@@ -108,7 +108,7 @@ export type CrewFlow<R> = {
   /** Tools nothing else waits for: they start at once and the planner's next turn does not wait for them, so a slow one (Iona's reading) overlaps the whole chain. The planner is told they are under way; their reports still appear as they finish. */
   background?: string[];
   /** Tools that need the background work finished first (they wait for it): e.g. the enquiry message uses what Iona found. `finish` always waits. */
-  afterBackground?: string[] | Record<string, string[]>;
+  afterBackground?: string[] | Record<string, string[]>; // as a record, "finish" lists what the end waits for (default: all background work)
   /** Calls with the same lane run one after another, different lanes at the same time (default: one lane per crew member). Lets a member work on several firms at once, each in its own tab. */
   lane?: (name: string, args: Record<string, unknown>) => string;
   /** Did this result count as a failure? (default: text starts with Error / Could not / Blocked) */
@@ -142,6 +142,11 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   const tabs = limiter(flow.tabLimit ?? 4);
   const pendingBg: Promise<unknown>[] = [];
   const pendingByTool = new Map<string, Promise<unknown>[]>(); // background work by tool name, so a call waits only for what it needs
+  /** What the end of the run waits for: the tools listed for "finish", or all background work. A bonus job (a slow register) is not waited for. */
+  const finishWaits = () => {
+    const ab = flow.afterBackground;
+    return ab && !Array.isArray(ab) && ab.finish ? ab.finish.flatMap((t) => pendingByTool.get(t) ?? []) : pendingBg;
+  };
   const laneTail = new Map<string, Promise<unknown>>(); // background lanes keep their order across turns
   const bgResults: string[] = []; // what finished in the background, not yet shown to the planner
   waiting.set(runId, new Map());
@@ -321,7 +326,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         const closing = inStage.some((c) => c.name === "finish");
         // What this stage must wait for: everything before finish; otherwise only the background tools its calls depend on.
         const ab = flow.afterBackground;
-        if (closing) await Promise.allSettled(pendingBg);
+        if (closing) await Promise.allSettled(finishWaits());
         else if (Array.isArray(ab)) {
           if (inStage.some((c) => ab.includes(c.name))) await Promise.allSettled(pendingBg);
         } else if (ab) {
@@ -421,7 +426,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       const withLate = late.length ? [...outputs, { role: "user" as const, content: `Background work finished:\n${late.join("\n")}` }] : outputs;
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : withLate;
     }
-    await Promise.allSettled(pendingBg);
+    await Promise.allSettled(finishWaits());
     const result = await flow.finish(kit, { plan, thoughts, says, turns: turns - 1, asks });
     const alive = kept.filter((p) => !p.isClosed());
     if (opts.keepOpen && alive.length) {

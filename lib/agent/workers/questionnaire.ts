@@ -160,6 +160,9 @@ continueId: the button or link that moves the checker on (start, next, continue,
 result: only when the checker's outcome is on the page. Copy its words exactly from PAGE TEXT, with the caveats next to it.`,
       input: `${hint}GOAL: ${opts.goal}\nKNOWN VALUES (key: description):\n${[...known.values()].map((v) => `- ${v.key}: ${v.description}`).join("\n") || "(none)"}\n\nCURRENT PAGE:\n${formatSnapshot(snap, { text: 3500, only: (e) => !e.chrome })}`,
     });
+    // A free-text box that asks for an amount (income, outgoings, savings, capital) is a money question: asked as one, so the
+    // patient gets the money input and the answer is typed as a number (seen 2026-11-08: SLAB's "Your net annual income" came as text).
+    for (const q of read.questions) if (q.answerType === "text" && /\b(income|outgoings?|earnings?|salary|wages?|savings|capital|rent|mortgage|benefits? amount|how much|amount)\b|£|€|\$/i.test(q.question)) q.answerType = "money";
     await log("decide", read.reasoning.slice(0, 200), { detail: read.questions.map((q) => `${q.question} [${q.answerType}]${q.knownKey ? ` <- known "${q.knownKey}"` : ""}`).join("\n") || undefined });
 
     // Identity, contact details or login: stop. The checker's result, if already shown, still counts.

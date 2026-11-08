@@ -95,7 +95,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
       // The register can be slow (a real search form, page after page): it runs in the background too, and the firms found by
       // search are checked meanwhile. Each later step waits only for what it needs.
       background: ["check_funding", "find_guidance", "investigate", "search_register"],
-      afterBackground: { shortlist: ["check_funding"], fill_enquiry: ["check_funding", "find_guidance"] }, // the register is a bonus: its firms count if they arrive in time
+      afterBackground: { shortlist: ["check_funding"], fill_enquiry: ["check_funding", "find_guidance"], finish: ["check_funding", "find_guidance", "investigate"] }, // the register is a bonus: its firms count if they arrive in time
       lane: (name, a) => (name === "check_firm" || name === "fill_enquiry" ? `${name === "check_firm" ? "robin" : "kit"}:${String(a.firm_id ?? "")}` : name === "find_guidance" || name === "investigate" ? `iona:${name}` : name === "read_scheme" ? "robin:scheme" : name === "find_firms" ? "robin:find" : `crew:${name === "check_funding" ? "nell" : name === "update_plan" || name === "shortlist" || name === "ask_user" || name === "finish" ? "elliot" : name === "read_scheme" || name === "search_register" || name === "web_search" ? "robin" : name}`),
       firstInput: `Patient: (name withheld from the planner), ${route.place.city || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,

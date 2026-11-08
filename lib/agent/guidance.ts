@@ -119,7 +119,8 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   const where = [route.place.region, route.place.country].filter(Boolean).join(", ");
   const setting = route.place.careSetting === "unknown" ? "not stated" : route.place.careSetting;
   // A PDF can come out with broken spacing ("f or first -line"): such quotes are not shown to the patient; look for a clean page.
-  const clean = (q: { quote: string; checked: boolean }) => q.checked && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25;
+  // A recommendation is a sentence: a heading or a menu item ("Subacute urgent Orthopaedics.") is not one, so quotes under six words are left out.
+  const clean = (q: { quote: string; checked: boolean }) => q.checked && q.quote.trim().split(/\s+/).length >= 6 && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25;
   const hostOf = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
   /** Who published a page: the guidance body when it is on the body's own site, otherwise the site it is on (never the body by default; a page title is not a publisher). */
   const publisherOf = (url: string, title: string) => (g?.body && hostOf(url) && hostOf(start) && (hostOf(url) === hostOf(start) || hostOf(url).endsWith(`.${hostOf(start)}`)) ? g.body : hostOf(url) || title);

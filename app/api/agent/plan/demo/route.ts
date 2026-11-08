@@ -13,7 +13,8 @@ export async function GET(req: Request) {
   const place = params.get("place")?.toLowerCase() ?? null;
   const root = path.join(process.cwd(), "demo");
   try {
-    const runs = (await readdir(root)).filter((d) => new RegExp(`^${flow}-[0-9T-]+Z?$`).test(d)).sort();
+    // Run folders end with the time, and newer ones with a short random tail ("-x1y2") so runs started together never share a folder.
+    const runs = (await readdir(root)).filter((d) => new RegExp(`^${flow}-[0-9T-]+Z?(-[a-z0-9]{4})?$`).test(d)).sort();
     const placeOf = async (d: string) => {
       try {
         return String(JSON.parse(await readFile(path.join(root, d, "meta.json"), "utf8")).place ?? "").toLowerCase();
