@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Button, cx } from "./ui";
 import { handoffHost } from "../lib/agent/handoffCopy";
 import { CREW, type CrewId } from "../lib/agent/plannerTypes";
+import { KEPT, summarize, type Summary, type TraceLite } from "./browserInfo";
 
 /**
  * Right-hand panel that shows the agent's browser live (D32). Mounted once in app/layout.tsx.
@@ -29,6 +30,7 @@ type LiveMsg =
 type Mode = "hidden" | "live" | "ended";
 type HandoffAsk = { id: string; runId?: string; tab: string; url: string; crew: CrewId; why: string; demo?: boolean };
 const SINGLE = "_single"; // frames from a server that does not tag pages
+
 
 /** How long the "browser has closed" notice stays before the panel closes itself. */
 const CLOSE_AFTER_MS = 2000;
@@ -155,6 +157,21 @@ export default function LiveView() {
     pagesRef.current = pages;
   }, [pages]);
 
+  // Browsers stay on screen after their run (the last picture of each), and the next run adds to them.
+  const kept = useRef<LivePage[]>([]);
+  const runNo = useRef(0);
+  const traceRef = useRef<TraceLite[]>([]);
+  const snaps = useRef(new Map<string, Summary>());
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const on = (e: Event) => {
+      traceRef.current = (e as CustomEvent<TraceLite[]>).detail ?? [];
+      bump((n) => n + 1);
+    };
+    window.addEventListener("live-trace", on);
+    return () => window.removeEventListener("live-trace", on);
+  }, []);
+
   useEffect(() => {
     const es = new EventSource("/api/live");
     es.onmessage = (ev) => {
@@ -186,13 +203,14 @@ export default function LiveView() {
         }
       } else if (msg.type === "pages") {
         if (msg.pages.length > 0) clearTimeout(closeTimer.current);
-        setPages(msg.pages);
+        const all = kept.current.length ? [...kept.current, ...msg.pages] : msg.pages;
+        setPages(all);
         if (msg.pages.length > 0) {
           singleRef.current = msg.pages[msg.pages.length - 1].pageId;
           setSingleId(singleRef.current);
         }
         // A focused tab that went away: back to the grid.
-        setFocused((f) => (f && !msg.pages.some((p) => p.pageId === f) ? null : f));
+        setFocused((f) => (f && !all.some((p) => p.pageId === f) ? null : f));
         if (msg.pages.length > 0 && modeRef.current !== "live") {
           modeRef.current = "live";
           setMode("live");
@@ -200,6 +218,24 @@ export default function LiveView() {
       } else if (msg.type === "stats") {
         setStats(msg.stats);
       } else if (msg.type === "end") {
+        if (modeRef.current === "live" && document.getElementById("live-slot")) {
+          // Inline: the browsers are gone, their last pictures stay, and the next run adds more.
+          const n = ++runNo.current;
+          const fresh = pagesRef.current
+            .filter((p) => !p.pageId.startsWith(KEPT))
+            .map((p) => {
+              const id = `${KEPT}${n}-${p.pageId}`;
+              for (const m of [srcs.current, sizes.current, urls.current] as Map<string, unknown>[]) if (m.has(p.pageId)) m.set(id, m.get(p.pageId));
+              snaps.current.set(id, summarize(traceRef.current, p.label));
+              return { ...p, pageId: id, state: p.state === "failed" ? ("failed" as const) : ("done" as const) };
+            });
+          kept.current = [...kept.current, ...fresh];
+          setPages(kept.current);
+          modeRef.current = "ended";
+          setMode("ended");
+          setControl(false);
+          return;
+        }
         if (modeRef.current === "live") {
           modeRef.current = "ended";
           setMode("ended");
@@ -277,8 +313,8 @@ export default function LiveView() {
 
   const focus = useCallback((pageId: string | null, take = false) => {
     setFocused(pageId);
-    setControl(take);
-    void send({ type: "focus", pageId });
+    setControl(take && !pageId?.startsWith(KEPT));
+    if (!pageId?.startsWith(KEPT)) void send({ type: "focus", pageId }); // a kept browser is only a picture
     if (take) img.current?.focus();
   }, []);
 
@@ -365,6 +401,21 @@ export default function LiveView() {
     if (!page) return;
     if (focused !== page.pageId || !control) focus(page.pageId, true);
   }, [askOpen, ask, pages, focused, control, focus]);
+
+  // A kept browser has no live frames: show its last picture when it is opened.
+  useEffect(() => {
+    if (!focused?.startsWith(KEPT)) return;
+    const src = srcs.current.get(focused);
+    const t = setTimeout(() => {
+      if (!src) return;
+      lastSrc.current = src;
+      if (img.current) img.current.src = src;
+      const sz = sizes.current.get(focused);
+      if (sz) size.current = sz;
+      setUrl(urls.current.get(focused) ?? "");
+    }, 0);
+    return () => clearTimeout(t);
+  }, [focused]);
 
   // Make room on the right so the panel does not cover the page.
   const docked = !slot && mode !== "hidden" && open && width > 0;
@@ -556,6 +607,8 @@ export default function LiveView() {
     const page = pages.find((p) => p.pageId === focused);
     const who = page ? crewId(page.label) : null;
     const size = inlineSize();
+    const isKept = !!page?.pageId.startsWith(KEPT);
+    const info = page ? (isKept ? snaps.current.get(page.pageId) : summarize(traceRef.current, page.label)) : undefined;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-label={page?.label ?? "Browser"}>
         <button aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={() => focus(null)} />
@@ -569,13 +622,32 @@ export default function LiveView() {
               <div className="text-[15px] font-medium text-ink">{page?.label.replace(" · ", ": ") ?? "Browser"}</div>
               {url && url !== "about:blank" && <div className="text-[12px] text-muted">{crumbs(url)}</div>}
             </div>
-            <Button variant={control ? "primary" : "secondary"} size="sm" onClick={takeControl}>
-              {control ? "Stop controlling" : "Take control"}
-            </Button>
+            {!isKept && (
+              <Button variant={control ? "primary" : "secondary"} size="sm" onClick={takeControl}>
+                {control ? "Stop controlling" : "Take control"}
+              </Button>
+            )}
             <Button variant="secondary" size="sm" onClick={() => focus(null)}>
               Close
             </Button>
           </div>
+          {info && (
+            <div data-testid="browser-info" className="rounded-ctl bg-subtle px-4 py-3 text-[13px] leading-5 text-ink-2">
+              <p className="font-medium text-ink">
+                {info.entered.length ? `Entered ${info.entered.length} answer${info.entered.length === 1 ? "" : "s"} for you` : "Read pages for you, nothing to enter"}
+                <span className="font-normal text-muted"> · opened {info.pages} page{info.pages === 1 ? "" : "s"} · {info.clicks} click{info.clicks === 1 ? "" : "s"}</span>
+              </p>
+              {info.entered.length > 0 && (
+                <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-muted">
+                  {info.entered.slice(0, 12).map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                  {info.entered.length > 12 && <li>and {info.entered.length - 12} more</li>}
+                </ul>
+              )}
+              <p className="mt-1.5 text-[12px] text-muted">By hand, that is every page opened, every form found and every answer typed yourself. The browser did it.</p>
+            </div>
+          )}
           <div className="flex" style={{ width: size.width, height: size.height }}>
             {bigView()}
           </div>
@@ -657,7 +729,7 @@ export default function LiveView() {
             <Tile
               key={p.pageId}
               page={p}
-              ended={mode === "ended"}
+              ended={false}
               needsYou={needs}
               onImg={(el) => {
                 if (el) {

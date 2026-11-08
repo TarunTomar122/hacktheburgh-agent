@@ -243,6 +243,11 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsKey, state.runId, state.demo]);
 
+  // The browsers' info panel (app/LiveView.tsx) summarises what each browser did from the trace.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("live-trace", { detail: state.trace.map((t) => ({ agent: t.agent, kind: t.kind, text: t.text })) }));
+  }, [state.trace]);
+
   // Who is in focus: the crew member in the spotlight; between steps, Elliot deciding what's next.
   const spot = state.spotlight;
   const lastPlan = state.says.findLast((x) => x.kind === "plan");
