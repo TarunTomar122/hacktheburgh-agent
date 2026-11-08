@@ -1,0 +1,307 @@
+{
+ "date": "2026-11-08T00:19:45.463Z",
+ "reps": 3,
+ "judge": "gpt-5.4",
+ "runs": [
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "scotland",
+   "rep": 0,
+   "ms": 7733,
+   "inTok": 838,
+   "outTok": 210,
+   "calls": 1,
+   "output": {
+    "details": "On early July 2026, I fell on my outstretched hand and attended the Royal Infirmary of Edinburgh, Accident & Emergency department. I was X-rayed and told it was a sprain, and I was sent home. The pain did not go away. On mid August 2026, I returned to my GP, who sent me back for a second X-ray, which showed a scaphoid fracture. By November 2026, the fracture had not healed, and I now need surgery. I have also missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist. I would like an explanation of what went wrong, treatment or support to put things right, and compensation for what happened.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could NHS Lothian please explain how this recommendation was considered in my care?",
+    "location": "Royal Infirmary of Edinburgh, Accident & Emergency department",
+    "outcome": "An explanation of what went wrong, treatment or support to put things right and compensation for what happened."
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Mostly clean, but the chronology is slightly out of order and the guideline question asks how it was 'considered' rather than how it was 'followed'."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "scotland",
+   "rep": 1,
+   "ms": 5520,
+   "inTok": 838,
+   "outTok": 188,
+   "calls": 1,
+   "output": {
+    "details": "On early July 2026, I fell on my outstretched hand and attended the Royal Infirmary of Edinburgh, Accident & Emergency department. I was X-rayed and told it was a sprain, and I was sent home. The pain did not go away, and by mid August 2026, I had continued pain and was sent back by my GP for a second X-ray, which showed a scaphoid fracture. By November 2026, the fracture had not healed, and I now need surgery. I have also missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could NHS Lothian please explain how this recommendation was considered in my care?",
+    "location": "Royal Infirmary of Edinburgh, Accident & Emergency department",
+    "outcome": "An explanation of what went wrong, treatment or support to put things right and compensation for what happened."
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Mostly clean, but the chronology is slightly out of order and it is not fully presented as a complaint body to NHS Lothian."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "scotland",
+   "rep": 2,
+   "ms": 5271,
+   "inTok": 838,
+   "outTok": 188,
+   "calls": 1,
+   "output": {
+    "details": "On early July 2026, I fell on my outstretched hand and attended the Royal Infirmary of Edinburgh, Accident & Emergency department. I was X-rayed and told it was a sprain, and I was sent home. The pain did not go away, and by mid August 2026, I had continued pain and was sent back by my GP for a second X-ray, which showed a scaphoid fracture. By November 2026, the fracture had not healed, and I now need surgery. I have also missed my second-year exams and had to stop shifts at my part-time job because I cannot use my wrist.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could NHS Lothian please explain how this recommendation was considered in my care?",
+    "location": "Royal Infirmary of Edinburgh, Accident & Emergency department",
+    "outcome": "An explanation of what went wrong, treatment or support to put things right and compensation for what happened."
+   },
+   "judge": {
+    "factual": 1,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Misses the October 2026 date and puts the exams/job impact out of chronological order; otherwise clean."
+   },
+   "score": 7.5
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "england",
+   "rep": 0,
+   "ms": 7733,
+   "inTok": 794,
+   "outTok": 165,
+   "calls": 1,
+   "output": {
+    "details": "On early July 2026, I fell on my outstretched hand and visited the Emergency Department at St Thomas' Hospital, London. A X-ray of my wrist was performed, and the staff concluded it was a sprain, with no follow-up provided. The pain continued, and on mid August 2026, my GP referred me back for further assessment. Repeat imaging showed a scaphoid fracture. By November 2026, the fracture had not healed, and I now require surgery. I have missed my resit exams and weeks of shifts as a result.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Guy's and St Thomas' NHS Foundation Trust please explain how this recommendation was considered in my care?",
+    "location": "Emergency Department, St Thomas' Hospital, London",
+    "outcome": "An explanation, an apology, and to know whether I can claim compensation"
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Mostly clean, but it only partly matches the requested complaint-body format and asks how the recommendation was considered rather than how it was followed."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "england",
+   "rep": 1,
+   "ms": 5078,
+   "inTok": 794,
+   "outTok": 165,
+   "calls": 1,
+   "output": {
+    "details": "On early July 2026, I fell on my outstretched hand and visited the Emergency Department at St Thomas' Hospital, London. A X-ray of my wrist was performed, and the staff concluded it was a sprain, with no follow-up provided. The pain continued, and on mid August 2026, my GP referred me back for further assessment. Repeat imaging showed a scaphoid fracture. By November 2026, the fracture had not healed, and I now require surgery. I have missed my resit exams and weeks of shifts as a result.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Guy's and St Thomas' NHS Foundation Trust please explain how this recommendation was considered in my care?",
+    "location": "Emergency Department, St Thomas' Hospital, London",
+    "outcome": "An explanation, an apology, and to know whether I can claim compensation"
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Mostly clean, but the desired outcome is only in a separate field rather than clearly included in the complaint body itself."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "england",
+   "rep": 2,
+   "ms": 5160,
+   "inTok": 794,
+   "outTok": 165,
+   "calls": 1,
+   "output": {
+    "details": "On early July 2026, I fell on my outstretched hand and visited the Emergency Department at St Thomas' Hospital, London. A X-ray of my wrist was performed, and the staff concluded it was a sprain, with no follow-up provided. The pain continued, and on mid August 2026, my GP referred me back for further assessment. Repeat imaging showed a scaphoid fracture. By November 2026, the fracture had not healed, and I now require surgery. I have missed my resit exams and weeks of shifts as a result.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Guy's and St Thomas' NHS Foundation Trust please explain how this recommendation was considered in my care?",
+    "location": "Emergency Department, St Thomas' Hospital, London",
+    "outcome": "An explanation, an apology, and to know whether I can claim compensation"
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Main weakness: returned JSON fields rather than just the complaint body, and the desired outcome was not worked into the body text."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "wales",
+   "rep": 0,
+   "ms": 9076,
+   "inTok": 843,
+   "outTok": 226,
+   "calls": 1,
+   "output": {
+    "details": "On 2026-09-12, I fell on my outstretched right hand at the Emergency Unit, University Hospital of Wales, Heath Park, Cardiff. I was X-rayed, and the wrist was diagnosed as a sprain. I was sent home with a bandage and no follow-up. The pain did not go away. On 2026-10-19, my GP sent me for a repeat X-ray and MRI. On 2026-10-26, the MRI showed a displaced scaphoid waist fracture that has not healed, and surgery is now planned. I have missed class tests and weeks of shifts at my café job. I am seeking an explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Cardiff and Vale University Health Board please explain how this recommendation was considered in my care?",
+    "location": "Emergency Unit, University Hospital of Wales, Heath Park, Cardiff",
+    "outcome": "An explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings"
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Main issue: it wraps the complaint in a JSON structure instead of providing just the complaint body."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "wales",
+   "rep": 1,
+   "ms": 6882,
+   "inTok": 843,
+   "outTok": 206,
+   "calls": 1,
+   "output": {
+    "details": "On 2026-09-12, I slipped on wet steps and fell on my outstretched right hand. I was taken to the Emergency Unit at University Hospital of Wales, where an X-ray was performed on my wrist. The staff diagnosed it as a sprain and sent me home with a bandage and no follow-up. The pain did not go away. On 2026-10-19, my GP sent me for a repeat X-ray and MRI. On 2026-10-26, the MRI showed a displaced scaphoid waist fracture that has not healed, and I now need surgery. I have missed class tests and weeks of shifts at my café job.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Cardiff and Vale University Health Board please explain how this recommendation was considered in my care?",
+    "location": "Emergency Unit, University Hospital of Wales, Heath Park, Cardiff",
+    "outcome": "An explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings"
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Content is clean, but it is given as JSON rather than just the complaint body requested."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "wales",
+   "rep": 2,
+   "ms": 7271,
+   "inTok": 843,
+   "outTok": 226,
+   "calls": 1,
+   "output": {
+    "details": "On 2026-09-12, I fell on my outstretched right hand at the Emergency Unit, University Hospital of Wales, Heath Park, Cardiff. I was X-rayed, and the wrist was diagnosed as a sprain. I was sent home with a bandage and no follow-up. The pain did not go away. On 2026-10-19, my GP sent me for a repeat X-ray and MRI. On 2026-10-26, the MRI showed a displaced scaphoid waist fracture that has not healed, and surgery is now planned. I have missed class tests and weeks of shifts at my café job. I am seeking an explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Cardiff and Vale University Health Board please explain how this recommendation was considered in my care?",
+    "location": "Emergency Unit, University Hospital of Wales, Heath Park, Cardiff",
+    "outcome": "An explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings"
+   },
+   "judge": {
+    "factual": 2,
+    "noInvention": 2,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Correct facts and wording, but it is delivered as JSON fields rather than just the complaint body in paragraph form."
+   },
+   "score": 8.75
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "northern-ireland",
+   "rep": 0,
+   "ms": 6756,
+   "inTok": 794,
+   "outTok": 189,
+   "calls": 1,
+   "output": {
+    "details": "On 2026-09-12, I fell on my outstretched right hand at the Emergency Department, Royal Victoria Hospital, Belfast. I was X-rayed and told there was no fracture, just a sprain, and I was sent home with no follow-up. The pain continued. On 2026-10-09, another scan showed a scaphoid fracture that has not healed, and I now need surgery. I have missed coursework and shifts at my café job. I would like an explanation of why I had no MRI or follow-up X-ray, an apology, a learning review, and information on compensation.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Belfast Health and Social Care Trust please explain how this recommendation was considered in my care?",
+    "location": "Emergency Department, Royal Victoria Hospital, Belfast",
+    "outcome": "An explanation of why I had no MRI or follow-up X-ray, an apology, a learning review, and information on compensation"
+   },
+   "judge": {
+    "factual": 1,
+    "noInvention": 1,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Minor inaccuracy/invention: it says the fall happened at the Emergency Department, and it returns JSON instead of just the complaint body."
+   },
+   "score": 6.25
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "northern-ireland",
+   "rep": 1,
+   "ms": 6301,
+   "inTok": 794,
+   "outTok": 189,
+   "calls": 1,
+   "output": {
+    "details": "On 2026-09-12, I fell on my outstretched right hand at the Emergency Department, Royal Victoria Hospital, Belfast. I was X-rayed and told there was no fracture, just a sprain, and I was sent home with no follow-up. The pain continued. On 2026-10-09, another scan showed a scaphoid fracture that has not healed, and I now need surgery. I have missed coursework and shifts at my café job. I would like an explanation of why I had no MRI or follow-up X-ray, an apology, a learning review, and information on compensation.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Belfast Health and Social Care Trust please explain how this recommendation was considered in my care?",
+    "location": "Emergency Department, Royal Victoria Hospital, Belfast",
+    "outcome": "An explanation of why I had no MRI or follow-up X-ray, an apology, a learning review, and information on compensation"
+   },
+   "judge": {
+    "factual": 1,
+    "noInvention": 1,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Main issue: it wrongly places the fall at the Emergency Department and uses JSON fields instead of just the complaint body."
+   },
+   "score": 6.25
+  },
+  {
+   "task": "complaint_draft",
+   "config": "qwen3",
+   "model": "local:qwen3:8b",
+   "where": "local",
+   "caseId": "northern-ireland",
+   "rep": 2,
+   "ms": 6360,
+   "inTok": 794,
+   "outTok": 189,
+   "calls": 1,
+   "output": {
+    "details": "On 2026-09-12, I fell on my outstretched right hand at the Emergency Department, Royal Victoria Hospital, Belfast. I was X-rayed and told there was no fracture, just a sprain, and I was sent home with no follow-up. The pain continued. On 2026-10-09, another scan showed a scaphoid fracture that has not healed, and I now need surgery. I have missed coursework and shifts at my café job. I would like an explanation of why I had no MRI or follow-up X-ray, an apology, a learning review, and information on compensation.\n\nNICE NG38 Fractures (non-complex), recommendation 1.2.3 says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Could Belfast Health and Social Care Trust please explain how this recommendation was considered in my care?",
+    "location": "Emergency Department, Royal Victoria Hospital, Belfast",
+    "outcome": "An explanation of why I had no MRI or follow-up X-ray, an apology, a learning review, and information on compensation"
+   },
+   "judge": {
+    "factual": 1,
+    "noInvention": 1,
+    "noBlame": 2,
+    "followsInstruction": 1,
+    "note": "Mostly compliant, but it adds/overstates that the fall happened at the ED and uses JSON rather than just the complaint body."
+   },
+   "score": 6.25
+  }
+ ]
+}

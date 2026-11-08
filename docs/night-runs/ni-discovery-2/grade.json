@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Correct Trust and form; key timings broadly right but it missed some 2026 MCHP detail."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "Correctly routed to NIPSO, including the current outage of the online form and the 6‑month limit."
+    },
+    {
+      "kind": "compensation",
+      "found": false,
+      "body": "missing",
+      "facts": "missing",
+      "page": "none",
+      "note": "It omitted the clinical-negligence claim route entirely."
+    },
+    {
+      "kind": "funding",
+      "found": false,
+      "body": "missing",
+      "facts": "missing",
+      "page": "none",
+      "note": "It omitted legal aid and the NI-specific point that CFAs/no win no fee are not available."
+    },
+    {
+      "kind": "lawyers",
+      "found": false,
+      "body": "missing",
+      "facts": "missing",
+      "page": "none",
+      "note": "No route for finding a solicitor was given."
+    },
+    {
+      "kind": "guideline",
+      "found": false,
+      "body": "missing",
+      "facts": "missing",
+      "page": "none",
+      "note": "It did not mention NICE NG38 or NI endorsement of the scaphoid guidance."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "form_found",
+      "note": "Good use of the Patient and Client Council as free independent advocacy/support."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Correct SAR route with ID, but it missed the one‑month response time and Belfast’s specific medical records contact details."
+    }
+  ],
+  "score": 4,
+  "smart": "It correctly spotted that NIPSO’s online complaint form is currently unavailable and that escalation should go by email/phone instead.",
+  "worst": "It missed the whole compensation side: clinical negligence claim, 3-year limitation, pre-action protocol, legal aid, and the NI rule that no win no fee/CFAs are not available."
+}

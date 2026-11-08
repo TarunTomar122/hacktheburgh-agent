@@ -118,6 +118,7 @@ Improve the UI at every step, in loops. Each loop: research the best UI patterns
 | Place | Discovery | Complaint form | Ombudsman / regulator | Funding | Lawyers | Enquiries | Notes |
 |---|---|---|---|---|---|---|---|
 | Scotland | (fixed today) | yes | yes | yes | yes | yes | baseline |
+| Ireland (discovery 2, 01:06 run) | 5.0/10 | St James's (no national web form, noted) | Ombudsman | Legal Aid Board + eligibility calculator | Law Society search | — | limitation still 3 years (statute found is the as-enacted text, marked one site only); misses clinical-judgement exclusion |
 | Ireland (discovery 1) | 5.8/10 | St James's (email) | Ombudsman online form | Legal Aid Board | Law Society of Ireland | — | limitation wrong |
 | California (discovery 1) | 7/10 | hospital patient experience (post) | CDPH complaint page | Bay Area Legal Aid; government claim to the City and County | State Bar referral | — | second non-UK place |
 | New Zealand (discovery 1) | 7.3/10 | Health NZ form found | HDC online form | ACC (no-fault, via provider) | NZ Law Society | — | first non-UK place |
@@ -125,6 +126,7 @@ Improve the UI at every step, in loops. Each loop: research the best UI patterns
 | Scotland (generic discovery 2) | 6.5/10 | NHS Lothian form (filled by Kit) | SPSO checker | SLAB + success-fee caps | Law Society of Scotland | — | breadth-first + code checks |
 | Scotland (generic discovery 1) | 5/10 | NHS Lothian form, **filled by Kit (generic)** | SPSO checker | SLAB estimator | not reached | — | out of turns (before breadth-first) |
 | Wales (discovery 2) | 6.2/10 | email route + message (no web form exists) | ombudsman online form reached | legal aid finder + redress | Law Society | — | next: national rules for deadlines |
+| England (discovery 2, 01:06 run) | 6.4/10 | GSTT/trust or ICB (bot wall reported) | Ombudsman 12 months | NHS Resolution; no ordinary legal aid | Law Society (CAPTCHA); missed AvMA | NICE (not the scaphoid page) | deadline now right (12 months); GSTT form still behind bot check |
 | England (discovery 1) | 6.1/10 | GSTT form found, bot check | ombudsman complaint checker reached | GOV.UK checker | Law Society | — | deadline taken from a related trust |
 | Wales (discovery 1) | 5.2/10 | form not reached (email route found) | body right, form behind CAPTCHA | wrong (legal aid) | Law Society found | — | depth fix next: key points per part, medium effort, 45 calls |
 
