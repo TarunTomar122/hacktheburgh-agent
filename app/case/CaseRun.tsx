@@ -12,6 +12,9 @@ import FirmResults from "./FirmResults";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
+import { shapeFromWorkers } from "./runProgress";
+import { useRunProgress } from "./useRunProgress";
+import RunProgressBar from "./RunProgressBar";
 import { placeOf, useDemoAvailable } from "./useDemo";
 import { summarise, type LedgerEntry } from "../../lib/agent/ledgerSummary";
 
@@ -196,6 +199,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
     return () => clearInterval(t);
   }, []);
   const elapsed = state.startedAt ? now - state.startedAt : 0;
+  const pct = useRunProgress(state, shapeFromWorkers(kit.workers));
   // A screen that picked up a run that went on while it was away says so, briefly.
   const back = useFresh(state.reconnectedAt ?? null, 4000);
 
@@ -237,7 +241,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
       {/* The one thing to look at: who is working, on what, and their browser. A question appears right here. */}
       <section className="relative overflow-hidden rounded-card border border-line bg-white">
         {back !== null && <span className="rise absolute right-6 top-1.5 text-[11px] text-muted">Reconnected, picking up where the crew is</span>}
-        <div className="flex items-start gap-5 border-b border-line-soft px-6 py-5">
+        <div className="relative flex items-start gap-5 border-b border-line-soft px-6 py-5">
           <CrewMark id={focusCrew} size={64} />
           <div className="min-w-0 flex-1">
             <p className={cx("text-[12px]", replanned !== null && !question ? "font-medium text-amber" : "text-muted")}>
@@ -248,12 +252,17 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
             </h1>
           </div>
           <div className="shrink-0 pt-0.5 text-right text-[13px] text-ink-2">
+            <span className="font-medium tabular-nums text-ink" title="An estimate, from what the crew has finished so far">
+              {pct}%
+            </span>
+            <span className="mx-2 text-fade">·</span>
             <span className="tabular-nums">{mmss(elapsed)}</span>
             <span className="mx-2 text-fade">·</span>
             <button className="text-brand hover:underline" onClick={() => setDrawer("all")}>
               Plan and history
             </button>
           </div>
+          <RunProgressBar pct={pct} />
         </div>
         {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} currency={currency} />}
       </section>
