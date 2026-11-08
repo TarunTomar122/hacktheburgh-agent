@@ -77,6 +77,10 @@ const withoutWho = (t: (typeof TOOLS)[number]) => {
 };
 const WORK_TOOLS = ["web_search", "read_page", "record_step"];
 
+const Takeaways = z.object({
+  items: z.array(z.object({ kind: z.enum(ROUTE_KINDS.map((k) => k.kind) as [RouteKind, ...RouteKind[]]), headline: z.string(), why: z.string(), inferred: z.boolean() })),
+});
+
 const AutoStep = z.object({
   record: z.boolean(),
   kind: z.enum(ROUTE_KINDS.map((k) => k.kind) as [RouteKind, ...RouteKind[]]),
@@ -226,6 +230,33 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
     return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || (searchBudgetUsed(kit.track) ? "Search limit reached for this run: do not search again. Read pages you already found, follow their links." : "No results.");
   };
 
+  /** At the end: the small model says, for each part with checked quotes, what it means for the patient and why; code vets every number in it. */
+  const explain = async (kit: CrewKit) => {
+    const have = [...steps.values()].filter((s) => s.confidence !== "unconfirmed" && s.sources.some((x) => x.checked));
+    if (!have.length) return;
+    try {
+      const out = await structured({
+        model: MODELS.browser,
+        effort: "low",
+        name: "route_takeaways",
+        instructions: `You tell a patient what each part of their route means for them, in plain words, from the checked quotes only. For each part: "headline" is at most 14 words, in the second person, saying what it means for them (e.g. "Complain to the health board first, within 12 months"); "why" is at most 30 words: the reason, taken from the quotes. Use a number only if it is in a quote. Set "inferred" true if the headline is a conclusion drawn from what a page lists or leaves out (for example "this is probably not covered" because the page lists only other cases), and false if a quote states it outright. Say what the sources say, no more. No jargon, no advice beyond the quotes.`,
+        input: have.map((s) => `PART ${s.kind} (${labelOf(s.kind)}), body: ${s.body}
+Summary: ${s.what}
+Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf(x.url)})`).join("\n")}`).join("\n\n"),
+        schema: Takeaways,
+      });
+      for (const it of out.items) {
+        const s = steps.get(it.kind);
+        if (!s || !s.sources.some((x) => x.checked) || !it.headline.trim()) continue;
+        const evQ: EvidenceQuote[] = s.sources.map((x) => ({ quote: x.quote, checked: x.checked, official: x.official && !isEnactedUrl(x.url) }));
+        const vet = (t: string) => scrubUnbacked(t, checkClaimNumbers(t, evQ));
+        s.takeaway = { headline: vet(it.headline.trim()), why: vet(it.why.trim()), inferred: !!it.inferred };
+      }
+      publish(kit);
+    } catch {
+      /* the cards fall back to their own sentences */
+    }
+  };
   /** Record one route step (the code checks every quote, number, officialness and form claim). */
   const recordStep = (a: Record<string, unknown>, kit: CrewKit): string => {
     const kind = String(a.kind) as RouteKind;
@@ -390,7 +421,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             return `Unknown tool ${call.name}`;
         }
       },
-      finish: (kit, x) => {
+      finish: async (kit, x) => {
+        await explain(kit);
         const summary = x.says.findLast((s) => s.kind === "done")?.text ?? "";
         route = { ...route, runId: kit.runId, summary, system: [place.region, place.country].filter(Boolean).join(", "), foundAt: new Date().toISOString(), steps: ROUTE_KINDS.map((k) => steps.get(k.kind)).filter((s): s is RouteStep => !!s) };
         const result: DiscoveryResult = { runId: kit.runId, runDir: kit.runDir, route, plan: x.plan, thoughts: x.thoughts, says: x.says, turns: x.turns, asks: x.asks, trace: kit.tracer.steps, stats: kit.track.stats };

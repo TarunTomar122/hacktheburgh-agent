@@ -106,7 +106,7 @@ export type CrewFlow<R> = {
   /** Did this result count as a failure? (default: text starts with Error / Could not / Blocked) */
   failed?: (name: string, out: string) => boolean;
   /** Build and emit the result at the end. */
-  finish: (kit: CrewKit, extra: { plan: PlanStep[]; thoughts: Thought[]; says: Say[]; turns: number; asks: number }) => R;
+  finish: (kit: CrewKit, extra: { plan: PlanStep[]; thoughts: Thought[]; says: Say[]; turns: number; asks: number }) => R | Promise<R>;
 };
 
 export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keepOpen?: boolean; runId?: string } = {}): Promise<R> {
@@ -359,7 +359,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       }
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
     }
-    const result = flow.finish(kit, { plan, thoughts, says, turns: turns - 1, asks });
+    const result = await flow.finish(kit, { plan, thoughts, says, turns: turns - 1, asks });
     const alive = kept.filter((p) => !p.isClosed());
     if (opts.keepOpen && alive.length) {
       reviewing = true;

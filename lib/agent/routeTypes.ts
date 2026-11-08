@@ -56,6 +56,9 @@ export type StepEvidence = {
   claims?: { deadline?: number[]; what?: number[]; points?: (number[] | undefined)[] };
 };
 
+/** headline: what it means for you; why: the reason, from the quotes; inferred: a conclusion drawn from what a page lists or leaves out, not something it states. */
+export type Takeaway = { headline: string; why: string; inferred: boolean };
+
 export type RouteStep = {
   kind: RouteKind;
   body: string; // who: "Cardiff and Vale University Health Board"
@@ -75,6 +78,8 @@ export type RouteStep = {
   sources: Source[];
   confidence: "confirmed" | "likely" | "unconfirmed";
   evidence?: StepEvidence; // absent only on routes saved before round 5: use evidenceOf(step)
+  /** What this means for the patient, in plain words, written from the checked quotes at the end of discovery. */
+  takeaway?: Takeaway;
   by: CrewId;
 };
 
@@ -102,4 +107,13 @@ export function evidenceOf(step: Pick<RouteStep, "sources" | "confidence" | "dea
     unchecked: idx((s) => !s.checked),
     officialHosts: [...new Set(official.map((i) => hostOfUrl(step.sources[i].url)))],
   };
+}
+
+/** How far to trust a step, said in words and decided in code: the sources, not the model's mood. */
+export function trustOf(step: Pick<RouteStep, "confidence" | "deadlineCheck" | "takeaway">): { label: "Solid" | "Likely" | "Probably" | "Sources differ" | "Not confirmed"; why: string } {
+  if (step.confidence === "unconfirmed") return { label: "Not confirmed", why: "No official page backed this yet." };
+  if (step.deadlineCheck === "sources_differ") return { label: "Sources differ", why: "Official pages give different time limits." };
+  if (step.takeaway?.inferred) return { label: "Probably", why: "This is what the page implies, not something it says outright." };
+  if (step.confidence === "confirmed") return { label: "Solid", why: "Two official sites say it." };
+  return { label: "Likely", why: "One official site says it." };
 }

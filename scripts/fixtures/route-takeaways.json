@@ -1,0 +1,303 @@
+{
+ "runId": "discovery-2026-11-08T05-04-09-618Z",
+ "place": {
+  "country": "United Kingdom",
+  "region": "Wales",
+  "city": "Cardiff",
+  "hospital": "University Hospital of Wales",
+  "careSetting": "public",
+  "why": "Confirmed by you: Wales, United Kingdom"
+ },
+ "system": "Wales, United Kingdom",
+ "summary": "In Wales, the NHS complaints route is Putting Things Right, usually starting with the service and then the health board or trust complaints team. I could not fully confirm the independent escalation, compensation, guidance, or records routes in this run, so those still need checking from official pages. The funding lead found so far is that legal aid can help some people, but clinical negligence coverage looks very limited and depends on the case.",
+ "steps": [
+  {
+   "kind": "complaint",
+   "body": "In NHS Wales, the complaints process is called Putting Things Right. You should first talk to the staff involved, and if that does not resolve things you can contact the health board or trust\u2019s complaints team. The complaints team should respond within 30 working days, and you can raise a concern or complaint up to 12 months after the event.",
+   "what": "How to complain about NHS care in Wales and the response time.",
+   "deadline": "12 months",
+   "deadlineCheck": "one_site",
+   "how": "unknown",
+   "url": "https://www.gov.wales/nhs-wales-complaints-and-concerns-putting-things-right",
+   "points": [
+    "The process for raising concerns or complaints in NHS Wales is called Putting Things Right.",
+    "The complaints team should respond to you within 30 working days of receiving your concern.",
+    "You can take up to 12 months to raise a concern or complaint."
+   ],
+   "sources": [
+    {
+     "url": "https://www.gov.wales/nhs-wales-complaints-and-concerns-putting-things-right",
+     "quote": "The process for raising concerns or complaints in NHS Wales is called Putting Things Right.",
+     "official": true,
+     "publisher": "GOV.WALES",
+     "checked": true
+    },
+    {
+     "url": "https://www.gov.wales/nhs-wales-complaints-and-concerns-putting-things-right",
+     "quote": "The complaints team should respond to you within 30 working days of receiving your concern.",
+     "official": true,
+     "publisher": "GOV.WALES",
+     "checked": true
+    },
+    {
+     "url": "https://www.gov.wales/nhs-wales-complaints-and-concerns-putting-things-right",
+     "quote": "You can take up to 12 months to raise a concern or complaint.",
+     "official": true,
+     "publisher": "GOV.WALES",
+     "checked": true
+    }
+   ],
+   "confidence": "likely",
+   "by": "robin",
+   "evidence": {
+    "confidence": "likely",
+    "deadlineCheck": "one_site",
+    "official": [
+     0,
+     1,
+     2
+    ],
+    "checkedOnly": [],
+    "unchecked": [],
+    "officialHosts": [
+     "gov.wales"
+    ],
+    "claims": {
+     "deadline": [
+      2
+     ],
+     "what": [],
+     "points": [
+      [],
+      [
+       1
+      ],
+      [
+       2
+      ]
+     ]
+    }
+   },
+   "takeaway": {
+    "headline": "Complain to the health board first, within 12 months",
+    "why": "NHS Wales complaints go through Putting Things Right. The team should reply in 30 working days.",
+    "inferred": false
+   }
+  },
+  {
+   "kind": "funding",
+   "body": "The Law Society says legal aid can help pay for some or all of your legal costs, and you may be able to get it if you\u2019re on a low income and your problem is serious. For clinical negligence, the page only lists legal aid for children with brain injuries caused in pregnancy, childbirth or up to eight weeks postnatal, where the injuries have resulted in severe disability. It also says legal aid can cover assistance at inquests, but not representation unless exceptional case funding is obtained.",
+   "what": "Whether legal aid can help pay legal costs for a clinical negligence claim",
+   "how": "unknown",
+   "url": "https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/help-with-paying-legal-costs",
+   "points": [
+    "Legal aid can help you pay for some or all of your legal costs.",
+    "You may be able to get legal aid if you\u2019re on a low income and your problem is serious.",
+    "Clinical negligence legal aid is listed only for children with brain injuries caused in pregnancy, childbirth or up to eight weeks postnatal, with severe disability.",
+    "Assistance at inquests is covered, but not representation unless exceptional case funding is obtained."
+   ],
+   "sources": [
+    {
+     "url": "https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/help-with-paying-legal-costs",
+     "quote": "Legal aid can help you pay for some or all of your legal costs.",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    },
+    {
+     "url": "https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/help-with-paying-legal-costs",
+     "quote": "You may be able to get legal aid if you\u2019re on a low income and your problem is serious.",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    },
+    {
+     "url": "https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/help-with-paying-legal-costs",
+     "quote": "clinical negligence for children with brain injuries, if the injuries were caused in pregnancy, childbirth or up to eight weeks\u2019 postnatal and have resulted in severe disability",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    },
+    {
+     "url": "https://www.lawsociety.org.uk/public/for-public-visitors/using-a-solicitor/help-with-paying-legal-costs",
+     "quote": "assistance at inquests (but not representation unless exceptional case funding is obtained)",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    }
+   ],
+   "confidence": "likely",
+   "by": "nell",
+   "evidence": {
+    "confidence": "likely",
+    "official": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "checkedOnly": [],
+    "unchecked": [],
+    "officialHosts": [
+     "lawsociety.org.uk"
+    ],
+    "claims": {
+     "what": [],
+     "points": [
+      [],
+      [],
+      [
+       2
+      ],
+      []
+     ]
+    }
+   },
+   "takeaway": {
+    "headline": "Legal aid probably won't pay for your claim",
+    "why": "For clinical negligence the page lists only children with severe brain injuries from birth.",
+    "inferred": true
+   }
+  },
+  {
+   "kind": "lawyers",
+   "body": "The Law Society directs public visitors to its \"Find a solicitor\" service. It also points readers to specialist accreditation pages for \"Clinical Negligence\" and \"Personal Injury\"; its Clinical Negligence Accreditation is described as a recognised quality standard for practitioners representing claimants in clinical negligence matters.",
+   "what": "Where patients can find a solicitor, including specialist clinical negligence and personal injury practitioners.",
+   "how": "unknown",
+   "url": "https://www.lawsociety.org.uk/topics/dispute-resolution",
+   "points": [
+    "The page directs public visitors to \"Find a solicitor\".",
+    "It points to specialist accreditation pages for \"Clinical Negligence\" and \"Personal Injury\".",
+    "Clinical Negligence Accreditation is a recognised quality standard for practitioners representing claimants in clinical negligence matters."
+   ],
+   "sources": [
+    {
+     "url": "https://www.lawsociety.org.uk/topics/dispute-resolution",
+     "quote": "For public visitors",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    },
+    {
+     "url": "https://www.lawsociety.org.uk/topics/dispute-resolution",
+     "quote": "Find a solicitor",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    },
+    {
+     "url": "https://www.lawsociety.org.uk/topics/dispute-resolution",
+     "quote": "Clinical Negligence Accreditation",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    },
+    {
+     "url": "https://www.lawsociety.org.uk/topics/dispute-resolution",
+     "quote": "Our Clinical Negligence Accreditation is a recognised quality standard for practitioners representing claimants in clinical negligence matters.",
+     "official": true,
+     "publisher": "The Law Society",
+     "checked": true
+    }
+   ],
+   "confidence": "unconfirmed",
+   "by": "robin",
+   "evidence": {
+    "confidence": "unconfirmed",
+    "official": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "checkedOnly": [],
+    "unchecked": [],
+    "officialHosts": [
+     "lawsociety.org.uk"
+    ],
+    "claims": {
+     "what": [],
+     "points": [
+      [],
+      [],
+      []
+     ]
+    }
+   }
+  },
+  {
+   "kind": "advice",
+   "body": "Civil Legal Advice (CLA) is a free, confidential legal aid advice service for eligible people in England or Wales. It can help with problems including debt, housing, discrimination and other listed issues.",
+   "what": "Free and confidential legal advice through Civil Legal Advice as part of legal aid",
+   "how": "unknown",
+   "url": "https://www.gov.uk/civil-legal-advice",
+   "points": [
+    "You might be able to get free and confidential advice from Civil Legal Advice (CLA) as part of legal aid if you\u2019re in England or Wales.",
+    "If you\u2019re eligible, you can get help from CLA for problems including:",
+    "debt, if your home is at risk",
+    "discrimination"
+   ],
+   "sources": [
+    {
+     "url": "https://www.gov.uk/civil-legal-advice",
+     "quote": "You might be able to get free and confidential advice from Civil Legal Advice ( CLA ) as part of legal aid if you\u2019re in England or Wales.",
+     "official": true,
+     "publisher": "GOV.UK",
+     "checked": true
+    },
+    {
+     "url": "https://www.gov.uk/civil-legal-advice",
+     "quote": "If you\u2019re eligible, you can get help from CLA for problems including:",
+     "official": true,
+     "publisher": "GOV.UK",
+     "checked": true
+    },
+    {
+     "url": "https://www.gov.uk/civil-legal-advice",
+     "quote": "debt, if your home is at risk",
+     "official": true,
+     "publisher": "GOV.UK",
+     "checked": true
+    },
+    {
+     "url": "https://www.gov.uk/civil-legal-advice",
+     "quote": "discrimination",
+     "official": true,
+     "publisher": "GOV.UK",
+     "checked": true
+    }
+   ],
+   "confidence": "likely",
+   "by": "robin",
+   "evidence": {
+    "confidence": "likely",
+    "official": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "checkedOnly": [],
+    "unchecked": [],
+    "officialHosts": [
+     "gov.uk"
+    ],
+    "claims": {
+     "what": [],
+     "points": [
+      [],
+      [],
+      [],
+      []
+     ]
+    }
+   },
+   "takeaway": {
+    "headline": "Free legal advice probably won't help your case",
+    "why": "The examples listed are debt, housing and similar problems, not negligence.",
+    "inferred": true
+   }
+  }
+ ],
+ "foundAt": "2026-11-08T05:04:41.755Z"
+}
