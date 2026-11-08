@@ -108,7 +108,7 @@ export type CrewFlow<R> = {
   /** Tools nothing else waits for: they start at once and the planner's next turn does not wait for them, so a slow one (Iona's reading) overlaps the whole chain. The planner is told they are under way; their reports still appear as they finish. */
   background?: string[];
   /** Tools that need the background work finished first (they wait for it): e.g. the enquiry message uses what Iona found. `finish` always waits. */
-  afterBackground?: string[];
+  afterBackground?: string[] | Record<string, string[]>;
   /** Calls with the same lane run one after another, different lanes at the same time (default: one lane per crew member). Lets a member work on several firms at once, each in its own tab. */
   lane?: (name: string, args: Record<string, unknown>) => string;
   /** Did this result count as a failure? (default: text starts with Error / Could not / Blocked) */
@@ -141,6 +141,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   const actx = { context, emit, track, tracer, first: page };
   const tabs = limiter(flow.tabLimit ?? 4);
   const pendingBg: Promise<unknown>[] = [];
+  const pendingByTool = new Map<string, Promise<unknown>[]>(); // background work by tool name, so a call waits only for what it needs
   const laneTail = new Map<string, Promise<unknown>>(); // background lanes keep their order across turns
   const bgResults: string[] = []; // what finished in the background, not yet shown to the planner
   waiting.set(runId, new Map());
@@ -311,13 +312,22 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         });
         laneTail.set(lane, run);
         pendingBg.push(run);
+        for (const c of cs) pendingByTool.set(c.name, [...(pendingByTool.get(c.name) ?? []), run]);
       }
       for (const cs of bgGroups.values()) for (const c of cs) outputs.push({ type: "function_call_output", call_id: c.call_id, output: "Started. This crew member works on it in the background and the findings arrive in the history and the case file. Do not call it again; carry on with the rest." });
       calls = calls.filter((c) => !isBg(c));
       for (const st of [...new Set(calls.map(stageOf))].sort((x, y) => x - y)) {
         const inStage = calls.filter((c) => stageOf(c) === st);
         const closing = inStage.some((c) => c.name === "finish");
-        if (closing || inStage.some((c) => flow.afterBackground?.includes(c.name))) await Promise.allSettled(pendingBg);
+        // What this stage must wait for: everything before finish; otherwise only the background tools its calls depend on.
+        const ab = flow.afterBackground;
+        if (closing) await Promise.allSettled(pendingBg);
+        else if (Array.isArray(ab)) {
+          if (inStage.some((c) => ab.includes(c.name))) await Promise.allSettled(pendingBg);
+        } else if (ab) {
+          const needs = [...new Set(inStage.flatMap((c) => ab[c.name] ?? []))];
+          if (needs.length) await Promise.allSettled(needs.flatMap((t) => pendingByTool.get(t) ?? []));
+        }
         if (closing && bgResults.length) {
           // The background work finished with something the summary has not seen: say so and let the planner finish again.
           const seen = bgResults.splice(0);

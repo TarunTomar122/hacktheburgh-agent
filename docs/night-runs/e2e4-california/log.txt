@@ -1,0 +1,28 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[4s] case [elliot] Start funding, law, and medical checks
+[8s] case [nell] Could not finish: checked funding with the official checker
+[10s] case [robin] 6 firms found by search.
+[26s] case [iona] Found the clinical guidance
+[56s] case [robin] Searched m.sfbar.org
+[60s] case [elliot] Use local firms since register blocked
+[61s] case [iona] I looked on the official sites and found no published decisions to cite.
+[63s] case [robin] Checked Hersh & Hersh on its own website.
+[64s] case [robin] Checked Walkup, Melodia, Kelly & Schoenberger on its own website.
+[68s] case [robin] Checked Rouda Feder Tietjen & McGuinn on its own website.
+[71s] case [robin] Checked Scarlett Law Group on its own website.
+[74s] case [elliot] Pick firms and prepare forms
+[76s] case [elliot] Walkup, Melodia, Kelly & Schoenberger: fit 47%
+[87s] case [kit] Filled Hersh & Hersh's enquiry form
+[89s] case [kit] Filled Scarlett Law Group's enquiry form
+[90s] case [kit] Filled Walkup, Melodia, Kelly & Schoenberger's enquiry form
+[94s] case [elliot] I found three San Francisco firms that appear to act for injured patients, and I prepared their online enquiry forms without sending them: Walkup, Melodia, Kelly & Schoenberger; Scarlett Law Group; an
+
+CASE step3-2026-11-08T06-27-07-974Z-at6y 1.6 min (research 0.0 min)
+  funding: unknown ""
+  firms: 6 found, 4 checked on their sites, shortlist walkup-melodia-kelly-schoenberger, scarlett-group, hersh-hersh
+  guidance: aafp.org: "Clinical symptoms and radiographs are then rechecked in one to two weeks."; gaps 2; decisions 0
+  enquiries: Hersh & Hersh: ready_to_send (4 fields); Scarlett Law Group: ready_to_send (6 fields); Walkup, Melodia, Kelly & Schoenberger: ready_to_send (5 fields)
+  questions to the patient: 0
+  pages fetch 1 / browser 1; firms fetch 2 / browser 2; searches api 5 cache 3 browser 0; browser jobs 4
+  browser because: page: not a web page (text/plain) | task: searched the lawyer register with its own search filters (its search box) | firm: their home page: the site refused a plain request (403), a bot check | firm: their home page: the page is built by scripts (mostly code, little text) | task: filled Hersh & Hersh's enquiry form (4 fields) and stopped before Send | task: filled Scarlett Law Group's enquiry form (6 fields) and stopped before Send | task: filled Walkup, Melodia, Kelly & Schoenberger's enquiry form (5 fields) and stopped before Send
