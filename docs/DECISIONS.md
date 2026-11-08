@@ -416,4 +416,14 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 - **Copy:** the done boxes say the form waits "in the browser panel" (there is no other window since D34) and that clicks only reach the form while "Take control" is on.
 - **D83 result:** detection confirmed on the live NHS Lothian form at 05:25 (a real submission): the click reached Submit, POST to `nhslothian.scot/yourrights/wp-admin/admin-ajax.php`, form message "Thank you for your feedback!", `submitted` announced. No reCAPTCHA POST was seen. The 03:58 failure was the click never reaching the page: the live panel only forwards clicks in Take control mode.
 
-<!-- Add new entries above this line. Next number: D85 -->
+## D85 - Time-limit notes on every step that has a limit, coloured by time left (Om, 2026-11-08)
+
+- **What:** a note under each step's title says where the patient stands, counted in code from the earliest date in their timeline (`lib/agent/timeLimit.ts`, `app/case/TimeLimitNote.tsx`). Nothing is fetched; each note links its source and says it is information, not legal advice.
+  - **Step 1, NHS complaint:** 6 months, at most 12 after the event (Citizens Advice Scotland). Yellow under 8 weeks left.
+  - **Step 2, ombudsman (also while locked):** 12 months from when the patient first knew (SPSO; SPSO Act 2002 s10(1)). Yellow under 8 weeks. The note says the clock does not wait for NHS Lothian's reply.
+  - **Step 3 start and step 4, court claim:** 3 years from the harm or from knowledge; children from 16, death from the date of death (MDDUS claims guide, Scotland). Yellow under 6 months, because a solicitor needs months to prepare.
+  - **Yellow Card:** no note. There is no time limit (MHRA: report any time).
+- **Colours:** green = in time, yellow = close, red = past the usual limit (each note says how it can still be accepted), blue = dates too vague to count.
+- **Known limits:** counts from the earliest date, never from when the patient found out (not recorded), so deadlines shown can be earlier than the real ones, never later. Age and death are not known, so the claim note states those rules instead of applying them.
+
+<!-- Add new entries above this line. Next number: D86 -->

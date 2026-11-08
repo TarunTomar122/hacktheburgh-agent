@@ -92,3 +92,54 @@ export function countTimeLimit(eventDates: string[], today: Date = new Date()): 
     explanation: `${counted} More than 12 months have passed (since ${fmt(longStop)}), so it is normally too late. NHS Lothian can still choose to look at it, so it is worth asking.`,
   };
 }
+
+// ---- Other time limits on the patient's paths (step 2 ombudsman, steps 3-4 compensation). Same reading of dates as above. ----
+
+export type LimitKind = "nhs" | "spso" | "claim";
+
+/** One time limit: its rule in a sentence, its source, and how its count reads. Sources checked 2026-11-08. */
+export const LIMITS: Record<LimitKind, { rule: string; source: { name: string; url: string } }> = {
+  nhs: {
+    rule: "Complaints to the NHS in Scotland should normally be made within 6 months, and no later than 12 months after what happened.",
+    source: { name: "Citizens Advice Scotland", url: TIME_LIMIT_SOURCE },
+  },
+  spso: {
+    rule: "The ombudsman normally only looks at complaints made within 12 months of when you first knew about the problem. The clock does not wait for NHS Lothian's reply.",
+    source: { name: "Scottish Public Services Ombudsman", url: "https://spso.org.uk/time-limit-for-making-complaints-to-spso" },
+  },
+  claim: {
+    rule: "A compensation claim must usually be started in court within 3 years of the harm, or of when you knew (or should have known) about it. For a child, the 3 years start at their 16th birthday; if someone has died, they run from the date of death.",
+    source: { name: "MDDUS claims guide (Scotland)", url: "https://www.mddus.com/-/media/files/medical-advisory-guides/claims-guide---scotland.pdf" },
+  },
+};
+
+/** Where the patient stands against the ombudsman's or the court's limit. `today` is for tests. */
+export function countLimit(kind: LimitKind, eventDates: string[], today: Date = new Date()): TimeLimitCount {
+  if (kind === "nhs") return countTimeLimit(eventDates, today);
+  const parsed = eventDates.map(parseEventDate).filter((d): d is Date => d !== null);
+  if (parsed.length === 0) {
+    return { status: "unclear", explanation: "None of the dates you gave says at least the month and year, so this limit could not be counted." };
+  }
+  const from = new Date(Math.min(...parsed.map((d) => d.getTime())));
+  const now = utc(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())!;
+  const counted = `Counted from ${fmt(from)}, the earliest date in your timeline.`;
+  if (from.getTime() > now.getTime()) return { status: "unclear", explanation: `${counted} That date is after today, so please check it.` };
+  const months = kind === "spso" ? 12 : 36;
+  const closeDays = kind === "spso" ? CLOSE_DAYS : 183; // a claim needs months of work by a solicitor before it can be raised
+  const deadline = addMonths(from, months);
+  const left = Math.round((deadline.getTime() - now.getTime()) / DAY);
+  const base = { from: from.toISOString().slice(0, 10), deadline: deadline.toISOString().slice(0, 10) };
+  const span = kind === "spso" ? "12 months" : "3 years";
+  if (left >= 0) {
+    const status: TimeLimitStatus = left > closeDays ? "within" : "close";
+    const far = left > 120 ? `about ${Math.round(left / 30.44)} months from today` : days(left); // "966 days" is hard to read
+    const when = `${fmt(deadline)}, ${left === 0 ? "that is today" : status === "close" ? `only ${far}` : far}`;
+    const hurry = kind === "claim" ? (status === "close" ? " Contact a solicitor now: preparing a claim takes months." : " Solicitors need time to investigate, so it is worth contacting them early.") : status === "close" ? " Send it soon." : "";
+    return { ...base, status, explanation: `${counted} ${span} from then is ${when}.${hurry}` };
+  }
+  const late =
+    kind === "spso"
+      ? `The usual 12-month limit ended on ${fmt(deadline)}. The ombudsman can still take it in special circumstances; you would need to explain why it is late.`
+      : `The usual 3-year limit ended on ${fmt(deadline)}. It runs from later if you only found out about the harm later; otherwise courts allow late claims only rarely. A solicitor can tell you which applies.`;
+  return { ...base, status: "outside", explanation: `${counted} ${late}` };
+}

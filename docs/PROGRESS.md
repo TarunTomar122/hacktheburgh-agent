@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Time-limit notes on steps 1, 2, 3 and 4 (D85)
+
+Added the ombudsman (12 months) and court-claim (3 years) counts to `lib/agent/timeLimit.ts` (`countLimit`, `LIMITS`) and made `TimeLimitNote` take a `kind`. Shown on step 1 (NHS), step 2 (active and locked), the step 3 intro and step 4. Demo persona: NHS close (1 January 2027), ombudsman in time (1 July 2027), claim in time (1 July 2029). `scripts/test-time-limit.ts` now 28 checks, all pass; `tsc` and eslint clean. Not yet seen in a browser.
+
 ### 2026-11-08 - Om + Claude - DONE - Step 1 shows the complaint time limit
 
 - **Correction to the entry below:** the crew's time-limit check is not on screen. Since D69, step 1 is the earlier page and `ComplaintRun.tsx` is not rendered, so the "close" result was never visible.

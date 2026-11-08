@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { defaultAssumptions, spsoProblems, wordCount, type SpsoAnswers } from "../../lib/agent/spsoAnswers";
 import { setDraft, setOmbudsman, setProgress as markProgress, skipStep, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, LockIcon, PageTitle } from "../ui";
+import TimeLimitNote from "./TimeLimitNote";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
@@ -24,7 +25,7 @@ const JOURNEY: { title: string; state: "now" | "wait" | "later" }[] = [
   { title: "This step opens", state: "later" },
 ];
 
-function Locked({ goToStepOne }: { profile: Profile; goToStepOne: () => void }) {
+function Locked({ profile, goToStepOne }: { profile: Profile; goToStepOne: () => void }) {
   return (
     <div className="space-y-8">
       <PageTitle
@@ -36,6 +37,8 @@ function Locked({ goToStepOne }: { profile: Profile; goToStepOne: () => void }) 
         title="Ombudsman"
         lede="If NHS Lothian's final reply does not put things right, this is where you go next. The ombudsman only looks at a complaint once you have that reply."
       />
+
+      <TimeLimitNote profile={profile} kind="spso" />
 
       <ol className="relative border-l border-rail">
         {JOURNEY.map((j) => (
@@ -138,6 +141,8 @@ function Unlocked({ profile }: { profile: Profile }) {
         title="Complain to the ombudsman"
         lede="Elliot fills in the ombudsman's form with what you have already told him. You check it on their form and press Send."
       />
+
+      <TimeLimitNote profile={profile} kind="spso" />
 
       <AskMissing profile={profile} why="The ombudsman's form needs this, and it did not come up before." />
 

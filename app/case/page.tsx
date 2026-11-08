@@ -195,7 +195,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
         lede="Elliot has written your complaint from what you told him. He fills in NHS Lothian's form with it; you check it there, change anything you like, and press Submit yourself."
       />
 
-      <TimeLimitNote profile={profile} />
+      <TimeLimitNote profile={profile} kind="nhs" />
 
       <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. Elliot only asks it now that you are making a complaint." />
 
