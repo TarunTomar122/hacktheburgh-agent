@@ -462,5 +462,14 @@ export function usePlannerRun(scope?: RunScope) {
     setS(initial());
   }, []);
 
+  // How this run reached the web so far (fetch, search API, saved search, browser), for the line under the browser tiles.
+  const accessCount = s.access.length;
+  useEffect(() => {
+    if (!accessCount) return;
+    const a = s.access;
+    const n = (f: (x: (typeof a)[number]) => boolean) => a.filter(f).length;
+    window.dispatchEvent(new CustomEvent("live-access", { detail: { fetch: n((x) => x.via === "fetch"), browserPages: n((x) => x.via === "browser" && (x.kind === "page" || x.kind === "firm")), searches: n((x) => x.kind === "search" && x.via !== "browser"), jobs: n((x) => x.kind === "task") } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the list only grows; its length is the change
+  }, [accessCount]);
   return { state: s, start, answer, reset, replay, skip, pause, cancel: () => cancel(runIdRef.current) };
 }

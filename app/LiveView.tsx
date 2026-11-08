@@ -164,6 +164,13 @@ export default function LiveView() {
   const traceRef = useRef<TraceLite[]>([]);
   const snaps = useRef(new Map<string, Summary>());
   const [, bump] = useState(0);
+  // How the current run reached the web (app/case/usePlannerRun.ts sends it): shown under the tiles, with the dashboard one click away.
+  const [web, setWeb] = useState<{ fetch: number; browserPages: number; searches: number; jobs: number } | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => setWeb((e as CustomEvent<{ fetch: number; browserPages: number; searches: number; jobs: number }>).detail);
+    window.addEventListener("live-access", on);
+    return () => window.removeEventListener("live-access", on);
+  }, []);
   useEffect(() => {
     const on = (e: Event) => {
       traceRef.current = (e as CustomEvent<TraceLite[]>).detail ?? [];
@@ -792,6 +799,14 @@ export default function LiveView() {
             Close browser
           </Button>
         </div>
+      )}
+      {inline && web && (
+        <p data-testid="web-use" className="text-[12px] leading-5 text-muted">
+          This run so far: <span className="text-teal">{web.fetch} read without a browser</span> · <span className="text-brand">{web.browserPages} needed a browser</span> · {web.searches} searches by API · {web.jobs} browser jobs (checkers, registers, forms) ·{" "}
+          <a className="text-brand hover:underline" href="/insights" target="_blank" rel="noreferrer">
+            why and how
+          </a>
+        </p>
       )}
     </aside>
   );
