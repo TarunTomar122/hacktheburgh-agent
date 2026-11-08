@@ -4,7 +4,7 @@
 set -e
 dir="$1"; out="$2"
 list=$(mktemp)
-for f in $(ls -tr "$dir"/*.webm); do
+for f in $(ls -trU "$dir"/*.webm); do
   # skip tabs that never showed anything (tiny files)
   [ "$(stat -f%z "$f")" -gt 60000 ] && echo "file '$PWD/$f'" >> "$list"
 done
