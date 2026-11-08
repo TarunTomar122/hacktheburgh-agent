@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "Found the correct ZSFG Patient Experience / Patient Concern route and described it accurately."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "partly",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Correctly found CDPH Cal Health Find complaint form, but missed the separate Medical Board complaint route for the doctor."
+    },
+    {
+      "kind": "compensation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Right public-entity claim route for San Francisco, but it says 6 months from the incident and misses the key discovery/accrual nuance and MICRA detail."
+    },
+    {
+      "kind": "funding",
+      "found": true,
+      "body": "partly",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Useful Bay Area Legal Aid and contingency-fee points, but this is narrower than the key statewide funding/help route and omits court fee-waiver/self-help."
+    },
+    {
+      "kind": "lawyers",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "State Bar referral route is correct, but it missed the stronger State Bar advanced attorney search with medical-malpractice / specialty filters."
+    },
+    {
+      "kind": "guideline",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "ACR scaphoid/hand-wrist trauma imaging guidance was the right clinical standard and accurately stated."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Health Consumer Alliance is a correct free advocacy source, but the route map does not clearly say it is for coverage/billing/advocacy rather than negligence compensation."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Found the hospital/SF records route, but missed the statewide HSC 123110 rights and timelines for inspection/copies."
+    }
+  ],
+  "score": 7,
+  "smart": "It correctly worked out that ZSFG is operated by San Francisco DPH, so the pre-suit money claim goes to the City and County of San Francisco rather than a generic California form.",
+  "worst": "It omitted the Medical Board of California complaint against the emergency doctor, which is a core parallel escalation route in the answer key."
+}
