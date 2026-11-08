@@ -206,9 +206,9 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             if (enquiries.get(firm.id)?.status === "ready_to_send") return `${firm.name}: already filled.`;
             const g = proof.guideline?.points[0];
             if (!message) {
-              const m = await draftEnquiry(facts, { verdict, route: routeKind }, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: g.text, question: proof.gaps[0].question } : undefined);
               // Nell -> Kit: the funding checker's own words travel into the message, as an estimate, never as eligibility.
-              message = fundingQuote?.checked ? { ...m, body: `${m.body}\n\nOn funding: ${fundingSource}'s online checker says "${short(fundingQuote.quote, 220)}". I understand this is only an estimate.` } : m;
+              const funding = fundingQuote?.checked ? `On funding: ${fundingSource}'s online checker says "${short(fundingQuote.quote, 220)}". I understand this is only an estimate.` : "I would also like to know how a case like this could be funded.";
+              message = await draftEnquiry(facts, undefined, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: g.text, question: proof.gaps[0].question } : undefined, { place: placeName, funding });
             }
             const msg = message;
             const r = await kit.inTab(thought, "kit", short(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, ""), 24), async (p, note) => {

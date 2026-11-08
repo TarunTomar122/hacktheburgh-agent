@@ -35,7 +35,7 @@ const DraftSchema = z.object({
   body: z.string().describe("The message, first person, plain, 120-220 words, ending with how to reach the person"),
 });
 
-const DRAFT_RULES = `You write a short first enquiry from a member of the public to a Scottish law firm about a possible medical negligence claim.
+const DRAFT_RULES = (place: string) => `You write a short first enquiry from a member of the public to a law firm in ${place} about a possible medical negligence (clinical negligence) claim. Use the terms people use in ${place}.
 Rules:
 - Use ONLY the facts given. Never invent symptoms, losses, dates, names or places.
 - First person, plain and polite, 120-220 words. No legal jargon.
@@ -52,12 +52,13 @@ function fundingSentence(la: LegalAidSummary): string {
   return "I would also like to know how a case like this could be funded.";
 }
 
-export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, evidence?: { guideline: string; point: string; question: string }): Promise<EnquiryMessage> {
+/** opts.place: where the firm is (defaults to Scotland, the original flow); opts.funding: a funding sentence that replaces SLAB's (the generic crews pass the place's own checker result, quoted). */
+export async function draftEnquiry(facts: CaseFacts, la: LegalAidSummary, evidence?: { guideline: string; point: string; question: string }, opts: { place?: string; funding?: string } = {}): Promise<EnquiryMessage> {
   const name = [facts.firstName, facts.lastName].filter(Boolean).join(" ");
-  const funding = fundingSentence(la);
+  const funding = opts.funding ?? fundingSentence(la);
   return structured({
     ...modelFor("draft", ["health", "identity"]), // the patient's story, name, email and phone: on this Mac by default
-    instructions: DRAFT_RULES,
+    instructions: DRAFT_RULES(opts.place ?? "Scotland"),
     input: `Name: ${name}\nEmail: ${facts.email ?? ""}\nPhone: ${facts.phone ?? ""}\nWhere: ${facts.incidentLocation ?? ""}\nWhat happened: ${facts.incidentSummary ?? ""}\nTimeline:\n${facts.events.map((e) => `- ${e.date}: ${e.what}`).join("\n")}\nWhat they want: ${facts.desiredOutcome ?? ""}\nFunding sentence to include word for word: ${funding || "(none)"}${evidence ? `\nGuideline point (D62): ${evidence.guideline}: "${evidence.point}". Question it raises: ${evidence.question}` : ""}`,
     schema: DraftSchema,
     name: "enquiry_draft",
