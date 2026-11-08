@@ -645,6 +645,12 @@ export default function LiveView() {
                   {info.entered.length > 12 && <li>and {info.entered.length - 12} more</li>}
                 </ul>
               )}
+              {info.learned.length > 0 && (
+                <p className="mt-2 text-ink">
+                  <span className="font-medium">What we learned: </span>
+                  {info.learned[info.learned.length - 1]}
+                </p>
+              )}
               <p className="mt-1.5 text-[12px] text-muted">By hand, that is every page opened, every form found and every answer typed yourself. The browser did it.</p>
             </div>
           )}

@@ -274,8 +274,10 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
 
   // The browsers' info panel (app/LiveView.tsx) summarises what each browser did from the trace.
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent("live-trace", { detail: state.trace.map((t) => ({ agent: t.agent, kind: t.kind, text: t.text })) }));
-  }, [state.trace]);
+    // What each browser's crew member reported from it ("what we learned"), as lines the panel can match by tab.
+    const learned = state.says.filter((x) => x.kind === "report" && x.tab && x.ok !== false && x.text !== "Skipped, as you asked.").map((x) => ({ agent: x.tab!, kind: "learned", text: x.text }));
+    window.dispatchEvent(new CustomEvent("live-trace", { detail: [...state.trace.map((t) => ({ agent: t.agent, kind: t.kind, text: t.text })), ...learned] }));
+  }, [state.trace, state.says]);
 
   // Who is in focus: the crew member in the spotlight; between steps, Elliot deciding what's next.
   const spot = state.spotlight;
