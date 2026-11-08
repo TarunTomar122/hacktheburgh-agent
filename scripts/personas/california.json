@@ -1,0 +1,28 @@
+{
+ "complainingFor": "me",
+ "title": "Ms",
+ "preferredContact": "Email",
+ "emailRiskAccepted": null,
+ "medicalRecords": null,
+ "country": null,
+ "region": null,
+ "firstName": "Maya",
+ "lastName": "Lopez",
+ "address": "1420 Example Street, San Francisco, CA",
+ "postcode": "94110",
+ "phone": "+1 415 555 0177",
+ "email": "maya.lopez@example.com",
+ "incidentLocation": "Emergency Department, Zuckerberg San Francisco General Hospital",
+ "incidentSummary": "I slipped and fell on my outstretched right hand. The emergency department X-rayed my wrist, said it was a sprain and sent me home with no follow-up. The pain did not go away. Weeks later a repeat scan showed a scaphoid fracture that has not healed, and I now need surgery. I have missed exams and shifts at my part-time job.",
+ "events": [
+  {
+   "date": "2026-09-08",
+   "what": "Fell on outstretched right hand; the emergency department X-rayed the wrist, said sprain, no follow-up"
+  },
+  {
+   "date": "2026-10-16",
+   "what": "Repeat imaging showed a scaphoid fracture that has not healed; surgery planned"
+  }
+ ],
+ "desiredOutcome": "An explanation, an apology, and to know whether I can claim compensation"
+}

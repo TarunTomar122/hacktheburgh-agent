@@ -1,0 +1,28 @@
+{
+ "complainingFor": "me",
+ "title": "Ms",
+ "preferredContact": "Email",
+ "emailRiskAccepted": null,
+ "medicalRecords": null,
+ "country": null,
+ "region": null,
+ "firstName": "Aroha",
+ "lastName": "Ngata",
+ "address": "7 Sample Lane, Ponsonby, Auckland",
+ "postcode": "1011",
+ "phone": "+64 21 555 0123",
+ "email": "aroha.ngata@example.com",
+ "incidentLocation": "Emergency Department, Auckland City Hospital",
+ "incidentSummary": "I slipped and fell on my outstretched right hand. The emergency department X-rayed my wrist, said it was a sprain and sent me home with no follow-up. The pain did not go away. Weeks later a repeat scan showed a scaphoid fracture that has not healed, and I now need surgery. I have missed exams and shifts at my part-time job.",
+ "events": [
+  {
+   "date": "2026-09-02",
+   "what": "Fell on outstretched right hand; Auckland City Hospital emergency department X-rayed the wrist, said sprain, no follow-up"
+  },
+  {
+   "date": "2026-10-12",
+   "what": "Repeat imaging showed a scaphoid fracture that has not healed; surgery planned"
+  }
+ ],
+ "desiredOutcome": "An explanation, an apology, and to know what support or compensation is available"
+}

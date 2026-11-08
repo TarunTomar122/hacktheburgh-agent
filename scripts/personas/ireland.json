@@ -1,0 +1,28 @@
+{
+ "complainingFor": "me",
+ "title": "Ms",
+ "preferredContact": "Email",
+ "emailRiskAccepted": null,
+ "medicalRecords": null,
+ "country": null,
+ "region": null,
+ "firstName": "Aoife",
+ "lastName": "Brennan",
+ "address": "18 Example Terrace, Rathmines, Dublin 6",
+ "postcode": "D06 X2Y3",
+ "phone": "+353 85 555 0142",
+ "email": "aoife.brennan@example.com",
+ "incidentLocation": "Emergency Department, St James's Hospital, Dublin",
+ "incidentSummary": "I slipped and fell on my outstretched right hand. The emergency department X-rayed my wrist, said it was a sprain and sent me home with no follow-up. The pain did not go away. Weeks later a repeat scan showed a scaphoid fracture that has not healed, and I now need surgery. I have missed exams and shifts at my part-time job.",
+ "events": [
+  {
+   "date": "2026-09-05",
+   "what": "Fell on outstretched right hand; St James's Hospital emergency department X-rayed the wrist, said sprain, no follow-up"
+  },
+  {
+   "date": "2026-10-14",
+   "what": "Repeat imaging showed a scaphoid fracture that has not healed; surgery planned"
+  }
+ ],
+ "desiredOutcome": "An explanation, an apology, changes to how wrist injuries are checked, and to know whether I can claim compensation"
+}
