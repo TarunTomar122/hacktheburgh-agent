@@ -191,17 +191,22 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
   const lastPlan = state.says.findLast((x) => x.kind === "plan");
   const replanned = useFresh(lastPlan?.replan ? lastPlan.i : null, 6000);
   const focusCrew: CrewId = question ? (question.crew ?? "elliot") : replanned !== null ? "elliot" : spot && state.crew[spot.crew]?.state !== "idle" ? spot.crew : "elliot";
+  // The hero is one sentence: the planner's own words can run long, so keep the first clause and cap it (full text in "Plan and history").
+  const one = (t: string) => {
+    const first = t.split(/(?<=[.;:])\s+|,\s+so\s+/)[0].replace(/[.;:,]$/, "");
+    return first.length > 110 ? `${first.slice(0, first.lastIndexOf(" ", 107))}…` : first;
+  };
   const task = question
     ? "needs one detail from you"
     : focusCrew === "elliot"
       ? replanned !== null
-        ? lastPlan!.text
+        ? one(lastPlan!.text)
         : state.crew.elliot?.state === "working" && state.crew.elliot.note
           ? `is ${lowerFirst(state.crew.elliot.note)}`
           : lastPlan
-          ? `is deciding the next step: ${lowerFirst(lastPlan.text)}`
+          ? `is deciding the next step: ${lowerFirst(one(lastPlan.text))}`
           : "is reading your case and making a plan"
-      : lowerFirst(state.crew[focusCrew]?.note || spot?.tab.split(" · ")[1] || "is working");
+      : lowerFirst(one(state.crew[focusCrew]?.note || spot?.tab.split(" · ")[1] || "is working"));
   const site = spot && focusCrew !== "elliot" ? host(state.trace.findLast((t) => t.agent === spot.tab && t.url)?.url) : "";
   const order = kit.workers;
   const stepNo = order.indexOf(focusCrew) + 1;
