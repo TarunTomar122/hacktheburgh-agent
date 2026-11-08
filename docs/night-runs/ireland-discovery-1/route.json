@@ -1,0 +1,491 @@
+{
+  "runId": "discovery-2026-11-08T00-38-23-765Z",
+  "place": {
+    "country": "Ireland",
+    "region": "",
+    "city": "Dublin",
+    "hospital": "St James's Hospital",
+    "careSetting": "public",
+    "why": "Address in Dublin; mention of public hospital and emergency department"
+  },
+  "system": "Ireland",
+  "summary": "For St James’s Hospital, the first step is a complaint to the hospital’s Patient Experience Office / HSE route, with a 12‑month complaint window shown in the hospital leaflet and staged response times on the HSE site. If that does not sort it out, the independent route is the Ombudsman, usually after the hospital’s final response or review. Compensation for delayed diagnosis here is a clinical-negligence court claim, not an Injuries Resolution Board claim, and public-hospital claims are handled on the defence side through the State Claims Agency.",
+  "steps": [
+    {
+      "kind": "complaint",
+      "body": "St James's Hospital",
+      "what": "St James’s Hospital routes complaints through its Patient Experience Office, and the HSE Your Service Your Say process sets the main stages for public-hospital complaints. In this run, St James’s own site did not expose an online complaint form; it gave direct contact details instead.",
+      "how": "email",
+      "url": "https://www.stjames.ie/services/qsid/patientfeedback/providingfeedback/",
+      "wall": "No online complaint form was found on St James’s site in this run; the site gave email, phone and postal complaint details instead.",
+      "points": [
+        "St James’s says patients can \"Make a formal complaint\" through its feedback route.",
+        "The hospital leaflet says it will acknowledge complaints within 5 working days and aims to respond within 30 working days.",
+        "The HSE stages page says a manager will try to deal with the issue within 48 hours first.",
+        "If a formal investigation is needed, the HSE says the complaints officer will contact the patient within 5 working days."
+      ],
+      "appliesIf": "Public care at St James’s Hospital / HSE complaint route.",
+      "alternatives": [
+        "HSE Your Service Your Say route"
+      ],
+      "missing": [
+        "The exact date any complaint was sent",
+        "Any hospital response already received"
+      ],
+      "sources": [
+        {
+          "url": "https://www.stjames.ie/services/qsid/patientfeedback/providingfeedback/",
+          "quote": "Make a formal complaint",
+          "official": true,
+          "publisher": "St James's Hospital",
+          "checked": true
+        },
+        {
+          "url": "https://www.stjames.ie/media/Patient%20Information%20Leaflet%20March%202024.pdf",
+          "quote": "Acknowledge we have received your complaint within 5 working days",
+          "official": true,
+          "publisher": "St James's Hospital",
+          "checked": true
+        },
+        {
+          "url": "https://www.stjames.ie/media/Patient%20Information%20Leaflet%20March%202024.pdf",
+          "quote": "Endeavour to provide a response within 30 working days.",
+          "official": true,
+          "publisher": "St James's Hospital",
+          "checked": true
+        },
+        {
+          "url": "https://www2.hse.ie/complaints-feedback/your-service-your-say-stages/",
+          "quote": "Their manager will try and deal with it within 48 hours.",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        },
+        {
+          "url": "https://www2.hse.ie/complaints-feedback/your-service-your-say-stages/",
+          "quote": "The complaints officer will contact you within 5 working days of getting your complaint if there needs to be an investigation.",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        },
+        {
+          "url": "https://www2.hse.ie/complaints-feedback/your-service-your-say-stages/",
+          "quote": "Your Service Your Say, our process for managing feedback, has 4 stages.",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "escalation",
+      "body": "Office of the Ombudsman",
+      "what": "For a complaint about care in a public hospital, the independent reviewer is the Office of the Ombudsman. You normally go there after complaining to the provider and using its appeal or review process, though the Ombudsman says you can complain sooner if there is a long delay in the provider replying.",
+      "deadline": "\"We cannot look into a complaint if it is made more than 12 months after you initially complained of the action or you became aware of that action, unless there are very special circumstances\"",
+      "how": "unknown",
+      "url": "https://ombudsman.ie/en/form/f80d6-make-a-complaint-online/",
+      "wall": "Explore_site could not expose the live form fields in this run; the site route led back to complaint information and contact pages.",
+      "points": [
+        "You must first try to resolve the complaint with the service provider.",
+        "The Ombudsman says you should already have the provider’s final response, unless there has been a long delay.",
+        "The Ombudsman says you should also have used the provider’s appeals process if there is one.",
+        "The Ombudsman’s own deadline is 12 months, unless there are very special circumstances.",
+        "The HSE complaint stages page identifies Ombudsman review as stage 4, after internal handling and review."
+      ],
+      "requires": [
+        "\"Before you contact us you should first try to resolve your complaint with the relevant service provider.\"",
+        "\"You have used the service provider’s appeals process (if they have one)\""
+      ],
+      "appliesIf": "Complaint about a public hospital or other public service provider in Ireland.",
+      "missing": [
+        "Date of the hospital’s final response, if any",
+        "Whether an internal review has already been requested from St James’s",
+        "Copies of the complaint and response letters"
+      ],
+      "sources": [
+        {
+          "url": "https://ombudsman.ie/en/publication/000df-making-a-complaint/",
+          "quote": "Before you contact us you should first try to resolve your complaint with the relevant service provider.",
+          "official": true,
+          "publisher": "Office of the Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://ombudsman.ie/en/publication/000df-making-a-complaint/",
+          "quote": "You have received a final response to your complaint. (You may complain to us if there is a long delay in the provider replying to you)",
+          "official": true,
+          "publisher": "Office of the Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://ombudsman.ie/en/publication/000df-making-a-complaint/",
+          "quote": "You have used the service provider’s appeals process (if they have one)",
+          "official": true,
+          "publisher": "Office of the Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://ombudsman.ie/en/publication/000df-making-a-complaint/",
+          "quote": "We cannot look into a complaint if it is made more than 12 months after you initially complained of the action or you became aware of that action, unless there are very special circumstances",
+          "official": true,
+          "publisher": "Office of the Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://www2.hse.ie/complaints-feedback/your-service-your-say-stages/",
+          "quote": "Your Service Your Say, our process for managing feedback, has 4 stages.",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "compensation",
+      "body": "State Claims Agency / Courts Service / Injuries Resolution Board",
+      "what": "For alleged harm from public-hospital care in Ireland, the compensation route is a clinical-negligence claim in court, not an Injuries Resolution Board assessment. In claims against covered public-health bodies, the State Claims Agency says the State authority remains the legal defendant while the Agency takes over responsibility for resolving the claim, and it may use mediation or go to trial.",
+      "deadline": "\"shall not be brought after the expiration of three years from the date on which the cause of action accrued or the date of knowledge (if later) of the person injured.\"",
+      "how": "court",
+      "url": "https://www.courts.ie/practice-directions/full-practice-direction?url=clinical-negligence-list",
+      "points": [
+        "Medical negligence claims are excluded from the Injuries Resolution Board.",
+        "The State Claims Agency says covered public-health claims are handled under the Clinical Indemnity Scheme.",
+        "The Scheme covers the HSE and voluntary health and social care organisations indemnified by the Minister for Health, and the State Claims Agency list includes \"St. James’s Hospital Board\".",
+        "The statutory limitation period is three years from the cause of action or the later date of knowledge.",
+        "The High Court has a dedicated Clinical Negligence List for these proceedings."
+      ],
+      "requires": [
+        "A clinical-negligence/personal-injuries claim rather than a general service complaint",
+        "The defendant body must be covered by the Clinical Indemnity Scheme for State Claims Agency handling"
+      ],
+      "appliesIf": "Alleged injury from public-hospital clinical care in Ireland, including claims involving St. James’s Hospital Board under the Clinical Indemnity Scheme.",
+      "alternatives": [
+        "Complaint to St James’s / HSE about the care",
+        "Independent complaint to the Ombudsman after the provider route",
+        "Alternative dispute resolution such as mediation during claim resolution"
+      ],
+      "missing": [
+        "Exact date of knowledge if different from the dates in the timeline",
+        "Whether the patient wants only an explanation/apology or also damages",
+        "Whether surgery or later losses may change the value and court level"
+      ],
+      "sources": [
+        {
+          "url": "https://www.injuries.ie/about-injuries-resolution-board/contact-us/faqs/frequently-asked-questions-for-claimants/medical-negligence/",
+          "quote": "medical negligence claims are not included in the accidents we can assess.",
+          "official": true,
+          "publisher": "Injuries Resolution Board",
+          "checked": true
+        },
+        {
+          "url": "https://www.injuries.ie/about-injuries-resolution-board/contact-us/faqs/frequently-asked-questions-for-claimants/medical-negligence/",
+          "quote": "The Personal Injuries Assessment Board Act 2003, as amended, excludes claims “arising out of the provision of any health service to a person, the carrying out of a medical or surgical procedure in relation to a person or the provision of any medical advice or treatment to a person”.",
+          "official": true,
+          "publisher": "Injuries Resolution Board",
+          "checked": true
+        },
+        {
+          "url": "https://www.stateclaims.ie/services/claims-resolution/clinical-claims-resolution",
+          "quote": "When a claim is made against a State authority under the Clinical Indemnity Scheme, the State authority remains the legal defendant and the State Claims Agency takes over responsibility for resolving the claim.",
+          "official": true,
+          "publisher": "State Claims Agency",
+          "checked": true
+        },
+        {
+          "url": "https://www.stateclaims.ie/services/claims-resolution/clinical-claims-resolution",
+          "quote": "Offering and engaging in alternative dispute resolution methods, such as mediation, and in settlement negotiations",
+          "official": true,
+          "publisher": "State Claims Agency",
+          "checked": true
+        },
+        {
+          "url": "https://www.irishstatutebook.ie/eli/1991/act/18/section/3/enacted/en/html",
+          "quote": "shall not be brought after the expiration of three years from the date on which the cause of action accrued or the date of knowledge (if later) of the person injured.",
+          "official": true,
+          "publisher": "Irish Statute Book",
+          "checked": true
+        },
+        {
+          "url": "https://www.courts.ie/practice-directions/full-practice-direction?url=clinical-negligence-list",
+          "quote": "The Clinical Negligence List shall encompass all proceedings in which a claim for damages for personal injuries arises from alleged negligence or breach of duty in the provision of clinical or health care, treatment, or advice (“clinical negligence proceedings”).",
+          "official": true,
+          "publisher": "Courts Service of Ireland",
+          "checked": true
+        }
+      ],
+      "confidence": "confirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "funding",
+      "body": "Legal Aid Board / Irish Statute Book / Legal Services Regulatory Authority",
+      "what": "The Legal Aid Board says it can provide legal advice and representation in medical negligence, subject to financial eligibility and, for court representation, a merits test. The official sources in this run also show that charging a percentage of damages is prohibited, but they do not clearly confirm whether any broader conditional-fee arrangement is lawful for this type of claim.",
+      "how": "unknown",
+      "url": "https://www.legalaidboard.ie/en/our-legal-aid-service/apply-now/financial-eligibility-and-merits-test/financial-eligibility-calculator/",
+      "points": [
+        "The Legal Aid Board says it can provide legal advice and legal representation in medical negligence.",
+        "To qualify financially, disposable income must be under €18,000.",
+        "The Board’s online calculator only checks whether you might financially qualify; it does not decide whether your case will actually get legal aid.",
+        "If you need representation in court, the Board says it will examine the merits of your case.",
+        "The LSRA says advertisements for personal-injury legal services must not use phrases such as “no win no fee” that could suggest the services are at no cost."
+      ],
+      "appliesIf": "An adult in Ireland seeking legal aid for a medical-negligence claim.",
+      "alternatives": [
+        "Private solicitor funding arrangements, which would need to be checked directly with the solicitor"
+      ],
+      "missing": [
+        "Household income and asset details for the Legal Aid Board means test",
+        "Whether the patient wants advice only or full representation",
+        "Whether any solicitor has offered a private funding arrangement"
+      ],
+      "sources": [
+        {
+          "url": "https://www.legalaidboard.ie/our-legal-aid-service/how-we-can-help-you/medical-negligence/",
+          "quote": "We can provide legal advice and legal representation in the area of Medical Negligence in our specialised Law Centre in Smithfield, Dublin.",
+          "official": true,
+          "publisher": "Legal Aid Board",
+          "checked": true
+        },
+        {
+          "url": "https://www.legalaidboard.ie/en/our-legal-aid-service/apply-now/financial-eligibility-and-merits-test/",
+          "quote": "To qualify for Legal Aid Services you must have disposable income under €18,000.",
+          "official": true,
+          "publisher": "Legal Aid Board",
+          "checked": true
+        },
+        {
+          "url": "https://www.legalaidboard.ie/en/our-legal-aid-service/apply-now/financial-eligibility-and-merits-test/",
+          "quote": "The eligibility calculator only checks if you might financially qualify for Legal Aid Services.",
+          "official": true,
+          "publisher": "Legal Aid Board",
+          "checked": true
+        },
+        {
+          "url": "https://www.legalaidboard.ie/en/our-legal-aid-service/apply-now/financial-eligibility-and-merits-test/",
+          "quote": "It will not tell you if you can actually get legal aid for your particular case, if you need representation in court, we will examine the merits of your case.",
+          "official": true,
+          "publisher": "Legal Aid Board",
+          "checked": true
+        },
+        {
+          "url": "https://www.irishstatutebook.ie/eli/2015/act/65/section/149/enacted/en/",
+          "quote": "they are legal costs in connection with contentious business expressed as a specified percentage or proportion of any damages (or other moneys) that may be or become payable to his or her client, other than in relation to a matter seeking only to recover a debt or liquidated demand, or",
+          "official": true,
+          "publisher": "Irish Statute Book",
+          "checked": true
+        },
+        {
+          "url": "https://www.lsra.ie/for-consumers/advertising-by-lawyers/",
+          "quote": "Advertisements which use phrases “no win no fee”, “no foal no fee” and “free first consultation” or similar phrases which could suggest that legal services in connection with claims for personal injuries would be provided by the legal practitioner at no cost to the client.",
+          "official": true,
+          "publisher": "Legal Services Regulatory Authority",
+          "checked": true
+        }
+      ],
+      "confidence": "confirmed",
+      "by": "nell"
+    },
+    {
+      "kind": "lawyers",
+      "body": "Law Society of Ireland",
+      "what": "The official place to find a solicitor is the Law Society of Ireland’s Find a Solicitor search. It lets you search solicitors and firms by name or location, and the search pages say you can narrow results using advanced filters such as practising status and location.",
+      "how": "unknown",
+      "url": "https://www.lawsociety.ie/find-a-solicitor/Solicitor-Firm-Search",
+      "points": [
+        "The directory is for practising solicitors, solicitor firms and certain other lawyers entitled to practise in Ireland.",
+        "You can search by name or location.",
+        "The advanced search feature filters by practising status, location, organisation type and more.",
+        "Search tips say you can narrow by County and practising status."
+      ],
+      "missing": [
+        "Which county or Dublin location the patient wants to search",
+        "Whether the patient wants an individual solicitor or a firm"
+      ],
+      "sources": [
+        {
+          "url": "https://www.lawsociety.ie/find-a-solicitor/Solicitor-Firm-Search",
+          "quote": "Find details of practising solicitors, solicitor firms, and lawyers entitled to practise under the European Communities (Lawyers' Establishment) Regulations in this jurisdiction.",
+          "official": true,
+          "publisher": "Law Society of Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.ie/find-a-solicitor/Solicitor-Firm-Search",
+          "quote": "Search by name or location",
+          "official": true,
+          "publisher": "Law Society of Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.ie/find-a-solicitor/Solicitor-Firm-Search",
+          "quote": "Use the advanced search feature to filter results by practising status, location, organisation type and more.",
+          "official": true,
+          "publisher": "Law Society of Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.ie/find-a-solicitor/search-tips2/",
+          "quote": "Narrow your search using other filters, for example County and practising status.",
+          "official": true,
+          "publisher": "Law Society of Ireland",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "guideline",
+      "body": "National Clinical Effectiveness Committee / HSE National Central Repository",
+      "what": "In Ireland’s public system, national clinical guidelines are overseen by the National Clinical Effectiveness Committee, and HSE national clinical guidelines are stored in the HSE National Central Repository. The HSE’s development guide also shows a specific HSE National Clinical Guidelines working group.",
+      "how": "unknown",
+      "url": "https://www2.healthservice.hse.ie/organisation/nqpsd/ncec-national-clinical-guidelines/",
+      "points": [
+        "The NCEC oversees the National Clinical Guidelines.",
+        "The HSE National Central Repository is the single trusted source for HSE national policies, procedures, protocols, guidelines and clinical guidelines.",
+        "The HSE development guide refers to an HSE National Clinical Guidelines working group chaired by the Head of the Evidence and Quality Hub."
+      ],
+      "appliesIf": "Looking for the national clinical guidance bodies and repositories used in Irish public healthcare.",
+      "sources": [
+        {
+          "url": "https://www2.healthservice.hse.ie/organisation/nqpsd/ncec-national-clinical-guidelines/",
+          "quote": "The National Clinical Effectiveness Committee (NCEC) oversees the National Clinical Guidelines for:",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        },
+        {
+          "url": "https://www2.healthservice.hse.ie/organisation/national-pppgs/",
+          "quote": "The single trusted source for accessing, storage and document control of HSE National policies, procedures, protocols, guidelines and clinical guidelines.",
+          "official": true,
+          "publisher": "HSE",
+          "checked": true
+        },
+        {
+          "url": "https://www2.healthservice.hse.ie/documents/4109/How_to_Develop_HSE_National_Policies_Procedures_Protocols_and_Guidelines_gQBQ4os.pdf",
+          "quote": "3. HSE National Clinical Guidelines working group, chaired by Dr Eve O’Toole, Head of the Evidence and Quality Hub,",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "iona"
+    },
+    {
+      "kind": "advice",
+      "body": "Patient Advocacy Service",
+      "what": "The free independent help route is the Patient Advocacy Service. It says it supports patients of Public Acute Hospitals to make complaints, and it can also support people after a patient safety incident.",
+      "how": "phone",
+      "url": "https://www.patientadvocacyservice.ie/",
+      "points": [
+        "The service says it is independent, free and confidential.",
+        "It supports complaints about care in Public Acute Hospitals.",
+        "It can also support people in the aftermath of a Patient Safety Incident.",
+        "The HSE complaints pages also signpost Patient Advocacy Service and other advocacy bodies for help with complaints."
+      ],
+      "appliesIf": "A patient in a public acute hospital in Ireland wants free independent help with a complaint or a patient safety incident.",
+      "alternatives": [
+        "Other advocacy bodies listed by the HSE, including Citizens Information and Irish Patients’ Association"
+      ],
+      "sources": [
+        {
+          "url": "https://www.patientadvocacyservice.ie/",
+          "quote": "The Patient Advocacy Service is independent, free and confidential.",
+          "official": true,
+          "publisher": "Patient Advocacy Service",
+          "checked": true
+        },
+        {
+          "url": "https://www.patientadvocacyservice.ie/",
+          "quote": "We can support you to make a complaint about the care you have experienced in a Public Acute Hospital or a Public or Private Nursing Home.",
+          "official": true,
+          "publisher": "Patient Advocacy Service",
+          "checked": true
+        },
+        {
+          "url": "https://www.patientadvocacyservice.ie/",
+          "quote": "We can also support you in the aftermath of a Patient Safety Incident.",
+          "official": true,
+          "publisher": "Patient Advocacy Service",
+          "checked": true
+        },
+        {
+          "url": "https://www2.hse.ie/complaints-feedback/advocacy-services/",
+          "quote": "You may be able to get help and support from an advocacy service when you're dealing with a healthcare service or making a complaint.",
+          "official": false,
+          "publisher": "HSE",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "records",
+      "body": "St James's Hospital",
+      "what": "St James’s Hospital routes patient medical-records requests through its Access to Information Office. Its page offers a Subject Access Request form and says it handles routine and administrative access requests for healthcare records; national GDPR guidance says the organisation should respond within one month, subject to a possible extension.",
+      "how": "email",
+      "url": "https://www.stjames.ie/services/corporateaffairs/accesstoinformation/",
+      "points": [
+        "St James’s says its Access to Information Office handles routine and administrative requests from patients for healthcare records.",
+        "The page gives the Access to Information Office contact email aio@stjames.ie.",
+        "The hospital page links a Subject Access Request (SAR) form and an FOI Patient Record Request Form.",
+        "The Data Protection Commission says the controller must respond without undue delay and in any event within one month.",
+        "The one-month period may be extended by two further months if necessary, but the controller must tell you within one month and explain why."
+      ],
+      "appliesIf": "A patient wants a copy of their records from St James’s Hospital.",
+      "alternatives": [
+        "Use the St James’s FOI Patient Record Request Form if that route is more suitable"
+      ],
+      "missing": [
+        "Whether the patient wants all records or just the emergency-department and imaging records",
+        "Proof of identity likely needed with the request"
+      ],
+      "sources": [
+        {
+          "url": "https://www.stjames.ie/services/corporateaffairs/accesstoinformation/",
+          "quote": "Routine and administrative access requests from patients relating to healthcare records.",
+          "official": true,
+          "publisher": "St James's Hospital",
+          "checked": true
+        },
+        {
+          "url": "https://www.stjames.ie/services/corporateaffairs/accesstoinformation/",
+          "quote": "aio@stjames.ie",
+          "official": true,
+          "publisher": "St James's Hospital",
+          "checked": true
+        },
+        {
+          "url": "https://www.dataprotection.ie/en/individuals/exercising-your-rights/how-long-will-it-take",
+          "quote": "In any event, within one month of receipt of the request.",
+          "official": true,
+          "publisher": "Data Protection Commission",
+          "checked": true
+        },
+        {
+          "url": "https://www.dataprotection.ie/en/individuals/exercising-your-rights/how-long-will-it-take",
+          "quote": "The one month period may be extended by two further months, where necessary, taking into account the complexity and number of requests.",
+          "official": true,
+          "publisher": "Data Protection Commission",
+          "checked": true
+        },
+        {
+          "url": "https://www.dataprotection.ie/en/individuals/exercising-your-rights/how-long-will-it-take",
+          "quote": "the data controller shall inform you of any extension within one month of receiving your request, and explain the reasons for the delay.",
+          "official": true,
+          "publisher": "Data Protection Commission",
+          "checked": true
+        }
+      ],
+      "confidence": "confirmed",
+      "by": "robin"
+    }
+  ],
+  "foundAt": "2026-11-08T00:56:23.056Z"
+}

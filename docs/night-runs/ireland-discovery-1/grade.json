@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "partly",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Useful St James’s complaints contact and timings, but it misses that the formal national route is HSE Your Service Your Say and the key clinical-judgement exclusion."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "Correctly points to the Ombudsman and basic prerequisites, but omits the clinical-judgement bar and did not reach the actual forms.ie complaint form."
+    },
+    {
+      "kind": "compensation",
+      "found": true,
+      "body": "right",
+      "facts": "wrong",
+      "page": "wrong_page",
+      "note": "Right that medical negligence goes to court and not IRB, with SCA handling covered public claims; wrong on the core limitation period, which is 2 years from date of knowledge, not 3."
+    },
+    {
+      "kind": "funding",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Good Legal Aid Board coverage and calculator, but it is too hesitant on conditional fees: percentage-of-damages fees are banned, yet no-win-no-fee style arrangements can still exist."
+    },
+    {
+      "kind": "lawyers",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Found the official Law Society search, but missed the important limitation that there is no clinical-negligence/specialism filter."
+    },
+    {
+      "kind": "guideline",
+      "found": true,
+      "body": "partly",
+      "facts": "wrong",
+      "page": "wrong_page",
+      "note": "It identified guideline bodies/repositories, but missed the key answer: no Irish national scaphoid/fracture guideline was found, so UK guidance is only persuasive."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "Correctly found the Patient Advocacy Service, but missed the actual online enquiry form and did not note that PAS is not legal/compensation advice."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Good St James’s records route and one-month timing, but it omits the usual SAR form + photo ID requirement and the general no-portal point."
+    }
+  ],
+  "score": 5.8,
+  "smart": "It correctly worked out that compensation is a clinical-negligence court claim and not an Injuries Resolution Board claim, and tied St James’s into the SCA/Clinical Indemnity Scheme route.",
+  "worst": "It gives the wrong limitation period for the compensation claim: 3 years instead of the crucial 2 years from accrual/date of knowledge."
+}

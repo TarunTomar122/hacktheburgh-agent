@@ -1,0 +1,13 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+SCORE 5.8/10
+Smart: It correctly worked out that compensation is a clinical-negligence court claim and not an Injuries Resolution Board claim, and tied St James’s into the SCA/Clinical Indemnity Scheme route.
+Worst: It gives the wrong limitation period for the compensation claim: 3 years instead of the crucial 2 years from accrual/date of knowledge.
+- complaint: found=true body=partly facts=partly page=right_page | Useful St James’s complaints contact and timings, but it misses that the formal national route is HSE Your Service Your Say and the key clinical-judgement exclusion.
+- escalation: found=true body=right facts=partly page=wrong_page | Correctly points to the Ombudsman and basic prerequisites, but omits the clinical-judgement bar and did not reach the actual forms.ie complaint form.
+- compensation: found=true body=right facts=wrong page=wrong_page | Right that medical negligence goes to court and not IRB, with SCA handling covered public claims; wrong on the core limitation period, which is 2 years from date of knowledge, not 3.
+- funding: found=true body=right facts=partly page=right_page | Good Legal Aid Board coverage and calculator, but it is too hesitant on conditional fees: percentage-of-damages fees are banned, yet no-win-no-fee style arrangements can still exist.
+- lawyers: found=true body=right facts=partly page=right_page | Found the official Law Society search, but missed the important limitation that there is no clinical-negligence/specialism filter.
+- guideline: found=true body=partly facts=wrong page=wrong_page | It identified guideline bodies/repositories, but missed the key answer: no Irish national scaphoid/fracture guideline was found, so UK guidance is only persuasive.
+- advice: found=true body=right facts=partly page=wrong_page | Correctly found the Patient Advocacy Service, but missed the actual online enquiry form and did not note that PAS is not legal/compensation advice.
+- records: found=true body=right facts=partly page=right_page | Good St James’s records route and one-month timing, but it omits the usual SAR form + photo ID requirement and the general no-portal point.
