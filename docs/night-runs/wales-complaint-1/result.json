@@ -1,0 +1,213 @@
+{
+  "runId": "complaint-2026-11-07T23-28-12-900Z",
+  "runDir": "/Users/tarat/hacktheburgh-agent/.runs/complaint-2026-11-07T23-28-12-900Z",
+  "plan": [
+    {
+      "id": "read_rules",
+      "text": "Check Cardiff and Vale UHB complaint process, stages, methods, and time limit against Elin's dates",
+      "status": "done"
+    },
+    {
+      "id": "find_guidance",
+      "text": "Look for national guidance relevant to suspected scaphoid fracture/wrist injury and compare with Elin's timeline",
+      "status": "done"
+    },
+    {
+      "id": "draft_complaint",
+      "text": "Draft Elin's complaint asking for explanation, apology, service changes, and noting financial loss",
+      "status": "done"
+    },
+    {
+      "id": "prepare_message",
+      "text": "Prepare the complaint email with the Health Board's contact details",
+      "status": "done"
+    },
+    {
+      "id": "finish",
+      "text": "Summarise what is ready and any next steps for Elin",
+      "status": "doing"
+    }
+  ],
+  "turns": 10,
+  "says": [
+    {
+      "i": 0,
+      "t": 3769,
+      "from": "elliot",
+      "kind": "plan",
+      "text": "Start with the complaint body's own rules and time limits before drafting anything.",
+      "tool": "update_plan",
+      "replan": false
+    },
+    {
+      "i": 1,
+      "t": 5577,
+      "from": "elliot",
+      "to": "robin",
+      "kind": "assign",
+      "text": "We need the Health Board's own complaint rules, route, and deadline, and to check Elin's dates against them before taking the next step.",
+      "tool": "read_rules"
+    },
+    {
+      "i": 2,
+      "t": 32632,
+      "from": "robin",
+      "to": "elliot",
+      "kind": "report",
+      "text": "You are inside the time limit. I counted from the first event in your timeline, 2026-09-12, when the Emergency Unit assessed your wrist and discharged you. As of 2026-11-07, that is well within 12 months, so you are still in time …",
+      "detail": "Status: within. \"You can take up to 12 months to raise a concern or complaint. However, it is best to talk to someone as soon as possible.\"\nI counted from the first event in your timeline, 2026-09-12, when the Emergency Unit assessed your wrist and discharged you. As of 2026-11-07, that is well within 12 months, so you are still in time to complain.\nSteps: Raise your concerns with the staff involved with your care or treatment -> In NHS Wales, this is done through a process known as \"Listening to People\" -> You can also fill in the Complaints Form, e-mail the team, write to the address given, or call during office hours -> Llais can provide free and confidential complaints advocacy and support\nInclude: ",
+      "tool": "read_rules",
+      "tab": "Robin · Cardiff and Vale Universi…",
+      "ok": true
+    },
+    {
+      "i": 3,
+      "t": 35486,
+      "from": "elliot",
+      "kind": "plan",
+      "text": "The complaint is in time, so the next useful step is to check national guidance for suspected scaphoid fracture and compare it with Elin's timeline.",
+      "tool": "update_plan",
+      "replan": false
+    },
+    {
+      "i": 4,
+      "t": 37374,
+      "from": "elliot",
+      "to": "iona",
+      "kind": "assign",
+      "text": "A scaphoid fracture is a specific wrist injury with published guidance, which may help frame one polite question in the complaint.",
+      "tool": "find_guidance"
+    },
+    {
+      "i": 5,
+      "t": 112534,
+      "from": "iona",
+      "to": "elliot",
+      "kind": "report",
+      "text": "Welsh Government / NICE: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" One question to ask: Given the mechanism of injury and any examination findings recorded at the first attendance, should a suspected scaphoi…",
+      "detail": "Welsh Government / NICE:\nConsider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\nPossible gaps: Given the mechanism of injury and any examination findings recorded at the first attendance, should a suspected scaphoid fracture have led clinicians to consider MRI as first-line imaging rather than relying on initial X-rays alone? | Do the contemporaneous notes show a thorough clinical examination for possible scaphoid injury at the first visit, and if so, was MRI considered and documented?",
+      "tool": "find_guidance",
+      "tab": "Iona · Welsh Government / NICE",
+      "ok": true
+    },
+    {
+      "i": 6,
+      "t": 117629,
+      "from": "elliot",
+      "kind": "plan",
+      "text": "We have the key complaint route and a relevant guidance point, so the next step is to turn Elin's facts into a clear complaint draft.",
+      "tool": "update_plan",
+      "replan": false
+    },
+    {
+      "i": 7,
+      "t": 124426,
+      "from": "elliot",
+      "to": "you",
+      "kind": "report",
+      "text": "Written to Cardiff and Vale University Health Board. It asks about the guidance politely, without blaming anyone.",
+      "detail": "Drafted.\n\nI am writing to complain about the care I received at the Emergency Unit, University Hospital of Wales, Heath Park, Cardiff, after I injured my right wrist.\n\nOn 2026-09-12, I slipped on wet steps and fell on my outstretched right hand. I attended the Emergency Unit at University Hospital of Wales, where my wrist was X-rayed. I was told it was a sprain and was sent home with a bandage and no follow-up.\n\nThe pain did not go away. On 2026-10-19, my GP sent me for a repeat X-ray and MRI.\n\nOn 2026-10-26, the MRI showed a displaced scaphoid waist fracture that has not healed, and surgery is now planned.\n\nThis has had a significant impact on me. I have missed class tests and weeks of shifts at my café job.\n\nI would also like to ask about the following guidance. The Welsh Government / NICE recommendation says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Please could you explain how this recommendation was followed in my care at my first attendance.\n\nI would like an explanation of what happened, an apology, changes to how A&E checks wrist injuries, and compensation for the pain I have experienced and my lost earnings.",
+      "tool": "draft_complaint",
+      "ok": true
+    },
+    {
+      "i": 8,
+      "t": 127603,
+      "from": "elliot",
+      "kind": "plan",
+      "text": "The Health Board accepts complaints by email, so the next step is to prepare the full message and where to send it rather than use a form.",
+      "tool": "update_plan",
+      "replan": true
+    },
+    {
+      "i": 9,
+      "t": 129302,
+      "from": "elliot",
+      "to": "you",
+      "kind": "report",
+      "text": "Your message is ready to send. Message ready. Send it to: University Hospital of Wales is part of Cardiff and Vale University Health Board in NHS Wales, so this is a public NHS Wales complai…",
+      "tool": "prepare_message",
+      "ok": true
+    },
+    {
+      "i": 10,
+      "t": 132679,
+      "from": "elliot",
+      "kind": "plan",
+      "text": "We have the complaint draft and the Health Board complaint route, so the last step is to give Elin a short summary and next steps.",
+      "tool": "update_plan",
+      "replan": false
+    },
+    {
+      "i": 11,
+      "t": 135596,
+      "from": "elliot",
+      "to": "you",
+      "kind": "done",
+      "text": "You are within the Health Board's 12-month time limit to complain. I have prepared a complaint draft for Cardiff and Vale University Health Board by email, including your request for an explanation, an apology, service changes, and consideration of compensation for pain and lost earnings. If you want, you can now send it through the Health Board's Listening to People complaints route, and Llais Cardiff & The Vale can help you with free independent support.",
+      "tool": "finish"
+    }
+  ],
+  "stats": {
+    "agents": 2,
+    "sites": 3,
+    "pages": 15,
+    "actions": 9
+  },
+  "asks": 0,
+  "process": {
+    "summary": "This page says you should raise concerns with the staff involved with your care or treatment, and that in NHS Wales this is done through \"Listening to People.\" It does not give the stages of the complaints process, response times, or a time limit for complaining. To complain, it says you can fill in the Complaints Form, e-mail the team, write to the address given, or call during office hours; it also says Llais can provide complaints advocacy and support.",
+    "steps": [
+      "Raise your concerns with the staff involved with your care or treatment",
+      "In NHS Wales, this is done through a process known as \"Listening to People\"",
+      "You can also fill in the Complaints Form, e-mail the team, write to the address given, or call during office hours",
+      "Llais can provide free and confidential complaints advocacy and support"
+    ],
+    "support": "",
+    "url": "https://cavuhb.nhs.wales/patient-advice/complaints/listening-to-people/"
+  },
+  "timeLimit": {
+    "limit": "\"You can take up to 12 months to raise a concern or complaint. However, it is best to talk to someone as soon as possible.\"",
+    "status": "within",
+    "explanation": "I counted from the first event in your timeline, 2026-09-12, when the Emergency Unit assessed your wrist and discharged you. As of 2026-11-07, that is well within 12 months, so you are still in time to complain.",
+    "url": "https://cavuhb.nhs.wales/patient-advice/complaints/listening-to-people/"
+  },
+  "evidence": {
+    "guideline": {
+      "name": "Welsh Government / NICE",
+      "url": "https://www.nice.org.uk/guidance/NG38/chapter/recommendations",
+      "points": [
+        {
+          "id": "1",
+          "text": "Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination."
+        }
+      ]
+    },
+    "gaps": [
+      {
+        "guideline": "1: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\"",
+        "timeline": "On 2026-09-12, after a fall onto an outstretched hand, A&E \"X-rayed the wrist, said sprain, discharged with no follow-up\"; MRI was not done until 2026-10-19/2026-10-26, when a scaphoid fracture was found.",
+        "question": "Given the mechanism of injury and any examination findings recorded at the first attendance, should a suspected scaphoid fracture have led clinicians to consider MRI as first-line imaging rather than relying on initial X-rays alone?"
+      },
+      {
+        "guideline": "1: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\"",
+        "timeline": "The patient says they were discharged as having a sprain after X-ray, with \"no follow-up,\" and the fracture was only identified weeks later on repeat imaging.",
+        "question": "Do the contemporaneous notes show a thorough clinical examination for possible scaphoid injury at the first visit, and if so, was MRI considered and documented?"
+      }
+    ],
+    "caveat": "This comparison only highlights possible differences between the guideline and the patient's account; only the full contemporaneous medical records and expert review can show what assessment, reasoning, and imaging decisions actually occurred."
+  },
+  "draft": {
+    "details": "I am writing to complain about the care I received at the Emergency Unit, University Hospital of Wales, Heath Park, Cardiff, after I injured my right wrist.\n\nOn 2026-09-12, I slipped on wet steps and fell on my outstretched right hand. I attended the Emergency Unit at University Hospital of Wales, where my wrist was X-rayed. I was told it was a sprain and was sent home with a bandage and no follow-up.\n\nThe pain did not go away. On 2026-10-19, my GP sent me for a repeat X-ray and MRI.\n\nOn 2026-10-26, the MRI showed a displaced scaphoid waist fracture that has not healed, and surgery is now planned.\n\nThis has had a significant impact on me. I have missed class tests and weeks of shifts at my café job.\n\nI would also like to ask about the following guidance. The Welsh Government / NICE recommendation says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Please could you explain how this recommendation was followed in my care at my first attendance.\n\nI would like an explanation of what happened, an apology, changes to how A&E checks wrist injuries, and compensation for the pain I have experienced and my lost earnings.",
+    "location": "Emergency Unit, University Hospital of Wales, Heath Park, Cardiff",
+    "outcome": "An explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings"
+  },
+  "form": {
+    "status": "not_started",
+    "filled": [],
+    "unfilled": [],
+    "note": "This body takes complaints by email or post; your message is ready.",
+    "url": "https://cavuhb.nhs.wales/patient-advice/complaints/listening-to-people/"
+  },
+  "message": "To: Cardiff and Vale University Health Board\nUniversity Hospital of Wales is part of Cardiff and Vale University Health Board in NHS Wales, so this is a public NHS Wales complaint. The Health Board says to raise concerns with the staff involved first; if that does not resolve it, use its 'Listening to People' complaints process by phone, email, post, or its downloadable complaints form. The newer Welsh Government page says concerns raised after 31 March 2026 follow 'Listening to People', while older pages still refer to 'Putting Things Right'.\n\nSubject: Complaint about my care at Emergency Unit, University Hospital of Wales, Heath Park, Cardiff\n\nI am writing to complain about the care I received at the Emergency Unit, University Hospital of Wales, Heath Park, Cardiff, after I injured my right wrist.\n\nOn 2026-09-12, I slipped on wet steps and fell on my outstretched right hand. I attended the Emergency Unit at University Hospital of Wales, where my wrist was X-rayed. I was told it was a sprain and was sent home with a bandage and no follow-up.\n\nThe pain did not go away. On 2026-10-19, my GP sent me for a repeat X-ray and MRI.\n\nOn 2026-10-26, the MRI showed a displaced scaphoid waist fracture that has not healed, and surgery is now planned.\n\nThis has had a significant impact on me. I have missed class tests and weeks of shifts at my café job.\n\nI would also like to ask about the following guidance. The Welsh Government / NICE recommendation says: \"Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination.\" Please could you explain how this recommendation was followed in my care at my first attendance.\n\nI would like an explanation of what happened, an apology, changes to how A&E checks wrist injuries, and compensation for the pain I have experienced and my lost earnings.\n\nWhat I would like: An explanation, an apology, changes to how A&E checks wrist injuries, and compensation for pain and lost earnings\n\nElin Rhydderch\n23 Clos Dychmygol, Cathays, Cardiff CF24 4QW\n07700 900582\nelin.rhydderch@example.com"
+}

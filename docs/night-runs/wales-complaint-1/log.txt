@@ -1,0 +1,16 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[10s] [elliot] Start with the complaint body's own rules and time limits before drafting anything.
+[12s] [elliot → robin] We need the Health Board's own complaint rules, route, and deadline, and to check Elin's dates against them before taking the next step.
+[39s] [robin → elliot] You are inside the time limit. I counted from the first event in your timeline, 2026-09-12, when the Emergency Unit assessed your wrist and discharged you. As of 2026-11-07, that is well within 12 months, so you are still in time …
+[42s] [elliot] The complaint is in time, so the next useful step is to check national guidance for suspected scaphoid fracture and compare it with Elin's timeline.
+[44s] [elliot → iona] A scaphoid fracture is a specific wrist injury with published guidance, which may help frame one polite question in the complaint.
+[119s] [iona → elliot] Welsh Government / NICE: "Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination." One question to ask: Given the mechanism of injury and any examination findings recorded a
+[124s] [elliot] We have the key complaint route and a relevant guidance point, so the next step is to turn Elin's facts into a clear complaint draft.
+[131s] [elliot → you] Written to Cardiff and Vale University Health Board. It asks about the guidance politely, without blaming anyone.
+[134s] [elliot] The Health Board accepts complaints by email, so the next step is to prepare the full message and where to send it rather than use a form.
+[136s] [elliot → you] Your message is ready to send. Message ready. Send it to: University Hospital of Wales is part of Cardiff and Vale University Health Board in NHS Wales, so this is a public NHS Wales complai…
+[139s] [elliot] We have the complaint draft and the Health Board complaint route, so the last step is to give Elin a short summary and next steps.
+[142s] [elliot → you] You are within the Health Board's 12-month time limit to complain. I have prepared a complaint draft for Cardiff and Vale University Health Board by email, including your request for an explanation, an apology, service changes, and consider
+
+RUN complaint-2026-11-07T23-28-12-900Z 2.6 min; form not_started (0 fields, unfilled: none) at https://cavuhb.nhs.wales/patient-advice/complaints/listening-to-people/; limit within; guidance 1 points; stats {"agents":2,"sites":3,"pages":15,"actions":9}

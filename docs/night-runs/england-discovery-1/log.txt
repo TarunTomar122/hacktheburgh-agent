@@ -1,0 +1,152 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+PLACE: {"country":"United Kingdom","region":"England","city":"London","hospital":"St Thomas' Hospital","careSetting":"public","why":"A&E at St Thomas' Hospital in London; GP followed up, which suggests NHS/public care."}
+[10s] [elliot] Set the route and split live research across the crew.
+[14s] [elliot → robin] Find the provider's own site and who runs St Thomas' Hospital before anything else.
+[14s] [elliot → iona] Find the official body publishing clinical guidance for NHS care in England.
+[14s] [elliot → nell] Find official funding rules for clinical negligence claims in England, including legal aid and CFA information.
+[14s] [elliot → kit] Find the provider's official complaint and records pages to later reach actual forms.
+[25s] [kit → elliot] 10 results for "St Thomas' Hospital official complaints form medical record…". Top: guysandstthomas.nhs.uk.
+[27s] [iona → elliot] 10 results for "official clinical guidance NHS England hospitals body publi…". Top: nice.org.uk.
+[27s] [robin → elliot] 10 results for "St Thomas' Hospital London official site who runs hospital …". Top: guysandstthomas.nhs.uk.
+[27s] [nell → elliot] 10 results for "GOV.UK legal aid clinical negligence adult England CFA no w…". Top: find-legal-advice.justice.gov.uk.
+[33s] [elliot → robin] Confirm from the provider's own site who runs St Thomas' Hospital and that it is NHS care.
+[33s] [elliot → iona] Read NICE's official page to confirm the body publishing guidance for NHS care in England.
+[33s] [elliot → nell] Read the official legal aid finder page for clinical negligence to see what it says about coverage or adviser finding.
+[33s] [elliot → kit] Go to the actual provider complaint form and report the path and fields the patient would need.
+[38s] [robin → elliot] I hit a problem: Blocked: bot_check at https://www.guysandstthomas.nhs.uk/ (The site refuses this automated browser ("Access forbidden"))
+[38s] [elliot → robin] Read the provider's complaint page for its process, deadlines and response times.
+[39s] [kit → elliot] I hit a problem: Not found. The site blocked the agent at the start: The site refuses this automated browser ("Access forbidden")
+Wall: bot_check (The site refuses this automat…
+[40s] [iona → elliot] NICE says it publishes guidance, specifically evidence-based recommendations for health and social care, and that it produces different types of guidance including technology appraisals and diagnostics. The page does no…
+[40s] [nell → elliot] The page says it is for finding official legal aid advisers in England and Wales, and that advisers will check your problem and finances to see if you can get legal aid. It does not give detailed eligibility rules on th…
+[44s] [robin → elliot] I hit a problem: Blocked: bot_check at https://www.guysandstthomas.nhs.uk/contact-us/your-feedback/make-complaint (The site refuses this automated browser ("Access forbidden"))
+[57s] [elliot] The trust site is blocking page reads, so switch to reachable official pages and search snippets to prove routes, and keep probing form URLs directly.
+[62s] [elliot → robin] Find reachable official pages proving who runs St Thomas' Hospital and how patients contact complaints/PALS if the trust site blocks.
+[62s] [elliot → nell] Find official government or NHS pages on legal aid scope for clinical negligence adults and an eligibility checker.
+[62s] [elliot → kit] Find accessible official records-access pages for Guy's and St Thomas' NHS Foundation Trust or its hospitals.
+[71s] [kit → elliot] 6 results for "site:guysandstthomas.nhs.uk OR site:rbht.nhs.uk access your…". Top: guysandstthomas.nhs.uk.
+[83s] [robin → elliot] 7 results for "site:nhs.uk OR site:cqc.org.uk St Thomas' Hospital Guy's an…". Top: guysandstthomas.nhs.uk.
+[83s] [elliot → robin] Find the official ombudsman page and complaint form for NHS complaints in England.
+[95s] [robin → elliot] 9 results for "Parliamentary and Health Service Ombudsman NHS complaint of…". Top: ombudsman.org.uk.
+[95s] [elliot → robin] Find official free independent NHS complaints advocacy for residents using St Thomas' Hospital in London.
+[95s] [nell → elliot] 10 results for "site:gov.uk clinical negligence legal aid adult England off…". Top: dictionary.cambridge.org.
+[108s] [robin → elliot] 10 results for "official NHS complaints advocacy Lambeth Southwark Westmins…". Top: voiceability.org.
+[114s] [elliot → robin] Use the NHS official directory page to prove who runs St Thomas' Hospital.
+[114s] [elliot → kit] Probe the direct complaint form URL in case the form itself is readable even if the main site blocks other pages.
+[114s] [elliot → nell] Find the official government page explaining legal aid scope for clinical negligence, not just the adviser finder.
+[120s] [kit → elliot] I hit a problem: Blocked: bot_check at https://www.guysandstthomas.nhs.uk/form/complaints-form (The site refuses this automated browser ("Access forbidden"))
+[120s] [elliot → kit] Try the trust's records overview page directly to see if it is readable and gives the records route.
+[123s] [robin → elliot] The page says St Thomas' is at Westminster Bridge Road, London SE1 7EH, and that its trust is Guy's and St Thomas' NHS Foundation Trust. It also identifies the service as PALS for St Thomas' Hospital.
+[123s] [elliot → robin] Read the official ombudsman page for when and how NHS complaints can be escalated.
+[125s] [kit → elliot] I hit a problem: Blocked: bot_check at https://www.guysandstthomas.nhs.uk/about-us/your-health-records (The site refuses this automated browser ("Access forbidden"))
+[128s] [nell → elliot] 10 results for "site:gov.uk clinical negligence legal aid scope England adu…". Top: assets.publishing.service.gov.uk.
+[128s] [robin → elliot] A person should complain to the organisation they're unhappy with first, and then complain to the ombudsman if they're still unhappy. The page says to complain to the ombudsman within 12 months of knowing about the issu…
+[141s] [elliot → robin] Find an accessible official complaint leaflet or related page for Guy's and St Thomas' that may include complaint deadlines and response times.
+[141s] [elliot → nell] Find official England sources on NHS clinical negligence claims and limitation periods, including whether any redress or no-fault scheme applies.
+[141s] [elliot → kit] Find the official online complaint checker/form path for the Public Service Ombudsman and the actual form URL.
+[154s] [nell → elliot] 7 results for "site:nhsresolution.nhs.uk OR site:gov.uk clinical negligenc…". Top: assets.publishing.service.gov.uk.
+[154s] [kit → elliot] 3 results for "site:complaintform.ombudsman.org.uk complaint checker ombud…". Top: complaintform.ombudsman.org.uk.
+[154s] [robin → elliot] 6 results for "site:guysandstthomas.nhs.uk OR site:rbht.nhs.uk OR site:eve…". Top: guysandstthomas.nhs.uk.
+[154s] [elliot → robin] Read the trust's Evelina complaints page, which may mirror the same trust process but be reachable.
+[160s] [robin → elliot] The page says to start by speaking with a member of staff if you have a concern. It lists complaint options including mediation, PALS, and formal complaints, but this page does not give a deadline, stages, or response t…
+[160s] [elliot → robin] Find the official Law Society or panel directory for solicitors doing clinical negligence in London.
+[173s] [robin → elliot] 8 results for "official solicitor directory clinical negligence London Law…". Top: solicitors.lawsociety.org.uk.
+[180s] [elliot → robin] Use an accessible official hospital page within the same trust family to look for complaint timing and process details.
+[180s] [elliot → kit] Read the ombudsman complaint checker or form start page to capture the actual application route.
+[180s] [elliot → nell] Find the official civil legal aid eligibility checker and scope pages on GOV.UK.
+[187s] [robin → elliot] To make a formal complaint, you should write to the Chief Executive at Guy’s and St Thomas’ NHS Foundation Trust, or call 020 7188 3514, or email gstt.complaints@nhs.net. The complaint should be made within six months o…
+[193s] [nell → elliot] 10 results for "site:gov.uk check legal aid clinical negligence England off…". Top: find-legal-advice.justice.gov.uk.
+[193s] [elliot → nell] Find official legislation or government material on conditional fee agreements and the success fee cap.
+[202s] [kit → elliot] To start a complaint, the page says: “Make a new complaint” and then asks you to answer some questions to check it’s the right organisation and that your complaint is ready. At the start it asks: “To start with, please …
+[202s] [elliot → kit] Try the trust's MyChart page as an official route to access records online.
+[206s] [nell → elliot] 3 results for "site:legislation.gov.uk conditional fee agreements success …". Top: legislation.gov.uk.
+[208s] [kit → elliot] I hit a problem: Blocked: bot_check at https://www.guysandstthomas.nhs.uk/mychart (The site refuses this automated browser ("Access forbidden"))
+[219s] [elliot → robin] Read the official law society page so we can tell the patient how to search the profession's directory.
+[219s] [elliot → nell] Read the official GOV.UK legal aid checker page for the public route to check eligibility.
+[219s] [elliot → kit] Use the official Royal Brompton page within the same trust to find a reachable records access process.
+[228s] [kit → elliot] The page says to use the Guy’s and St Thomas’ website for information on managing health records and data, including how to access the information they hold about you. For contact about subject access, it gives email gs…
+[228s] [robin → elliot] The page says Find a Solicitor is a free website that helps you find a solicitor in England and Wales, and it uses information collected from the Solicitors Regulation Authority. You can search and filter by your legal …
+[228s] [elliot → robin] Find official NHS or government pages for free independent NHS complaints advocacy or medical negligence support in England.
+[231s] [nell → elliot] The page says to use the “Check if you can get legal aid” service to check eligibility and find out how to apply. If you cannot use the online service, you can contact the Civil Legal Advice helpline; it also says you m…
+[231s] [elliot → nell] Read the legislation page to see what clinical negligence legal aid scope actually covers.
+[236s] [robin → elliot] 10 results for "site:nhs.uk OR site:england.nhs.uk OR site:gov.uk NHS compl…". Top: ad.doubleclick.net.
+[242s] [nell → elliot] The legislation says civil legal services are in scope for a claim for damages in respect of clinical negligence causing a neurological injury to a severely disabled individual, if the listed conditions are met. It also…
+[248s] [elliot → robin] Read NHS England's official complaints page for free independent advocacy and escalation guidance.
+[248s] [elliot → nell] Find an official NHS Resolution or government page explaining how clinical negligence claims against NHS trusts work and any time limit.
+[248s] [elliot → kit] Open the reachable official records page linked from RBHT to get the actual medical records request route.
+[260s] [kit → elliot] The page says you can access your medical records “in person” or get “a copy.” To request records, you must “complete the access to records request form” and send it by post or email; the page links separate forms for “…
+[292s] [robin → elliot] You can complain about NHS care, treatment or service, and if you need help you can get free support from an NHS complaints advocate. If you’re still unhappy after the local complaints process, you can take the complain…
+[292s] [elliot → robin] Find an official page for the AvMA or other independent medical negligence advice body, and if possible an accreditation scheme for solicitors.
+[299s] [nell → elliot] 3 results for "site:resolution.nhs.uk clinical negligence claim time limit…". Top: resolution.nhs.uk.
+[299s] [elliot → nell] Read the official legislation or memorandum on conditional fee agreements to confirm the success fee cap.
+[303s] [nell → elliot] The memorandum says personal injury success fees are capped at 25% of the relevant damages, and that the cap includes VAT. It also says the cap does not apply to appeal proceedings in personal injury claims, where a suc…
+[305s] [robin → elliot] 10 results for "AvMA official free independent advice medical negligence so…". Top: calioclaims.co.uk.
+[318s] [elliot → nell] Read NHS Resolution's claimant advice page for how NHS clinical negligence compensation claims are pursued.
+[318s] [elliot → robin] Read the official AvMA advice page for free independent support after avoidable medical harm.
+[318s] [elliot → kit] Go through the official ombudsman complaint checker to the actual complaint form if possible and report the fields or any wall.
+[329s] [nell → elliot] The page says that if you plan to represent yourself, you need to send a “letter of claim” to the NHS Trust responsible for your care, and that if you do not have legal representation you can act “as a litigant in perso…
+[329s] [elliot → nell] Read NHS Resolution's time limit PDF for the limitation rules on NHS clinical negligence claims.
+[332s] [nell → elliot] The document says clinical negligence claims must generally be “issued” within three years of the date the cause of action arose or a later date of knowledge. It also says the three-year period is the “limitation period…
+[372s] [robin → elliot] The page says AvMA offers a range of support services, including advice, information, self-help guides, a helpline, and a written advice service. It explicitly says this support is free and independent, and that the adv…
+[372s] [elliot → robin] Read the official PALS leaflet for the trust family to capture St Thomas' PALS details on a reachable document.
+[375s] [robin → elliot] The leaflet says PALS “provides help and advice to patients, families and carers” and that it can help with compliments, comments, or concerns, including information, listening to problems, resolving concerns, and advis…
+[470s] [kit → elliot] I hit a problem: Could not explore https://complaintform.ombudsman.org.uk/complaintchecker: Took too long
+[479s] [elliot → robin] Open the NHS trust page linked from the hospital directory to prove the provider is an NHS Foundation Trust.
+[479s] [elliot → nell] Get a fuller quote from NHS Resolution on the 3-year limitation period.
+[479s] [elliot → kit] Try the direct ombudsman complaint form page to capture any starting fields or wall.
+[485s] [nell → elliot] The page says: “The basic rule is that claims for damages arising from clinical negligence must be formally ‘issued’ within three years of either: i) The date the cause of action arose …; or ii) A later date of knowledg…
+[485s] [elliot → nell] Read the official Legal Aid Agency checklist to capture the practical limit of clinical negligence legal aid after 2013.
+[491s] [nell → elliot] The checklist says that from 1 April 2013 it became the Legal Aid Agency’s Clinical Negligence Funding Checklist. It does not say any special cutoff about availability after April 2013 beyond that date, but it does say …
+[492s] [kit → elliot] The page starts with cookies and accessibility text, then shows “HomeComplaint formNew complaint” and says, “You do not have access to this page.” It does not show actual complaint-form fields or options on this page.
+[493s] [robin → elliot] The page identifies Guy's and St Thomas' NHS Foundation Trust and gives its trust office address, but it does not say what hospitals it runs on this page. It only shows a link to "Hospitals and clinics" for more informa…
+[493s] [elliot → robin] Find an official current page for the Independent Health Complaints Advocacy service in Lambeth, since St Thomas' is in Lambeth.
+[508s] [robin → elliot] 10 results for "official Lambeth Independent Health Complaints Advocacy NHS…". Top: voiceability.org.
+[519s] [elliot → kit] Use the official PDF complaint form to capture the ombudsman form fields when the web form is blocked.
+[519s] [elliot → robin] Read how the ombudsman handles complaints, for escalation stages and what happens after applying.
+[519s] [elliot → nell] Find an official source on the pre-action protocol or court route for clinical negligence claims, to explain how compensation starts.
+[535s] [nell → elliot] 10 results for "official clinical negligence pre-action protocol letter of …". Top: uklegalguides.com.
+[535s] [elliot → nell] Find whether England has an official NHS no-fault or redress scheme for ordinary hospital clinical negligence claims.
+[545s] [robin → elliot] The page says complaints are handled in three steps: first they check if they can look into it, then they decide whether to investigate, and if they do, they carry out a detailed investigation. It also says an investiga…
+[545s] [elliot → robin] Read the direct Law Society search page for category and location filters relevant to clinical negligence in London.
+[552s] [nell → elliot] 9 results for "site:gov.uk OR site:resolution.nhs.uk NHS no fault compensa…". Top: gov.uk.
+[554s] [kit → elliot] The form asks for sections on “About you,” “About your complaint,” “Dispute Resolution,” and “Section 3: Declaration,” plus details if you’re complaining for someone else. It asks for contact details, complaint dates, t…
+[561s] [robin → elliot] The page shows a search form with "Your legal issue" and "Location" filters, but it does not show a selected Clinical Negligence category in the visible text. The visible category list includes other issues like "Accide…
+[569s] [elliot → nell] Check whether any current official NHS redress or no-fault scheme exists in England for ordinary NHS hospital clinical negligence claims.
+[569s] [elliot → robin] Read the Public Service Ombudsman's main page to capture its current name and role, since it was formerly PHSO.
+[578s] [robin → elliot] It says the Public Service Ombudsman independently investigates complaints about the NHS in England and UK government services.
+[578s] [elliot → robin] Read the NHS hospitals-and-clinics page to tie St Thomas' Hospital to the trust on an official NHS page.
+[596s] [robin → elliot] Yes. The page lists “St Thomas'” under the hospitals for Guy's and St Thomas' NHS Foundation Trust.
+[596s] [elliot → robin] Read the VoiceAbility Lambeth page in case we need a local independent complaints advocate for patients living near St Thomas'.
+[608s] [nell → elliot] No useful results.
+[613s] [robin → elliot] The page says VoiceAbility provides NHS Complaints Advocacy (IHCA) in Lambeth. It also says people can use an online referral form, web chat, or call 0300 303 1660 for help completing and submitting a referral, and that…
+[613s] [elliot → robin] Read the official ombudsman specialist advice PDF for information on independent NHS advocacy and other free support.
+[618s] [robin → elliot] I hit a problem: Blocked: not_found at https://www.ombudsman.org.uk/sites/default/files/Independent%20NHS%20advocacy%20and%20other%20specialist%20advice%20FINAL.pdf (PDF not re…
+[649s] [elliot] Core facts are now sourced from reachable official pages; start recording the routes and note the two blocked trust pages as walls.
+[683s] [elliot → you] Complain: Guy's and St Thomas' NHS Foundation Trust. St Thomas' Hospital is part of Guy's and St Thomas' NHS Foundation Trust, so an NHS complaint about this A&E care goes to the trust. A reachable official trust-family 
+[683s] [elliot → you] If that fails: Public Service Ombudsman. If the trust's complaint answer is not good enough, the independent next step is the Public Service Ombudsman for NHS complaints in England. You must complain to the trust first, 
+[683s] [elliot → you] Compensation: NHS Resolution. The compensation route I found for harm from NHS care here is a clinical negligence claim against the trust, usually started with a letter of claim and, if needed, pursued in court. In this 
+[683s] [elliot → you] Paying for help: GOV.UK / Legal Aid Agency. For an adult missed-fracture clinical negligence claim, the official legal-aid scope I found is extremely narrow and appears aimed at severe neurological injury cases meeting s
+[688s] [elliot → nell] Re-read the NHS Resolution limitation PDF to capture exact verbatim wording for the 3-year rule after quote mismatch.
+[688s] [elliot → kit] Get a more precise quote from the ombudsman PDF form for field names in case we record the form details.
+[696s] [kit → elliot] Headings on the form include: “Section 1: About you”, “Section 2: About your complaint”, “Section 3: Declaration”, and “Your other rights”. Field prompts include “First name” and “When did the problem you want to compla…
+[696s] [nell → elliot] The page says: “The basic rule is that claims for damages arising from clinical negligence must be formal
+[696s] [elliot → nell] Re-read the CFA memorandum to capture exact verbatim wording for the 25% success-fee cap after quote mismatch.
+[702s] [nell → elliot] The page says the cap is “greater than 25% of the damages awarded to the claimant for pain, suffering and loss of amenity and damages for pecuniary loss (save for future pecuniary loss),” and that it is “including VAT.”…
+[732s] [elliot → you] Compensation: NHS Resolution. The compensation route I found for harm from NHS care here is a clinical negligence claim against the trust, usually started with a letter of claim and, if needed, pursued in court. In this 
+[732s] [elliot → you] Paying for help: GOV.UK / Legal Aid Agency. For an adult missed-fracture clinical negligence claim, the official legal-aid scope I found is extremely narrow and appears aimed at severe neurological injury cases meeting s
+[732s] [elliot → you] Finding a lawyer: The Law Society. The official profession-run directory I found is the Law Society's Find a Solicitor service. You can use it to search for solicitors in England and Wales who do clinical negligence work
+[732s] [elliot → you] Clinical guidance: National Institute for Health and Care Excellence (NICE). The national body I found publishing the main evidence-based clinical guidance for NHS care in England is NICE. Trust clinicians may also use l
+[732s] [elliot → you] Free help: NHS England / AvMA. For complaints, NHS England says you can get free help from an NHS complaints advocate. For independent support about avoidable medical harm more broadly, AvMA offers free independent advic
+[732s] [elliot → you] Your records: Guy's and St Thomas' NHS Foundation Trust. The reachable official records route I found is through the trust-family Royal Brompton & Harefield pages, which point back to Guy's and St Thomas' records pages a
+[738s] [elliot → you] St Thomas’ Hospital is NHS care under Guy’s and St Thomas’ NHS Foundation Trust. For a complaint, the trust route is first; the reachable official trust-family page says complain within 6 months of the incident or 1 year
+
+RUN discovery-2026-11-07T23-23-57-546Z in 12.8 min, 19 turns, stats {"agents":62,"sites":22,"pages":126,"actions":87}
+- complaint: Guy's and St Thomas' NHS Foundation Trust | online_form https://www.guysandstthomas.nhs.uk/form/complaints-form | confirmed (5/5 checked) | wall: bot_check on the trust complaint form and trust complaint page in this run
+- escalation: Public Service Ombudsman | online_form https://complaintform.ombudsman.org.uk/complaintchecker | likely (5/5 checked)
+- compensation: NHS Resolution | court | likely (3/6 checked)
+- funding: GOV.UK / Legal Aid Agency | online_form https://www.gov.uk/legal-aid/check-legal-aid | confirmed (3/5 checked)
+- lawyers: The Law Society | online_form https://solicitors.lawsociety.org.uk/ | likely (4/4 checked)
+- guideline: National Institute for Health and Care Excellence (NICE) | unknown https://www.nice.org.uk/guidance | likely (2/2 checked)
+- advice: NHS England / AvMA | online_form https://www.england.nhs.uk/contact-us/feedback-and-complaints/complaint/ | confirmed (5/5 checked)
+- records: Guy's and St Thomas' NHS Foundation Trust | email https://www.rbht.nhs.uk/patients-visitors/for-patients/access-your-medical-records | likely (6/6 checked) | wall: the trust's own records pages on guysandstthomas.nhs.uk blocked the automated browser in this run

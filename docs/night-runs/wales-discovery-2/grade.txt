@@ -1,0 +1,13 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+SCORE 6.2/10
+Smart: It noticed the 2025/2026 change raising Welsh NHS redress from £25,000 to £50,000 instead of blindly repeating the old PTR figure.
+Worst: It anchored the complaint route on outdated Cardiff & Vale/Putting Things Right material, so it gave the old 2-working-day acknowledgement and failed to foreground that new concerns since 1 April 2026 must use Listening to People.
+- complaint: found=true body=right facts=partly page=wrong_page | Right health board, but it used an older Cardiff & Vale complaints page/PTR source and gave the old 2-working-day acknowledgement instead of the new 5-day Listening to People rule.
+- escalation: found=true body=right facts=right page=form_found | Correctly sent the patient to PSOW after the board, with the 1-year/12-week timing and the actual online complaint checker.
+- compensation: found=true body=right facts=partly page=wrong_page | Got the Welsh NHS redress route and the new £50,000 cap, but missed key mechanics like Stage 2 only, interim/120-working-day steps and limitation suspension.
+- funding: found=true body=right facts=partly page=wrong_page | Legal aid is correctly described as generally out of scope for an adult claim, but the main official checker/funding route was not the clearest page and the redress-funded advice route was underplayed.
+- lawyers: found=true body=partly facts=partly page=right_page | Law Society is relevant, but the better Wales-specific point was the need for Law Society/AvMA clinical-negligence panel expertise for free redress advice, and it missed the Law Society bot wall and AvMA finder.
+- guideline: found=true body=right facts=partly page=right_page | Correctly identified NICE, but missed the key scaphoid guidance point: consider MRI first-line for suspected scaphoid fracture.
+- advice: found=true body=right facts=right page=right_page | Correctly identified Llais as the free independent complaints advocacy service.
+- records: found=true body=right facts=partly page=right_page | Correct records route for Cardiff & Vale, but it omitted that relevant records should also be included in the Listening to People response/interim report.

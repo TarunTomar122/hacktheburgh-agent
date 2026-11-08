@@ -1,0 +1,114 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+PLACE: {"country":"United Kingdom","region":"Northern Ireland","city":"Belfast","hospital":"Royal Victoria Hospital, Belfast","careSetting":"public","why":"The patient said they were treated in the Emergency Department at the Royal Victoria Hospital in Belfast."}
+[22s] [elliot] Set the first live plan and split the work across the crew.
+[26s] [elliot → robin] Find the provider and prove who runs the hospital from official pages.
+[26s] [elliot → kit] Find the provider complaint route and complaint form on official pages.
+[26s] [elliot → nell] Find official Northern Ireland legal aid and funding pages for clinical negligence claims.
+[26s] [elliot → iona] Find the official body for clinical guidance used in Northern Ireland public hospitals.
+[91s] [robin → elliot] I hit a problem: Could not search: Took too long
+[91s] [elliot → robin] Find the independent complaint body for Northern Ireland health complaints and its official site.
+[91s] [kit → elliot] I hit a problem: Could not search: Took too long
+[92s] [nell → elliot] I hit a problem: Could not search: Took too long
+[92s] [iona → elliot] I hit a problem: Could not search: Took too long
+[116s] [robin → elliot] 10 results for "Northern Ireland health complaint ombudsman official compla…". Top: nidirect.gov.uk.
+[125s] [elliot] Several first searches timed out, so retry with narrower official queries while using the complaint result already found.
+[129s] [elliot → robin] Find the official provider page proving who runs Royal Victoria Hospital.
+[129s] [elliot → kit] Extract the trust complaint process details from the official complaint page already found.
+[129s] [elliot → nell] Find the official Northern Ireland legal aid page for civil legal services and clinical negligence.
+[129s] [elliot → iona] Find the official body that issues clinical guidance used in Northern Ireland hospitals.
+[162s] [kit → elliot] This complaints process is for “Anyone who receives, requests, or is directly affected by our services,” including representatives with consent. You can complain in person, online, by email, by phone, or in writing, and…
+[166s] [nell → elliot] 4 results for "site:justice-ni.gov.uk legal aid Northern Ireland clinical …". Top: justice-ni.gov.uk.
+[166s] [iona → elliot] 3 results for "site:health-ni.gov.uk NICE Northern Ireland guidance offici…". Top: health-ni.gov.uk.
+[170s] [robin → elliot] 3 results for "site:belfasttrust.hscni.net Royal Victoria Hospital Belfast…". Top: belfasttrust.hscni.net.
+[177s] [elliot → robin] Prove from the provider’s own page who runs Royal Victoria Hospital and what kind of services it provides.
+[178s] [elliot → kit] Find the actual Belfast Trust complaint form and report the path and fields.
+[178s] [elliot → nell] Extract the official Northern Ireland legal aid position on clinical negligence claims.
+[178s] [elliot → iona] Confirm from the Department of Health how NICE guidance applies in Northern Ireland.
+[213s] [robin → elliot] Yes. The page places Royal Victoria Hospital under the Belfast Health and Social Care Trust website and explicitly names “Belfast Health and Social Care Trust” in the footer, with the trust headquarters at the Royal Vic…
+[219s] [iona → elliot] NICE publishes the clinical guidance: the page says the National Institute for Health and Care Excellence provides guidance and advice, and the Department of Health says it has a formal link with NICE under which NICE g…
+[225s] [nell → elliot] The page does not say whether legal aid covers adult clinical negligence claims in Northern Ireland, or mention any online eligibility checker. It does say how to apply: “You will need to make an application to represen…
+[283s] [kit → elliot] Found the form "Feedback form | Belfast Health & Social Care Trust website" in 1 move: 32 fields (0 required), ends with "Submit". "Information on complaints | Belfast Health & Social Care Tr…" only explains the process…
+[296s] [elliot] We now know the hospital is run by Belfast Trust and that Northern Ireland uses a 2026 two-stage HSC complaints process; next focus is escalation, records, compensation and funding detail.
+[302s] [elliot → robin] Extract the independent escalation rules from the Northern Ireland Ombudsman’s official complaint page.
+[302s] [elliot → kit] Find the actual online complaint form for the Northern Ireland Ombudsman and report the path and fields.
+[302s] [elliot → nell] Find official Northern Ireland public information about civil legal aid eligibility or checking entitlement for negligence claims.
+[302s] [elliot → iona] Find the official Belfast Trust page for accessing patient medical records.
+[320s] [iona → elliot] 4 results for "site:belfasttrust.hscni.net Belfast Trust access medical re…". Top: belfasttrust.hscni.net.
+[328s] [robin → elliot] For health and social care complaints, the page says NIPSO can help if you think a public body has treated you unfairly or caused you hardship or injustice, and you should normally have complained directly to the organi…
+[329s] [nell → elliot] 4 results for "site:justice-ni.gov.uk civil legal aid eligibility checker …". Top: justice-ni.gov.uk.
+[476s] [kit → elliot] I hit a problem: Could not explore https://www.nipso.org.uk/make-complaint/how-make-complaint: Took too long
+[488s] [elliot] Next, use official government and ombudsman pages to pin down escalation, records, compensation and funding details, including whether any no-fault or redress scheme exists.
+[493s] [elliot → robin] Find official Northern Ireland pages on clinical negligence compensation and whether any no-fault or redress scheme exists.
+[493s] [elliot → nell] Get official public-facing legal aid eligibility and financial guidance from the Department of Justice.
+[493s] [elliot → kit] Open the Ombudsman form page directly and report whether there is an online complaint form and its fields or walls.
+[493s] [elliot → iona] Read the official Belfast Trust access-to-information page for medical-record access routes.
+[517s] [iona → elliot] Yes. The page says requests for personal information, including health and social care records, are handled under UK GDPR and the Data Protection Act 2018, and it points to “Data protection and how to access your record…
+[519s] [robin → elliot] 6 results for "site:justice-ni.gov.uk OR site:health-ni.gov.uk OR site:leg…". Top: justice-ni.gov.uk.
+[539s] [nell → elliot] This page does not explain civil legal aid eligibility, financial tests, exceptions, or how the public can check or apply; it is only a FAQs index page listing related legal aid topics. It does show links to financial e…
+[651s] [kit → elliot] I hit a problem: Could not explore https://www.nipso.org.uk/make-complaint/online-complaints-form: Took too long
+[660s] [elliot → robin] Find official Northern Ireland sources for clinical negligence claim time limits and protocol/court route.
+[660s] [elliot → nell] Find official Northern Ireland sources on whether no win no fee or damages-based agreements are allowed.
+[660s] [elliot → iona] Open the Belfast Trust data protection page to get the actual medical-records access route.
+[660s] [elliot → kit] Find the official lawyer directory for solicitors in Northern Ireland and how to search by speciality and Belfast location.
+[743s] [iona → elliot] A patient should submit a request in writing to the relevant department, and for some records they can also download the subject access application form. The page says to include contact details and photographic ID, and…
+[747s] [robin → elliot] I hit a problem: Could not search: Took too long
+[748s] [kit → elliot] I hit a problem: Could not search: Took too long
+[748s] [nell → elliot] I hit a problem: Could not search: Took too long
+[759s] [elliot] Record the parts already clear soon, but first narrow the remaining searches to specific official legislation and professional-body pages.
+[765s] [elliot → robin] Find the exact Northern Ireland limitation law for personal injury/clinical negligence claims.
+[766s] [elliot → nell] Find the exact official Northern Ireland source on conditional fee or no win no fee agreements.
+[766s] [elliot → kit] Find the Law Society of Northern Ireland official solicitor directory.
+[766s] [elliot → iona] Use the official public guide to identify independent patient-help bodies for health complaints.
+[845s] [robin → elliot] I hit a problem: Could not search: Took too long
+[846s] [nell → elliot] I hit a problem: Could not search: Took too long
+[846s] [kit → elliot] I hit a problem: Could not search: Took too long
+[876s] [iona → elliot] I hit a problem: Could not read https://www.nidirect.gov.uk/articles/how-complain-or-raise-concerns-about-health-services: Took too long
+[881s] [elliot → robin] Find the exact official legislation page for Northern Ireland personal injury limitation so the compensation deadline is sourced.
+[1000s] [robin → elliot] I hit a problem: Could not search: Took too long
+[1006s] [elliot → robin] Retry a broader official search for Northern Ireland personal injury limitation law.
+[1006s] [elliot → nell] Retry a broader official search for no win no fee or conditional fee agreements in Northern Ireland.
+[1006s] [elliot → kit] Retry a broader official search for the Law Society solicitor directory in Northern Ireland.
+[1006s] [elliot → iona] Find the actual Belfast Trust subject access form or records page path from the official site.
+[1122s] [robin → elliot] I hit a problem: Could not search: Took too long
+[1128s] [nell → elliot] I hit a problem: Could not search: Took too long
+[1128s] [kit → elliot] I hit a problem: Could not search: Took too long
+[1141s] [iona → elliot] I hit a problem: Not found. Did not reach the page after 0 moves (82s): No promising route left to try. Closest page: "" https://belfasttrust.hscni.net/about/access-to-informat…
+[1149s] [elliot → robin] Get NIPSO's own wording on independence and whether its service is free.
+[1149s] [elliot → kit] See whether the Belfast Trust patient portal gives a records-access route relevant to this patient.
+[1149s] [elliot → nell] Read the Department of Justice legal-aid overview page for public-facing application or eligibility routes.
+[1149s] [elliot → iona] Use the Department of Health complaints topic page to find official support or advice routes for patients.
+[1196s] [kit → elliot] Yes — the page says My Care provides “personalised and secure online access to specific parts of your medical records,” and that you can access “medications, appointments and some test results” online. It says the porta…
+[1215s] [iona → elliot] The page says that if you are unhappy with care or treatment, you have the right to complain, and that complaint information is available on NI Direct. It also says the service provider is responsible for dealing with c…
+[1218s] [robin → elliot] NIPSO says, “We investigate unresolved complaints about public bodies in Northern Ireland.” It also says, “We are independent of government.” and “Our service is free.”
+[1224s] [nell → elliot] The page says legal aid is handled by the "Legal Services Agency Northern Ireland" and that the page includes "guidance for members of the public." For the public, it points to information about "finding a solicitor, ad…
+[1233s] [elliot → robin] Use an official compensation FAQ to see how Northern Ireland describes the clinical negligence claim route and support.
+[1233s] [elliot → nell] Get the public-facing legal-aid route and solicitor-finding links from the official members-of-the-public page.
+[1233s] [elliot → iona] Use the Department’s complaint procedure page to check updated HSC complaint standards, timescales and support routes.
+[1233s] [elliot → kit] Check whether NIPSO explains its complaint handling stages or timing on a second-level official page.
+[1282s] [robin → elliot] The PDF says compensation claims are not handled through an automatic redress scheme; instead, each case should be considered on its own merits and claimants should seek independent legal advice. It says the Department …
+[1341s] [iona → elliot] I hit a problem: Could not read https://www.health-ni.gov.uk/publications/hsc-complaints-standards-and-guidelines: Took too long
+[1341s] [nell → elliot] I hit a problem: Could not read https://www.justice-ni.gov.uk/topics/members-public: Took too long
+[1342s] [kit → elliot] I hit a problem: Could not read https://www.nipso.org.uk/make-complaint/how-we-deal-your-complaint: Took too long
+[1351s] [elliot → you] Complain: Belfast Health and Social Care Trust. Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so complaints about the Emergency Department should go to Belfast Trust first using its complaints 
+[1355s] [elliot → you] Clinical guidance: Department of Health Northern Ireland / NICE. Clinical guidance used in Northern Ireland public hospitals comes from NICE, but the Department of Health says NICE guidance is reviewed locally for applic
+[1364s] [elliot → you] Your records: Belfast Health and Social Care Trust. To get a copy of medical records from Royal Victoria Hospital, the patient can use Belfast Trust’s data-protection/subject-access route. The trust says requests for per
+[1369s] [elliot → robin] Find NIPSO's own time limit page for escalating a complaint so the escalation deadline is sourced.
+[1454s] [robin → elliot] I hit a problem: Could not search: Took too long
+[1459s] [elliot → kit] Read the NIPSO online complaints form page directly to see if it states timing, prerequisites or a wall.
+[1498s] [kit → elliot] Yes — this page is for an online complaints form, but it says the form is currently unavailable. The page only says to contact NIPSO by email or phone; it does not give any eligibility, timing, or preparation requiremen…
+[1505s] [elliot → robin] Look for NIPSO's timing rules on its official FAQs page since the main pages did not show a deadline.
+[1562s] [robin → elliot] Yes, but only at a general level: the page says there is an FAQ called “Is there anything about making a complaint to us?” and notes you should normally have “Received a final response to your complaint” before complain…
+[1571s] [elliot → robin] Use the official complaints-form PDF to see if NIPSO states a complaint time limit there.
+[1571s] [elliot → kit] Try an exact official search for the Law Society of Northern Ireland solicitor directory.
+[1571s] [elliot → nell] Try an exact official search for Northern Ireland conditional fee agreement legislation.
+[1571s] [elliot → iona] Check the Department of Health's compensation flyer for general medical-negligence route details and any time-limit wording.
+[1638s] [iona → elliot] The flyer says that if you want to pursue a claim, “you should make contact with a solicitor in the first instance,” and that a solicitor can advise on “the merit of a claim and the chances of success.” It also says, “i…
+[1638s] [robin → elliot] Yes. The form says you should first complain to the organisation and complete its complaints process before bringing the complaint to the Ombudsman, and it also says, "If you haven’t been able to complain to us within s…
+[1663s] [kit → elliot] I hit a problem: Could not search: Took too long
+[1663s] [nell → elliot] I hit a problem: Could not search: Took too long
+[1670s] [elliot → robin] Get the exact NIPSO time-limit wording from the official complaints-form PDF so the escalation deadline is quotable.
+[1726s] [robin → elliot] The PDF says: “If you haven’t been able to complain to us within six months of the organisation” and then continues “space to tell us why, giving as much detail as possible.” The page does not show a fuller sentence abo…
+[1732s] [elliot → nell] Find the Department of Justice public page or outbound link for finding a solicitor from the official legal-aid site.
+[1773s] [nell → elliot] Found "Legal aid | Department of Justice" in 0 moves.
+[1779s] [elliot → kit] Keep trying to find the profession's own solicitor directory, which is still missing.
