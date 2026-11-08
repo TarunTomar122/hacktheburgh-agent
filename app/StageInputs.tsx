@@ -4,7 +4,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { emailProblem, outcomeSentence, phoneProblem, postcodeProblem, splitPostcode, type FormField, type InputSpec } from "../lib/agent/inputs";
 import type { WidgetAnswer } from "../lib/agent/interview";
 import DateField from "./DateField";
-import { ErrorLine, OkRow } from "./StageControls";
+import { demoChoiceValue, demoFieldValue, demoName, demoOutcomes, demoStory } from "../lib/personas/demoFill";
+import { DemoFillButton, ErrorLine, OkRow } from "./StageControls";
 
 /**
  * The inputs of the onboarding interview as full-screen, one-question-at-a-time controls (D40), in the manner of Typeform:
@@ -99,7 +100,7 @@ function FreeText({
         <input id={id} autoFocus autoComplete={spec.autoComplete} value={text} onChange={(e) => setText(e.target.value)} placeholder={spec.placeholder} className="big-input" />
       )}
       <ErrorLine message={error} />
-      <OkRow disabled={!text.trim()} busy={busy} hint={multi ? <span className="hidden text-[13px] text-muted sm:inline">Enter sends. Shift + Enter starts a new line.</span> : undefined} />
+      <OkRow disabled={!text.trim()} busy={busy} onDemo={() => setText(multi ? demoStory() : demoName())} hint={multi ? <span className="hidden text-[13px] text-muted sm:inline">Enter sends. Shift + Enter starts a new line.</span> : undefined} />
     </form>
   );
 }
@@ -132,6 +133,8 @@ function StageForm({
   // A postcode found inside the address is taken out of it and its question skipped (D44).
   const [note, setNote] = useState<string | null>(null);
   const [autoPostcode, setAutoPostcode] = useState(false);
+  // The date field keeps its own mode, so a demo fill remounts it to show the filled date in the right mode.
+  const [dateKey, setDateKey] = useState(0);
   const baseId = useId();
   const total = spec.fields.length;
   const f = spec.fields[i];
@@ -169,7 +172,7 @@ function StageForm({
 
   let control: React.ReactNode;
   if (f.kind === "date") {
-    control = <DateField big label={f.label} value={value} onChange={setValue} autoFocus />;
+    control = <DateField key={dateKey} big label={f.label} value={value} onChange={setValue} autoFocus />;
   } else if (f.kind === "select") {
     control = (
       <div role="group" aria-label={f.label} className="flex flex-wrap gap-2">
@@ -248,6 +251,11 @@ function StageForm({
       <OkRow
         disabled={f.required && !value.trim()}
         busy={busy && i === total - 1}
+        onDemo={() => {
+          setValue(demoFieldValue(f));
+          setProblem(null);
+          if (f.kind === "date") setDateKey((k) => k + 1);
+        }}
         label={!f.required && !value.trim() ? "Skip" : "OK"}
         onBack={
           i > 0
@@ -281,6 +289,8 @@ function StageChoice({
   onAnswer: (answer: WidgetAnswer) => Promise<boolean>;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
+  // A demo fill only marks the option; the presenter still presses OK to send it.
+  const [marked, setMarked] = useState<string | null>(null);
 
   async function pick(o: { label: string; value: string }) {
     if (busy || picked) return;
@@ -313,7 +323,7 @@ function StageChoice({
       )}
       <div role="group" aria-label="Choose one" className="space-y-2.5">
         {spec.options.map((o, i) => (
-          <button key={o.value} type="button" disabled={busy || picked !== null} aria-pressed={picked === o.value} onClick={() => void pick(o)} className="choice-row">
+          <button key={o.value} type="button" disabled={busy || picked !== null} aria-pressed={picked === o.value || marked === o.value} onClick={() => void pick(o)} className="choice-row">
             <span className="keycap" aria-hidden>
               {String.fromCharCode(65 + i)}
             </span>
@@ -323,7 +333,23 @@ function StageChoice({
         ))}
       </div>
       <ErrorLine message={error} />
-      <p className="hidden text-[13px] text-muted sm:block">Click one, or press its letter.</p>
+      <div className="flex flex-wrap items-center gap-4">
+        {marked && (
+          <button
+            type="button"
+            disabled={busy || picked !== null}
+            onClick={() => {
+              const o = spec.options.find((x) => x.value === marked);
+              if (o) void pick(o);
+            }}
+            className="btn-primary !px-7 !py-3 !text-[15px]"
+          >
+            {busy ? "One moment…" : "OK"}
+          </button>
+        )}
+        <DemoFillButton disabled={busy || picked !== null} onClick={() => setMarked(demoChoiceValue(spec.target, spec.options))} />
+        <p className="hidden text-[13px] text-muted sm:block">Click one, or press its letter.</p>
+      </div>
     </div>
   );
 }
@@ -380,7 +406,14 @@ function StageChecklist({
         <span className="flex-1">{spec.noneLabel}</span>
       </label>
       <ErrorLine message={error} />
-      <OkRow disabled={!ready} busy={busy} />
+      <OkRow
+        disabled={!ready}
+        busy={busy}
+        onDemo={() => {
+          setNone(false);
+          setChosen(demoOutcomes(spec.options));
+        }}
+      />
     </form>
   );
 }

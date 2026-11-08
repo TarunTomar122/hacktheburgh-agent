@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { demoName } from "../lib/personas/demoFill";
+import { DemoFillButton } from "./StageControls";
 
 /**
  * The first screen of onboarding, in the manner of Typeform: one question, big, and one large field to type into.
@@ -64,6 +66,13 @@ export default function NameStep({
         <button type="submit" disabled={!text || busy} className="btn-primary !px-7 !py-3 !text-[15px]">
           {busy ? "One moment…" : "OK"}
         </button>
+        <DemoFillButton
+          disabled={busy}
+          onClick={() => {
+            onChange(demoName());
+            input.current?.focus();
+          }}
+        />
         <span className="hidden text-[13px] text-muted sm:inline">
           or press <kbd className="rounded-ctl border border-line bg-subtle px-1.5 py-0.5 font-sans text-[12px] font-medium text-ink-2">Enter ↵</kbd>
         </span>
