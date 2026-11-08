@@ -274,7 +274,7 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
 /* ------------------------------------------------------------------ web search and reading any page */
 
 /**
- * Web search. A search API first when a key is set (Exa, Tavily or Brave: see searchApi); otherwise, or when it fails, a
+ * Web search. A search API first when a key is set (Linkup, Tavily or Brave: see searchApi); otherwise, or when it fails, a
  * browser tab: Brave first (typed into its box, so the user sees it); when a search engine shows a bot
  * check, wait once, then move to the next engine (Yahoo, DuckDuckGo's plain HTML page, then Bing) and remember that for a
  * while. Search engines are not about any country, so this is not a site script. Returns at most 10 results, up to 3
@@ -371,28 +371,30 @@ type SearchHit = { title: string; url: string; snippet: string };
  * Reading official pages stays parallel: those are different sites.
  */
 /**
- * A search API where a key is set (EXA_API_KEY, TAVILY_API_KEY or BRAVE_API_KEY): finding which pages exist is not a browser
+ * A search API where a key is set (LINKUP_API_KEY, TAVILY_API_KEY or BRAVE_API_KEY): finding which pages exist is not a browser
  * job, and an API never shows a bot check. Only the query leaves the machine (never patient values). The browser then opens
  * the pages, so every quote is still checked against a page this run really read. Returns null if no key or it failed.
  */
-const EXA_PER_RUN = Number(process.env.EXA_MAX_PER_RUN ?? 10); // credits are limited: a run gets 10 Exa searches, then the browser takes over
-const EXA_TOTAL = Number(process.env.EXA_MAX_TOTAL ?? 1200); // and one machine never spends more than ~$5 in total ($0.004 per Lite search)
-const exaUsed = new WeakMap<object, number>();
-function exaAllowed(track: Tracker): boolean {
-  if ((exaUsed.get(track) ?? 0) >= EXA_PER_RUN) return false;
-  const file = path.join(process.cwd(), ".runs", "exa-usage.json");
+const LINKUP_PER_RUN = Number(process.env.LINKUP_MAX_PER_RUN ?? 12); // one query returns 10 pages: a run needs about 8 aimed queries, not dozens
+const LINKUP_TOTAL = Number(process.env.LINKUP_MAX_TOTAL ?? 5000); // and one machine never spends more than this in total
+const linkupUsed = new WeakMap<object, number>();
+function linkupAllowed(track: Tracker): boolean {
+  if ((linkupUsed.get(track) ?? 0) >= LINKUP_PER_RUN) return false;
+  const file = path.join(process.cwd(), ".runs", "linkup-usage.json");
   let total = 0;
   try {
     total = (JSON.parse(readFileSync(file, "utf8")) as { n: number }).n;
   } catch {}
-  if (total >= EXA_TOTAL) return false;
+  if (total >= LINKUP_TOTAL) return false;
   try {
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, JSON.stringify({ n: total + 1, updated: new Date().toISOString() }));
   } catch {}
-  exaUsed.set(track, (exaUsed.get(track) ?? 0) + 1);
+  linkupUsed.set(track, (linkupUsed.get(track) ?? 0) + 1);
   return true;
 }
+/** True once a run has used its searches: the crew must read the pages it has and follow their links, not open a search engine. */
+export const searchBudgetUsed = (track: Tracker) => !!process.env.LINKUP_API_KEY && (linkupUsed.get(track) ?? 0) >= LINKUP_PER_RUN;
 async function searchApi(query: string, note: Note, track: Tracker): Promise<SearchHit[] | null> {
   const sites = [...query.matchAll(/\bsite:([^\s]+)/g)].map((m) => m[1]);
   const q = query.replace(/\bsite:[^\s]+/g, "").replace(/\s+/g, " ").trim() || query;
@@ -403,11 +405,15 @@ async function searchApi(query: string, note: Note, track: Tracker): Promise<Sea
   };
   const clean = (x: { title?: string; url?: string; snippet?: string }): SearchHit => ({ title: String(x.title ?? x.url ?? "").slice(0, 100), url: String(x.url ?? ""), snippet: String(x.snippet ?? "").replace(/\s+/g, " ").slice(0, 220) });
   const tries: [string, () => Promise<SearchHit[]>][] = [];
-  if (process.env.EXA_API_KEY && exaAllowed(track))
-    tries.push(["Exa", async () => {
-      const j = (await post("https://api.exa.ai/search", { "x-api-key": process.env.EXA_API_KEY! }, { query: q, numResults: 10, type: "lite", ...(sites.length ? { includeDomains: sites } : {}), contents: { highlights: true } })) as { results?: { title?: string; url?: string; highlights?: string[] }[] };
-      return (j.results ?? []).map((x) => clean({ ...x, snippet: x.highlights?.[0] }));
-    }]);
+  let exhausted = false;
+  if (process.env.LINKUP_API_KEY) {
+    if (linkupAllowed(track))
+      tries.push(["Linkup", async () => {
+        const j = (await post("https://api.linkup.so/v1/search", { authorization: `Bearer ${process.env.LINKUP_API_KEY}` }, { q, depth: "standard", outputType: "searchResults", maxResults: 10, ...(sites.length ? { includeDomains: sites } : {}) })) as { results?: { name?: string; url?: string; content?: string }[] };
+        return (j.results ?? []).map((x) => clean({ title: x.name, url: x.url, snippet: x.content }));
+      }]);
+    else exhausted = true;
+  }
   if (process.env.TAVILY_API_KEY)
     tries.push(["Tavily", async () => {
       const j = (await post("https://api.tavily.com/search", { authorization: `Bearer ${process.env.TAVILY_API_KEY}` }, { query: q, max_results: 10, ...(sites.length ? { include_domains: sites } : {}) })) as { results?: { title?: string; url?: string; content?: string }[] };
@@ -420,6 +426,10 @@ async function searchApi(query: string, note: Note, track: Tracker): Promise<Sea
       const j = (await r.json()) as { web?: { results?: { title?: string; url?: string; description?: string }[] } };
       return (j.web?.results ?? []).map((x) => clean({ ...x, snippet: x.description }));
     }]);
+  if (exhausted && !tries.length) {
+    note("Search limit reached");
+    return []; // no browser search: the crew carries on with the pages it already found
+  }
   for (const [name, fn] of tries) {
     try {
       const hits = (await fn()).filter((h) => /^https?:/.test(h.url));
@@ -436,7 +446,7 @@ async function searchApi(query: string, note: Note, track: Tracker): Promise<Sea
 const oneSearch = limiter(1);
 const searchCache = new Map<string, { at: number; hits: Promise<SearchHit[]> }>();
 let lastSearchAt = 0;
-/** Search results are kept on disk for two weeks: the same persona or place asked again costs no Exa credit and no browser search. Pages are still read live. */
+/** Search results are kept on disk for two weeks: the same persona or place asked again costs no search credit and no browser search. Pages are still read live. */
 const SEARCH_CACHE_FILE = path.join(process.cwd(), ".runs", "search-cache.json");
 const SEARCH_TTL = 14 * 24 * 3600 * 1000;
 type DiskCache = Record<string, { at: number; hits: SearchHit[] }>;

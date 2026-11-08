@@ -68,6 +68,18 @@ export type CrewKit = {
   keep: (p: Page) => void; // keep this tab open after the run (a filled form waiting for the user)
 };
 
+export type WorkersSpec = {
+  model: { model: string; effort: "low" | "medium" | "high" };
+  maxTurns: number; // per crew member per round
+  maxRounds: number; // rounds of worker loops (the first, plus at most one targeted extra)
+  /** Jobs the planner assigned in its last turn (returns and clears them). */
+  take: () => { who: CrewId; brief: string }[];
+  system: (id: CrewId, brief: string) => string;
+  tools: (id: CrewId) => FunctionTool[];
+  /** What the planner is told when the round is over. */
+  merge: (round: number) => string;
+};
+
 export type CrewFlow<R> = {
   prefix: string; // run id prefix, e.g. "discovery"
   system: string;
@@ -75,6 +87,12 @@ export type CrewFlow<R> = {
   firstInput: string;
   maxTurns: number;
   effort?: "low" | "medium" | "high"; // the planner's reasoning effort (default low)
+  /** Speed lever "fastmodel": the model and effort for planner turn n (default: the draft model at `effort`). */
+  turnModel?: (turn: number) => { model: string; effort: "low" | "medium" | "high" };
+  /** Browser tabs open at once (default 4); the "batch" lever raises it. */
+  tabLimit?: number;
+  /** Speed lever "workers": the planner plans once, each crew member runs its own short loop at the same time, the planner merges. */
+  workers?: WorkersSpec;
   /** Which crew member owns a call (tools may take a `who` argument). */
   who: (name: string, args: Record<string, unknown>) => CrewId;
   doing: (name: string, args: Record<string, unknown>) => string;
@@ -112,7 +130,7 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   const tracer = new Tracer(emit, runDir);
   const { browser, context, page } = await openSession();
   const actx = { context, emit, track, tracer, first: page };
-  const tabs = limiter(4);
+  const tabs = limiter(flow.tabLimit ?? 4);
   waiting.set(runId, new Map());
   skips.set(runId, new Set());
   trackPause(runId, emit);
@@ -193,81 +211,67 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
     let input: ResponseInputItem[] | string = flow.firstInput;
     let prev: string | undefined;
     let finished = false;
-    for (turns = 1; turns <= flow.maxTurns && !finished; turns++) {
+    const exec1 = async (call: ResponseFunctionToolCall): Promise<ResponseInputItem> => {
       await untilResumed(runId);
-      const res: Response = await respond(
-        { model: MODELS.draft, reasoning: { effort: flow.effort ?? "low" }, instructions: flow.system, input, tools: flow.tools, tool_choice: "required", parallel_tool_calls: true, ...(prev ? { previous_response_id: prev } : {}) },
-        `${flow.prefix} planner`,
-      );
-      prev = res.id;
-      const calls = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
-      if (!calls.length) {
-        input = [{ role: "user", content: "Call a tool. Use finish when you are done." }];
-        continue;
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
+      } catch {
+        return { type: "function_call_output", call_id: call.call_id, output: "Error: the arguments were not valid JSON." };
       }
-      // Plans first, finish last; calls for different crew members run at the same time, each member's in order.
-      const order = (n: string) => (n === "update_plan" ? 0 : n === "finish" ? 2 : 1);
-      calls.sort((x, y) => order(x.name) - order(y.name));
-      const exec1 = async (call: ResponseFunctionToolCall): Promise<ResponseInputItem> => {
-        await untilResumed(runId);
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
-        } catch {
-          return { type: "function_call_output", call_id: call.call_id, output: "Error: the arguments were not valid JSON." };
-        }
-        const thought: Thought = { i: thoughts.length, t: Date.now() - t0, text: String(args.why ?? call.name), tool: call.name, detail: short(JSON.stringify(Object.fromEntries(Object.entries(args).filter(([k]) => k !== "why"))), 1500) };
-        thoughts.push(thought);
-        if (call.name !== "update_plan") emit({ type: "thought", thought });
-        const who = call.name === "update_plan" || call.name === "ask_user" || call.name === "finish" ? "elliot" : flow.who(call.name, args);
-        const why = String(args.why ?? "").trim();
-        const skipSet = skips.get(runId);
-        if (who !== "elliot" && (skipSet?.has(who) || skipSet?.has("all"))) {
-          say({ from: who, to: "elliot", kind: "report", text: "Skipped, as you asked.", tool: call.name });
-          crewState(who, "idle", "Skipped");
-          return { type: "function_call_output", call_id: call.call_id, output: `Skipped: the user asked to skip ${CREW[who].name}'s work. Do not call it again; carry on.` };
-        }
-        const busy = call.name !== "update_plan" && call.name !== "ask_user" && call.name !== "finish";
-        if (busy) {
-          if (who !== "elliot") say({ from: "elliot", to: who, kind: "assign", text: why || call.name, tool: call.name });
-          crewState(who, "working", flow.doing(call.name, args));
-        }
-        let out: string;
-        try {
-          if (call.name === "update_plan") {
-            const before = plan;
-            plan = ((args.steps as PlanStep[]) ?? []).map((st, i) => ({ id: st.id || `s${i + 1}`, text: st.text, status: st.status ?? "todo", why: st.why }));
-            const key = (xs: PlanStep[]) => xs.filter((x) => x.status !== "dropped").map((x) => x.text).join("|");
-            replanned = before.length > 0 && key(before) !== key(plan);
-            emit({ type: "plan", steps: plan });
-            out = "Plan updated.";
-          } else if (call.name === "ask_user") {
-            const a = await ask({ agent: "Planner", crew: "elliot", question: String(args.question ?? ""), why, kind: (String(args.kind ?? "text") as AskSpec["kind"]) || "text", options: args.options as string[] | undefined });
-            out = a === null ? "The user did not answer. Carry on without it." : `The user answered: ${a}`;
-          } else if (call.name === "finish") out = "Finished.";
-          else out = await flow.exec(call, args, thought, kit);
-        } catch (e) {
-          out = `Error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
-        }
-        if (call.name === "update_plan") say({ from: "elliot", kind: "plan", text: why || "Updated the plan", tool: call.name, replan: replanned });
-        else {
-          thought.result = short(out, 600);
-          emit({ type: "thought", thought: { ...thought } });
-        }
-        if (busy) {
-          const bad = isFailed(call.name, out);
-          // What the patient reads is one short plain line of what was done; what the page said stays in the details.
-          const full = bad ? out : flow.describe(call.name, args, out);
-          const did = pastTense(flow.doing(call.name, args));
-          const text = bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did;
-          say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? full : out.includes("\n") ? out : undefined, tool: call.name, tab: thought.tab, ok: !bad });
-          crewState(who, "idle", text);
-        } else if (call.name === "finish") {
-          say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
-          finished = true;
-        }
-        return { type: "function_call_output", call_id: call.call_id, output: out };
-      };
+      const thought: Thought = { i: thoughts.length, t: Date.now() - t0, text: String(args.why ?? call.name), tool: call.name, detail: short(JSON.stringify(Object.fromEntries(Object.entries(args).filter(([k]) => k !== "why"))), 1500) };
+      thoughts.push(thought);
+      if (call.name !== "update_plan") emit({ type: "thought", thought });
+      const who = call.name === "update_plan" || call.name === "ask_user" || call.name === "finish" ? "elliot" : flow.who(call.name, args);
+      const why = String(args.why ?? "").trim();
+      const skipSet = skips.get(runId);
+      if (who !== "elliot" && (skipSet?.has(who) || skipSet?.has("all"))) {
+        say({ from: who, to: "elliot", kind: "report", text: "Skipped, as you asked.", tool: call.name });
+        crewState(who, "idle", "Skipped");
+        return { type: "function_call_output", call_id: call.call_id, output: `Skipped: the user asked to skip ${CREW[who].name}'s work. Do not call it again; carry on.` };
+      }
+      const busy = call.name !== "update_plan" && call.name !== "ask_user" && call.name !== "finish";
+      if (busy) {
+        if (who !== "elliot") say({ from: "elliot", to: who, kind: "assign", text: why || call.name, tool: call.name });
+        crewState(who, "working", flow.doing(call.name, args));
+      }
+      let out: string;
+      try {
+        if (call.name === "update_plan") {
+          const before = plan;
+          plan = ((args.steps as PlanStep[]) ?? []).map((st, i) => ({ id: st.id || `s${i + 1}`, text: st.text, status: st.status ?? "todo", why: st.why }));
+          const key = (xs: PlanStep[]) => xs.filter((x) => x.status !== "dropped").map((x) => x.text).join("|");
+          replanned = before.length > 0 && key(before) !== key(plan);
+          emit({ type: "plan", steps: plan });
+          out = "Plan updated.";
+        } else if (call.name === "ask_user") {
+          const a = await ask({ agent: "Planner", crew: "elliot", question: String(args.question ?? ""), why, kind: (String(args.kind ?? "text") as AskSpec["kind"]) || "text", options: args.options as string[] | undefined });
+          out = a === null ? "The user did not answer. Carry on without it." : `The user answered: ${a}`;
+        } else if (call.name === "finish") out = "Finished.";
+        else out = await flow.exec(call, args, thought, kit);
+      } catch (e) {
+        out = `Error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
+      }
+      if (call.name === "update_plan") say({ from: "elliot", kind: "plan", text: why || "Updated the plan", tool: call.name, replan: replanned });
+      else {
+        thought.result = short(out, 600);
+        emit({ type: "thought", thought: { ...thought } });
+      }
+      if (busy) {
+        const bad = isFailed(call.name, out);
+        // What the patient reads is one short plain line of what was done; what the page said stays in the details.
+        const full = bad ? out : flow.describe(call.name, args, out);
+        const did = pastTense(flow.doing(call.name, args));
+        const text = bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did;
+        say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? full : out.includes("\n") ? out : undefined, tool: call.name, tab: thought.tab, ok: !bad });
+        crewState(who, "idle", text);
+      } else if (call.name === "finish") {
+        say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });
+        finished = true;
+      }
+      return { type: "function_call_output", call_id: call.call_id, output: out };
+    };
+    const runBatch = async (calls: ResponseFunctionToolCall[]): Promise<ResponseInputItem[]> => {
       // Stages first (a tool that needs another's result waits for it), then crew members in parallel within a stage, each member's calls in order.
       const stageOf = (c: ResponseFunctionToolCall) => (c.name === "update_plan" ? -2 : c.name === "ask_user" ? -1 : c.name === "finish" ? 99 : flow.after?.includes(c.name) ? 98 : (flow.stage?.[c.name] ?? 1));
       const outputs: ResponseInputItem[] = [];
@@ -290,6 +294,68 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         }
         const done = await Promise.all([...groups.values()].map(async (cs) => { const o: ResponseInputItem[] = []; for (const c of cs) o.push(await exec1(c)); return o; }));
         outputs.push(...done.flat());
+      }
+      return outputs;
+    };
+    /** Speed lever "workers": one crew member's own short loop (its tools only, a small model), at the same time as the others. */
+    const memberLoop = async (id: CrewId, brief: string) => {
+      const W = flow.workers!;
+      let mprev: string | undefined;
+      let minput: ResponseInputItem[] | string = brief;
+      for (let t = 1; t <= W.maxTurns; t++) {
+        await untilResumed(runId);
+        const r: Response = await withLedger({ agent: id }, () =>
+          respond(
+            { model: W.model.model, reasoning: { effort: W.model.effort }, instructions: W.system(id, brief), input: minput, tools: W.tools(id), tool_choice: "required", parallel_tool_calls: true, ...(mprev ? { previous_response_id: mprev } : {}) },
+            `${flow.prefix} ${id}`,
+          ),
+        );
+        mprev = r.id;
+        const mcalls = r.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
+        if (!mcalls.length) break;
+        const work = mcalls.filter((c) => c.name !== "member_done");
+        const outs = await Promise.all(
+          work.map((c) => {
+            let a: Record<string, unknown> = {};
+            try {
+              a = JSON.parse(c.arguments || "{}");
+            } catch {
+              /* exec1 reports it */
+            }
+            return exec1({ ...c, arguments: JSON.stringify({ ...a, who: id }) });
+          }),
+        );
+        for (const c of mcalls.filter((c) => c.name === "member_done")) outs.push({ type: "function_call_output", call_id: c.call_id, output: "ok" });
+        if (mcalls.some((c) => c.name === "member_done")) break;
+        minput = outs;
+      }
+      crewState(id, "idle", "Done");
+    };
+    let rounds = 0;
+    for (turns = 1; turns <= flow.maxTurns && !finished; turns++) {
+      await untilResumed(runId);
+      const tm = flow.turnModel?.(turns);
+      const res: Response = await respond(
+        { model: tm?.model ?? MODELS.draft, reasoning: { effort: tm?.effort ?? flow.effort ?? "low" }, instructions: flow.system, input, tools: flow.tools, tool_choice: "required", parallel_tool_calls: true, ...(prev ? { previous_response_id: prev } : {}) },
+        `${flow.prefix} planner`,
+      );
+      prev = res.id;
+      const calls = res.output.filter((o): o is ResponseFunctionToolCall => o.type === "function_call");
+      if (!calls.length) {
+        input = [{ role: "user", content: "Call a tool. Use finish when you are done." }];
+        continue;
+      }
+      // Plans first, finish last; calls for different crew members run at the same time, each member's in order.
+      const order = (n: string) => (n === "update_plan" ? 0 : n === "finish" ? 2 : 1);
+      calls.sort((x, y) => order(x.name) - order(y.name));
+      let outputs = await runBatch(calls);
+      if (flow.workers && !finished) {
+        const jobs = flow.workers.take();
+        if (jobs.length && rounds < flow.workers.maxRounds) {
+          rounds++;
+          await Promise.all(jobs.map((j) => memberLoop(j.who, j.brief)));
+          outputs = [...outputs, { role: "user" as const, content: flow.workers.merge(rounds) }];
+        } else if (jobs.length) outputs = [...outputs, { role: "user" as const, content: "No more worker rounds. record_step what is backed by checked quotes, then finish." }];
       }
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
     }

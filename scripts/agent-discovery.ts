@@ -8,10 +8,12 @@ import { answerQuestion } from "../lib/agent/planner";
 
 async function main() {
   const who = process.argv[2] ?? "wales";
+  const speed = process.argv[3] ?? process.env.DISCOVERY_SPEED; // default fast; also classic | quick | fastmodel,batch,...
   const facts = personaFacts(who);
   let runId = "";
   const t0 = Date.now();
   const r = await runDiscovery(facts, {
+    speed,
     onEvent: (e) => {
       if (e.type === "run") runId = e.runId;
       if (e.type === "place") console.log(`PLACE: ${JSON.stringify(e.place)}`);

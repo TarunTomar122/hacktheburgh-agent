@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { PERSONA_PICKER_ENABLED } from "../../lib/personas";
+import { minutes, readResearchTime, writeResearchTime } from "./speedPref";
 import { placeOf, useDemoAvailable } from "./useDemo";
 import { CREW, type CrewId } from "../../lib/agent/plannerTypes";
 import type { RouteMap } from "../../lib/agent/routeTypes";
@@ -33,8 +35,9 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
     const r = state.discovery;
     if (state.status !== "done" || !r || done.current === r.runId) return;
     done.current = r.runId;
+    if (!state.demo && state.startedAt) writeResearchTime(profile.createdAt, Date.now() - state.startedAt, "fast");
     onDone(r.route, state.demo);
-  }, [state.status, state.discovery, state.demo, onDone]);
+  }, [state.status, state.discovery, state.demo, state.startedAt, onDone, profile.createdAt]);
 
   // Demo controls only when a recorded discovery run exists.
   const place = placeOf(profile);
@@ -53,7 +56,19 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
         )}
       </div>
     );
-  if (saved && state.status !== "error") return <RouteMapCard route={saved} />;
+  if (saved && state.status !== "error") {
+    const t = PERSONA_PICKER_ENABLED ? readResearchTime(profile.createdAt) : null;
+    return (
+      <>
+        <RouteMapCard route={saved} />
+        {t && (
+          <p data-testid="research-time" className="mx-auto mt-6 max-w-6xl text-[12px] text-muted">
+            Test build: researched in {minutes(t.ms)}
+          </p>
+        )}
+      </>
+    );
+  }
   const f = profile.facts;
   const where = [(f as { region?: string | null }).region, (f as { country?: string | null }).country].filter(Boolean).join(", ");
   return (
