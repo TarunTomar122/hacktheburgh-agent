@@ -1,339 +1,126 @@
+/* eslint-disable @next/next/no-img-element -- unmodified local run evidence and static crew artwork */
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { allRuns, browserReasons, type Flow, type RunSummary } from "../../lib/insights";
+import { allRuns, browserEvidence, type Flow } from "../../lib/insights";
 
-/**
- * How the crew uses the web (for judges): fetch first, a search API instead of a search engine, the browser only where a
- * page or a job needs one, and why. Plus why there is a crew of specialists, not one agent. Every number is read from the
- * runs' own logs on this machine (lib/insights.ts).
- */
-
-const FLOW_NAME: Record<Flow, string> = { discovery: "Research", complaint: "Complaint", escalation: "Independent review", compensation: "Prepare your case", enquiries: "Contact lawyers", other: "Other" };
-const mins = (ms: number) => (ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60_000).toFixed(1)} min`);
+const FLOW_NAME: Partial<Record<Flow, string>> = { discovery: "Research", compensation: "Prepare your case", complaint: "Complaint", escalation: "Independent review" };
+const mins = (ms: number) => ms < 60_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 60_000).toFixed(1)} min`;
 const median = (xs: number[]) => {
-  if (!xs.length) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.floor(s.length / 2)];
+  const sorted = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
-const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
-const sum = (rs: RunSummary[], f: (r: RunSummary) => number) => rs.reduce((n, r) => n + f(r), 0);
-
 const CREW = [
-  { id: "elliot", name: "Elliot", job: "Plans and re-plans the work, decides who does what next, and writes the summary.", why: "One reasoning model that sees the plan, not the pages: it stays cheap and focused." },
-  { id: "robin", name: "Robin", job: "Finds the official bodies, the lawyer register, and checks each firm on its own website.", why: "Many sites at once, each in its own tab or plain fetch." },
-  { id: "iona", name: "Iona", job: "Finds the place's clinical guidance and published decisions, and checks they apply to you.", why: "Slow reading that runs in the background so nobody waits for it." },
-  { id: "nell", name: "Nell", job: "Answers the place's own legal-aid checker, asking you only what it needs.", why: "The only one who handles money answers, which stay in the checker." },
-  { id: "kit", name: "Kit", job: "Fills each firm's enquiry form and stops before Send.", why: "The only one who types your name and contact details." },
+  { id: "elliot", name: "Elliot", job: "Plans, delegates and adapts." },
+  { id: "nell", name: "Nell", job: "Answers the legal-aid checker." },
+  { id: "robin", name: "Robin", job: "Finds and checks law firms." },
+  { id: "iona", name: "Iona", job: "Finds guidance and decisions." },
+  { id: "kit", name: "Kit", job: "Prepares enquiries for review." },
 ];
 
 export default function Insights() {
-  return (
-    <Suspense fallback={<main className="mx-auto max-w-6xl px-8 py-12 text-[14px] text-muted">Reading the runs…</main>}>
-      <Dashboard />
-    </Suspense>
-  );
+  return <Suspense fallback={<main className="mx-auto max-w-6xl px-6 py-16 text-muted">Reading the run logs.</main>}><Dashboard /></Suspense>;
 }
 
 async function Dashboard() {
-  await connection(); // read the run folders on every visit, never at build time
+  await connection();
   const runs = allRuns();
-  const recent = runs.filter((r) => r.finished);
-  const logged = runs.filter((r) => r.access.length);
-  // The headline is about how the crew works now: the latest runs (the oldest ones predate fetch-first).
+  // One recent cohort for web access, including unfinished runs, so slow runs are not silently discarded.
   const scope = runs.slice(0, 25);
-  const pagesF = sum(scope, (r) => r.pages.fetch);
-  const pagesB = sum(scope, (r) => r.pages.browser);
-  const sApi = sum(scope, (r) => r.searches.api);
-  const sCache = sum(scope, (r) => r.searches.cache);
-  const sBrowser = sum(scope, (r) => r.searches.browser);
-  const timed = logged.flatMap((r) => r.access.filter((a) => a.kind === "page" && typeof a.ms === "number"));
-  const avg = (v: "fetch" | "browser") => {
-    const xs = timed.filter((a) => a.via === v).map((a) => a.ms!);
-    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-  };
-  const latest = logged[0];
-  const lanesRun = recent.find((r) => r.flow === "compensation" && r.lanes.length >= 3) ?? recent.find((r) => r.lanes.length >= 3);
-  const jobs = logged.flatMap((r) => r.access.filter((a) => a.kind === "task"));
-  const firms = logged.flatMap((r) => r.access.filter((a) => a.kind === "firm"));
-  const reasons = browserReasons(logged);
-  const places = new Set(runs.map((r) => r.place.split(", ").pop()).filter(Boolean));
-  const flows: Flow[] = ["discovery", "compensation", "complaint", "escalation"];
-  const speed = flows.map((f) => {
-    const rs = recent.filter((r) => r.flow === f);
-    const latest = rs.slice(0, 5);
-    return { f, n: rs.length, median: median(rs.map((r) => r.ms)), latest: median(latest.map((r) => r.ms)) };
+  const access = scope.flatMap((r) => r.access);
+  const fetch = scope.reduce((n, r) => n + r.pages.fetch, 0);
+  const browser = scope.reduce((n, r) => n + r.pages.browser, 0);
+  const searches = scope.reduce((n, r) => n + r.searches.api, 0);
+  const finished = scope.filter((r) => r.finished);
+  const prep = finished.filter((r) => r.flow === "compensation" && r.lanes.length >= 3);
+  // Use the lower median of the recent finished cohort: a typical fast run, never a stalled run.
+  const lanesRun = [...prep].sort((a, b) => a.ms - b.ms)[Math.floor((prep.length - 1) / 2)];
+  const evidence = browserEvidence(scope);
+  const speed = (["discovery", "compensation", "complaint", "escalation"] as Flow[]).flatMap((flow) => {
+    const sample = finished.filter((r) => r.flow === flow);
+    return sample.length ? [{ flow, n: sample.length, ms: median(sample.map((r) => r.ms)) }] : [];
   });
-  const byFlow = flows.map((f) => {
-    const rs = scope.filter((r) => r.flow === f);
-    return { f, fetch: sum(rs, (r) => r.pages.fetch), browser: sum(rs, (r) => r.pages.browser) };
-  });
-  const maxFlow = Math.max(1, ...byFlow.map((x) => x.fetch + x.browser));
-  const models = new Map<string, { model: string; where: string; calls: number; tokens: number; data: Set<string> }[]>();
-  for (const r of recent.slice(0, 30))
-    for (const m of r.models) {
-      const list = models.get(m.agent) ?? [];
-      const cur = list.find((x) => x.model === m.model);
-      if (cur) {
-        cur.calls += m.calls;
-        cur.tokens += m.tokens;
-        m.data.forEach((d) => cur.data.add(d));
-      } else list.push({ model: m.model, where: m.where, calls: m.calls, tokens: m.tokens, data: new Set(m.data) });
-      models.set(m.agent, list);
-    }
+  const reasons = [
+    { label: "Bot checks", test: /bot check/ },
+    { label: "Script-built pages", test: /built by scripts|JavaScript/ },
+    { label: "Register filters", test: /register.*filters/ },
+    { label: "Eligibility checkers", test: /eligibility checker/ },
+    { label: "Enquiry forms", test: /filled .*form \([1-9]\d* fields\)/ },
+  ].map((r) => ({ ...r, n: access.filter((a) => a.via === "browser" && r.test.test(a.reason)).length })).filter((r) => r.n).sort((a, b) => b.n - a.n);
+  const cloudPrivate = scope.flatMap((r) => r.models).some((m) => m.where === "cloud" && m.data.some((d) => /health|money|identity|contact|financial/i.test(d)));
+  const stops = access.filter((a) => a.kind === "task" && /filled .*form \([1-9]\d* fields\).*stopped before Send/.test(a.reason)).length;
+  const cohort = `Latest ${scope.length} runs · ${scope.at(-1)?.startedAt.slice(0, 16).replace("T", " ")} to ${scope[0]?.startedAt.slice(11, 16)} UTC`;
 
   return (
-    <main className="mx-auto max-w-6xl space-y-12 px-8 py-12">
-      <header className="space-y-3">
-        <p className="text-[13px] text-muted">
-          <Link className="text-brand hover:underline" href="/">
-            Elliot
-          </Link>{" "}
-          · for judges
-        </p>
-        <h1 className="display text-[40px] text-ink">How the crew uses the web</h1>
-        <p className="max-w-[70ch] text-[15px] leading-6 text-ink-2">
-          Fetch first, a search API instead of a search engine, and a real browser only where a page or a job needs one. Every number here comes from the logs of real runs on this machine ({runs.length} in total; the headline counts the latest {scope.length}){places.size ? `, across ${places.size} countr${places.size === 1 ? "y" : "ies"} (${[...places].join(", ")})` : ""}. Nothing is filled in or sent without the patient.
-        </p>
+    <main className="mx-auto max-w-6xl space-y-16 px-6 py-10 sm:px-10 sm:py-14">
+      <header>
+        <div className="mb-10 flex items-center justify-between text-xs text-muted"><Link href="/" className="font-medium text-brand hover:underline">Elliot / for judges</Link><span>Inside the system</span></div>
+        <p className="mb-4 text-xs uppercase tracking-widest text-muted">Harmed by care. Faced with a maze.</p>
+        <h1 className="display max-w-3xl text-5xl text-ink sm:text-6xl">One patient.<br />A crew on their side.</h1>
+        <p className="mt-5 max-w-xl text-base leading-7 text-ink-2">Elliot finds the local route from medical harm to help, wherever the patient lives.</p>
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          {[['Research', 'Learn how this place works.'], ['Prepare your case', 'Check funding, firms and evidence.'], ['Review and send', 'The patient has the final word.']].map(([title, text]) => <div key={title} className="rounded-card border border-line bg-subtle p-5"><p className="text-sm font-medium text-ink">{title}</p><p className="mt-1 text-sm text-muted">{text}</p></div>)}
+        </div>
       </header>
 
-      {/* The headline numbers */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Headline numbers">
-        <Tile big={`${pct(pagesF, pagesF + pagesB)}%`} label="of pages read without a browser" note={`${pagesF.toLocaleString()} plain reads, ${pagesB.toLocaleString()} in the browser`} />
-        <Tile big={`${pct(sApi + sCache, sApi + sCache + sBrowser)}%`} label="of searches without a search engine" note={`${sApi} by search API (Linkup), ${sCache} remembered, ${sBrowser} in a browser`} />
-        <Tile big={String(jobs.length)} label="browser jobs only a browser can do" note={`checkers answered, registers searched and forms filled, in the ${logged.length} runs with the full log`} />
-        <Tile big={firms.length ? `${pct(firms.filter((a) => a.via === "fetch").length, firms.length)}%` : "–"} label="of firm checks done without a browser" note={firms.length ? `${firms.filter((a) => a.via === "fetch").length} of ${firms.length}; the rest needed the browser, and only the browser may rule a firm out` : "No firm checks logged yet"} />
-      </section>
-
-      {/* Fetch vs browser, per step */}
-      <section className="space-y-4">
-        <Title aside={<Legend />}>Fetch first, browser when it matters</Title>
-        {avg("fetch") > 0 && avg("browser") > 0 && (
-          <p className="text-[14px] text-ink">
-            A plain read took <span className="font-medium tabular-nums">{(avg("fetch") / 1000).toFixed(1)} s</span> on average; a page in the browser took <span className="font-medium tabular-nums">{(avg("browser") / 1000).toFixed(1)} s</span>.
-          </p>
-        )}
-        <p className="max-w-[70ch] text-[14px] leading-6 text-ink-2">A plain request reads most official pages and PDFs quickly. When a page is built by scripts, sits behind a bot check or a login, or is a form, the same agent opens a real browser instead. Every quote is checked against the page it came from either way.</p>
-        <div className="space-y-3">
-          {byFlow.map(({ f, fetch, browser }) => (
-            <div key={f} className="grid grid-cols-[10rem_1fr_8rem] items-center gap-4">
-              <span className="text-[13px] text-ink-2">{FLOW_NAME[f]}</span>
-              <div className="flex h-6 items-stretch gap-[2px]" style={{ width: `${((fetch + browser) / maxFlow) * 100}%`, minWidth: fetch + browser ? 8 : 0 }}>
-                {fetch > 0 && <div className="rounded-l-[4px] bg-teal" style={{ flex: fetch }} title={`${FLOW_NAME[f]}: ${fetch} pages read with a plain fetch`} />}
-                {browser > 0 && <div className={fetch ? "rounded-r-[4px] bg-brand" : "rounded-[4px] bg-brand"} style={{ flex: browser }} title={`${FLOW_NAME[f]}: ${browser} pages opened in the browser`} />}
-              </div>
-              <span className="text-right text-[12px] tabular-nums text-muted">
-                {fetch} fetch · {browser} browser
-              </span>
-            </div>
-          ))}
+      <section aria-labelledby="crew-title">
+        <Heading id="crew-title" label="The people behind the work" title="Meet the crew." />
+        <div className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
+          {CREW.map((c) => <div key={c.id} className="border-t border-line pt-4"><Avatar id={c.id} size="size-24" /><h3 className="mt-3 text-base font-medium text-ink">{c.name}</h3><p className="mt-1 text-sm leading-6 text-ink-2">{c.job}</p></div>)}
         </div>
       </section>
 
-      {/* The crew at work, on one clock */}
-      {lanesRun && (
-        <section className="space-y-4">
-          <Title>
-            The crew working at the same time <span className="text-[14px] text-muted">({FLOW_NAME[lanesRun.flow]}{lanesRun.place ? `, ${lanesRun.place}` : ""}, {mins(lanesRun.ms)})</span>
-          </Title>
-          <p className="max-w-[70ch] text-[14px] leading-6 text-ink-2">Each bar is a stretch of work by one crew member in the latest run. Where bars overlap, they were working at the same time: that is why the whole step takes minutes, not the sum of everyone&apos;s work ({mins(lanesRun.lanes.reduce((n, l) => n + l.spans.reduce((m, [a, b]) => m + (b - a), 0), 0))} of work in {mins(lanesRun.ms)}).</p>
-          <div className="space-y-2">
-            {lanesRun.lanes.map((l) => (
-              <div key={l.crew} className="grid grid-cols-[6rem_1fr] items-center gap-4">
-                <span className="flex items-center gap-2 text-[13px] capitalize text-ink-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- tiny static avatar */}
-                  <img src={`/crew/${l.crew}-256.png`} alt="" aria-hidden className="size-5 object-contain" />
-                  {l.crew}
-                </span>
-                <div className="relative h-5 rounded-[4px] bg-subtle">
-                  {l.spans.map(([a, b], i) => (
-                    <div key={i} className="absolute inset-y-0 rounded-[4px] bg-ink-2" style={{ left: `${(a / lanesRun.ms) * 100}%`, width: `max(3px, calc(${((b - a) / lanesRun.ms) * 100}% - 2px))` }} title={`${l.crew}: working from ${mins(a)} to ${mins(b)}`} />
-                  ))}
-                </div>
-              </div>
-            ))}
-            <div className="grid grid-cols-[6rem_1fr] gap-4 text-[11px] text-muted">
-              <span />
-              <span className="flex justify-between tabular-nums">
-                <span>0</span>
-                <span>{mins(lanesRun.ms / 2)}</span>
-                <span>{mins(lanesRun.ms)}</span>
-              </span>
-            </div>
+      {lanesRun && <section aria-labelledby="parallel-title" className="rounded-card border border-line bg-subtle p-5 sm:p-8">
+        <Heading id="parallel-title" label="One shared clock" title="Together, not in a queue." />
+        <div className="my-6 flex flex-wrap items-baseline gap-x-5 gap-y-2"><span className="display text-5xl tabular-nums text-ink">{mins(lanesRun.ms)}</span><span className="text-sm text-ink-2">Prepare your case · finished run</span></div>
+        <div className="space-y-4">
+          {lanesRun.lanes.map((lane) => <div key={lane.crew} className="grid grid-cols-[5rem_1fr] items-center gap-3 sm:grid-cols-[7rem_1fr]"><span className="flex items-center gap-2 text-xs capitalize text-ink-2"><Avatar id={lane.crew} size="size-6" />{lane.crew}</span><div className="relative h-7 border-x border-line bg-white">{lane.spans.map(([a,b], i) => <div key={i} title={`${lane.crew}: ${mins(a)} to ${mins(b)}`} aria-label={`${lane.crew}: ${mins(a)} to ${mins(b)}`} className="absolute top-2 h-3 rounded-sm bg-ink-2" style={{ left: `${a / lanesRun.ms * 100}%`, width: `${Math.max(0.3, (b-a) / lanesRun.ms * 100)}%` }} />)}</div></div>)}
+          <div className="grid grid-cols-[5rem_1fr] gap-3 text-xs tabular-nums text-muted sm:grid-cols-[7rem_1fr]"><span>Work spans</span><div className="flex justify-between"><span>0 s</span><span>{mins(lanesRun.ms / 2)}</span><span>{mins(lanesRun.ms)}</span></div></div>
+        </div>
+        <p className="mt-5 break-words text-xs leading-5 text-muted">{lanesRun.id} · middle-duration run from {prep.length} recent finished case runs.</p>
+      </section>}
+
+      {fetch + browser > 0 && <section aria-labelledby="web-title">
+        <Heading id="web-title" label="Spend browser time where it counts" title="Fetch first. Browser when it matters." />
+        <div className="mt-6 grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
+          <div><p className="display text-6xl tabular-nums text-ink">{Math.round(fetch / (fetch + browser) * 100)}%</p><p className="mt-1 text-sm text-ink-2">of page reads used plain fetch</p></div>
+          <div className="space-y-4">
+            {[{label:'Plain fetch', n:fetch, color:'bg-teal'}, {label:'Real browser',n:browser,color:'bg-brand'}].map((x) => <div key={x.label}><div className="mb-2 flex justify-between text-sm text-ink-2"><span className="flex items-center gap-2"><span className={`size-2 ${x.color}`} />{x.label}</span><span>{x.n} reads</span></div><div className="h-2 bg-subtle"><div className={`h-2 ${x.color}`} style={{ width: `${x.n / (fetch+browser) * 100}%` }} title={`${x.label}: ${x.n} of ${fetch+browser} reads`} /></div></div>)}
           </div>
-        </section>
-      )}
+        </div>
+        <div className="mt-7 flex flex-wrap gap-2">{reasons.map((r) => <span key={r.label} title={`${r.n} browser access events: ${r.label}`} className="rounded-full border border-line px-3 py-2 text-xs text-ink-2">{r.label} · {r.n}</span>)}</div>
+        {searches > 0 && <p className="mt-4 text-sm text-ink-2">{searches} searches via API, without opening a search engine.</p>}
+        <p className="mt-3 text-xs text-muted">{cohort} · includes unfinished runs.</p>
+      </section>}
 
-      {/* The latest run, line by line */}
-      {latest && (
-        <section className="space-y-4">
-          <Title>
-            The latest run, line by line <span className="text-[14px] text-muted">({FLOW_NAME[latest.flow]}{latest.place ? `, ${latest.place}` : ""}, {mins(latest.ms)})</span>
-          </Title>
-          <ol className="divide-y divide-line-soft rounded-card border border-line bg-white">
-            {latest.access.map((a, i) => (
-              <li key={i} className="grid grid-cols-[4rem_6rem_7rem_1fr] items-baseline gap-3 px-5 py-2 text-[13px]">
-                <span className="tabular-nums text-muted">{mins(a.t)}</span>
-                <span className="capitalize text-ink-2">{a.agent}</span>
-                <span className={a.via === "browser" ? "font-medium text-brand" : a.via === "fetch" ? "font-medium text-teal" : "text-ink-2"}>{a.via === "fetch" ? "Plain fetch" : a.via === "api" ? "Search API" : a.via === "cache" ? "Saved search" : "Browser"}</span>
-                <span className="min-w-0 break-words text-ink">
-                  {a.kind === "search" ? `Searched "${a.url}"` : a.url ? a.url.replace(/^https?:\/\/(www\.)?/, "") : ""}
-                  <span className="text-muted"> · {a.reason}{typeof a.ms === "number" ? ` · ${(a.ms / 1000).toFixed(1)} s` : ""}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      {evidence.length > 0 && <section aria-labelledby="proof-title">
+        <Heading id="proof-title" label="Real pages, recorded during runs" title="Jobs a browser can do." />
+        <div className="mt-6 grid gap-5 lg:grid-cols-3">{evidence.map((shot) => <figure key={shot.title} className="min-w-0 rounded-card border border-line bg-subtle p-3"><a href={`/api/agent/step3/shot?run=${encodeURIComponent(shot.run)}&file=${encodeURIComponent(shot.file)}`} target="_blank" rel="noreferrer" className="block focus-visible:outline-2 focus-visible:outline-brand"><img src={`/api/agent/step3/shot?run=${encodeURIComponent(shot.run)}&file=${encodeURIComponent(shot.file)}`} alt={`${shot.title}: recorded browser page`} className="aspect-[4/3] w-full object-contain" /></a><figcaption className="px-1 pt-4"><h3 className="text-sm font-medium text-ink">{shot.title}</h3><p className="mt-2 break-words text-xs leading-5 text-muted">{shot.run}</p></figcaption></figure>)}</div>
+        <p className="mt-4 text-xs text-muted">Recorded demo patients · open an image to inspect the full page.</p>
+      </section>}
 
-      {/* Why the browser */}
-      <section className="space-y-4">
-        <Title>Why the browser was needed</Title>
-        {reasons.length ? (
-          <table className="w-full text-left text-[14px]">
-            <thead className="text-[12px] text-muted">
-              <tr className="border-b border-line">
-                <th className="py-2 font-normal">Reason</th>
-                <th className="py-2 font-normal">What it was</th>
-                <th className="py-2 text-right font-normal">Times</th>
-                <th className="py-2 pl-6 font-normal">For example</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-soft">
-              {reasons.map((r) => (
-                <tr key={r.kind + r.reason}>
-                  <td className="py-2.5 pr-4 text-ink">{r.reason.replace(/^./, (c) => c.toUpperCase())}</td>
-                  <td className="py-2.5 pr-4 text-ink-2">{r.kind === "task" ? "A job only a browser can do" : r.kind === "firm" ? "A firm's website" : r.kind === "search" ? "A search" : "A page"}</td>
-                  <td className="py-2.5 text-right tabular-nums text-ink">{r.n}</td>
-                  <td className="py-2.5 pl-6 text-[13px] text-muted">{r.examples.join(", ")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-[14px] text-muted">The reasons appear once a run with the access log has finished.</p>
-        )}
-      </section>
+      {speed.length > 0 && <section aria-labelledby="speed-title">
+        <Heading id="speed-title" label="From the run logs" title="Minutes to a next step." />
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">{speed.map((s) => <div key={s.flow} className="rounded-card border border-line p-6"><p className="text-sm text-ink-2">{FLOW_NAME[s.flow]}</p><p className="display mt-4 text-6xl tabular-nums text-ink">{mins(s.ms)}</p><p className="mt-3 text-xs text-muted">Median · {s.n} finished runs</p></div>)}</div>
+        <p className="mt-4 text-xs text-muted">{cohort} · finished runs only; includes time waiting for answers.</p>
+      </section>}
 
-      {/* Speed */}
-      <section className="space-y-4">
-        <Title>How long each step takes</Title>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {speed.map((s) => (
-            <Tile key={s.f} big={s.n ? mins(s.latest) : "–"} label={FLOW_NAME[s.f]} note={s.n ? `typical of the last ${Math.min(5, s.n)} runs (all ${s.n} runs: ${mins(s.median)}), including time waiting for the patient's answers` : "No finished runs yet"} />
-          ))}
+      <section aria-labelledby="safety-title" className="rounded-card bg-paper p-6 sm:p-8">
+        <Heading id="safety-title" label="The patient stays in control" title="Prepared by the crew. Sent by you." />
+        <div className="mt-7 grid gap-6 sm:grid-cols-2">
+          <div className="border-t border-line pt-5"><p className="mb-3 text-xs uppercase tracking-widest text-muted">Crew → Review → Patient sends</p><h3 className="text-lg font-medium text-ink">Stop before Send.</h3><p className="mt-2 text-sm leading-6 text-ink-2">{stops ? `${stops} form tasks recorded a stop before Send in this sample.` : 'The patient reviews each enquiry before sending.'}</p></div>
+          <div className="border-t border-line pt-5"><p className="mb-3 text-xs uppercase tracking-widest text-muted">Mac / Cloud</p><h3 className="text-lg font-medium text-ink">Keep private reasoning local.</h3><p className="mt-2 text-sm leading-6 text-ink-2">{cloudPrivate ? 'Design goal; sampled ledgers still record private-data tags on cloud calls.' : 'Local privacy routing needs verification before a stronger claim.'}</p></div>
         </div>
       </section>
-
-      {/* Why a crew */}
-      <section className="space-y-4">
-        <Title>Why a crew of specialists, not one agent</Title>
-        <p className="max-w-[70ch] text-[14px] leading-6 text-ink-2">Each crew member has its own tools, its own browser tabs and its own model, and sees only the data its job needs. They work at the same time: Iona reads guidance in the background while Robin checks firms side by side and Kit fills several forms at once. Elliot plans and changes the plan when something is learned.</p>
-        <table className="w-full text-left text-[14px]">
-          <thead className="text-[12px] text-muted">
-            <tr className="border-b border-line">
-              <th className="py-2 font-normal">Who</th>
-              <th className="py-2 font-normal">Job</th>
-              <th className="py-2 font-normal">Why separate</th>
-              <th className="py-2 font-normal">Model, calls (last 30 runs)</th>
-              <th className="py-2 font-normal">Sees</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-soft align-top">
-            {CREW.map((c) => {
-              const ms = models.get(c.id) ?? [];
-              const sees = [...new Set(ms.flatMap((m) => [...m.data]))];
-              return (
-                <tr key={c.id}>
-                  <td className="py-3 pr-4">
-                    <span className="flex items-center gap-2 font-medium text-ink">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- tiny static avatar */}
-                      <img src={`/crew/${c.id}-256.png`} alt="" aria-hidden className="size-7 object-contain" />
-                      {c.name}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-4 text-ink-2">{c.job}</td>
-                  <td className="py-3 pr-4 text-ink-2">{c.why}</td>
-                  <td className="py-3 pr-4 text-[13px] text-ink-2">{ms.length ? ms.map((m) => `${m.model} (${m.where === "local" ? "on this Mac" : "cloud"}), ${m.calls} calls`).join("; ") : "–"}</td>
-                  <td className="py-3 text-[13px] text-ink-2">{sees.length ? sees.join(", ") : "none of your details"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
-
-      {/* The runs */}
-      <section className="space-y-4">
-        <Title>The runs behind these numbers</Title>
-        <table className="w-full text-left text-[13px]">
-          <thead className="text-[12px] text-muted">
-            <tr className="border-b border-line">
-              <th className="py-2 font-normal">When</th>
-              <th className="py-2 font-normal">Step</th>
-              <th className="py-2 font-normal">Place</th>
-              <th className="py-2 text-right font-normal">Time</th>
-              <th className="py-2 text-right font-normal">Pages: fetch / browser</th>
-              <th className="py-2 text-right font-normal">Searches: API / saved / browser</th>
-              <th className="py-2 text-right font-normal">Browser jobs</th>
-              <th className="py-2 text-right font-normal">Questions to you</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-soft tabular-nums">
-            {runs.slice(0, 40).map((r) => (
-              <tr key={r.id}>
-                <td className="py-2 text-muted">{r.startedAt.replace("T", " ").slice(0, 16)}</td>
-                <td className="py-2 text-ink">{FLOW_NAME[r.flow]}</td>
-                <td className="py-2 text-ink-2">{r.place || "–"}</td>
-                <td className="py-2 text-right text-ink">
-                  {mins(r.ms)}
-                  {!r.finished && <span className="text-muted"> (stopped)</span>}
-                </td>
-                <td className="py-2 text-right text-ink-2">
-                  {r.pages.fetch} / {r.pages.browser}
-                </td>
-                <td className="py-2 text-right text-ink-2">
-                  {r.searches.api} / {r.searches.cache} / {r.searches.browser}
-                </td>
-                <td className="py-2 text-right text-ink-2">{r.access.length ? r.jobs : "–"}</td>
-                <td className="py-2 text-right text-ink-2">{r.asks}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <footer className="border-t border-line pt-5 text-xs text-muted">Live evidence from this machine&apos;s run logs. No crew runs are started by this page.</footer>
     </main>
   );
 }
 
-function Tile({ big, label, note }: { big: string; label: string; note: string }) {
-  return (
-    <div className="rounded-card border border-line bg-white px-5 py-4">
-      <p className="display text-[34px] leading-none text-ink tabular-nums">{big}</p>
-      <p className="mt-2 text-[14px] font-medium text-ink">{label}</p>
-      <p className="mt-1 text-[12px] leading-5 text-muted">{note}</p>
-    </div>
-  );
+function Heading({ id, label, title }: { id: string; label: string; title: string }) {
+  return <div><p className="mb-3 text-xs uppercase tracking-widest text-muted">{label}</p><h2 id={id} className="display text-3xl text-ink sm:text-4xl">{title}</h2></div>;
 }
-
-function Title({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <div className="flex items-end justify-between gap-4 border-b border-line pb-2">
-      <h2 className="display text-[22px] text-ink">{children}</h2>
-      {aside}
-    </div>
-  );
-}
-
-function Legend() {
-  return (
-    <span className="flex items-center gap-4 text-[12px] text-ink-2">
-      <span className="flex items-center gap-1.5">
-        <span aria-hidden className="inline-block size-2.5 rounded-[2px] bg-teal" /> Plain fetch, no browser
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span aria-hidden className="inline-block size-2.5 rounded-[2px] bg-brand" /> Real browser
-      </span>
-    </span>
-  );
+function Avatar({ id, size }: { id: string; size: string }) {
+  return <img src={`/crew/${id}-256.png`} alt="" aria-hidden className={`${size} object-contain`} />;
 }

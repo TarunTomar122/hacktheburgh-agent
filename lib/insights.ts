@@ -38,7 +38,7 @@ const cache = new Map<string, { mtime: number; run: RunSummary | null }>();
 function readRun(dir: string, id: string): RunSummary | null {
   const file = path.join(dir, "events.ndjson");
   if (!existsSync(file)) return null;
-  const mtime = statSync(file).mtimeMs;
+  const mtime = Math.max(...[file, path.join(dir, "access.ndjson"), path.join(dir, "ledger.ndjson")].filter(existsSync).map((f) => statSync(f).mtimeMs));
   const hit = cache.get(id);
   if (hit && hit.mtime === mtime) return hit.run;
   let stats = { pages: 0, quick: 0, actions: 0, sites: 0 };
@@ -110,6 +110,25 @@ function readRun(dir: string, id: string): RunSummary | null {
         }
       })
       .filter((a): a is Access => !!a);
+  // The ledger is the authoritative routing record; do not count mirrored events twice.
+  const ledger = path.join(dir, "ledger.ndjson");
+  if (existsSync(ledger)) {
+    models.clear();
+    for (const line of readFileSync(ledger, "utf8").split("\n")) {
+      if (!line) continue;
+      try {
+        const m = JSON.parse(line);
+        if (!m.agent || !m.model || !["local", "cloud"].includes(m.where)) continue;
+        const key = `${m.agent}|${m.model}`;
+        const cur = models.get(key) ?? { agent: m.agent, model: m.model, where: m.where, calls: 0, tokens: 0, ms: 0, data: [] };
+        cur.calls++;
+        cur.tokens += (m.inTok ?? 0) + (m.outTok ?? 0);
+        cur.ms += m.ms ?? 0;
+        cur.data = [...new Set([...cur.data, ...(m.data ?? [])])] as string[];
+        models.set(key, cur);
+      } catch { /* a run may still be writing its final line */ }
+    }
+  }
   const pagesFromLog = access.filter((a) => a.kind === "page" || a.kind === "firm");
   const run: RunSummary = {
     id,
@@ -159,4 +178,22 @@ export function browserReasons(runs: RunSummary[]): { reason: string; n: number;
       by.set(k, cur);
     }
   return [...by.values()].sort((a, b) => b.n - a.n).map((x) => ({ ...x, examples: [...x.examples] }));
+}
+
+/** Only select evidence the existing screenshot route can serve. */
+export function browserEvidence(runs: RunSummary[]): { title: string; run: string; file: string }[] {
+  const jobs = [
+    { title: "Checker answered", crew: "Nell", reason: /eligibility checker/, shot: /-Nell-.*-found\.jpg$/ },
+    { title: "Register searched", crew: "Robin", reason: /register.*filters/, shot: /-Robin-.*(?:Society|AVMA).*-(?:found|click)\.jpg$/ },
+    { title: "Enquiry prepared", crew: "Kit", reason: /filled .*form \([1-9]\d* fields\)/, shot: /-Kit-.*-type\.jpg$/ },
+  ];
+  return jobs.flatMap((job) => {
+    for (const r of runs) {
+      if (!r.finished || !/^(step[34]|complaint|discovery)-[0-9T-]+Z?$/.test(r.id)) continue;
+      if (!r.access.some((a) => a.kind === "task" && job.reason.test(a.reason))) continue;
+      const files = readdirSync(path.join(process.cwd(), ".runs", r.id)).filter((f) => job.shot.test(f)).sort();
+      if (files.length) return [{ title: job.title, run: r.id, file: files[files.length - 1] }];
+    }
+    return [];
+  });
 }
