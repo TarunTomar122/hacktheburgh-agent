@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { authEnabled, getAuth0 } from "../../../lib/auth0";
+import { authEnabled, sessionUser } from "../../../lib/auth0";
 import { dbEnabled, getSaved, putSaved } from "../../../lib/db";
 
 /**
@@ -24,9 +24,9 @@ type Who = { kind: "off" } | { kind: "anon" } | { kind: "user"; sub: string; ema
 
 async function who(): Promise<Who> {
   if (!authEnabled() || !dbEnabled()) return { kind: "off" };
-  const user = (await getAuth0().getSession())?.user;
-  if (!user?.sub) return { kind: "anon" };
-  return { kind: "user", sub: user.sub, email: typeof user.email === "string" ? user.email : null };
+  const user = await sessionUser();
+  if (!user) return { kind: "anon" };
+  return { kind: "user", sub: user.sub, email: user.email };
 }
 
 /** The answer for everyone except a signed-in user, or null for a signed-in user. */

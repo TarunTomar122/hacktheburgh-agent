@@ -1,4 +1,5 @@
 import { Auth0Client } from "@auth0/nextjs-auth0/server";
+import { cookies } from "next/headers";
 
 /**
  * Sign-up and log-in with Auth0 (D74). Auth is ON when all four Auth0 settings are present and AUTH_DISABLED is not 1.
@@ -22,11 +23,32 @@ export function getAuth0(): Auth0Client {
   return client;
 }
 
+/**
+ * Test-only login bypass (D78): a "Dev: skip login" link on /welcome signs you in as a fixed fake user (sub "dev|local") without Auth0.
+ * Off unless DEV_LOGIN=1 is set (in .env.local), and never in a production build. The cookie is only valid for the dev server that set it,
+ * so restarting `npm run dev` signs you out like a real session (D77). Do not set DEV_LOGIN=1 on anything reachable from the internet.
+ */
+export const DEV_COOKIE = "dev-login";
+export const devLoginOn = () => process.env.DEV_LOGIN === "1" && process.env.NODE_ENV !== "production";
+export const devCookieValue = () => process.env.DEV_BOOT_ID ?? "dev";
+export const devCookieOk = (value: string | undefined) => devLoginOn() && value === devCookieValue();
+
+export type SessionUser = { sub: string; name: string | null; email: string | null };
+
+/** The signed-in user (a real Auth0 session, or the dev bypass), or null. Reads cookies, so call it inside <Suspense> or a route. */
+export async function sessionUser(): Promise<SessionUser | null> {
+  if (!authEnabled()) return null;
+  if (devCookieOk((await cookies()).get(DEV_COOKIE)?.value)) return { sub: "dev|local", name: "Dev tester", email: process.env.DEV_LOGIN_EMAIL?.trim() || "dev@example.invalid" };
+  const user = (await getAuth0().getSession())?.user;
+  if (!user?.sub) return null;
+  return { sub: user.sub, name: user.name ?? user.email ?? null, email: typeof user.email === "string" ? user.email : null };
+}
+
 /** Who is signed in, as the pages need it. `enabled: false` means the app is running without accounts. */
 export type Account = { enabled: boolean; sub: string | null; name: string | null; email: string | null };
 
 export async function currentAccount(): Promise<Account> {
   if (!authEnabled()) return { enabled: false, sub: null, name: null, email: null };
-  const user = (await getAuth0().getSession())?.user;
-  return { enabled: true, sub: user?.sub ?? null, name: user?.name ?? user?.email ?? null, email: typeof user?.email === "string" ? user.email : null };
+  const user = await sessionUser();
+  return { enabled: true, sub: user?.sub ?? null, name: user?.name ?? null, email: user?.email ?? null };
 }

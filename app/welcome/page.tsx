@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { authEnabled, getAuth0 } from "../../lib/auth0";
+import { authEnabled, devLoginOn, sessionUser } from "../../lib/auth0";
 import { Stripes } from "../case/Header";
 import { Logo } from "../ui";
 
@@ -15,7 +15,7 @@ export default function Welcome(props: PageProps<"/welcome">) {
 }
 
 async function WelcomeContent(props: PageProps<"/welcome">) {
-  if (!authEnabled() || (await getAuth0().getSession())) redirect("/case");
+  if (!authEnabled() || (await sessionUser())) redirect("/case");
 
   // Only a path on this site is kept as the place to go back to after signing in.
   const asked = (await props.searchParams).returnTo;
@@ -42,6 +42,11 @@ async function WelcomeContent(props: PageProps<"/welcome">) {
               Log in
             </a>
           </div>
+          {devLoginOn() && (
+            <a href="/dev-login" className="text-[13px] text-muted underline hover:text-ink">
+              Dev: skip login (test only)
+            </a>
+          )}
         </div>
       </main>
     </div>
