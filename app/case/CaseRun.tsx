@@ -76,6 +76,9 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     setCaseRun(run);
   }, [state.status, state.result, state.startedAt, state.demo]);
 
+  // Night plan ("Elliot anywhere"): with a route map, the generic crew works with the place's own checker and register.
+  const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
+  const go = () => (routeMap ? start(profile.facts, undefined, "compensation_anywhere", routeMap) : start(profile.facts, profile.legalAid?.funding));
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
   // A demo skip counts the whole step as done in the progress meter (D60).
   if (live)
@@ -87,6 +90,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
           skipStep(3);
           return skip(crew);
         }}
+        onRetry={() => go()}
       />
     );
   if (view === "firms" && result)
@@ -99,9 +103,6 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
       </div>
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
-  // Night plan ("Elliot anywhere"): with a route map, the generic crew works with the place's own checker and register.
-  const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
-  const go = () => (routeMap ? start(profile.facts, undefined, "compensation_anywhere", routeMap) : start(profile.facts, profile.legalAid?.funding));
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={go} />;
   return (
     <Intro
@@ -167,7 +168,7 @@ type RunState = ReturnType<typeof usePlannerRun>["state"];
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
-export function Workspace({ state, onAnswer, onSkip, kit = COMPENSATION_KIT }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; kit?: CrewKit }) {
+export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION_KIT }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onRetry?: () => void; kit?: CrewKit }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -238,7 +239,16 @@ export function Workspace({ state, onAnswer, onSkip, kit = COMPENSATION_KIT }: {
       <section aria-label="Browsers working now">
         <div id="live-slot" />
       </section>
-      {state.status === "error" && <p className="text-[13px] text-danger">{state.error}</p>}
+      {state.status === "error" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-card border border-danger/30 bg-white px-5 py-4">
+          <p className="flex-1 text-[14px] text-danger">The run stopped: {state.error}</p>
+          {onRetry && (
+            <Button variant="secondary" onClick={onRetry}>
+              Try again
+            </Button>
+          )}
+        </div>
+      )}
 
       {state.status === "running" && (
         <DemoBar>

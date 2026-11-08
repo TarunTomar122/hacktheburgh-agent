@@ -98,6 +98,7 @@ export type AskSpec = {
 export type Thought = { i: number; t: number; text: string; tool?: string; detail?: string; result?: string; tab?: string };
 
 export type PlannerResult = Step3Result & {
+  scheme?: { body: string; text: string; quote?: string; url: string }; // a redress / no-fault scheme read by Robin (night plan)
   funding?: Funding; // optional for older recorded runs
   message?: EnquiryMessage; // the message Kit actually put in the forms
   plan: PlanStep[];
@@ -127,6 +128,23 @@ export type ComplaintResult = {
   draft?: Draft;
   form: { status: "ready_to_submit" | "needs_input" | "incomplete" | "failed" | "not_started"; filled: { label: string; value: string }[]; unfilled: string[]; note: string; url: string };
   message?: string;
+  stage?: "complaint" | "escalation";
+};
+
+/**
+ * Step 2 anywhere (night plan, "Elliot anywhere"): taking the complaint to the independent body discovery found.
+ * Where the patient is with step 1, as the app knows it (self-reported milestones, the complaint text, the reply).
+ */
+export type EscalationInput = { complaintSent: boolean; finalResponse: "yes" | "no" | "unknown"; complaintText?: string; providerReply?: string };
+
+/** What the escalation crew found and prepared. Same shape as the complaint's, plus: can you go yet, and where it goes. */
+export type EscalationResult = ComplaintResult & {
+  stage: "escalation";
+  body: string; // the independent body, as discovery named it
+  provider: string; // who the complaint was made to first
+  ready?: { status: "ready" | "not_yet" | "unclear"; when: string; explanation: string; include: string[]; url: string };
+  sendTo?: { kind: "email" | "post"; address: string; quote: string; url: string }; // only from a code-checked quote on the body's own page
+  subject?: string;
 };
 
 /** What discovery found (night plan, "Elliot anywhere"): the route map plus the crew's story. */
@@ -146,6 +164,7 @@ export type DiscoveryResult = {
 export type PlannerEvent =
   | Step3Event
   | { type: "complaint_result"; result: ComplaintResult }
+  | { type: "escalation_result"; result: EscalationResult }
   | { type: "model"; entry: LedgerEntry } // one model call (the ledger)
   | { type: "place"; place: Place } // where the patient's care happened, as read from their words
   | { type: "route"; route: RouteMap } // the route map so far (discovery)

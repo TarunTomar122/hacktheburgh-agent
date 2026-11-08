@@ -62,7 +62,7 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   };
 
   if (!route && !supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => go()} kit={KIT} />;
   if (saved && !again) return <ComplaintFile body={body} profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
   return <Intro body={body} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
 }

@@ -71,6 +71,8 @@ export type CrewFlow<R> = {
   exec: (call: ResponseFunctionToolCall, args: Record<string, unknown>, thought: Thought, kit: CrewKit) => Promise<string>;
   /** Tools that only write down what others found: run after the browser work of the same turn (so their checks see the pages). */
   after?: string[];
+  /** Dependencies between tools called in the same turn: lower stages finish before higher ones start (default 1). Within a stage, different crew members work at the same time. */
+  stage?: Record<string, number>;
   /** Did this result count as a failure? (default: text starts with Error / Could not / Blocked) */
   failed?: (name: string, out: string) => boolean;
   /** Build and emit the result at the end. */
@@ -233,28 +235,29 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         }
         return { type: "function_call_output", call_id: call.call_id, output: out };
       };
-      // Group by crew member: different members in parallel, the same member in order.
-      const groups = new Map<string, ResponseFunctionToolCall[]>();
-      for (const c of calls) {
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(c.arguments || "{}");
-        } catch {
-          /* handled in exec1 */
-        }
-        const key = c.name === "update_plan" ? "0plan" : c.name === "finish" ? "9finish" : c.name === "ask_user" ? "1ask" : flow.after?.includes(c.name) ? "8after" : flow.who(c.name, args);
-        groups.set(key, [...(groups.get(key) ?? []), c]);
-      }
+      // Stages first (a tool that needs another's result waits for it), then crew members in parallel within a stage, each member's calls in order.
+      const stageOf = (c: ResponseFunctionToolCall) => (c.name === "update_plan" ? -2 : c.name === "ask_user" ? -1 : c.name === "finish" ? 99 : flow.after?.includes(c.name) ? 98 : (flow.stage?.[c.name] ?? 1));
       const outputs: ResponseInputItem[] = [];
-      const plans = groups.get("0plan") ?? [];
-      for (const c of plans) outputs.push(await exec1(c));
-      const asksNow = groups.get("1ask") ?? [];
-      for (const c of asksNow) outputs.push(await exec1(c));
-      const workers = [...groups.entries()].filter(([k]) => !["0plan", "1ask", "8after", "9finish"].includes(k));
-      const done = await Promise.all(workers.map(async ([, cs]) => { const o: ResponseInputItem[] = []; for (const c of cs) o.push(await exec1(c)); return o; }));
-      outputs.push(...done.flat());
-      for (const c of groups.get("8after") ?? []) outputs.push(await exec1(c));
-      for (const c of groups.get("9finish") ?? []) outputs.push(await exec1(c));
+      for (const st of [...new Set(calls.map(stageOf))].sort((x, y) => x - y)) {
+        const inStage = calls.filter((c) => stageOf(c) === st);
+        if (st < 1 || st >= 98) {
+          for (const c of inStage) outputs.push(await exec1(c));
+          continue;
+        }
+        const groups = new Map<string, ResponseFunctionToolCall[]>();
+        for (const c of inStage) {
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(c.arguments || "{}");
+          } catch {
+            /* handled in exec1 */
+          }
+          const key = flow.who(c.name, args);
+          groups.set(key, [...(groups.get(key) ?? []), c]);
+        }
+        const done = await Promise.all([...groups.values()].map(async (cs) => { const o: ResponseInputItem[] = []; for (const c of cs) o.push(await exec1(c)); return o; }));
+        outputs.push(...done.flat());
+      }
       input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
     }
     const result = flow.finish(kit, { plan, thoughts, says, turns: turns - 1, asks });

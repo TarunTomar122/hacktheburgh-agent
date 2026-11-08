@@ -27,6 +27,7 @@ import type { Quote, Value } from "./workers/types";
 const TOOLS = [
   PLAN_TOOL,
   tool("check_funding", "Nell: find out how a claim could be paid for here: run the place's own online funding checker found by discovery (asks the patient only what it asks), or read the funding rules if there is no checker.", {}, []),
+  tool("read_scheme", "Robin: when the route map's compensation part is a scheme rather than (or before) court — a redress, no-fault, conciliation or insurance scheme — read the scheme's own pages: how a claim starts (often from the complaint itself), who decides, any cap or threshold, time limits, and whether free legal advice comes with it.", {}, []),
   tool("search_register", "Robin: search the professional register or directory discovery found, with its own search filters (area of law, place), and read the entries.", { area: { type: "string", description: "The area of law in this place's own terms, e.g. 'clinical negligence'" } }, ["area"]),
   tool("check_firm", "Robin: open a firm's own website (from its register entry, or found by search), check it is the same firm as the register entry, and read whether it acts for patients, works on no win no fee, and has an enquiry form.", { firm_id: { type: "string" } }, ["firm_id"]),
   tool("find_guidance", "Iona: find the recommendation about the patient's condition in the place's own clinical guidance, quote it, and compare it with the timeline.", { condition: { type: "string" } }, ["condition"]),
@@ -51,6 +52,7 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
   let routeKind: Route = "no_win_no_fee";
   let shortlistIds: string[] = [];
   let message: EnquiryMessage | null = null;
+  let scheme: { body: string; text: string; quote?: Quote; url: string } | undefined;
   const host = (u?: string | null) => { try { return u ? new URL(u).hostname.replace(/^www\./, "") : ""; } catch { return ""; } };
   const firmLine = (f: FirmFinding) => `${f.id}: ${f.name}${f.town ? `, ${f.town}` : ""}${f.website ? `, ${host(f.website)}` : ", no website listed"}${f.sources.includes("website") ? `; patients ${f.actsForPatients}, no win no fee ${f.noWinNoFee}, form ${f.enquiryUrl ? "yes" : "not found"}` : ""}${f.excluded ? `; RULED OUT: ${f.excluded}` : ""}`;
 
@@ -58,21 +60,23 @@ export async function runCompensationAnywhere(facts: CaseFacts, route: RouteMap,
     {
       prefix: "step3",
       system: `You lead a crew helping a patient in ${placeName} find out how a compensation claim could be paid for, and contact the right lawyers. Discovery already worked out the route (below); use its pages and register. Work in this order, adapting when results call for it (say why with update_plan):
-1. Nell: check_funding. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
+1. Nell: check_funding, and Robin: read_scheme if the compensation part is a scheme (same turn). Decide from them whether lawyers are needed at all (some schemes bar suing or give free legal advice through their own panel) and say so with update_plan. 2. Robin: search_register with the area of law in this place's own terms. 3. Robin: check_firm for the 3-4 most promising firms (one call each, same turn), replacing any ruled out. 4. Iona: find_guidance (skip if not relevant). 5. shortlist up to 3 with the route that fits Nell's result (legal_aid only if the checker said likely). 6. Kit: fill_enquiry for each shortlisted firm (same turn). 7. finish.
 Rules: never say anyone was negligent; never send anything; firms that defend health bodies or insurers are ruled out; a register entry and a website count as the same firm only if check_firm matched them. Ask the user only for what no page can tell.
 ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.body, what: s.what, how: s.how, url: s.url, points: s.points })), null, 1).slice(0, 6000)}`,
       tools: TOOLS,
       firstInput: `Patient: ${facts.firstName ?? "the patient"}, ${route.place.city || facts.address || ""}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}`,
       maxTurns: 16,
-      who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
+      stage: { check_funding: 1, read_scheme: 1, search_register: 1, find_guidance: 1, check_firm: 2, shortlist: 3, fill_enquiry: 4 },
+      who: (name) => (name === "check_funding" ? "nell" : name === "search_register" || name === "check_firm" || name === "read_scheme" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_enquiry" ? "kit" : "elliot"),
       doing: (name, a) => {
         const f = firms.get(String(a.firm_id ?? ""));
-        return ({ check_funding: `Checking funding with ${step("funding")?.body ?? "the official checker"}`, search_register: `Searching ${step("lawyers")?.body ?? "the register"}`, check_firm: f ? `Checking ${f.name}'s website` : "Checking a firm", find_guidance: "Finding the clinical guidance", shortlist: "Choosing the best fits", fill_enquiry: f ? `Filling ${f.name}'s enquiry form` : "Filling an enquiry form" } as Record<string, string>)[name] ?? "Working";
+        return ({ check_funding: `Checking funding with ${step("funding")?.body ?? "the official checker"}`, read_scheme: `Reading how ${step("compensation")?.body ?? "the scheme"} works`, search_register: `Searching ${step("lawyers")?.body ?? "the register"}`, check_firm: f ? `Checking ${f.name}'s website` : "Checking a firm", find_guidance: "Finding the clinical guidance", shortlist: "Choosing the best fits", fill_enquiry: f ? `Filling ${f.name}'s enquiry form` : "Filling an enquiry form" } as Record<string, string>)[name] ?? "Working";
       },
       describe: (name, a, out) => {
         const f = firms.get(String(a.firm_id ?? ""));
         if (name === "check_funding") return fundingQuote ? `${fundingSource}: "${short(fundingQuote.quote, 200)}"` : short(out, 200);
         if (name === "search_register") return short(out.split("\n")[0], 200);
+        if (name === "read_scheme" && scheme) return `${scheme.body}: ${short(scheme.text, 220)}`;
         if (name === "check_firm" && f) return f.excluded ? `Ruled out ${f.name}: ${f.excluded}.` : `Checked ${f.name} on its own website.`;
         if (name === "fill_enquiry") {
           const e = enquiries.get(String(a.firm_id ?? ""));
@@ -111,6 +115,17 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             verdict = /not (available|in scope|covered)|no longer|unlikely/i.test(r.value.answer) ? "unlikely" : "unknown";
             kit.finding(`${fundingSource}: ${short(r.value.answer, 120)}`, r.value.url, "nell");
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ")}`;
+          }
+          case "read_scheme": {
+            const c = step("compensation");
+            const url = c?.url ?? c?.sources[0]?.url;
+            if (!url) return "Could not read the scheme: discovery found no compensation page.";
+            const r = await kit.inTab(thought, "robin", short(c?.body ?? "Scheme", 26), (p, note) => readPage({ page: p, note, track: kit.track }, url, "How does a patient get compensation through this scheme: how does a claim start, who decides, is there a cap or threshold, what are the time limits, does the patient get free legal advice, and does using it stop them going to court?"), 90_000);
+            if (!r.ok) return `Could not read the scheme: ${r.error}`;
+            const q = r.value.quotes.find((x) => x.checked);
+            scheme = { body: c?.body ?? r.value.title, text: r.value.answer, quote: q, url: r.value.url };
+            kit.finding(`${scheme.body}: ${short(r.value.answer, 140)}`, r.value.url, "robin");
+            return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((x) => x.checked).map((x) => `"${x.quote}"`).join(" | ")}`;
           }
           case "search_register": {
             const l = step("lawyers");
@@ -224,6 +239,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           turns: x.turns,
           says: x.says,
           evidence: proof,
+          scheme: scheme ? { body: scheme.body, text: scheme.text, quote: scheme.quote?.quote, url: scheme.url } : undefined,
           enquiries: [...enquiries.values()],
           message: message ?? undefined,
           asks: x.asks,

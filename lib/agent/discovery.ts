@@ -55,6 +55,7 @@ How to work:
 - Start with update_plan. Give different crew members jobs in the SAME turn so they work at the same time (one tool call each); one member's calls run in order.
 - First find who runs the hospital (it may be a board, trust, district, state agency or company) and PROVE it with a source on the hospital's or provider's own site; check whether the care was public or private, because the routes differ. Then its complaint process, then the independent body above it.
 - Discover how the routes depend on each other, not just a list: what must happen first (requires), when a route applies at all (applies_if), what the alternatives are, and what facts we would still need from the patient (missing). Systems differ: some have no-fault schemes, redress schemes or conciliation bodies instead of court. Do not assume the shape of any other country.
+- Deadlines and stages: take them from the national rules (the regulations or the health service's own national guidance) AND the provider's current page. A page of a different organisation (even a related one) does not set this provider's deadline. If the provider's page and the national rules differ, say so.
 - Sources can be out of date (schemes get renamed, limits change). When two sources disagree, prefer the body's own current page over third parties and the newer over the older; record the conflict in "what" ("X's page still says ...").
 - When what you read contradicts your plan or your memory, say so with update_plan (drop or replace the step) and follow what the official page says.
 - For complaint and escalation, go all the way to the actual online form with explore_site (want: form) and report its fields or the wall that stops it. The patient will use it.
@@ -76,9 +77,13 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const keyOf = (u: string) => normUrl(u);
   const remember = (url: string, text: string) => texts.set(keyOf(url), normText(text));
   /** A quote counts only if code finds it in the exact page (by URL) this run opened. */
+  const workerChecked = new Map<string, string[]>(); // url -> quotes the reader itself checked against the text it read (PDFs too)
   const check = (url: string, quote: string) => {
+    if (quote.trim().length < 12) return false;
     const page = texts.get(keyOf(url));
-    return !!page && quote.trim().length >= 12 && quoteInText(quote, page);
+    if (page && quoteInText(quote, page)) return true;
+    const q = normText(quote);
+    return (workerChecked.get(keyOf(url)) ?? []).some((w) => q.length >= 12 && (normText(w).includes(q) || q.includes(normText(w))));
   };
   /** Provenance: the crew may only open pages this run found (search results, links on opened pages, explore paths), or other pages on those sites. */
   const known = new Set<string>();
@@ -161,6 +166,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const v = r.value;
             learn(v.url);
             v.links.forEach((l) => learn(l.url));
+            for (const u of [url, v.url]) workerChecked.set(keyOf(u), [...(workerChecked.get(keyOf(u)) ?? []), ...v.quotes.filter((q) => q.checked).map((q) => q.quote)]);
             if (v.wall) return `Blocked: ${v.wall.kind} at ${v.wall.url} (${v.wall.detail})`;
             return `${v.title} (${v.url})\n${v.answer}\nQuotes: ${v.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ") || "none checked"}\nLinks: ${v.links.map((l) => `${l.text} -> ${l.url}`).join("; ")}`;
           }
@@ -191,15 +197,18 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
             // "official" needs both: the model's judgement of the publisher, and a page on that host really opened in this run.
             const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
+            const checkedText = sources.filter((x) => x.checked).map((x) => normText(x.quote)).join(" ");
+            const backed = (claim?: string) => !claim || (claim.match(/\d[\d,.]*/g) ?? []).every((n) => checkedText.includes(normText(n)));
             const step: RouteStep = {
               kind,
               body: String(a.body ?? ""),
               what: String(a.what ?? ""),
-              deadline: a.deadline ? String(a.deadline) : undefined,
+              deadline: a.deadline && backed(String(a.deadline)) ? String(a.deadline) : undefined,
               how: (String(a.how ?? "unknown") as RouteStep["how"]) || "unknown",
               url: a.url ? String(a.url) : undefined,
               wall: a.wall ? String(a.wall) : undefined,
-              points: Array.isArray(a.points) ? (a.points as string[]).map(String).slice(0, 6) : undefined,
+              points: Array.isArray(a.points) ? (a.points as string[]).map(String).filter((pt) => backed(pt)).slice(0, 6) : undefined,
               requires: Array.isArray(a.requires) ? (a.requires as string[]).map(String) : undefined,
               appliesIf: a.applies_if ? String(a.applies_if) : undefined,
               alternatives: Array.isArray(a.alternatives) ? (a.alternatives as string[]).map(String) : undefined,
@@ -211,7 +220,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             steps.set(kind, step);
             publish(kit);
             const bad = sources.filter((s) => !s.checked);
-            return `Recorded ${kind} (${step.confidence}).${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
+            const dropped = [...(a.deadline && !step.deadline ? [String(a.deadline)] : []), ...((Array.isArray(a.points) ? (a.points as string[]) : []).filter((pt) => !step.points?.includes(String(pt))))];
+            return `Recorded ${kind} (${step.confidence}).${dropped.length ? ` Not kept, because their numbers are not in a checked quote: ${dropped.map((d) => `"${short(String(d), 60)}"`).join("; ")}.` : ""}${bad.length ? ` ${bad.length} quote(s) were NOT found on the page and do not count: ${bad.map((s) => `"${short(s.quote, 60)}" (${s.url})`).join("; ")}. Re-read the page and copy the words exactly if this matters.` : ""}`;
           }
           default:
             return `Unknown tool ${call.name}`;

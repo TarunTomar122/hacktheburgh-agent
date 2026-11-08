@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { CaseFacts } from "./facts";
 import { missingRequired } from "./facts";
-import { MODELS, structured } from "./llm";
+import { modelFor, structured } from "./llm";
 import { draftComplaintTo, type Draft } from "./draft";
 import type { GuidelineReading } from "./evidence";
 import { findGuidance } from "./guidance";
@@ -89,6 +89,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
       tools: TOOLS,
       firstInput: `Patient: ${facts.firstName ?? "the patient"}.\nWhere treated: ${facts.incidentLocation ?? "unknown"}.\nWhat happened:\n${[facts.incidentSummary, ...facts.events.map((e) => `${e.date}: ${e.what}`)].filter(Boolean).join("\n")}\nWhat they would like: ${facts.desiredOutcome || "not said"}.`,
       maxTurns: 14,
+      stage: { read_rules: 1, find_guidance: 1, draft_complaint: 2, fill_form: 3, prepare_message: 3 },
       who: (name): CrewId => (name === "read_rules" ? "robin" : name === "find_guidance" ? "iona" : name === "fill_form" ? "kit" : "elliot"),
       doing: (name) =>
         ({ read_rules: `Reading ${body?.body ?? "the provider"}'s complaint rules`, find_guidance: "Finding the clinical guidance", draft_complaint: "Writing your complaint", fill_form: `Filling ${body?.body ?? "the"} form`, prepare_message: "Preparing your message" })[name] ?? "Working",
@@ -111,12 +112,12 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             if (!r.ok) return `Could not read the rules: ${r.error}`;
             const today = new Date().toISOString().slice(0, 10);
             const lim = await structured({
-              model: MODELS.draft,
-              effort: "low",
+              ...modelFor("draft", ["health"]), // the patient's timeline: on this Mac by default
               instructions: "Check a patient's complaint against a time limit, using only the page text for the limit and only the patient's timeline for the dates. Never guess a date.",
               input: `Today: ${today}\nPage answer: ${r.value.answer}\nQuotes: ${r.value.quotes.map((q) => q.quote).join(" | ")}\nRoute deadline: ${body?.deadline ?? ""}\nTimeline:\n${facts.events.map((e) => `${e.date}: ${e.what}`).join("\n")}`,
               schema: Limit,
               name: "time_limit",
+              data: ["health"],
             });
             process = { summary: r.value.answer, steps: lim.steps, support: "", url: r.value.url };
             timeLimit = { limit: lim.limit, status: lim.status, explanation: lim.explanation, url: r.value.url };
@@ -183,9 +184,9 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             if (page) {
               const r = await kit.inTab(thought, "robin", short(`${body?.body ?? "Provider"} contact`, 26), (p, note) => readPage({ page: p, note, track: kit.track }, page, "Exactly which email address or postal address should a patient send a complaint to? Quote the address."), 90_000);
               if (r.ok) {
-                const q = r.value.quotes.find((x) => x.checked && /@|\b[A-Z]{1,2}\d/.test(x.quote));
-                const email = (q?.quote ?? r.value.answer).match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0];
-                to = email ?? (q ? q.quote : "");
+                // Only an email address that code finds inside a checked quote from their page counts (never the model's answer text).
+                const q = r.value.quotes.find((x) => x.checked && /[\w.+-]+@[\w-]+(\.[\w-]+)+/.test(x.quote));
+                to = q?.quote.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)?.[0] ?? "";
                 toQuote = q?.quote ?? "";
               }
             }

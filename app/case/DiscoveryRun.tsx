@@ -47,7 +47,7 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
   if (live)
     return (
       <div className="space-y-6">
-        <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />
+        <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => start(profile.facts, undefined, "discovery")} kit={KIT} />
         {state.route && (
           <div className="mx-auto max-w-6xl">
             <RouteMapCard route={state.route} compact />
