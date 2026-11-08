@@ -9,7 +9,7 @@ import type { WidgetAnswer } from "../lib/agent/interview";
 import { DEMO_PERSONAS, SAMPLE_FACTS, type DemoPersona } from "../lib/agent/sample";
 import { createProfile, setTrack, startDemo } from "../lib/profile";
 import { Stripes } from "./case/Header";
-import AccountMenu from "./AccountMenu";
+import AccountMenu, { useAccount } from "./AccountMenu";
 import NameStep from "./NameStep";
 import StageInput from "./StageInputs";
 import ReviewEditor from "./ReviewEditor";
@@ -24,7 +24,9 @@ const SHOW_SKIP = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBL
 export default function Onboarding() {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([OPENER]);
-  const [facts, setFacts] = useState<CaseFacts>(emptyFacts());
+  const account = useAccount();
+  // The email they signed in with is the contact email, so it is not asked again (they can change it on the Profile tab).
+  const [facts, setFacts] = useState<CaseFacts>(() => ({ ...emptyFacts(), email: account.email }));
   const [done, setDone] = useState(false);
   const [helpRoute, setHelpRoute] = useState<HelpRoute>();
   const [editing, setEditing] = useState(false);

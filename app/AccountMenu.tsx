@@ -4,7 +4,10 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { exitDemo, setProfileOwner, startSync, useDemo, useSyncStatus } from "../lib/profile";
 import type { Account } from "../lib/auth0";
 
-const AccountContext = createContext<Account>({ enabled: false, sub: null, name: null });
+const AccountContext = createContext<Account>({ enabled: false, sub: null, name: null, email: null });
+
+/** Who is signed in, for screens that can use it (the start page prefills the contact email from it). */
+export const useAccount = () => useContext(AccountContext);
 
 /**
  * Wraps the app (app/layout.tsx). Tells the profile store whose case this browser is showing, before anything below

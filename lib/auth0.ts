@@ -20,10 +20,10 @@ export function getAuth0(): Auth0Client {
 }
 
 /** Who is signed in, as the pages need it. `enabled: false` means the app is running without accounts. */
-export type Account = { enabled: boolean; sub: string | null; name: string | null };
+export type Account = { enabled: boolean; sub: string | null; name: string | null; email: string | null };
 
 export async function currentAccount(): Promise<Account> {
-  if (!authEnabled()) return { enabled: false, sub: null, name: null };
+  if (!authEnabled()) return { enabled: false, sub: null, name: null, email: null };
   const user = (await getAuth0().getSession())?.user;
-  return { enabled: true, sub: user?.sub ?? null, name: user?.name ?? user?.email ?? null };
+  return { enabled: true, sub: user?.sub ?? null, name: user?.name ?? user?.email ?? null, email: typeof user?.email === "string" ? user.email : null };
 }
