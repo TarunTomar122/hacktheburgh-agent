@@ -1,0 +1,13 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+SCORE 6.5/10
+Smart: It correctly spotted a Scotland-specific strength many agents miss: civil legal aid is available for medical negligence, alongside capped Scottish success-fee agreements.
+Worst: It missed major live-route realities: the NHS Lothian complaint form link was wrong, and the SPSO step omitted the current outage and 9-month allocation delay.
+- complaint: found=true body=right facts=partly page=wrong_page | Right body and main deadlines, but missed Stage 1/5-working-day early resolution and used the wrong complaint-form URL.
+- escalation: found=true body=right facts=partly page=right_page | Right ombudsman and 12-month rule, but it missed the live SPSO outage/technical banner, 9-month allocation delay, and the legal-action sequencing point.
+- compensation: found=true body=partly facts=partly page=right_page | Correct that compensation is by civil damages, but framed the body as SCTS, and missed key Scottish specifics: no NHS redress scheme, sheriff/Court of Session split, no clinical-negligence pre-action protocol, and CLO/CNORIS.
+- funding: found=true body=right facts=partly page=right_page | Correct that Scottish legal aid is available and success fees are capped, but it omitted QOCS and most eligibility detail.
+- lawyers: found=true body=right facts=partly page=form_found | Right directory, but it missed the important need to avoid 'defender only' medical-negligence specialists and did not use the verified SLAB finder as a fallback.
+- guideline: found=true body=right facts=partly page=right_page | Right Scottish guideline body, but it missed the key nuance that there is no SIGN scaphoid guideline and NICE NG38 is the practical reference.
+- advice: found=true body=right facts=right page=form_found | PASS was identified correctly with the right support role and contact routes.
+- records: found=true body=right facts=partly page=form_found | Right NHS Lothian SAR route and portal, but it omitted the 30-day/free-of-charge point, ID requirements, and did not mention duty of candour.

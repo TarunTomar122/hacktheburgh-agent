@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "Right body and main deadlines, but missed Stage 1/5-working-day early resolution and used the wrong complaint-form URL."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Right ombudsman and 12-month rule, but it missed the live SPSO outage/technical banner, 9-month allocation delay, and the legal-action sequencing point."
+    },
+    {
+      "kind": "compensation",
+      "found": true,
+      "body": "partly",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Correct that compensation is by civil damages, but framed the body as SCTS, and missed key Scottish specifics: no NHS redress scheme, sheriff/Court of Session split, no clinical-negligence pre-action protocol, and CLO/CNORIS."
+    },
+    {
+      "kind": "funding",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Correct that Scottish legal aid is available and success fees are capped, but it omitted QOCS and most eligibility detail."
+    },
+    {
+      "kind": "lawyers",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Right directory, but it missed the important need to avoid 'defender only' medical-negligence specialists and did not use the verified SLAB finder as a fallback."
+    },
+    {
+      "kind": "guideline",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Right Scottish guideline body, but it missed the key nuance that there is no SIGN scaphoid guideline and NICE NG38 is the practical reference."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "form_found",
+      "note": "PASS was identified correctly with the right support role and contact routes."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Right NHS Lothian SAR route and portal, but it omitted the 30-day/free-of-charge point, ID requirements, and did not mention duty of candour."
+    }
+  ],
+  "score": 6.5,
+  "smart": "It correctly spotted a Scotland-specific strength many agents miss: civil legal aid is available for medical negligence, alongside capped Scottish success-fee agreements.",
+  "worst": "It missed major live-route realities: the NHS Lothian complaint form link was wrong, and the SPSO step omitted the current outage and 9-month allocation delay."
+}
