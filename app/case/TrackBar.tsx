@@ -91,7 +91,7 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
           })}
         </nav>
 
-        {/* Patient insights (D84): the lightbulb button opens them in a pop-up. Renders nothing unless NEXT_PUBLIC_INSIGHTS=1. */}
+        {/* Patient insights (D87): the lightbulb button opens them in a pop-up. Renders nothing unless NEXT_PUBLIC_INSIGHTS=1. */}
         <div className="ml-auto">
           <InsightsButton profile={profile} />
         </div>

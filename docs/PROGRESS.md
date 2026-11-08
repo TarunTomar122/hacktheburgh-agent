@@ -8,11 +8,83 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
-### 2026-11-08 · Lea + Claude · IN PROGRESS (branch `patient-insights`, not committed) · Patient insights (D84, proposed)
+### 2026-11-08 · Lea + Claude · IN PROGRESS (branch `patient-insights`, pushed 2026-11-08, not merged) · Patient insights (D87, proposed)
 Shows the patient what Elliot did on their case, from its own run logs, with hurdles cleared, a run curve and a case timeline, in a pop-up opened by a lightbulb "Insights" button. Verified on all three demos (Yellow Card 5 hurdles, compensation 3, complaint 1). Full log and what is not done: `docs/plans/patient-insights-plan.md`.
 - **Verified live** on the Yellow Card site (fictional Isla, nothing sent): 1 website, 6 pages, 19 fields, 61 s, 5 logged hurdles, all shown on the case page.
 - `tsc`, `eslint .` and `scripts/test-effort.ts` pass.
 - **Dropped:** the policy-maker / four-nation idea, in favour of the patient (`NOT_DOING.md`).
+### 2026-11-08 - Om + Claude - DONE - Time-limit notes: Scotland wording, email complaint, docs corrected
+
+- The court-claim note now starts "In Scotland,": its rules (children from 16) are Scottish, and the compensation path does not check the case is in Scotland.
+- The email complaint (explanation or apology, `ComplaintEmail.tsx`) shows the NHS time-limit note when the place is a confirmed NHS Lothian site (same check as step 1).
+- Corrected earlier entries below: no demo persona shows a yellow note. Demo: NHS Complaint is green (by 3 April 2027); "close, 1 January 2027" was the scripts' sample patient.
+- Kept as is, Om's call: the filled form's browser still closes after 10 minutes of review.
+- `tsc`, eslint and `scripts/test-time-limit.ts` (43 checks) pass.
+
+### 2026-11-08 - Om + Claude - DONE - "Delete all my data" signs you out to the login screen
+
+Before, it went to the start page (onboarding) with the user still signed in. Now, for a signed-in user, it waits for the server's delete to finish (`clearProfile()` returns a promise, at most 8 s; a failed delete is still retried at the next sign-in via the pending marker, D81) and then goes to `/auth/logout`, which ends on `/welcome` (the same route as the Log out button). The case page's "no case, go to the start page" jump waits while this happens. A demo case, or a case kept only in the browser (no accounts), still goes to the start page. The confirm text now says "You will be signed out." Files: `lib/profile.ts`, `app/case/ProfileTab.tsx`, `app/case/page.tsx`. `tsc` and eslint clean; not yet tried in a browser.
+
+### 2026-11-08 - Om + Claude - DONE - Clean edge under the blue (D86)
+
+Removed the stepped stripes under the blue header and the profile's blue band, at Om's request: `Stripes` (`app/case/Header.tsx`) draws nothing, so the case pages, profile, start page and `/welcome` all change. Supersedes the stripes of D31; `docs/DESIGN.md` updated. `tsc` and eslint clean; not yet seen in a browser.
+
+### 2026-11-08 - Om + Claude - DONE - Relative dates become calendar dates; "Save profile" button
+
+Om's case said "I had pineapple pizza yesterday": the interview saved the date as the word "yesterday" (it copies the user's wording and is not told today's date), so every time-limit note said "could not be counted".
+- `lib/agent/timeLimit.ts` `resolveRelativeDate(s)`: in code, "today", "yesterday", "last night", "the day before yesterday", "N days/weeks ago" become `YYYY-MM-DD`; "last week" becomes the Monday of the week before (its earliest day); "last month", "N months ago", "this month" become "Month YYYY". Vaguer wording ("a few days ago") and real dates are left alone.
+- `lib/agent/interview.ts`: applied to the timeline on every interview turn, with the server's clock (the day it is said).
+- **Save profile** (top of the Profile page): turns relative dates already saved into calendar dates, counted from the case's `createdAt` (the day of the conversation); works out the path's fit again (`/api/agent/track`); saves to the account at once (`saveNow()` in `lib/profile.ts`, no debounce); says what happened (saved / saved in this browser or tab / could not reach the account). Time limits are counted from the facts whenever a page shows them, so they follow the new dates. The complaint draft is NOT rewritten (it may hold the user's edits).
+- Profile page: the time-limit note for the chosen path under the timeline; the intro no longer says "on this device only". Time-limit notes that cannot count now say how to fix it.
+- `scripts/test-time-limit.ts`: 15 more checks (relative dates), all pass. `tsc` (no errors now) and eslint clean. Not yet seen in a browser.
+
+### 2026-11-08 - Om + Claude - DONE - Production build no longer type-checks `scripts/`
+
+`npm run build` failed on Om's Mac: Next's type check covered every `.ts` file, including a local, git-ignored `scripts/test-restart-logout.ts` whose `./mock-oidc` import does not exist. `tsconfig.json` now excludes `scripts`. The scripts still run with `tsx`; nothing in `app/` or `lib/` imports them. `tsc --noEmit` now reports no errors. `npm run build` to be re-run on the Mac.
+
+### 2026-11-08 - Om + Claude - DONE - One agent run at a time
+
+A double click, or starting a second step while one was filling, started a second hidden browser that ran unseen for up to 15 minutes.
+- New `lib/agentLock.ts`: the routes that launch Elliot's browser (`step1`, `step2`, `yellowcard`, `step3`, `step4`, `plan`) claim the run; a second start gets 409 "Elliot is already <doing X>. Wait for that to finish, then try again." (shown as the step's error).
+- **Compensation crew unaffected:** one claim per request, and the crew's parallel tabs (and step 4's one tab per firm) all run inside one request. `plan/answer`, `plan/skip`, `plan/demo`, `step4/send`, `step4/draft`, `step4/edit` do not claim.
+- The claim is released when the run ends or when the page stops listening (refresh, restart), so a restart is never blocked; the old run is not stopped (as before). Stale claims expire after 20 minutes.
+- Not done, on purpose: closing the browser when the page goes away (the crew cancels its own request on restart; too risky before the freeze).
+- Lock logic tested with Node; `tsc` and eslint clean. Not yet tried in the app.
+
+### 2026-11-08 - Om + Claude - DONE - Time-limit notes on steps 1, 2, 3 and 4 (D85)
+
+Added the ombudsman (12 months) and court-claim (3 years) counts to `lib/agent/timeLimit.ts` (`countLimit`, `LIMITS`) and made `TimeLimitNote` take a `kind`. Shown on step 1 (NHS), step 2 (active and locked), the step 3 intro and step 4. Demo personas (corrected 06:55): Demo: NHS Complaint (Callum, 3 October 2026) NHS green until 3 April 2027, ombudsman green until 3 October 2027; Demo: Compensation (Ailsa, early July 2026) claim green until 1 July 2029. No demo persona shows yellow or red. `scripts/test-time-limit.ts` now 28 checks, all pass; `tsc` and eslint clean. Not yet seen in a browser.
+
+### 2026-11-08 - Om + Claude - DONE - Step 1 shows the complaint time limit
+
+- **Correction to the entry below:** the crew's time-limit check is not on screen. Since D69, step 1 is the earlier page and `ComplaintRun.tsx` is not rendered, so the "close" result was never visible.
+- New `app/case/TimeLimitNote.tsx`, on step 1 under the title and above "Fill in NHS Lothian's form": the rule in one sentence, the count from `countTimeLimit` (same code as the crew, from the saved timeline; nothing fetched), and a link to Citizens Advice Scotland as the source. Tones: in time (green), close (amber), may be too late (red), could not be counted (blue).
+- Corrected 06:55: "Demo: NHS Complaint" (Callum, 3 October 2026) shows "Time limit: you are in time", by 3 April 2027. "Close, 1 January 2027" is the scripts' sample patient (early July 2026), not a demo button.
+- Sources checked 2026-11-08: Citizens Advice Scotland (6 months from the event or from finding out, at most 12 months after the event); gov.scot NHS complaints guidance (same rule); SPSO Act 2002 s10(1) (12 months from first notice of the matter, for step 2, not shown yet).
+- `TIME_LIMIT_SOURCE` moved into `lib/agent/timeLimit.ts` so the page does not import the crew's browser code. `tsc` and eslint clean; not yet seen in a browser.
+
+### 2026-11-08 - Om + Claude - DONE - Complaint time limit counted in code
+
+The complaint crew's time-limit check asked the model (low effort) whether the patient was within the limit, so a wrong date sum could tell a patient they were in time when they were not.
+- New `lib/agent/timeLimit.ts` (no imports): reads the timeline's dates (ISO, `dd/mm/yyyy`, "3 July 2026", "July 3, 2026", "early/mid/late July 2026", "2026-07"; vague dates read as their earliest possible day), counts from the EARLIEST date, and applies the Scottish rule the Citizens Advice Scotland page states: 6 months, at most 12 months after the event. `close` = fewer than 8 weeks left. Dates that do not give at least a month and year, or a date after today, give `unclear`.
+- `checkTimeLimit` (`lib/agent/complaintAgents.ts`): the model now only quotes the limit from the page; status and explanation come from the code. If the page stops saying "six months", the result is `unclear` with a note to check the page.
+- **Behaviour change:** the app does not store when the patient found out, so it no longer counts from a later "found out" date. The scripts' sample patient (fall in early July 2026; not a demo button, corrected 06:55) now shows "close" (deadline 1 January 2027) instead of "within" (the model had counted from the mid-August X-ray). The recorded replay in `demo/` keeps the old wording.
+- `scripts/test-time-limit.ts`: 21 checks, all pass (run here with Node's type stripping). `tsc` and eslint clean. Not run live in the crew.
+
+### 2026-11-08 - Om + Claude - DONE - Timeouts on model calls
+
+A stuck model call could freeze a run for up to 10 minutes with no message (the OpenAI SDK's defaults are a 10-minute timeout and 2 retries; `decide()` used a plain `fetch` with no timeout).
+- `lib/agent/llm.ts`: the OpenAI client now gives up after 90 s, with 1 retry (`OPENAI_TIMEOUT_MS` overrides). All calls use low or no reasoning effort.
+- `lib/agent/decisions.ts`: each Decisions API try gives up after 20 s (`DECISION_TIMEOUT_MS`); a timeout or network error is retried like a 5xx, up to 3 tries, then fails as before (the NHS step then switches to the backup engine).
+- Not run against the live API from here (the sandbox cannot reach it). `tsc` and eslint clean on both files.
+
+### 2026-11-08 - Om + Claude - DONE - NHS Submit detection confirmed; new fills reset "sent" (D84)
+
+- **Found:** the 03:58 "no POST" was not the site. Clicks in the live panel only reach the page in Take control mode; without it the click is dropped. With Take control, a real Submit at 05:25 was detected end to end (see D84 for the log). This sent a real complaint to NHS Lothian.
+- **Fixed:** a new fill clears the step's filled/sent marks (`app/case/page.tsx`, `ComplaintRun.tsx`, `OmbudsmanStep.tsx`, `YellowCardStep.tsx`); done boxes say "browser panel" and tell the user to Take control first.
+- **Diagnostics kept** (dev terminal): `[submit-watch]` start line, clicks and form submit events that reach the page, every POST (separate caps for captcha/analytics so they cannot crowd out the form's POST), form messages; `[live-input]` lines for each panel click (with the element hit), Close and Back. Files: `lib/browser.ts`, `lib/liveview.ts`.
+- **Still unverified:** SPSO and Yellow Card confirmation wording (never submitted).
+- `tsc --noEmit` clean except the known `scripts/test-restart-logout.ts` error; eslint clean on `app/case`, `lib/browser.ts`, `lib/liveview.ts`. UI checked by Om on the Mac.
 
 ### 2026-11-08 - Om + Claude - DONE - Yellow Card only reports "ready" on Step 4 of 4
 

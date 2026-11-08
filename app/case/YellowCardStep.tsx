@@ -42,6 +42,7 @@ export default function YellowCardStep({ profile }: { profile: Profile }) {
     for (const x of extra ?? []) known.set(x.label, x);
     answered.current = [...known.values()].slice(-20); // the API accepts at most 20
     setRunning(true);
+    setProgress({ ycFilled: false, ycSent: false }); // a new report has not been sent yet, whatever an earlier one did
     window.dispatchEvent(new Event("live-open")); // show the agent's browser beside the page
     setError(null);
     setResult(null);
@@ -163,7 +164,7 @@ export default function YellowCardStep({ profile }: { profile: Profile }) {
       {result &&
         (result.status === "ready_to_submit" ? (
           <Callout tone="ok" title="Done. It is waiting for you in the browser panel.">
-            Check each page there and change anything you like. Then send it yourself.
+            Check each page there and change anything you like. Then send it yourself. Click &ldquo;Take control&rdquo; in the panel first: your clicks only reach the form while it is on.
             <div className="mt-3">
               {profile.progress?.ycSent ? (
                 <span className="font-medium text-teal">Marked as sent. Thank you for reporting: it helps keep others safe.</span>

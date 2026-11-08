@@ -1,6 +1,6 @@
 "use client";
 
-// Patient insights (D84, proposed, branch patient-insights; docs/plans/patient-insights-plan.md).
+// Patient insights (D87, proposed, branch patient-insights; docs/plans/patient-insights-plan.md).
 // Everything here is counted from what Elliot's runs logged. No estimates, and no organisation is cast as at fault: the process
 // involves many bodies, websites and rules, and Elliot does that legwork. Opened from the lightbulb "Insights" button in the step bar.
 // Hidden unless NEXT_PUBLIC_INSIGHTS=1, so the app is unchanged without it.

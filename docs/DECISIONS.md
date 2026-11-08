@@ -410,7 +410,30 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 - **Not seen:** the Yellow Card confirmation page (never submitted while probing). `SUBMITTED_TEXT` now also matches "thank you for your report / reporting", which is a guess. If it does not trigger, send the confirmation page's wording and add it.
 - **Compensation path (steps 3 and 4):** nothing to detect. The agent sends the firms' forms itself after the user's OK in step 4, and that step already marks each as sent.
 
-**D84 · 2026-11-08 · Lea (asked), Claude (built on branch `patient-insights`) · proposed, not merged**
+## D84 - A new fill clears the step's "filled" and "sent" marks; the panel says to Take control before Submit (Om, 2026-11-08)
+
+- **What:** starting a fill (NHS step, the complaint crew's "Fill in the form", ombudsman, Yellow Card) sets that step's `*Filled` and `*Sent` back to false. Before, a "sent" mark from an earlier run stayed, so a fresh, unsent form showed "Marked as sent" and "Continue to Ombudsman" as the main button. Demo replays and "Skip" are unchanged.
+- **Copy:** the done boxes say the form waits "in the browser panel" (there is no other window since D34) and that clicks only reach the form while "Take control" is on.
+- **D83 result:** detection confirmed on the live NHS Lothian form at 05:25 (a real submission): the click reached Submit, POST to `nhslothian.scot/yourrights/wp-admin/admin-ajax.php`, form message "Thank you for your feedback!", `submitted` announced. No reCAPTCHA POST was seen. The 03:58 failure was the click never reaching the page: the live panel only forwards clicks in Take control mode.
+
+## D85 - Time-limit notes on every step that has a limit, coloured by time left (Om, 2026-11-08)
+
+- **What:** a note under each step's title says where the patient stands, counted in code from the earliest date in their timeline (`lib/agent/timeLimit.ts`, `app/case/TimeLimitNote.tsx`). Nothing is fetched; each note links its source and says it is information, not legal advice.
+  - **Step 1, NHS complaint:** 6 months, at most 12 after the event (Citizens Advice Scotland). Yellow under 8 weeks left.
+  - **Step 2, ombudsman (also while locked):** 12 months from when the patient first knew (SPSO; SPSO Act 2002 s10(1)). Yellow under 8 weeks. The note says the clock does not wait for NHS Lothian's reply.
+  - **Step 3 start and step 4, court claim:** 3 years from the harm or from knowledge; children from 16, death from the date of death (MDDUS claims guide, Scotland). Yellow under 6 months, because a solicitor needs months to prepare.
+  - **Yellow Card:** no note. There is no time limit (MHRA: report any time).
+- **Colours:** green = in time, yellow = close, red = past the usual limit (each note says how it can still be accepted), blue = dates too vague to count.
+- **Known limits:** counts from the earliest date, never from when the patient found out (not recorded), so deadlines shown can be earlier than the real ones, never later. Age and death are not known, so the claim note states those rules instead of applying them.
+
+## D86 - The blue ends in a clean edge, no stepped stripes (Om, 2026-11-08). Supersedes the stripes of D31
+
+- **What:** the stepped lines under the blue header and the profile's blue band (one thick line, then two thinner, fainter ones; D31, `docs/DESIGN.md`) are removed. The blue now meets the white directly. Om found the lines distracting.
+- **How:** `Stripes` in `app/case/Header.tsx` draws nothing, so every page that used it changes at once: the case pages, the profile page, the start page and `/welcome`. Putting the stripes back is restoring that one component.
+- `docs/DESIGN.md` updated to match. Not yet seen in a browser.
+
+
+**D87 · 2026-11-08 · Lea (asked), Claude (built on branch `patient-insights`) · proposed, not merged**
 **Patient insights: show the patient the work Elliot did on their case, counted from its own run logs.**
 - **What:** a lightbulb "Insights" button in the step bar opens a pop-up with: headline numbers (hurdles cleared, websites, pages, fields, questions Elliot asked you), "Hurdles Elliot cleared for you" (a curated list by kind, each with its page), a step table, a curve of the last run, and a case timeline. Plan and log: `docs/plans/patient-insights-plan.md`.
 - **Rules:**
@@ -422,4 +445,4 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 - **Not:** a policy-maker view or comparisons between nations (dropped, `NOT_DOING.md`).
 - **Touches:** the shared logger (`lib/agent/events.ts`, all form runs), `lib/profile.ts` (`effort`, `progress.at`), one status line in `decisionAgent.ts`, `StepAside.tsx` and `app/case/page.tsx`. Tell Tarun and Om before merging.
 
-<!-- Add new entries above this line. Next number: D85 -->
+<!-- Add new entries above this line. Next number: D88 -->

@@ -69,7 +69,7 @@ let owner: string | null = null;
 const userKey = () => (owner ? `${LEGACY_KEY}:${owner}` : LEGACY_KEY);
 
 /**
- * Demo mode (D75). The "Demo: complaint" and "Demo: compensation" personas run on a throwaway copy that lives in this tab only
+ * Demo mode (D75). The demo personas ("Demo: NHS Complaint", "Demo: Compensation", "Demo: Yellow Card") run on a throwaway copy that lives in this tab only
  * (sessionStorage): it never replaces the user's real saved case and is never sent to the server. It ends when the tab closes or
  * the user chooses Exit demo.
  */
@@ -344,6 +344,20 @@ export async function startSync(sub: string) {
   }
 }
 
+/**
+ * "Save profile" (2026-11-08): stamps the case as changed now and sends it to the account at once, without waiting for the usual
+ * short delay. Returns how it went: "saved", "error" (kept in this browser, retried later), or "off" (no account saving: a demo case,
+ * or accounts or the database are not set up).
+ */
+export async function saveNow(): Promise<SyncStatus> {
+  const p = read();
+  if (!p) return status;
+  write(p);
+  if (!syncing()) return "off";
+  await flush();
+  return status;
+}
+
 /** The state of saving to the account, for a small label. "off" when accounts or the database are not set up. */
 export function useSyncStatus(): SyncStatus {
   return useSyncExternalStore(
@@ -505,7 +519,8 @@ export function upsertEnquiries(records: (Partial<EnquiryRecord> & Pick<EnquiryR
   write({ ...p, enquiries: cur });
 }
 
-export function clearProfile() {
+/** Resolves once the server has answered the delete (or at once when there is nothing to tell it), so the caller can sign out safely. */
+export async function clearProfile(): Promise<void> {
   if (inDemo()) {
     exitDemo(); // the demo copy goes; the real case is untouched
     return;
@@ -518,10 +533,9 @@ export function clearProfile() {
   clearTimeout(pushTimer);
   flagSet(pendingKey(), true); // retried on the next pull if this request does not get through
   flagSet(syncedKey(), false);
-  void call("DELETE").then((r) => {
-    if (r?.status === 200) flagSet(pendingKey(), false);
-    setStatus(r?.status === 200 ? "saved" : "error");
-  });
+  const r = await call("DELETE"); // at most 8 s; if it fails, the pending marker retries it on the next sign-in
+  if (r?.status === 200) flagSet(pendingKey(), false);
+  setStatus(r?.status === 200 ? "saved" : "error");
 }
 
 /** undefined while loading (server render), null when nothing saved, else the profile. */

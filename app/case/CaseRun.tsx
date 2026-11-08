@@ -10,6 +10,7 @@ import StepStrip from "./crew/StepStrip";
 import FirmResults from "./FirmResults";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
+import TimeLimitNote from "./TimeLimitNote";
 import { usePlannerRun } from "./usePlannerRun";
 import { useBrowserQuestionNotice } from "./useBrowserQuestionNotice";
 
@@ -103,6 +104,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={() => start(profile.facts, profile.legalAid?.funding)} />;
   return (
     <Intro
+      profile={profile}
       error={state.status === "error" ? state.error : undefined}
       onStart={() => start(profile.facts, profile.legalAid?.funding)}
       onDemo={(toEnd) => {
@@ -115,13 +117,14 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ onStart, onDemo, error }: { onStart: () => void; onDemo: (toEnd: boolean) => void; error?: string }) {
+function Intro({ profile, onStart, onDemo, error }: { profile: Profile; onStart: () => void; onDemo: (toEnd: boolean) => void; error?: string }) {
   return (
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">Prepare your case</h1>
       <p className="mt-3 flex items-center gap-2 text-[15px] text-ink-2">
         <CrewMark id="elliot" size={28} /> Elliot plans the route, and changes it as he learns.
       </p>
+      <TimeLimitNote profile={profile} kind="claim" className="mt-8 max-w-3xl" />
       <div className="mt-12">
         <StepStrip />
       </div>

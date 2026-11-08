@@ -4,7 +4,9 @@ import type { z } from "zod";
 
 let client: OpenAI | null = null;
 export function openai(): OpenAI {
-  return (client ??= new OpenAI()); // reads OPENAI_API_KEY from env (.env.local)
+  // The SDK's defaults are a 10-minute timeout and 2 retries, so one stuck call could freeze a run with no message.
+  // 90 s covers the slowest writing call seen; one retry. OPENAI_TIMEOUT_MS overrides.
+  return (client ??= new OpenAI({ timeout: Number(process.env.OPENAI_TIMEOUT_MS) || 90_000, maxRetries: 1 })); // reads OPENAI_API_KEY from env
 }
 
 // Override per role with env vars. Browser steps want speed; writing wants quality.

@@ -8,6 +8,7 @@ import { Button, Callout, control, cx, Eyebrow, Paper } from "../ui";
 import { draftMessage, editEnquiry, fieldsOf, runStep4, sendEnquiry } from "./enquiryRun";
 import { closeAgentBrowser } from "./streamAgent";
 import { AgentsPanel } from "./LegalAidStep";
+import TimeLimitNote from "./TimeLimitNote";
 import { fixtureMode } from "./legalAidRun";
 import { WHY } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
@@ -181,6 +182,8 @@ export default function ContactLawyersStep({ profile, onBack }: { profile: Profi
           </Button>
         )}
       </div>
+
+      <TimeLimitNote profile={profile} kind="claim" />
 
       {started && pending.length > 0 && (
         <div className="space-y-3">

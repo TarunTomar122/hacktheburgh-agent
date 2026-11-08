@@ -96,12 +96,39 @@ export function closeWhenSubmitted(page: Page, browser: Browser, opts: { maxMs?:
   // the form ("Form submitted successfully." by default), so the wording cannot be matched. Seen 2026-11-08: the phrase list alone never fired there.
   const ninja = async () => (await page.evaluate(() => (document.querySelector(".nf-response-msg") as HTMLElement | null)?.innerText.trim() ?? "").catch(() => "")) || "";
   void Promise.all([read(), ninja()]).then(([t, n]) => (baseline = { url: page.url(), match: t.match(SUBMITTED_TEXT)?.[0] ?? null, ninja: n }));
+  // Diagnostics: say the watch has started, and echo every button click and form submit that actually reaches the page, so
+  // "no lines at all" can be told apart from "the click never arrived" (live-panel clicks are only forwarded in Take control mode).
+  if (opts.flow) {
+    const flow = opts.flow;
+    console.log(`[submit-watch] ${flow}: watching for Submit on ${new URL(page.url()).host}`);
+    page.on("console", (m) => {
+      const t = m.text();
+      if (t.startsWith("[submit-watch]")) console.log(t.replace("[submit-watch]", `[submit-watch] ${flow}:`));
+    });
+    const hook = `(() => {
+      if (window.__submitWatch) return; window.__submitWatch = true;
+      document.addEventListener("click", (e) => {
+        const b = e.target && e.target.closest ? e.target.closest("button, input[type=submit], input[type=button], [role=button]") : null;
+        if (b) console.log("[submit-watch] click reached the page: " + String(b.innerText || b.value || b.id || b.tagName).trim().slice(0, 40));
+      }, true);
+      document.addEventListener("submit", () => console.log("[submit-watch] form submit event"), true);
+    })()`;
+    void page.evaluate(hook).catch(() => {});
+    void page.context().addInitScript(hook).catch(() => {}); // also after a reload or a new page in this tab
+  }
+  // Diagnostics: every POST is logged, with separate caps so a stream of analytics or captcha POSTs cannot use up the lines
+  // before the user presses Submit (seen 2026-11-08: the NHS check needs the form's own POST, and the captcha one if any).
   let logged = 0;
+  let loggedIgnored = 0;
   page.on("request", (r) => {
     if (r.method() !== "POST") return;
-    if (opts.flow && logged++ < 6) console.log(`[submit-watch] ${opts.flow}: POST ${new URL(r.url()).host}${new URL(r.url()).pathname}`);
-    // A POST to a captcha provider is not the form going in.
-    if (posted || /recaptcha|gstatic|hcaptcha|turnstile|google-analytics|doubleclick|googletagmanager/i.test(r.url())) return;
+    // A POST to a captcha provider or an analytics service is not the form going in.
+    const ignored = /recaptcha|gstatic|hcaptcha|turnstile|google-analytics|doubleclick|googletagmanager/i.test(r.url());
+    if (opts.flow && (ignored ? loggedIgnored++ < 4 : logged++ < 10)) {
+      const u = new URL(r.url());
+      console.log(`[submit-watch] ${opts.flow}: POST ${u.host}${u.pathname}${ignored ? " (captcha/analytics, ignored)" : ""}`);
+    }
+    if (posted || ignored) return;
     posted = true;
     if (opts.flow) console.log(`[submit-watch] ${opts.flow}: the page made a POST, waiting for a confirmation`);
   });

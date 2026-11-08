@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { busyResponse, claimAgentRun } from "../../../../lib/agentLock";
 import { CaseFacts, missingRequired } from "../../../../lib/agent/facts";
 import { runComplaint } from "../../../../lib/agent/complaintPlanner";
 import { Funding } from "../../../../lib/agent/legalAidTypes";
@@ -16,12 +17,15 @@ export async function POST(req: Request) {
   if (parsed.data.flow === "complaint" && missingRequired(parsed.data.facts).length) {
     return Response.json({ error: "Complete your profile before making a complaint" }, { status: 400 });
   }
+  // One run at a time (lib/agentLock.ts). Released when the run ends or when the page stops listening (refresh, restart).
+  const claim = claimAgentRun(parsed.data.flow === "complaint" ? "preparing your complaint" : "preparing your case");
+  if ("busy" in claim) return busyResponse(claim.busy);
   const enc = new TextEncoder();
   let closed = false;
   let ping: ReturnType<typeof setInterval> | undefined;
   const stream = new ReadableStream({
     cancel() {
-      closed = true;
+      closed = true; claim.release();
       clearInterval(ping);
     },
     async start(controller) {
@@ -36,6 +40,7 @@ export async function POST(req: Request) {
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
       } finally {
+        claim.release();
         clearInterval(ping);
         // Approval can still log through this callback after the response ends.
         if (!closed) {

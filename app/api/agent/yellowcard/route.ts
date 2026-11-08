@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { busyResponse, claimAgentRun } from "../../../../lib/agentLock";
 import { CaseFacts, missingForOnboarding } from "../../../../lib/agent/facts";
 import { ExtraAnswers } from "../../../../lib/agent/extra";
 import { fillYellowCard } from "../../../../lib/agent/yellowCard";
@@ -16,10 +17,13 @@ export async function POST(req: Request) {
   const problems = [...(missingForOnboarding(facts).length ? ["Complete your profile first."] : []), ...yellowCardProblems(answers)];
   if (problems.length) return Response.json({ error: problems.join(" ") }, { status: 400 });
 
+  // One run at a time (lib/agentLock.ts). Released when the run ends or when the page stops listening (refresh, restart).
+  const claim = claimAgentRun("filling the Yellow Card report");
+  if ("busy" in claim) return busyResponse(claim.busy);
   const enc = new TextEncoder();
   let cancelled = false;
   const stream = new ReadableStream({
-    cancel() { cancelled = true; },
+    cancel() { cancelled = true; claim.release(); },
     async start(controller) {
       const send = (o: unknown) => {
         if (!cancelled) controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
@@ -29,6 +33,7 @@ export async function POST(req: Request) {
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message : String(e) });
       } finally {
+        claim.release();
         if (!cancelled) controller.close();
       }
     },

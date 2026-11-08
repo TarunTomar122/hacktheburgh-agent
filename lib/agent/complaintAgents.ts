@@ -6,6 +6,7 @@ import type { CaseFacts } from "./facts";
 import { EFFORT, MODELS, structured } from "./llm";
 import { pageText, type Note, type Tracker } from "./legalAid";
 import { hasSupport } from "./complaintSupport";
+import { countTimeLimit, TIME_LIMIT_SOURCE, type TimeLimitStatus } from "./timeLimit";
 
 /**
  * Robin's two reading skills for the complaint crew (D65). Both open real pages and answer only from them.
@@ -14,7 +15,7 @@ import { hasSupport } from "./complaintSupport";
 
 const NHS_BASE = "https://www.nhslothian.scot/yourrights/patient-experience-team-tell-us-about-your-experience/how-do-i-make-a-complaint/";
 export const NHS_PROCESS_URLS = [NHS_BASE, `${NHS_BASE}what-happens-when-i-complain/`];
-export const TIME_LIMIT_PAGE = "https://www.citizensadvice.org.uk/scotland/health/nhs-healthcare-s/nhs-complaints-s/";
+export const TIME_LIMIT_PAGE = TIME_LIMIT_SOURCE;
 
 async function open(page: Page, url: string, note: Note, track: Tracker, hover: RegExp) {
   note(`Opening ${new URL(url).hostname.replace(/^www\./, "")}`);
@@ -59,27 +60,31 @@ export async function readProcess(page: Page, note: Note, track: Tracker): Promi
 
 const TimeLimit = z.object({
   limit: z.string().describe("The time limit for bringing a complaint, quoted from the page in one sentence"),
-  status: z.enum(["within", "close", "outside", "unclear"]).describe("Is the patient's complaint within that limit today? 'close' = fewer than 8 weeks left. 'unclear' if the dates are too vague to tell."),
-  explanation: z.string().describe("Two plain sentences for the patient: which date you counted from, how long ago it was, and what that means. If outside the limit, say that the page allows exceptions only if it does."),
 });
-export type TimeLimitReading = z.infer<typeof TimeLimit> & { url: string };
+export type TimeLimitReading = { limit: string; status: TimeLimitStatus; explanation: string; url: string };
 
-/** Open Citizens Advice Scotland's page on NHS complaints and work out where the patient stands against the time limit, from their own timeline. */
+/**
+ * Open Citizens Advice Scotland's page on NHS complaints and work out where the patient stands against the time limit, from their own timeline.
+ * The model only quotes the limit from the page. Whether the patient is within it is counted in code (lib/agent/timeLimit.ts): date arithmetic
+ * by a model is not reliable enough for a legal deadline.
+ */
 export async function checkTimeLimit(page: Page, facts: CaseFacts, note: Note, track: Tracker): Promise<TimeLimitReading> {
   const text = await open(page, TIME_LIMIT_PAGE, note, track, /time limit|six months/i);
   if (!/months/i.test(text)) throw new Error("The page with the time limit did not load");
   note("Counting from your dates");
-  const timeline = facts.events.map((e) => `${e.date}: ${e.what}`).join("\n") || facts.incidentSummary || "no dates given";
-  const today = new Date().toISOString().slice(0, 10);
   const r = await structured({
-    model: MODELS.draft,
-    effort: "low",
-    instructions: "You check a patient's complaint against a time limit for a research agent. Use only the page text for the limit and only the patient's timeline for the dates. Never guess a date. The limit counts from the event or from when the patient found out they had a reason to complain, and never more than 12 months after the event, unless the page says it can be waived.",
-    input: `Today: ${today}\nPage: ${page.url()}\n\n${text}\n\nPatient's timeline:\n${timeline}`,
+    model: MODELS.browser,
+    effort: EFFORT.browser,
+    instructions: "You quote a time limit from a web page for a patient's research agent. Use only the page text. Never invent a limit.",
+    input: `Page: ${page.url()}\n\n${text}`,
     schema: TimeLimit,
     name: "time_limit",
   });
-  await note.log("check", `${r.status === "within" ? "Within" : r.status === "close" ? "Close to" : r.status === "outside" ? "Past" : "Could not tell about"} the time limit`, { detail: `${r.limit}\n\n${r.explanation}` });
-  note(r.status === "within" ? "Within the time limit" : r.status === "close" ? "Close to the limit" : r.status === "outside" ? "Past the limit" : "Dates unclear");
-  return { ...r, url: TIME_LIMIT_PAGE };
+  // The count below assumes the usual Scottish rule (6 months, 12 at most). If the page no longer says six months, say so instead of counting.
+  const count: { status: TimeLimitStatus; explanation: string } = /\b(six|6) months\b/i.test(text)
+    ? countTimeLimit(facts.events.map((e) => e.date))
+    : { status: "unclear", explanation: "The page no longer states the usual six-month limit, so Elliot did not count it. Please check the page." };
+  await note.log("check", `${count.status === "within" ? "Within" : count.status === "close" ? "Close to" : count.status === "outside" ? "Past" : "Could not tell about"} the time limit`, { detail: `${r.limit}\n\n${count.explanation}` });
+  note(count.status === "within" ? "Within the time limit" : count.status === "close" ? "Close to the limit" : count.status === "outside" ? "Past the limit" : "Dates unclear");
+  return { limit: r.limit, status: count.status, explanation: count.explanation, url: TIME_LIMIT_PAGE };
 }

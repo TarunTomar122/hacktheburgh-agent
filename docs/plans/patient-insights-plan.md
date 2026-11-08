@@ -121,7 +121,7 @@ Newest first. What we did, decided and why, as we go.
 
 - **2026-11-08 (build, about 06:00-06:30), Lea's three changes:**
   1. **A lightbulb "Insights" button** in the sticky step bar (every path, every step), styled like the step tabs, with the hurdle count once there is one. It opens the insights in a **centred pop-up** (same style as the trace view; Escape, Close or the backdrop closes it), so nothing needs scrolling. The in-page panel under the steps is gone. The pop-up is rendered on `<body>` (a React portal): the bar's backdrop blur otherwise trapped it inside the bar (found while testing).
-  2. **The catchphrase is removed** everywhere it showed (the title is now "Insights", with one neutral line). It is also removed from the plan title and D84; earlier log entries keep it as history.
+  2. **The catchphrase is removed** everywhere it showed (the title is now "Insights", with one neutral line). It is also removed from the plan title and D87; earlier log entries keep it as history.
   3. **Works for the three demos and for normal use.**
      - "answers from you" (interview messages, 0 for the demo patients) became **"questions Elliot asked you"** (counted from the runs).
      - The pop-up always has content: the case timeline shows from the start, and the empty state explains what will appear.

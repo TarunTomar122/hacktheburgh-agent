@@ -49,7 +49,10 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   }, [state.status, state.complaint, state.startedAt, state.demo]);
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  const go = () => start(profile.facts, undefined, "complaint");
+  const go = () => {
+    setProgress({ nhsFilled: false, nhsSent: false }); // a new form has not been sent yet, whatever an earlier one did
+    start(profile.facts, undefined, "complaint");
+  };
   const demo = (toEnd: boolean) => replay({ toEnd, flow: "complaint" });
   const skipToStepTwo = () => {
     void closeAgentBrowser(); // a half-filled form is no use any more

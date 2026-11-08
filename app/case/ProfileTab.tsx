@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { missingForOnboarding, missingRequired, type CaseFacts } from "../../lib/agent/facts";
 import { EMAIL_DISCLAIMER, emailProblem, formatPostcode, isPhone, isPostcode, splitPostcode, PLACE_SUGGESTIONS, TITLES } from "../../lib/agent/inputs";
 import DateField from "../DateField";
-import { clearProfile, setTrack, updateFacts, useDemo, useSyncStatus, type Profile } from "../../lib/profile";
-import { TRACK_IDS, TRACKS, type TrackId } from "../../lib/agent/track";
+import { clearProfile, saveNow, setTrack, updateFacts, useDemo, useSyncStatus, type Profile } from "../../lib/profile";
+import { resolveRelativeDates } from "../../lib/agent/timeLimit";
+import TimeLimitNote from "./TimeLimitNote";
+import { TRACK_IDS, TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/track";
 import { FitRing } from "./scoreParts";
 import { Button, Callout, control, Eyebrow, Field, SectionTitle, selectControl } from "../ui";
 import { Stripes } from "./Header";
@@ -27,7 +30,7 @@ export const FIELD_LABELS: Record<string, string> = {
 const input = control;
 
 
-export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
+export default function ProfileTab({ profile, onClose, onDeleting, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleting?: () => void; onDeleted: (wasDemo: boolean) => void; onSwitched?: (firstStep: number) => void }) {
   const demo = useDemo();
   const saved = useSyncStatus() !== "off"; // saving to the account is on (D75)
   const f = profile.facts;
@@ -43,6 +46,43 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
 
   const set2 = <K extends keyof CaseFacts>(k: K, v: CaseFacts[K]) => updateFacts({ [k]: v } as Partial<CaseFacts>);
 
+  // "Save profile": relative dates become calendar dates (counted from the day of the conversation with Elliot, when they were said),
+  // the path's fit is worked out again from the current facts, and the case is sent to the account at once. Time limits are
+  // counted from the facts whenever a page shows them, so they update with the dates.
+  const [saving, setSaving] = useState(false);
+  const [saveNote, setSaveNote] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  const [saves, setSaves] = useState(0); // redraws the date fields after a save, so a date that changed shape shows in the right mode
+  async function saveAll() {
+    setSaving(true);
+    setSaveNote(null);
+    const events = resolveRelativeDates(f.events, new Date(profile.createdAt));
+    if (events !== f.events) updateFacts({ events });
+    const facts = { ...f, events };
+    let fitUpdated = false;
+    try {
+      const r = await fetch("/api/agent/track", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ facts }) });
+      if (r.ok) {
+        setTrack({ rec: (await r.json()) as TrackRecommendation });
+        fitUpdated = true;
+      }
+    } catch {
+      // the fit stays as it was; the rest still saves
+    }
+    const result = await saveNow();
+    const dates = events !== f.events ? " Dates like \"yesterday\" are now calendar dates." : "";
+    const fit = fitUpdated ? " Time limits and your path's fit are up to date." : " Time limits are up to date; your path's fit could not be worked out again.";
+    setSaveNote(
+      result === "saved"
+        ? { tone: "ok", text: `Saved to your account.${dates}${fit}` }
+        : result === "off"
+          ? { tone: "ok", text: `${demo ? "Saved in this tab (demo case)." : "Saved in this browser."}${dates}${fit}` }
+          : { tone: "warn", text: `Could not reach your account. Your changes are kept in this browser and Elliot will try again.${dates}${fit}` },
+    );
+    setSaves((n) => n + 1);
+    setSaving(false);
+  }
+  const limitKind = profile.track?.chosen === "complaint" && profile.track?.complaintMode !== "email" ? "nhs" : profile.track?.chosen === "compensation" ? "claim" : null;
+
   return (
     <div>
       {/* The header's blue carries on into the page title, then stops with the stepped lines. */}
@@ -50,13 +90,20 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <div className="mx-auto max-w-3xl px-12 pb-14 pt-10">
           <h1 className="display text-[48px] text-white">Your profile</h1>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-6 text-white/85">
-            This is what Elliot uses to fill in forms for you. Changes save as you type, on this device only.
+            This is what Elliot uses to fill in forms for you. Changes are kept as you type. Press Save profile to {saved ? "save them to your account now and " : ""}update your dates, time limits and path.
           </p>
         </div>
       </div>
       <Stripes />
 
       <div className="mx-auto max-w-3xl space-y-12 px-12 py-12">
+        <div className="space-y-3">
+          <Button onClick={() => void saveAll()} disabled={saving}>
+            {saving ? "Saving…" : "Save profile"}
+          </Button>
+          {saveNote && <Callout tone={saveNote.tone}>{saveNote.text}</Callout>}
+        </div>
+
         <PathSection profile={profile} onContinue={onClose} onSwitched={onSwitched} />
 
         {missing.length > 0 ? (
@@ -179,7 +226,7 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
             <div key={i} className="space-y-3 rounded-card border border-line bg-white p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="w-72 max-w-full">
-                  <DateField label={`Event ${i + 1} date`} value={e.date} onChange={(v) => setEvent(i, { date: v })} />
+                  <DateField key={`${i}-${saves}`} label={`Event ${i + 1} date`} value={e.date} onChange={(v) => setEvent(i, { date: v })} />
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => updateFacts({ events: f.events.filter((_, j) => j !== i) })}>
                   Remove
@@ -197,6 +244,8 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
             </div>
           ))}
         </section>
+
+        {limitKind && <TimeLimitNote profile={profile} kind={limitKind} />}
 
         <section className="space-y-3">
           <SectionTitle>Medical records (optional)</SectionTitle>
@@ -226,10 +275,12 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <section className="space-y-2 border-t border-line pt-6">
           <Eyebrow>Your data</Eyebrow>
           <button
-            onClick={() => {
-              if (window.confirm(demo ? "Close this demo case?" : saved ? "Delete everything saved about your case, on every device you use?" : "Delete everything saved about your case on this device?")) {
-                clearProfile();
-                onDeleted();
+            onClick={async () => {
+              if (window.confirm(demo ? "Close this demo case?" : saved ? "Delete everything saved about your case, on every device you use? You will be signed out." : "Delete everything saved about your case on this device?")) {
+                const wasDemo = demo;
+                onDeleting?.(); // the page must not jump to the start page while the server is still deleting
+                await clearProfile();
+                onDeleted(wasDemo);
               }
             }}
             className="text-sm font-medium text-danger underline underline-offset-2"

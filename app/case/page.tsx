@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
 import { addStepEffort, setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
+import { useAccount } from "../AccountMenu";
 import { Button, Callout, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
+import TimeLimitNote from "./TimeLimitNote";
 import Header from "./Header";
 import CaseRun from "./CaseRun";
 import OmbudsmanStep from "./OmbudsmanStep";
@@ -25,6 +27,8 @@ import { supportsLothian } from "../../lib/agent/complaintScope";
 
 export default function CasePage() {
   const profile = useProfile();
+  const account = useAccount();
+  const leaving = useRef(false); // set while "Delete all my data" is finishing, so the page does not jump away first
   const [picked, setActive] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -53,7 +57,7 @@ export default function CasePage() {
   useEffect(() => {
     // A full page load, not router.replace: with Cache Components the start page you left earlier is kept alive with its state, so a client-side
     // return would show the old "check your details" screen (D76) instead of a blank form.
-    if (profile === null) window.location.replace("/");
+    if (profile === null && !leaving.current) window.location.replace("/");
   }, [profile]);
 
   if (!profile) return null;
@@ -78,7 +82,12 @@ export default function CasePage() {
           <ProfileTab
             profile={profile}
             onClose={() => setProfileOpen(false)}
-            onDeleted={() => window.location.replace("/")}
+            onDeleting={() => {
+              leaving.current = true;
+            }}
+            // After "Delete all my data" a signed-in user is signed out and lands on the login screen (/auth/logout ends at /welcome).
+            // A demo case or a browser-only case goes back to the start page.
+            onDeleted={(wasDemo) => window.location.replace(!wasDemo && account.sub ? "/auth/logout" : "/")}
             onSwitched={(n) => {
               setActive(n);
               setProfileOpen(false);
@@ -137,6 +146,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
   async function fill(extra?: ExtraAnswers) {
     if (!draft || filling || !supportsLothian(profile.facts)) return;
     setFilling(true);
+    setProgress({ nhsFilled: false, nhsSent: false }); // a new form has not been sent yet, whatever an earlier one did
     window.dispatchEvent(new Event("live-open")); // show the agent's browser beside the page, as soon as it starts
     setError(null);
     setResult(null);
@@ -194,6 +204,8 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
         lede="Elliot has written your complaint from what you told him. He fills in NHS Lothian's form with it; you check it there, change anything you like, and press Submit yourself."
       />
 
+      <TimeLimitNote profile={profile} kind="nhs" />
+
       <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. Elliot only asks it now that you are making a complaint." />
 
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -235,8 +247,8 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
 
       {result &&
         (result.status === "ready_to_submit" ? (
-          <Callout tone="ok" title="Done. It is waiting for you in the other window.">
-            <p>Check it there, change anything you like, then press Submit yourself. Nothing has been sent.</p>
+          <Callout tone="ok" title="Done. It is waiting for you in the browser panel.">
+            <p>Check it there, change anything you like, then press Submit yourself. Nothing has been sent. Click &ldquo;Take control&rdquo; in the panel first: your clicks only reach the form while it is on.</p>
             <div className="mt-3">
               {profile.progress?.nhsSent ? (
                 <span className="font-medium text-teal">Marked as sent. Nice work.</span>
