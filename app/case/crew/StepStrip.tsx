@@ -55,9 +55,9 @@ export function stepStatuses(crew: Record<CrewId, CrewState>, says: Say[], finis
 export default function StepStrip({ statuses, compact, steps = STEPS }: { statuses?: StepStatus[]; compact?: boolean; steps?: Step[] }) {
   const size = compact ? 40 : 76;
   return (
-    <ol className="relative grid grid-cols-4" aria-label={`The ${steps.length} steps`}>
-      {/* the thin line joining the steps, behind the avatars */}
-      <span aria-hidden className="absolute left-[12.5%] right-[12.5%] h-px bg-line" style={{ top: size / 2 }} />
+    <ol className="relative grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label={`The ${steps.length} steps`}>
+      {/* the thin line joining the steps, behind the avatars: from the first avatar to the last, whatever the number of steps */}
+      <span aria-hidden className="absolute h-px bg-line" style={{ top: size / 2, left: `${50 / steps.length}%`, right: `${50 / steps.length}%` }} />
       {steps.map((st, i) => {
         const s = statuses?.[i];
         const active = s === "working" || s === "waiting";

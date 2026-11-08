@@ -27,10 +27,10 @@ const check = (ok: boolean, what: string) => {
     }
   }, profile);
   const onRunScreen = async () => (await page.getByText("Plan and history").count()) > 0;
-  const onStartScreen = async () => (await page.getByRole("button", { name: "Work it out" }).count()) > 0;
+  const onStartScreen = async () => (await page.getByRole("button", { name: "Start the research" }).count()) > 0;
 
   await page.goto(`${BASE}/case`);
-  await page.getByRole("button", { name: "Work it out" }).click();
+  await page.getByRole("button", { name: "Start the research" }).click();
   await page.getByText("Plan and history").waitFor({ timeout: 30_000 });
   await page.waitForTimeout(25_000); // let the crew get going
   await page.screenshot({ path: `${OUT}/1-running.png` });
