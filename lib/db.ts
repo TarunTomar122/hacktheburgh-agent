@@ -5,8 +5,8 @@ import { Pool } from "pg";
  * Off unless DATABASE_URL is set: then nothing here runs and the browser keeps the case on its own, as before.
  *
  * The row is keyed by the Auth0 user id (`sub`). The email is stored next to it so a row can be traced to a person; it is
- * never used as the key (an email can change, the id cannot). `profile` is null for a deleted case: the empty row is kept so
- * that "delete everything" reaches the user's other devices too.
+ * never used as the key (an email can change, the id cannot). "Delete all my data" removes the row outright (D79); the user's other
+ * devices notice the missing row and clear their own copy (see lib/profile.ts).
  */
 
 export function dbEnabled(): boolean {
@@ -99,7 +99,7 @@ export async function putSaved(
   return { ok: false, current: current ?? { profile: null, updatedAt: updatedAt.toISOString() } };
 }
 
-/** Removes a row outright. Only for scripts/db-check.ts; the app records deletions with putSaved(..., null, ...) instead. */
+/** Removes a row outright: what "Delete all my data" does (D79). Nothing about the user is kept. */
 export async function removeSaved(userId: string): Promise<void> {
   await ensureSchema();
   await pool().query("DELETE FROM case_profiles WHERE user_id = $1", [userId]);

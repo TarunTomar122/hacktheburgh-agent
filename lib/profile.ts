@@ -161,6 +161,27 @@ let started: string | null = null;
 /** Sync applies to a signed-in user's own case, never to a demo, and never once the server has said it is off. */
 const syncing = () => Boolean(owner) && !inDemo() && phase !== "off" && online !== "no";
 
+// Two small markers per user (D79). "synced": this browser has exchanged its case with the server, so a missing server row later means the
+// case was deleted elsewhere (clear it here) rather than never uploaded (upload it). "delete pending": a deletion that has not reached the
+// server yet (offline), retried on the next pull so a deleted case cannot come back from the server.
+const syncedKey = () => `case-synced-v1:${owner}`;
+const pendingKey = () => `case-delete-pending-v1:${owner}`;
+const flagOn = (k: string) => {
+  try {
+    return localStorage.getItem(k) === "1";
+  } catch {
+    return false;
+  }
+};
+const flagSet = (k: string, on: boolean) => {
+  try {
+    if (on) localStorage.setItem(k, "1");
+    else localStorage.removeItem(k);
+  } catch {
+    // storage blocked: the markers just do not persist
+  }
+};
+
 /** The signed-in user's own saved copy in this browser (never the demo copy). */
 function readOwn(): Profile | null {
   try {
@@ -225,9 +246,12 @@ async function flush() {
     setStatus("off");
   } else if (r?.status === 200) {
     online = "yes";
+    flagSet(syncedKey(), true);
+    flagSet(pendingKey(), false); // a newer case replaces any deletion still waiting to be sent
     setStatus("saved");
   } else if (r?.status === 409 && r.data.saved) {
     adopt(r.data.saved as Saved);
+    flagSet(syncedKey(), true);
     setStatus("saved");
   } else {
     setStatus("error");
@@ -242,6 +266,19 @@ async function pull() {
   pulling = true;
   const mine = owner;
   try {
+    if (flagOn(pendingKey())) {
+      if (readOwn()) flagSet(pendingKey(), false); // a new case was started since: it wins
+      else {
+        const d = await call("DELETE");
+        if (owner !== mine) return;
+        if (d?.status === 200) {
+          flagSet(pendingKey(), false);
+          flagSet(syncedKey(), false);
+          setStatus("saved");
+        } else setStatus("error");
+        return;
+      }
+    }
     const r = await call("GET");
     if (owner !== mine) return;
     if (!r || r.status !== 200) {
@@ -257,10 +294,16 @@ async function pull() {
     const saved = (r.data.saved ?? null) as Saved | null;
     const own = readOwn();
     if (!saved) {
-      if (own) await flush();
+      if (own && flagOn(syncedKey())) {
+        // This browser has synced before and the server has nothing now: the case was deleted on another device.
+        flagSet(syncedKey(), false);
+        adopt({ profile: null, updatedAt: new Date().toISOString() });
+        setStatus("saved");
+      } else if (own) await flush();
       else setStatus("saved");
       return;
     }
+    flagSet(syncedKey(), true);
     const theirs = Date.parse(saved.updatedAt);
     const ours = own ? Date.parse(own.updatedAt) : -Infinity;
     if (theirs > ours) {
@@ -443,10 +486,15 @@ export function clearProfile() {
   localStorage.removeItem(key());
   window.dispatchEvent(new Event(EVENT));
   if (!syncing()) return;
-  // Record the deletion on the server (a copy with no case), so the user's other devices clear theirs too.
+  // Remove the case from the server for good (D79); the user's other devices see the row is gone and clear theirs.
   setStatus("saving");
   clearTimeout(pushTimer);
-  void call("DELETE", { updatedAt: new Date().toISOString() }).then((r) => setStatus(r?.status === 200 ? "saved" : "error"));
+  flagSet(pendingKey(), true); // retried on the next pull if this request does not get through
+  flagSet(syncedKey(), false);
+  void call("DELETE").then((r) => {
+    if (r?.status === 200) flagSet(pendingKey(), false);
+    setStatus(r?.status === 200 ? "saved" : "error");
+  });
 }
 
 /** undefined while loading (server render), null when nothing saved, else the profile. */
