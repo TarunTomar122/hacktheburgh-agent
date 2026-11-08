@@ -25,8 +25,19 @@ import { DEFAULT_SEVERITY, KIND_LABEL, YELLOW_CARD_SITE, type YellowCardAnswers 
 
 const MAX_OPTIONS = 40;
 
-/** Pages that come before the report's own questions. Finishing on one of these is never "ready". */
-const EARLY_PAGE = /yellowcard\.mhra\.gov\.uk\/(\?|$|report-guide|about-you)/;
+/**
+ * The report's last page ("Step 4 of 4", which ends in Submit) is the only page a run may finish on as "ready".
+ * Run 2026-11-08 04:09 ended "ready" on /new-report while the app was still a loading spinner: an empty page has no required
+ * fields left, so the engine called it done. Checked on the live page, visible text only (the app may keep other steps in the DOM).
+ */
+async function onLastStep(page: Page): Promise<boolean> {
+  return (await page.getByText(/step 4 of 4/i).filter({ visible: true }).count().catch(() => 0)) > 0;
+}
+
+/** On /new-report, wait until the app has drawn one of its four steps, so a loading page is not judged. Never throws. */
+async function waitForReportStep(page: Page, ms = 10000) {
+  await page.getByText(/step [1-4] of 4/i).filter({ visible: true }).first().waitFor({ state: "visible", timeout: ms }).catch(() => {});
+}
 
 /** Never typed into or clicked: account creation, sign-in, and anything that would send the report. */
 // "Continue without registering" is the button we need, so "register" only counts when not preceded by "without" (run 2026-11-08 00:03 hid it).
@@ -467,14 +478,18 @@ export async function fillYellowCard(facts: CaseFacts, answers: YellowCardAnswer
     // Also when a field stopped responding mid-action: the app redraws its form after loading, so the field we found was replaced
     // (run 2026-11-08 00:09: "locator.fill: Timeout" on Patient initials). A fresh look finds the new one.
     const transient = (r: typeof run) => r.status === "needs_input" && r.unfilled.length > 0 && r.unfilled.every((u) => /error: locator\.\w+: Timeout/.test(u));
-    for (let retry = 1; retry <= 2 && ((run.status === "ready_to_submit" && EARLY_PAGE.test(page.url())) || transient(run)); retry++) {
+    // "Ready" anywhere but the last step means the page had not been drawn yet (or the engine stopped short): look again.
+    const notOnLastStep = async (r: typeof run) => r.status === "ready_to_submit" && !(await onLastStep(page));
+    for (let retry = 1; retry <= 2 && ((await notOnLastStep(run)) || transient(run)); retry++) {
       emit({ type: "status", message: "The page was still loading. Looking again" });
-      await page.waitForTimeout(1500);
+      if (/\/new-report/.test(page.url())) await waitForReportStep(page);
+      else await page.waitForTimeout(1500);
       run = await agent();
     }
-    if (run.status === "ready_to_submit" && EARLY_PAGE.test(page.url())) {
+    if (await notOnLastStep(run)) {
       run.status = "incomplete";
-      run.summary = `Stopped early on ${new URL(page.url()).pathname}. Nothing was sent.`;
+      run.summary = `Stopped before the last page of the report (on ${new URL(page.url()).pathname}). Nothing was sent. Try again to carry on from there.`;
+      run.unfilled = [];
     }
     // It stopped to ask (or got stuck): keep the browser on this page for the next run.
     if (run.status !== "ready_to_submit") {

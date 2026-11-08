@@ -8,6 +8,13 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Yellow Card only reports "ready" on Step 4 of 4
+
+Run 2026-11-08 04:09 ended `ready_to_submit` on `/new-report` while the page was still a loading spinner: an empty page has no required fields, so the engine called it done, and the app would have marked step 6 filled. The old guard only caught `/`, `/report-guide` and `/about-you`.
+- `fillYellowCard` now accepts "ready" only when "Step 4 of 4" is visible on the page. Otherwise it looks again twice (on `/new-report` it first waits up to 10 s for "Step n of 4"), then ends `incomplete` with the browser parked, so "Try again" carries on from that page. File: `lib/agent/yellowCard.ts`.
+- Verified on the Mac: `npm run agent:yellowcard` (04:56) ended `ready_to_submit` on Step 4 of 4. `-- --someone-else` stops at Step 1 asking for the patient's initials, as designed (D82); the answer-and-resume path was not run from the CLI.
+- `tsc --noEmit` clean except the known `scripts/test-restart-logout.ts` error; eslint clean on the file.
+
 ### 2026-11-07 - Om + Claude - DONE (not yet tried on Tiger) - Cases saved to the account in Tiger Data (D75)
 
 Signed-in people's cases are stored in Postgres (Tiger Data) keyed by their Auth0 id and show on any device; the browser keeps an instant copy. Onboarding demo personas run in a per-tab sandbox and write nothing. Files: `lib/db.ts`, `app/api/profile/route.ts`, `lib/profile.ts`, `app/AccountMenu.tsx`, `app/page.tsx`, `app/welcome/page.tsx`, `app/case/ProfileTab.tsx`, `scripts/db-check.ts`, `.env.example`, `package.json`. 22 checks pass against a local Postgres. **Unverified:** the real Tiger connection (`npm run db:check`), real Auth0 email-code login.
