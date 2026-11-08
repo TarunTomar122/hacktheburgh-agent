@@ -159,6 +159,7 @@ export default function LiveView() {
 
   // Browsers stay on screen after their run (the last picture of each), and the next run adds to them.
   const kept = useRef<LivePage[]>([]);
+  const lastLive = useRef<LivePage[]>([]);
   const runNo = useRef(0);
   const traceRef = useRef<TraceLite[]>([]);
   const snaps = useRef(new Map<string, Summary>());
@@ -203,6 +204,8 @@ export default function LiveView() {
         }
       } else if (msg.type === "pages") {
         if (msg.pages.length > 0) clearTimeout(closeTimer.current);
+        // Browsers close one by one before the run ends: remember the last list that had any, so they can be kept.
+        if (msg.pages.length > 0) lastLive.current = msg.pages;
         const all = kept.current.length ? [...kept.current, ...msg.pages] : msg.pages;
         setPages(all);
         if (msg.pages.length > 0) {
@@ -221,7 +224,8 @@ export default function LiveView() {
         if (modeRef.current === "live" && document.getElementById("live-slot")) {
           // Inline: the browsers are gone, their last pictures stay, and the next run adds more.
           const n = ++runNo.current;
-          const fresh = pagesRef.current
+          const now = pagesRef.current.filter((p) => !p.pageId.startsWith(KEPT));
+          const fresh = (now.length ? now : lastLive.current)
             .filter((p) => !p.pageId.startsWith(KEPT))
             .map((p) => {
               const id = `${KEPT}${n}-${p.pageId}`;
@@ -230,6 +234,7 @@ export default function LiveView() {
               return { ...p, pageId: id, state: p.state === "failed" ? ("failed" as const) : ("done" as const) };
             });
           kept.current = [...kept.current, ...fresh];
+          lastLive.current = [];
           setPages(kept.current);
           modeRef.current = "ended";
           setMode("ended");
@@ -729,7 +734,7 @@ export default function LiveView() {
 
       {grid ? (
         <div className={cx("grid min-h-0 flex-1 content-start gap-3 overflow-y-auto", inline ? "grid-cols-2 @2xl:grid-cols-4 @5xl:grid-cols-6" : width >= 980 ? "grid-cols-3" : "grid-cols-2")}>
-          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting"))).map((p) => {
+          {pages.filter((p) => !inline || (p.url && p.url !== "about:blank" && (p.state === "working" || p.state === "starting" || p.pageId.startsWith(KEPT)))).map((p) => {
             const needs = !!ask && (p.label === ask.tab || p.label.startsWith(`${CREW[ask.crew].name} ·`));
             return (
             <Tile

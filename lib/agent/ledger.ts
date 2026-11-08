@@ -20,7 +20,7 @@ export const SEES: Record<LedgerEntry["agent"], DataKind[]> = {
   elliot: ["place", "health"], // the planner reads the story (no names, no contact details) to plan
   robin: ["place"],
   iona: ["health"],
-  nell: ["money"],
+  nell: [], // her calls read public pages; the one that carries your answers (the checker's questions) says "money" itself
   kit: ["identity"],
   onboarding: ["identity", "health"],
   system: [],

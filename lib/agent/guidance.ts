@@ -93,13 +93,16 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   const setting = route.place.careSetting === "unknown" ? "not stated" : route.place.careSetting;
   // A PDF can come out with broken spacing ("f or first -line"): such quotes are not shown to the patient; look for a clean page.
   const clean = (q: { quote: string; checked: boolean }) => q.checked && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25;
+  const hostOf = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  /** Who published a page: the guidance body when it is on the body's own site, otherwise the page's own title or site (never the body by default). */
+  const publisherOf = (url: string, title: string) => (g?.body && hostOf(url) && hostOf(start) && (hostOf(url) === hostOf(start) || hostOf(url).endsWith(`.${hostOf(start)}`)) ? g.body : title || hostOf(url));
   type Cand = { url: string; title: string; quotes: string[] };
   type Judged = { cand: Cand; verdicts: ApplicabilityVerdict[]; applicable: string[]; rejected: ApplicabilityVerdict[] };
   /** Does this page's recommendation apply to this patient (age group, condition, setting, place)? A page that does not is not the end of the search. */
   const judge = async (cand: Cand): Promise<Judged | { error: string }> => {
     try {
       const band = await ageBandOf(facts);
-      const verdicts = await checkApplicability({ ageBand: band.band.replace(/_/g, " "), condition, setting, place: where || "not stated" }, { body: g?.body ?? "", title: cand.title, url: cand.url }, cand.quotes);
+      const verdicts = await checkApplicability({ ageBand: band.band.replace(/_/g, " "), condition, setting, place: where || "not stated" }, { body: publisherOf(cand.url, cand.title), title: cand.title, url: cand.url }, cand.quotes);
       return { cand, verdicts, applicable: cand.quotes.filter((_, i) => verdicts[i].verdict === "applies"), rejected: verdicts.filter((v) => v.verdict !== "applies") };
     } catch (e) {
       // Not able to check = not able to use: an unchecked recommendation never enters the complaint.
@@ -150,13 +153,13 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
     const last = r.value.tried[r.value.tried.length - 1];
     if (!last) return none(`No recommendation about ${condition} found.`);
     const rejected = last.rejected;
-    kit.finding(`Guidance found (${g?.body ?? last.cand.title}) but it does not apply to this patient: ${rejected[0]?.reason ?? "unclear"}`, last.cand.url, "iona");
-    return none(`No applicable guidance found. ${g?.body ?? last.cand.title} (${last.cand.url}) was checked, but its recommendations are not for this patient: ${rejected.map((v) => `"${v.quote.slice(0, 100)}" (${v.verdict === "unclear" ? "unclear: " : ""}${v.reason})`).join(" | ")}`, rejected);
+    kit.finding(`Guidance found (${publisherOf(last.cand.url, last.cand.title)}) but it does not apply to this patient: ${rejected[0]?.reason ?? "unclear"}`, last.cand.url, "iona");
+    return none(`No applicable guidance found. ${publisherOf(last.cand.url, last.cand.title)} (${last.cand.url}) was checked, but its recommendations are not for this patient: ${rejected.map((v) => `"${v.quote.slice(0, 100)}" (${v.verdict === "unclear" ? "unclear: " : ""}${v.reason})`).join(" | ")}`, rejected);
   }
   const applicable = best.applicable.map((quote) => ({ quote }));
   const rejected = best.rejected;
   const src = best.cand;
-  const guideline: GuidelineReading = { guideline: g?.body ?? src.title, url: src.url, points: applicable.map((q, i) => ({ id: `${i + 1}`, text: q.quote })) };
+  const guideline: GuidelineReading = { guideline: publisherOf(src.url, src.title), url: src.url, points: applicable.map((q, i) => ({ id: `${i + 1}`, text: q.quote })) };
   proof.guideline = { name: guideline.guideline, url: guideline.url, points: guideline.points };
   const c = await compareCare(facts, guideline);
   proof.gaps = c.gaps;

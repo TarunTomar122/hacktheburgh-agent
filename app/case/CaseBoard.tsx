@@ -66,6 +66,7 @@ function PartRow({ part: p, input, checkerUrl }: { part: Part; input: BoardInput
         </span>
         <span className="min-w-0 flex-1">
           <span className={cx("block text-[16px] leading-6", idle ? "text-muted" : "font-medium text-ink")}>{p.headline}</span>
+          {p.summary && <span className="mt-0.5 block text-[13px] leading-5 text-muted">{p.summary}</span>}
           <span className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px]">
             {p.status === "working" && <span className="rounded-[4px] bg-brand-soft px-1.5 py-0.5 text-brand">{CREW[p.crew].name} is on it</span>}
             {p.chip && <span className="rounded-[4px] bg-teal-soft px-1.5 py-0.5 text-teal">{p.chip}</span>}
@@ -111,7 +112,6 @@ function PartRow({ part: p, input, checkerUrl }: { part: Part; input: BoardInput
                 </p>
               ))}
           {p.status !== "done" && <p className="text-[13px] text-muted">{p.status === "working" ? `${CREW[p.crew].name} is still on this.` : "Nothing yet."}</p>}
-          <p className="text-[12px] text-faint">Everything {CREW[p.crew].name} did is in the history on the right.</p>
         </div>
       )}
     </li>

@@ -10,7 +10,7 @@ import { findGuidance } from "./guidance";
 import { describeInvestigation, describeIssue, investigate } from "./investigate";
 import type { EvidenceResult, PlannerResult } from "./plannerTypes";
 import { cleanRoute, type RouteMap } from "./routeTypes";
-import { readPage } from "./workers/explore";
+import { exploreSite, readPage } from "./workers/explore";
 import { runQuestionnaire } from "./workers/questionnaire";
 import { searchDirectory } from "./workers/searchDirectory";
 import type { Quote, Value } from "./workers/types";
@@ -115,15 +115,26 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               // Place, not identity: the checker may use it to find local help (questionnaire types only the postcode or its first part).
               ...(facts.postcode ? [{ key: "postcode", description: "The patient's postcode (place only)", value: facts.postcode }] : []),
             ];
-            if (f?.how === "online_form") {
-              const r = await kit.inTab(thought, "nell", short(f.body, 26), (p, note) => runQuestionnaire({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: "nell" }) }, { url, goal: "Find out whether the patient could get legal aid or other funded help for a clinical negligence claim", known }), 8 * 60 * 1000);
-              if (!r.ok) return `Could not run the checker: ${r.error}`;
+            // The research no longer hunts for forms, so Nell looks for the place's own checker here: from the funding page she finds its online checker or calculator and answers it, asking the patient for what only they know (income, savings).
+            const attempt = await kit.inTab(thought, "nell", short(f?.body ?? "Funding", 26), async (p, note) => {
+              let target: string | null = f?.how === "online_form" ? url : null;
+              if (!target) {
+                const found = await exploreSite({ page: p, note, track: kit.track }, url, "the official online eligibility checker or calculator for legal aid or other funded legal help", { want: "form", maxHops: 4 });
+                target = found.ok ? found.url : null;
+              }
+              if (!target) return null;
+              return { target, q: await runQuestionnaire({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: "nell" }) }, { url: target, goal: "Find out whether the patient could get legal aid or other funded help for a clinical negligence claim", known }) };
+            }, 8 * 60 * 1000);
+            if (attempt.ok && attempt.value) {
+              const r = { ok: true as const, value: attempt.value.q };
+              const checkerUrl = attempt.value.target;
               if (r.value.wall) return `Blocked: ${r.value.wall.kind} (${r.value.wall.detail})`;
               fundingQuote = r.value.resultQuote;
-              fundingSource = f.body;
+              fundingSource = f?.body ?? "The legal aid checker";
               calculatorText = r.value.result;
               verdict = /\b(not (likely|eligible)|unlikely|ineligible|disqualif\w*|do(es)? not qualify|not qualify|cannot get|can't get|won't get)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
-              kit.finding(`${f.body}: ${r.value.result}`, url, "nell");
+              kit.finding(`${fundingSource}: ${r.value.result}`, checkerUrl, "nell");
+              kit.emit({ type: "verdict", verdict });
               return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nThe checker asked ${r.value.answers.length} question(s); the patient's answers stay on their device.`;
             }
             const r = await kit.inTab(thought, "nell", short(f?.body ?? "Funding", 26), (p, note) => readPage({ page: p, note, track: kit.track }, url, "Can an adult get legal aid for a clinical negligence (medical negligence) claim here? Is no win no fee allowed, with any cap? Is there free legal advice in any scheme?"), 90_000);
@@ -133,6 +144,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             calculatorText = r.value.answer;
             verdict = /not (available|in scope|covered)|no longer|unlikely/i.test(r.value.answer) ? "unlikely" : "unknown";
             kit.finding(`${fundingSource}: ${r.value.answer}`, r.value.url, "nell");
+            kit.emit({ type: "verdict", verdict });
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ")}`;
           }
           case "read_scheme": {

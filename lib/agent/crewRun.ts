@@ -138,6 +138,8 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
   const actx = { context, emit, track, tracer, first: page };
   const tabs = limiter(flow.tabLimit ?? 4);
   const pendingBg: Promise<unknown>[] = [];
+  const laneTail = new Map<string, Promise<unknown>>(); // background lanes keep their order across turns
+  const bgResults: string[] = []; // what finished in the background, not yet shown to the planner
   waiting.set(runId, new Map());
   skips.set(runId, new Set());
   trackPause(runId, emit);
@@ -296,12 +298,28 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
       const isBg = (c: ResponseFunctionToolCall) => !!flow.background?.includes(c.name);
       const bgGroups = new Map<string, ResponseFunctionToolCall[]>();
       for (const c of calls.filter(isBg)) bgGroups.set(laneOf(c), [...(bgGroups.get(laneOf(c)) ?? []), c]);
-      for (const cs of bgGroups.values()) pendingBg.push((async () => { for (const c of cs) await exec1(c).catch(() => undefined); })());
+      for (const [lane, cs] of bgGroups) {
+        const run = (laneTail.get(lane) ?? Promise.resolve()).then(async () => {
+          for (const c of cs) {
+            const o = (await exec1(c).catch((e) => ({ output: `Could not finish: ${e instanceof Error ? e.message : String(e)}` }))) as { output?: string };
+            bgResults.push(`${c.name}: ${short(String(o.output ?? ""), 700)}`);
+          }
+        });
+        laneTail.set(lane, run);
+        pendingBg.push(run);
+      }
       for (const cs of bgGroups.values()) for (const c of cs) outputs.push({ type: "function_call_output", call_id: c.call_id, output: "Started. This crew member works on it in the background and the findings arrive in the history and the case file. Do not call it again; carry on with the rest." });
       calls = calls.filter((c) => !isBg(c));
       for (const st of [...new Set(calls.map(stageOf))].sort((x, y) => x - y)) {
         const inStage = calls.filter((c) => stageOf(c) === st);
-        if (inStage.some((c) => c.name === "finish" || flow.afterBackground?.includes(c.name))) await Promise.allSettled(pendingBg);
+        const closing = inStage.some((c) => c.name === "finish");
+        if (closing || inStage.some((c) => flow.afterBackground?.includes(c.name))) await Promise.allSettled(pendingBg);
+        if (closing && bgResults.length) {
+          // The background work finished with something the summary has not seen: say so and let the planner finish again.
+          const seen = bgResults.splice(0);
+          for (const c of inStage) outputs.push({ type: "function_call_output", call_id: c.call_id, output: `Not finished yet. The background work has just finished:\n${seen.join("\n")}\nCall finish again with a summary that reflects it.` });
+          continue;
+        }
         if (st < 1 || st >= 98) {
           for (const c of inStage) outputs.push(await exec1(c));
           continue;
@@ -384,7 +402,10 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         }
         if (rounds) outputs = [...outputs, { role: "user" as const, content: flow.workers.merge(rounds) }];
       }
-      input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : outputs;
+      // Background work that finished meanwhile reaches the planner with its next turn.
+      const late = bgResults.splice(0);
+      const withLate = late.length ? [...outputs, { role: "user" as const, content: `Background work finished:\n${late.join("\n")}` }] : outputs;
+      input = skips.get(runId)?.has("all") && !finished ? [...outputs, { role: "user" as const, content: "The user asked to finish now. Call finish with what you have." }] : withLate;
     }
     await Promise.allSettled(pendingBg);
     const result = await flow.finish(kit, { plan, thoughts, says, turns: turns - 1, asks });

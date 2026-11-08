@@ -1,5 +1,6 @@
 "use client";
 
+import type { Verdict } from "../../lib/agent/legalAidTypes";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
@@ -37,6 +38,7 @@ export type PlannerRunState = {
   enquiries: EnquiryOutcome[];
   result?: PlannerResult;
   funding?: Funding;
+  verdict?: Verdict; // the funding check's conclusion, live (the result carries it too)
   complaint?: ComplaintResult; // the complaint crew's result (D65)
   escalation?: EscalationResult; // step 2 anywhere: the escalation crew's result
   startedAt?: number;
@@ -128,6 +130,8 @@ export function usePlannerRun(scope?: RunScope) {
           return { ...cur, runId: e.runId };
         case "funding":
           return { ...cur, funding: e.funding };
+        case "verdict":
+          return { ...cur, verdict: e.verdict };
         case "plan":
           return { ...cur, plan: e.steps };
         case "spotlight":

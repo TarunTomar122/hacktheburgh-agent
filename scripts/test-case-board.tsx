@@ -15,13 +15,15 @@ let p = boardParts(base);
 ok("four parts in story order", p.map((x) => x.id).join() === "funding,lawyers,evidence,enquiries");
 ok("before anything runs every part is waiting", p.every((x) => x.status === "waiting" && /Not started/.test(x.headline)));
 
-p = boardParts({ ...base, crew: { ...idle, robin: { state: "working", note: "" } }, firms: [{ id: "a" }, { id: "b" }] as never });
-ok("robin working shows a live count", p[1].status === "working" && p[1].headline === "2 firms checked so far");
+p = boardParts({ ...base, crew: { ...idle, robin: { state: "working", note: "" } }, firms: [{ id: "a", sources: ["website"] }, { id: "b", sources: ["website"] }, { id: "c", sources: ["register"] }] as never });
+ok("robin working shows a live count of firms checked on their own site (register entries do not count)", p[1].status === "working" && p[1].headline === "2 firms checked so far");
 
-p = boardParts({ ...base, crew: { ...idle, nell: { state: "done", note: "" } }, says: [say("nell", "The checker says you are likely to qualify. More text.")] });
-ok("a finished part uses the crew member's first sentence", p[0].status === "done" && p[0].headline === "The checker says you are likely to qualify.");
+p = boardParts({ ...base, crew: { ...idle, nell: { state: "working", note: "" } }, findings: [{ crew: "nell", text: "Some Board: Adults can apply if the case is covered by the law here, but it does not mention medical claims." }], verdict: "unlikely" });
+ok("live funding: verdict headline and a one-line summary without the publisher lead-in", p[0].headline === "Legal aid looks unlikely" && !!p[0].summary?.startsWith("Adults can apply"));
+p = boardParts({ ...base, crew: { ...idle, nell: { state: "working", note: "" } } });
+ok("funding mid-run says what is happening, not 'Checked funding with X'", p[0].headline === "Checking if legal aid could pay");
 
-const result = { verdict: "unlikely", calculatorText: "You may not qualify", shortlist: ["a"], firms: [{ id: "a", name: "Firm A", website: "https://a.example", town: "Town" }, { id: "b", name: "B" }], evidence: { guideline: { name: "NICE NG1: x", url: "https://n.example", points: [{ id: "1.1", text: "Do the thing" }] }, gaps: [{ guideline: "g", timeline: "t", question: "q" }] }, enquiries: [{ firmId: "a", firmName: "Firm A", status: "ready_to_send", filled: [{ label: "Name", value: "x" }, { label: "Email", value: "y" }] }] } as never;
+const result = { verdict: "unlikely", calculatorText: "You may not qualify", shortlist: ["a"], firms: [{ id: "a", name: "Firm A", website: "https://a.example", town: "Town", sources: ["website"] }, { id: "b", name: "B", sources: ["website"] }, { id: "c", name: "C", sources: ["register"] }], evidence: { guideline: { name: "NICE NG1: x", url: "https://n.example", points: [{ id: "1.1", text: "Do the thing" }] }, gaps: [{ guideline: "g", timeline: "t", question: "q" }] }, enquiries: [{ firmId: "a", firmName: "Firm A", status: "ready_to_send", filled: [{ label: "Name", value: "x" }, { label: "Email", value: "y" }] }] } as never;
 const done: BoardInput = { ...base, result, crew: { ...idle, nell: { state: "done", note: "" } }, says: [say("nell", "Checked.")] };
 p = boardParts(done);
 ok("funding verdict in plain words with its source", p[0].headline === "Legal aid looks unlikely" && /Quoted from/.test(p[0].chip ?? ""));
@@ -34,7 +36,7 @@ ok("a skipped part says so", p[2].status === "skipped" && /Not checked/.test(p[2
 
 const html = renderToStaticMarkup(<CaseBoard input={done} next={{ label: "Check and send 1 enquiry", note: "n", run: () => {} }} onFile={() => {}} onAgain={() => {}} />);
 ok("board renders the headlines", html.includes("Legal aid looks unlikely") && html.includes("Ready for you to check"));
-ok("details are hidden until a row is opened", !html.includes("You may not qualify"));
+ok("the one-line summary shows, the quote stays hidden until a row is opened", html.includes("You may not qualify") && !html.includes("<blockquote"));
 ok("next step and full case file offered when done", html.includes("Review and send") && html.includes("Open the full case file"));
 ok("no Scotland-specific text", !/SLAB|Scotland|NHS Lothian/.test(html));
 process.exit(fail ? 1 : 0);

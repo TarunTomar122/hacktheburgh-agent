@@ -114,7 +114,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
         currency={routeMap ? currencyOf(routeMap.place.country) : undefined}
         main={
           <CaseBoard
-            input={{ says: state.says, crew: state.crew, firms: state.firms, evidence: state.evidence, enquiries: state.enquiries, result: state.result, skipped: state.skipped, checker: fundingStep?.body }}
+            input={{ says: state.says, crew: state.crew, firms: state.firms, evidence: state.evidence, enquiries: state.enquiries, result: state.result, verdict: state.verdict, findings: state.findings, skipped: state.skipped, checker: fundingStep?.body }}
             checkerUrl={fundingStep?.url}
             next={state.status === "done" && state.result ? (ready.length ? { label: `Check and send ${ready.length} enquir${ready.length === 1 ? "y" : "ies"}`, note: "Kit filled the forms and stopped before Send. You can change anything before it goes.", run: onReviewEnquiries } : { label: "Finish preparing your case", note: "No enquiry form was filled this time. Run the crew again and Kit will prepare them.", run: () => go() }) : undefined}
             onFile={state.status === "done" && result ? () => setFileOpen(true) : undefined}
@@ -226,13 +226,23 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   // The clock stops while the run is paused: it adds each second to the total only when not paused, so a pause never counts.
   const [elapsed, setElapsed] = useState(0);
-  const clock = useRef({ last: 0, paused: false, startedAt: null as number | null, seeded: false, over: false });
+  const clock = useRef({ last: 0, paused: false, startedAt: null as number | null, seeded: false, over: false, run: null as number | null });
   useEffect(() => {
-    clock.current.paused = !!state.paused;
-    clock.current.startedAt = state.startedAt ?? null;
-    // The clock stops when the run is over, and shows how long it took.
-    clock.current.over = state.status === "done" || state.status === "error";
-    if (clock.current.over && state.startedAt) setElapsed(Math.max(0, (state.endedAt ?? Date.now()) - state.startedAt));
+    const c = clock.current;
+    // A new run (the crew run again on this screen) starts the clock from zero.
+    if (c.run !== (state.startedAt ?? null)) {
+      c.run = state.startedAt ?? null;
+      c.seeded = false;
+      setElapsed(0);
+    }
+    c.paused = !!state.paused;
+    c.startedAt = state.startedAt ?? null;
+    // The clock stops when the run is over. A run picked up already finished shows how long it took; a live one keeps the time it counted (pauses excluded).
+    c.over = state.status === "done" || state.status === "error";
+    if (c.over && !c.seeded && state.startedAt) {
+      c.seeded = true;
+      setElapsed(Math.max(0, (state.endedAt ?? Date.now()) - state.startedAt));
+    }
   }, [state.paused, state.startedAt, state.status, state.endedAt]);
   useEffect(() => {
     clock.current.last = Date.now();

@@ -1,5 +1,5 @@
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
-import type { Funding, Step3Event, Step3Result, Stats, TraceStep } from "./legalAidTypes";
+import type { Funding, Step3Event, Step3Result, Stats, TraceStep, Verdict } from "./legalAidTypes";
 import type { Draft } from "./draft";
 import type { LedgerEntry } from "./ledgerSummary";
 import type { Place, RouteMap } from "./routeTypes";
@@ -196,6 +196,7 @@ export type PlannerEvent =
   | { type: "discovery_result"; result: DiscoveryResult }
   | { type: "run"; runId: string }
   | { type: "funding"; funding: Funding }
+  | { type: "verdict"; verdict: Verdict } // what the funding check concluded, as soon as it has
   | { type: "plan"; steps: PlanStep[] }
   | { type: "thought"; thought: Thought }
   | { type: "ask"; ask: AskSpec }
