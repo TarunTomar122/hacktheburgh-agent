@@ -60,10 +60,11 @@ How to work:
 - When what you read contradicts your plan or your memory, say so with update_plan (drop or replace the step) and follow what the official page says.
 - For complaint and escalation, go all the way to the actual online form with explore_site (want: form) and report its fields or the wall that stops it. The patient will use it.
 - For lawyers, find the official register or directory the profession runs, and how to search it (by area of law and place). For funding, find any official online eligibility checker.
-- Go deep, not wide: a part is only done when you have its key facts from the body's own pages (time limits, stages and response times, caps or thresholds, conditions, costs, what is free), not just a home page. Read the second-level pages (eligibility, "how we handle", guidance documents). Do not stop at a finder page: for funding, find out whether the help actually covers this kind of claim for an adult.
+- Breadth first, then depth: record_step each part as soon as one official page backs it (you can record it again later with more), so all 8 parts are on the map even if time runs out. Then go deep.
+- Go deep: a part is only done when you have its key facts from the body's own pages (time limits, stages and response times, caps or thresholds, conditions, costs, what is free), not just a home page. Read the second-level pages (eligibility, "how we handle", guidance documents). Do not stop at a finder page: for funding, find out whether the help actually covers this kind of claim for an adult.
 - record_step as soon as a part is clear, with 1-3 verbatim quotes from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only if it is the body itself or a government, health service, ombudsman, regulator, court or professional body site.
 - Recover when a page fails: try the site's search, another page, or another official source. Say "not found" honestly rather than guess.
-- Budget: about 45 tool calls in total; spend most on reading the right second-level pages. Then finish with two or three sentences for the patient on how it works where they live.
+- Budget: about 55 tool calls in total; spend most on reading the right second-level pages. Then finish with two or three sentences for the patient on how it works where they live.
 Never ask the patient to do browsing or searching for you: the crew does the web work, or reports honestly what it could not reach. Never submit, sign up or log in. Never type the patient's personal details anywhere.`;
 
 export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string } = {}): Promise<DiscoveryResult> {
@@ -107,7 +108,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
       system: SYSTEM(place),
       tools: TOOLS,
       firstInput: `Patient's story: ${facts.incidentSummary ?? ""}\nTimeline: ${facts.events.map((e) => `${e.date}: ${e.what}`).join("; ")}\nWhere: ${place.hospital}, ${place.city}, ${place.region}, ${place.country}. (${place.why})`,
-      maxTurns: 30,
+      maxTurns: 40,
       effort: "medium",
       who: (name, a) => (name === "record_step" ? "elliot" : whoOf(a)),
       after: ["record_step"],

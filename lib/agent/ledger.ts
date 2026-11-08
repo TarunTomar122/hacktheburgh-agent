@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { appendFileSync } from "node:fs";
 import path from "node:path";
-import type { CrewId } from "./plannerTypes";
 
 /**
  * The model ledger (night plan, Phase 4b). Every model call in a run is written down: which agent made it, which
@@ -9,18 +8,9 @@ import type { CrewId } from "./plannerTypes";
  * context (run, emitter, current crew member) travels with the async call chain, so call sites stay unchanged.
  */
 
-export type DataKind = "place" | "health" | "money" | "identity";
-export type LedgerEntry = {
-  t: number;
-  agent: CrewId | "onboarding" | "system";
-  task: string; // what the call was for: "page_reading", "planner", "form decisions", ...
-  model: string;
-  where: "cloud" | "local";
-  inTok: number;
-  outTok: number;
-  ms: number;
-  data: DataKind[]; // kinds of personal data in the input (empty = none)
-};
+import type { DataKind, LedgerEntry } from "./ledgerSummary";
+export type { DataKind, LedgerEntry } from "./ledgerSummary";
+export { summarise } from "./ledgerSummary";
 
 type Ctx = { runId?: string; runDir?: string; agent?: LedgerEntry["agent"]; emit?: (e: { type: "model"; entry: LedgerEntry }) => void; t0?: number };
 const store = new AsyncLocalStorage<Ctx>();
@@ -63,18 +53,3 @@ export function record(e: Omit<LedgerEntry, "t" | "agent" | "data" | "where"> & 
   return entry;
 }
 
-/** Totals per agent and model, for the UI and the run's summary. */
-export function summarise(entries: LedgerEntry[]) {
-  const by = new Map<string, { agent: LedgerEntry["agent"]; model: string; where: LedgerEntry["where"]; calls: number; inTok: number; outTok: number; ms: number; data: Set<DataKind> }>();
-  for (const e of entries) {
-    const k = `${e.agent}|${e.model}`;
-    const cur = by.get(k) ?? { agent: e.agent, model: e.model, where: e.where, calls: 0, inTok: 0, outTok: 0, ms: 0, data: new Set<DataKind>() };
-    cur.calls++;
-    cur.inTok += e.inTok;
-    cur.outTok += e.outTok;
-    cur.ms += e.ms;
-    e.data.forEach((d) => cur.data.add(d));
-    by.set(k, cur);
-  }
-  return [...by.values()].map((x) => ({ ...x, data: [...x.data] }));
-}

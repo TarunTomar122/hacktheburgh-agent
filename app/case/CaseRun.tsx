@@ -11,6 +11,7 @@ import FirmResults from "./FirmResults";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
+import { summarise, type LedgerEntry } from "../../lib/agent/ledgerSummary";
 
 /**
  * "Prepare your case" (D52, D62). Elliot's crew works through the case as a story, one step at a time.
@@ -285,6 +286,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
           {drawer === "all" ? (
             <div className="space-y-6">
               <PlanChips plan={state.plan} />
+              <ModelsTable entries={state.models} />
               <Timeline says={state.says} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} />
             </div>
           ) : (
@@ -292,6 +294,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
               <button className="text-[13px] text-brand hover:underline" onClick={() => window.dispatchEvent(new CustomEvent("live-focus", { detail: CREW[drawer].name }))}>
                 Show {CREW[drawer].name}&apos;s browser
               </button>
+              <ModelsLine entries={state.models.filter((m) => m.agent === drawer)} />
               <Timeline says={state.says.filter((x) => x.from === drawer || (x.to === drawer && x.kind === "assign"))} trace={state.trace} runId={state.runId} openAsks={state.asks.map((a) => a.id)} onTrace={setScope} compact />
             </div>
           )}
@@ -396,6 +399,55 @@ function PlanMark({ status }: { status: PlanStep["status"] }) {
   if (status === "doing") return <StateMark state="working" />;
   if (status === "done") return <StateMark state="done" />;
   return <span aria-hidden className={cx("inline-block size-2.5 rounded-[2px] border", status === "dropped" ? "border-faint" : "border-ink-2/40")} />;
+}
+
+/* ------------------------------------------------------------------ models and data (the ledger, night plan Phase 4b) */
+
+const DATA_WORDS: Record<string, string> = { place: "where you are", health: "your health story", money: "your money", identity: "who you are" };
+const shortModel = (m: string) => m.replace(/^local:/, "").replace(/^hf\.co\/[^/]+\//, "").replace(/-GGUF.*$/, "");
+const tok = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+/** One quiet line per crew member: which model they ran on, where, how much, and what of yours it saw. */
+function ModelsLine({ entries }: { entries: LedgerEntry[] }) {
+  if (!entries.length) return null;
+  const rows = summarise(entries);
+  return (
+    <div className="space-y-1 rounded-[6px] bg-subtle px-3 py-2 text-[12px] leading-5 text-ink-2">
+      {rows.map((r) => (
+        <p key={r.model}>
+          <span className="font-medium text-ink">{shortModel(r.model)}</span> · {r.where === "local" ? "on this Mac" : "in the cloud"} · {r.calls} call{r.calls === 1 ? "" : "s"} · {tok(r.inTok + r.outTok)} tokens · {r.data.length ? `saw ${r.data.map((d) => DATA_WORDS[d] ?? d).join(", ")}` : "saw none of your details"}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** The whole run: every model, local or cloud, by crew member. */
+function ModelsTable({ entries }: { entries: LedgerEntry[] }) {
+  if (!entries.length) return null;
+  const rows = summarise(entries);
+  const local = rows.filter((r) => r.where === "local").reduce((a, r) => a + r.calls, 0);
+  const total = rows.reduce((a, r) => a + r.calls, 0);
+  return (
+    <section aria-label="Models used" className="space-y-2">
+      <p className="text-[12px] text-muted">
+        Models used · {total} calls · {local} on this Mac · {tok(rows.reduce((a, r) => a + r.inTok + r.outTok, 0))} tokens
+      </p>
+      <ul className="divide-y divide-line-soft rounded-[6px] border border-line-soft text-[12px]">
+        {rows.map((r) => (
+          <li key={`${r.agent}-${r.model}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5">
+            {r.agent in CREW ? <CrewMark id={r.agent as CrewId} size={18} /> : null}
+            <span className="w-14 text-ink">{r.agent in CREW ? CREW[r.agent as CrewId].name : r.agent}</span>
+            <span className="text-ink-2">{shortModel(r.model)}</span>
+            <span className={cx("rounded-[4px] px-1.5", r.where === "local" ? "bg-teal-soft text-teal" : "bg-subtle text-ink-2")}>{r.where === "local" ? "on this Mac" : "cloud"}</span>
+            <span className="ml-auto tabular-nums text-muted">
+              {r.calls} · {tok(r.inTok + r.outTok)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 /* ------------------------------------------------------------------ the timeline (behind a click) */

@@ -1,0 +1,172 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+PLACE: {"country":"United Kingdom","region":"Northern Ireland","city":"Belfast","hospital":"Royal Victoria Hospital, Emergency Department","careSetting":"public","why":"The care was at the Royal Victoria Hospital Emergency Department in Belfast; the address is also in Belfast, BT9 5QJ."}
+[10s] [elliot] Set the first live work plan and split the key fact-finding across the crew.
+[14s] [elliot → robin] Find the official provider for Royal Victoria Hospital and confirm whether it is an HSC hospital in Northern Ireland.
+[14s] [elliot → kit] Find the provider complaint route and the trust's official complaints pages.
+[14s] [elliot → nell] Find the official compensation and funding framework for clinical negligence claims in Northern Ireland.
+[14s] [elliot → iona] Find the official clinical guidance body used by Northern Ireland doctors for emergency and fracture care.
+[23s] [iona → elliot] 10 results for "Northern Ireland clinical guidelines emergency department s…". Top: nice.org.uk.
+[36s] [nell → elliot] 10 results for "Northern Ireland clinical negligence legal aid no win no fe…". Top: ad.doubleclick.net.
+[37s] [kit → elliot] 4 results for "Belfast Health and Social Care Trust complaints official Ro…". Top: belfasttrust.hscni.net.
+[37s] [robin → elliot] 5 results for "Royal Victoria Hospital Belfast official site Belfast Healt…". Top: belfasttrust.hscni.net.
+[37s] [elliot → robin] Find the independent complaint body above Northern Ireland health trusts.
+[50s] [robin → elliot] 10 results for "Northern Ireland health complaint ombudsman official compla…". Top: health-ni.gov.uk.
+[56s] [elliot] Search results show the likely official trust and the key official complaint and escalation bodies, so the plan now shifts to reading those pages and drilling to the live forms.
+[63s] [elliot → robin] Use the hospital’s own trust page to prove who runs Royal Victoria Hospital.
+[63s] [elliot → kit] Read the trust’s own complaints page for contact routes, deadline, process and response timing.
+[63s] [elliot → nell] Read the Department of Justice clinical negligence legal aid FAQ page for eligibility and funding facts.
+[63s] [elliot → iona] Read Northern Ireland’s official NICE endorsement page to see which guidance body applies.
+[71s] [nell → elliot] The page says legal aid for a clinical negligence claim is applied for through "representation higher," and that the certificate is generally limited in stages rather than given as a full certificate at the outset. It d…
+[72s] [iona → elliot] The page says NICE guidance is reviewed for applicability to Northern Ireland and, if applicable, is endorsed for implementation in Health and Social Care. It also says clinical guidelines used in Northern Ireland are N…
+[73s] [kit → elliot] The page says you can complain by letter, email, online form, or telephone. It says, “We would usually ask that you do this within 6 months of the event taking place,” and “We will respond to your complaint within 2 wor…
+[74s] [robin → elliot] Royal Victoria Hospital is run by Belfast Health and Social Care Trust, and the page places it at the Royal Victoria Hospital Site, 274 Grosvenor Road, Belfast, BT12 6BA. Yes—the page shows it is part of Belfast Health …
+[74s] [elliot → robin] Read the official Northern Ireland Ombudsman page for unresolved health complaint escalation rules.
+[81s] [robin → elliot] Yes for unresolved complaints about public bodies in Northern Ireland, but the page does not specifically mention health trusts by name. It says NIPSO is independent and free, and it directs people to "Check if you can …
+[89s] [elliot] The provider and main bodies are now identified; next we need the deeper second-level pages and the actual forms.
+[95s] [elliot → kit] Read the fuller Belfast Trust complaints service page for stages, contact options and any timing details.
+[95s] [elliot → robin] Read NIPSO’s how-to-complain page for preconditions, deadlines and route details.
+[95s] [elliot → iona] Read the relevant NICE fracture guideline page for suspected scaphoid fracture recommendations.
+[98s] [iona → elliot] The guideline recommends: "Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination."
+[105s] [robin → elliot] For a health complaint, the page says you must normally have “Complained directly to the organisation”, “Gone through its complaints process”, and “Received a final response to your complaint” before complaining to NIPS…
+[105s] [elliot → robin] Drill through NIPSO to the live online complaints form and capture its fields or any wall.
+[106s] [kit → elliot] The page says you can make a complaint through the Trust’s complaints channels, but it does not spell out who can complain. It says: “Make a complaint” and “You can contact us in a number of ways, including:”. It does n…
+[106s] [elliot → kit] Drill through Belfast Trust to the actual online complaints form and list the fields the patient will see.
+[126s] [kit → elliot] Found the form "Feedback form | Belfast Health & Social Care Trust website" in 1 move: 32 fields (0 required), ends with "Submit". "Compliments and complaints | Belfast Health & Social Care T…" only explains the process…
+[164s] [robin → elliot] I hit a problem: Not found. No online form found after 5 moves (59s); the site's own route is offline. This is the complaints form page, but it says the online complaints form …
+[164s] [elliot → robin] Read the trust access-to-information page to find the medical records route.
+[174s] [robin → elliot] For a copy of medical records, the page says this is handled under data protection and directs you to “Read more about Data Protection and how to access your records.” It also says to use the Trust’s contact details sho…
+[181s] [elliot] We now have the trust form and know the ombudsman’s online form is unavailable, so we need the remaining official detail pages for deadlines, records, advice, lawyers and funding rules.
+[187s] [elliot → robin] Find NIPSO’s official page that gives the time limit for bringing a complaint.
+[187s] [elliot → kit] Find the official Northern Ireland Department of Health complaints standards/guidance for deadlines and response times.
+[187s] [elliot → nell] Find the official legal aid information and any eligibility checker for Northern Ireland civil legal aid.
+[187s] [elliot → iona] Find the official HTML NICE guideline page for NG38 with quotable recommendations on suspected scaphoid fractures.
+[194s] [iona → elliot] 3 results for "site:nice.org.uk NG38 scaphoid fracture suspected html reco…". Top: nice.org.uk.
+[194s] [kit → elliot] 3 results for "site:health-ni.gov.uk HSC complaints standards guidelines d…". Top: health-ni.gov.uk.
+[194s] [robin → elliot] 3 results for "site:nipso.org.uk NIPSO complaint time limit official". Top: nipso.org.uk.
+[194s] [elliot → robin] Read Belfast Trust’s data protection page for the actual route to request records.
+[194s] [nell → elliot] 7 results for "site:nidirect.gov.uk legal aid Northern Ireland eligibility…". Top: nidirect.gov.uk.
+[203s] [robin → elliot] A patient is told: "Please submit your request in writing to the relevant department." The page also says you can "Or download the subject access application form." Yes—"You should also send a copy of photographic ID, f…
+[203s] [elliot → robin] Find the official Patient and Client Council complaint support page for Northern Ireland patients.
+[223s] [robin → elliot] 10 results for "site:patientclientcouncil.hscni.net Patient and Client Coun…". Top: patient.info.
+[223s] [elliot → robin] Find the official Law Society of Northern Ireland solicitor directory or find-a-solicitor page.
+[235s] [robin → elliot] 3 results for "site:lawsoc-ni.org find a solicitor law society northern ir…". Top: lawsoc-ni.org.
+[248s] [elliot → kit] Read the Department of Health page on complaints for the national complaint standards and deadlines.
+[248s] [elliot → robin] Read the official Law Society NI directory page for how to search for a solicitor by area and place.
+[248s] [elliot → nell] Read the official nidirect legal aid page for general coverage and any way to check eligibility.
+[248s] [elliot → iona] Read the official NICE NG38 page for quotable recommendations relevant to suspected scaphoid fracture.
+[254s] [iona → elliot] This overview page does not give any specific recommendations for suspected scaphoid fractures; it only says the guideline includes recommendations on “acute stage assessment and diagnostic imaging,” which is the area m…
+[255s] [kit → elliot] The page says responsibility for complaints is with the provider and that people unhappy with care or treatment in Northern Ireland “have the right to complain.” It does not give any time limits on this page. For help, …
+[255s] [elliot → kit] Read the Department of Health publication page for the current HSC complaints standards and timing rules.
+[255s] [nell → elliot] The page says legal aid is for “people who can't afford to pay for legal advice or representation in court by a solicitor or barrister.” It says eligibility is decided through the legal aid schemes and that “Your solici…
+[255s] [elliot → nell] Find official Northern Ireland sources on conditional fee agreements or no win no fee rules and any cap.
+[258s] [robin → elliot] The directory lets a patient search “by area of law and location” using filters: “Use the filters below for a more detailed search, or the map to view by location.” It specifically provides “TOWN / CITY / POSTCODE” and …
+[258s] [elliot → robin] Find an official Northern Ireland patient-help page that names the Patient and Client Council as independent complaint support.
+[263s] [kit → elliot] The page says the current procedure starts “From 1 January 2026,” when all HSC organisations must follow the new model complaints handling procedure. It also says the new procedure “replaces the Department of Health’s p…
+[268s] [nell → elliot] 3 results for "site:legislation.gov.uk Northern Ireland conditional fee ag…". Top: legislation.gov.uk.
+[270s] [robin → elliot] 8 results for "site:nidirect.gov.uk Patient and Client Council complain he…". Top: nidirect.gov.uk.
+[279s] [elliot → robin] Read the nidirect health complaint page for the complaint deadline and Patient and Client Council help.
+[279s] [elliot → nell] Find the official Northern Ireland limitation law for personal injury / clinical negligence claims.
+[279s] [elliot → iona] Read the detailed NICE recommendations page for the specific suspected scaphoid fracture recommendation.
+[279s] [elliot → kit] Drill through the Belfast Trust data protection route to the subject access application form for medical records.
+[287s] [iona → elliot] The page says: "Consider MRI for first-line imaging in people with suspected scaphoid fractures following a thorough clinical examination."
+[288s] [robin → elliot] You should complain “as soon as possible, usually within six months of you becoming aware that you have a cause for complaint and normally no longer than 12 months after the event.” The Patient and Client Council “offer…
+[288s] [elliot → robin] Find the official NIPSO page or document that states the deadline for complaining to the ombudsman.
+[293s] [nell → elliot] 3 results for "site:legislation.gov.uk Limitation Northern Ireland persona…". Top: legislation.gov.uk.
+[293s] [elliot → nell] Find official Northern Ireland civil legal aid information on means or merits for negligence cases.
+[302s] [robin → elliot] 3 results for "site:nipso.org.uk NIPSO within 6 months complaint health of…". Top: nipso.org.uk.
+[305s] [nell → elliot] 3 results for "site:justice-ni.gov.uk civil legal aid merits means Norther…". Top: justice-ni.gov.uk.
+[334s] [kit → elliot] I hit a problem: Not found. No online form found after 4 moves (55s); the site's own route is offline. The form behind "subject access application form [DOCX document]" is a do…
+[349s] [elliot → you] Complain: Belfast Health and Social Care Trust. Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so complaints about the Emergency Department go first to Belfast Trust. Belfast Trust’s current pag
+[352s] [elliot → kit] Fix the exact Belfast Trust wording for the complaint deadline and 2-working-day acknowledgement so the complaint route can be recorded accurately.
+[360s] [kit → elliot] The page does not say when Belfast Trust usually asks for complaints to be made, but it does say it will respond within 2 working days on the complaints information page, not this one.
+[363s] [elliot → kit] Open the trust’s complaints information page where the deadline and 2-day acknowledgement wording actually appears.
+[372s] [kit → elliot] The page says you can make a complaint through the “Make a complaint” link, but it does not say when complaints should be made. It also does not mention acknowledging or responding within 2 working days.
+[381s] [elliot → kit] Find a Belfast Trust page or document on its own site that states the complaint deadline and acknowledgement wording in a quoteable way.
+[393s] [kit → elliot] 4 results for "site:belfasttrust.hscni.net Belfast Trust complaint within …". Top: belfasttrust.hscni.net.
+[396s] [elliot → kit] Open the more specific Belfast Trust complaints information page that may state the deadline and stage timings exactly.
+[405s] [kit → elliot] The page says: “Normally, you must make your complaint within six months of:” for the complaint time limit. It says: “Acknowledge receipt of your complaint within 3 working days” for the acknowledgement, and: “Explain t…
+[413s] [elliot → robin] Find an official NIPSO page or document with the complaint deadline wording.
+[413s] [elliot → nell] Find official Northern Ireland legislation or guidance on no-win-no-fee / conditional fee agreements for personal injury claims.
+[413s] [elliot → kit] Read the specific Belfast Trust complaints page to lock in exact deadline and stage wording for recording.
+[422s] [kit → elliot] The page says: “Normally, you must make your complaint within six months of:” and “The event you want to complain about, or” / “Finding out that you have a reason to complain”. For the stages, it says: “Our Complaints H…
+[426s] [nell → elliot] 3 results for "site:legislation.gov.uk "Conditional Fee Agreements Order 2…". Top: legislation.gov.uk.
+[426s] [elliot → nell] Read the limitation legislation article for the 3-year court deadline.
+[426s] [robin → elliot] 2 results for "site:nipso.org.uk "within 6 months" NIPSO complain official". Top: nipso.org.uk.
+[426s] [elliot → robin] Read the Law Society NI guidance page so we can explain how to use the official solicitor directory.
+[432s] [robin → elliot] This page does not say how to search the solicitor directory by area of law or postcode/place. It only says that the Directory is a listing of firms that chose to have their contact details displayed, and that if you ca…
+[432s] [elliot → robin] Read the Patient and Client Council site to confirm its free independent support role for complaints.
+[440s] [nell → elliot] The legislation sets a time limit of three years for personal injury negligence claims: “that period is three years from— (a) the date on which the cause of action accrued, or (b) the date of knowledge (if later) of the…
+[440s] [robin → elliot] Yes. The page says, "The PCC can provide you with free support and advice" and "we offer a free independent advocacy service"; for next steps, it says, "Alternatively fill in our Online Contact Form" and gives the freep…
+[450s] [elliot → you] Complain: Belfast Health and Social Care Trust. Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so a complaint about the Emergency Department starts with Belfast Trust. The Trust’s current compla
+[452s] [elliot → kit] Get exact checked quotes for the trust’s Stage 1 and Stage 2 timings so the complaint record can be completed accurately.
+[461s] [kit → elliot] Stage 1 timing: “Our aim is to give you our decision at Stage 1 within 5 working days or less; however, there may be circumstances where we need more time to provide you with a full and complete response.” Stage 2 writt…
+[469s] [elliot → you] Complain: Belfast Health and Social Care Trust. Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so a complaint about the Emergency Department starts with Belfast Trust. The Trust’s current page s
+[476s] [elliot → robin] Read NIPSO FAQs for the official six-month escalation deadline.
+[476s] [elliot → nell] Read the official conditional fee legislation note for success-fee cap wording relevant to personal injury claims.
+[484s] [robin → elliot] The page says you should normally complain to NIPSO only after you have "Gone through its complaints process" and "Received a final response to your complaint." It does not give any more specific time limit on this page.
+[484s] [elliot → robin] Read the official complaint route page on NIPSO to confirm how people can complain while the online form is unavailable.
+[484s] [nell → elliot] The note says that article 4 specifies personal injury claims, and that in a claim for personal injuries the success fee is capped at 25% of specified damages. It also says this cap applies only at first instance; for a…
+[484s] [elliot → nell] Read the official conditional fee order text itself for what proceedings can use CFAs.
+[490s] [robin → elliot] The page says, “Unfortunately our online complaints form is currently unavailable.” It gives two alternatives: “please contact us at nipso@nipso.org.uk or call 0800 343424.”
+[490s] [elliot → robin] Read the Patient and Client Council support page for how it helps with complaints.
+[491s] [nell → elliot] The order says: “All proceedings which, under section 58 of the Act, can be the subject of an enforceable conditional fee agreement, except proceedings under section 82 of the Environmental Protection Act 1990, are proc…
+[491s] [elliot → nell] Find official Northern Ireland sources showing whether there is any no-fault or redress scheme for clinical negligence in public healthcare.
+[498s] [robin → elliot] The page says the PCC can "support you, speak on your behalf and constructively engage with service providers to seek a resolution." It also says, "We can support you through this process and we will be always be focuse…
+[498s] [nell → elliot] 5 results for "site:health-ni.gov.uk OR site:justice-ni.gov.uk OR site:nid…". Top: justice-ni.gov.uk.
+[506s] [elliot → robin] Try again to capture NIPSO’s exact six-month deadline wording from its FAQ page.
+[506s] [elliot → nell] Find official Northern Ireland public information on civil legal aid financial and merits tests for negligence claims.
+[506s] [elliot → kit] Find an official Belfast Trust page or downloadable form page for subject access / medical records that includes the health records contact details.
+[513s] [robin → elliot] The page does not say that sentence. It only lists the FAQ topic “Is there a time limit for making a complaint?” and does not give the wording you asked for.
+[513s] [elliot → robin] Find official Northern Ireland public pages about bringing a complaint to NIPSO after a final response from the provider.
+[519s] [kit → elliot] 4 results for "site:belfasttrust.hscni.net MedLegalServs subject access ap…". Top: belfasttrust.hscni.net.
+[519s] [nell → elliot] 3 results for "site:justice-ni.gov.uk OR site:nidirect.gov.uk Northern Ire…". Top: justice-ni.gov.uk.
+[525s] [robin → elliot] 8 results for "site:nidirect.gov.uk NIPSO final response complaint ombudsm…". Top: nidirect.gov.uk.
+[530s] [elliot → nell] Read the official DOJ page on financial eligibility for advice and assistance to get the civil legal aid means test wording.
+[530s] [elliot → robin] Read the official nidirect page on complaints against public bodies to capture the NIPSO deadline wording.
+[530s] [elliot → kit] Read the official Belfast Trust subject access form page to confirm the downloadable records form route.
+[539s] [robin → elliot] The page says that after the organisation has investigated your complaint, you can complain to the Northern Ireland Public Services Ombudsman if you still are not satisfied. Exact wording: “If, following the organisatio…
+[539s] [kit → elliot] The page identifies a file named “Subject Access Application Form” and shows metadata for it, including “File size: 35.44 KB,” “Created: 01-07-2020,” and “Updated: 12-02-2026.” Yes, it indicates the form is downloadable…
+[541s] [nell → elliot] The page says that to qualify financially for advice and assistance, the applicant’s capital and income must be within the current financial limits, and disposable income must be less than £234.00 per week. It also says…
+[548s] [elliot → nell] Check for any official Northern Ireland no-fault, redress or conciliation scheme for clinical negligence in public healthcare.
+[548s] [elliot → robin] Read NIPSO’s make-a-complaint landing page for the official route and service description.
+[548s] [elliot → kit] Read the official Belfast Trust complaint form page to capture form fields the patient will need to prepare.
+[555s] [robin → elliot] The page says you can make a complaint “using our online form, get help making a complaint, or read about our investigation process.” It also says that before complaining to NIPSO, you should normally have complained di…
+[557s] [kit → elliot] The form is divided into sections for “Your details,” “Patient details,” and “Your comments or Concerns.” Main questions/fields include whether the feedback is about a “compliment, concern, complaint or comment,” name a…
+[568s] [nell → elliot] 10 results for "site:health-ni.gov.uk OR site:justice-ni.gov.uk OR site:nid…". Top: dictionary.cambridge.org.
+[568s] [elliot → nell] Look for any official public-facing online legal aid eligibility checker for civil legal aid in Northern Ireland.
+[576s] [nell → elliot] 10 results for "site:nidirect.gov.uk OR site:justice-ni.gov.uk online legal…". Top: justanswer.co.uk.
+[585s] [elliot → robin] Open the official NIPSO complaint leaflet PDF linked from the site to capture the escalation deadline wording.
+[585s] [elliot → nell] Find the official Northern Ireland pre-action or court guidance for clinical negligence claims.
+[588s] [robin → elliot] The leaflet says: “We ask you to bring your complaint to us within six months of when you have completed the public body's complaint process, but will always look at reasons why this has not been possible.”
+[598s] [nell → elliot] 5 results for "site:judiciaryni.uk OR site:justice-ni.gov.uk OR site:court…". Top: judiciaryni.uk.
+[598s] [elliot → nell] Find official Department of Health or HSCNI pages showing how clinical negligence claims against HSC bodies are handled in Northern Ireland.
+[611s] [nell → elliot] 6 results for "site:health-ni.gov.uk OR site:hscni.net OR site:bso.hscni.n…". Top: health-ni.gov.uk.
+[611s] [elliot → nell] Read the more general nidirect legal aid page for public-facing help and any checker or route to apply.
+[619s] [nell → elliot] This page does not explain how members of the public get legal aid in Northern Ireland, and it does not show any online eligibility checker. The only relevant items shown are links to “Legal aid information” and to acco…
+[630s] [elliot → you] If that fails: Northern Ireland Public Services Ombudsman (NIPSO). If Belfast Trust’s final complaint response is not good enough, the independent next step is the Northern Ireland Public Services Ombudsman. NIPSO says y
+[639s] [elliot → nell] Find official Northern Ireland legislation or guidance specifically on conditional fee agreements in Northern Ireland, rather than wider UK material.
+[639s] [elliot → robin] Read the official NIPSO help page in case it captures contact methods in checked quotes for escalation recording.
+[648s] [robin → elliot] Yes. The page says: “However, you can also contact us by phone, email or in writing.” It also says, “The quickest way for your complaint to be registered with us is by completing our online form.”
+[650s] [nell → elliot] 6 results for "site:legislation.gov.uk OR site:justice-ni.gov.uk "conditio…". Top: legislation.gov.uk.
+[650s] [elliot → nell] Read the Business Services Organisation clinical negligence team page to see what it officially says about HSC clinical negligence cases.
+[661s] [nell → elliot] The page says the Clinical Negligence Team is "the sole provider of advice, representation and training to the Public Health and Social Care sector in Northern Ireland" and that it handles "clinical negligence litigatio…
+[661s] [elliot → nell] Read the High Court clinical negligence protocol PDF page if possible for how claims start before court.
+[662s] [nell → elliot] I hit a problem: Blocked: not_found at https://www.judiciaryni.uk/files/judiciaryni/decisions/Protocol%20for%20Clinical%20Negligence%20Litigation%20in%20the%20High%20Court%20%2…
+[673s] [elliot → you] If that fails: Northern Ireland Public Services Ombudsman (NIPSO). If Belfast Trust’s final complaint response is not good enough, the next independent step is the Northern Ireland Public Services Ombudsman. NIPSO normal
+[682s] [elliot → nell] Try the County Court clinical negligence protocol PDF for readable official wording on how claims start.
+[682s] [elliot → kit] Drill through the Patient and Client Council site to its online contact form so the patient has the live route for free support.
+[682s] [elliot → robin] Read the Law Society directory page again to capture checked quotes for the actual search filters a patient can use.
+[682s] [nell → elliot] I hit a problem: Blocked: not_found at https://www.judiciaryni.uk/files/judiciaryni/decisions/Pre-Action%20Protocol%20Clinical%20Negligence%20%28County%20Court%29.pdf (PDF not …
+[689s] [robin → elliot] The page says the search filters are “TOWN / CITY / POSTCODE”, “Area of Law”, “AREA OF LAW”, “Solicitor / Firm name”, and “Legal Aid”. It does not give any more specific law-category filter wording beyond “Area of Law” …
+[701s] [kit → elliot] Found the form "Online Contact Form" in 1 move: 7 fields (0 required), ends with "Log in".
+[701s] [elliot → kit] Read the Belfast Trust complaint form page again to capture a checked quote for the desired-outcome field and location fields.
+[711s] [kit → elliot] The form asks, “What is your desired outcome from this contact?” and it asks for “Ward / Department.” It also asks, “Is there a specific location linked to this comment?” and “Please enter the specific ward or departmen…
+[717s] [elliot → you] Free help: Patient and Client Council (PCC). The Patient and Client Council is the official free independent support body in Northern Ireland for people with health and social care concerns or complaints. It offers suppo
+[724s] [elliot → you] Your records: Belfast Health and Social Care Trust. To get copies of medical records from Belfast Trust, the patient uses the subject access route under UK GDPR / the Data Protection Act 2018. The Trust says the request 
+
+RUN discovery-2026-11-08T00-09-16-425Z in 12.1 min, 30 turns, stats {"agents":76,"sites":17,"pages":129,"actions":109}
+- complaint: Belfast Health and Social Care Trust | online_form https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/feedback-form/ | likely (6/6 checked)
+- escalation: Northern Ireland Public Services Ombudsman (NIPSO) | email https://www.nipso.org.uk/make-complaint/online-complaints-form | likely (6/6 checked) | wall: Online form unavailable; NIPSO says to use email or phone instead.
+- advice: Patient and Client Council (PCC) | online_form https://pcc-ni.net/contact-us/online-contact-form/ | likely (5/5 checked)
+- records: Belfast Health and Social Care Trust | email https://belfasttrust.hscni.net/wpfd_file/subject-access-application-form/ | likely (6/6 checked) | wall: Downloadable form rather than an online submission form.

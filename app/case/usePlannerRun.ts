@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { CaseFacts } from "../../lib/agent/facts";
 import type { EnquiryOutcome } from "../../lib/agent/enquiryTypes";
-import type { LedgerEntry } from "../../lib/agent/ledger";
+import type { LedgerEntry } from "../../lib/agent/ledgerSummary";
 import type { Place, RouteMap } from "../../lib/agent/routeTypes";
 import type { AgentTile, FirmFinding, Funding, Stats, TraceStep } from "../../lib/agent/legalAidTypes";
 import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryResult, type EscalationInput, type EscalationResult, type EvidenceResult, type PlannerEvent, type PlannerResult, type PlanStep, type Say } from "../../lib/agent/plannerTypes";

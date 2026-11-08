@@ -1,0 +1,293 @@
+{
+  "runId": "discovery-2026-11-08T00-09-16-425Z",
+  "place": {
+    "country": "United Kingdom",
+    "region": "Northern Ireland",
+    "city": "Belfast",
+    "hospital": "Royal Victoria Hospital, Emergency Department",
+    "careSetting": "public",
+    "why": "The care was at the Royal Victoria Hospital Emergency Department in Belfast; the address is also in Belfast, BT9 5QJ."
+  },
+  "system": "Northern Ireland, United Kingdom",
+  "summary": "",
+  "steps": [
+    {
+      "kind": "complaint",
+      "body": "Belfast Health and Social Care Trust",
+      "what": "Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so a complaint about the Emergency Department starts with Belfast Trust. The Trust’s current page says complaints should normally be made within six months of the event or of finding out there is a reason to complain, and its two-stage complaints handling procedure aims for a Stage 1 decision within 5 working days and a Stage 2 written response within 20 working days.",
+      "deadline": "\"Normally, you must make your complaint within six months of:\" \"The event you want to complain about, or\" \"Finding out that you have a reason to complain\"",
+      "how": "online_form",
+      "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/feedback-form/",
+      "points": [
+        "Royal Victoria Hospital is part of Belfast Health and Social Care Trust.",
+        "The Trust’s complaint route is by online form, email, phone or post.",
+        "The Trust says complaints should normally be made within six months of the event, or within six months of finding out you have a reason to complain.",
+        "The Trust says its complaints handling procedure has two stages."
+      ],
+      "appliesIf": "Public Health and Social Care treatment at Royal Victoria Hospital, which is run by Belfast Health and Social Care Trust.",
+      "alternatives": [
+        "By email complaints@belfasttrust.hscni.net",
+        "By telephone on 028 9504 8000",
+        "By letter to the Trust complaints service"
+      ],
+      "missing": [
+        "Whether the patient wants the complaint to cover only the missed fracture / no follow-up, or also the effect on surgery, work and coursework.",
+        "Whether someone is complaining on the patient’s behalf, because the form asks for relationship and patient consent.",
+        "What outcome the patient wants, because the form asks for the desired outcome."
+      ],
+      "sources": [
+        {
+          "url": "https://belfasttrust.hscni.net/hospitals/rvh/",
+          "quote": "Belfast Health and Social Care Trust",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/",
+          "quote": "By email complaints@belfasttrust.hscni.net",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/",
+          "quote": "By online form: Complete our online form",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/making-a-complaint/",
+          "quote": "“Normally, you must make your complaint within six months of:”",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/making-a-complaint/",
+          "quote": "“The event you want to complain about, or”",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/making-a-complaint/",
+          "quote": "“Finding out that you have a reason to complain”",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "escalation",
+      "body": "Northern Ireland Public Services Ombudsman (NIPSO)",
+      "what": "If Belfast Trust’s final complaint response is not good enough, the next independent step is the Northern Ireland Public Services Ombudsman. NIPSO normally expects you to have complained to the Trust first, gone through its complaints process and received a final response; at present its online complaints form is unavailable, so it directs complainants to email or phone instead.",
+      "deadline": "\"We ask you to bring your complaint to us within six months of\" \"when you have completed the public body's complaint process,\"",
+      "how": "email",
+      "url": "https://www.nipso.org.uk/make-complaint/online-complaints-form",
+      "wall": "Online form unavailable; NIPSO says to use email or phone instead.",
+      "points": [
+        "NIPSO investigates unresolved complaints about public bodies in Northern Ireland.",
+        "NIPSO says it is independent of government.",
+        "NIPSO says its service is free.",
+        "Before complaining to NIPSO you should normally first complain directly to the organisation and receive a final response.",
+        "NIPSO asks for complaints within six months of completing the public body's complaint process.",
+        "The website says the online complaints form is currently unavailable and gives email/phone contact instead."
+      ],
+      "requires": [
+        "Complained directly to the organisation",
+        "Gone through its complaints process",
+        "Received a final response to your complaint"
+      ],
+      "appliesIf": "Unresolved complaint about public treatment at Royal Victoria Hospital after Belfast Trust has completed its own complaints process.",
+      "alternatives": [
+        "NIPSO also says you can contact it in writing.",
+        "The Patient and Client Council can support you before or during escalation."
+      ],
+      "missing": [
+        "The date of Belfast Trust’s final response, because the six-month NIPSO time limit runs from completion of the Trust complaint process."
+      ],
+      "sources": [
+        {
+          "url": "https://www.nipso.org.uk/",
+          "quote": "We investigate unresolved complaints about public bodies in Northern Ireland.",
+          "official": true,
+          "publisher": "Northern Ireland Public Services Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/",
+          "quote": "We are independent of government.",
+          "official": true,
+          "publisher": "Northern Ireland Public Services Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/",
+          "quote": "Our service is free.",
+          "official": true,
+          "publisher": "Northern Ireland Public Services Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/make-complaint/how-make-complaint",
+          "quote": "Before you make a complaint to us you should normally have:",
+          "official": true,
+          "publisher": "Northern Ireland Public Services Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/make-complaint/how-make-complaint",
+          "quote": "Complained directly to the organisation",
+          "official": true,
+          "publisher": "Northern Ireland Public Services Ombudsman",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/make-complaint/how-make-complaint",
+          "quote": "Received a final response to your complaint",
+          "official": true,
+          "publisher": "Northern Ireland Public Services Ombudsman",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "advice",
+      "body": "Patient and Client Council (PCC)",
+      "what": "The Patient and Client Council is the official free independent support body in Northern Ireland for people with health and social care concerns or complaints. It offers support, independent advocacy, and an online contact form.",
+      "how": "online_form",
+      "url": "https://pcc-ni.net/contact-us/online-contact-form/",
+      "points": [
+        "The PCC says it can provide free support and advice.",
+        "It also says it offers a free independent advocacy service.",
+        "With your permission it can support you, speak on your behalf and engage with service providers to seek a resolution.",
+        "There is an online contact form on the PCC site.",
+        "The online form asks whether you want independent advocacy support and how the PCC can help.",
+        "A freephone number is also published."
+      ],
+      "appliesIf": "Anyone in Northern Ireland who wants free independent help with a health and social care concern or complaint.",
+      "alternatives": [
+        "Freephone 0800 917 0222"
+      ],
+      "missing": [
+        "Whether the patient wants the PCC to advocate directly on their behalf or just give advice."
+      ],
+      "sources": [
+        {
+          "url": "https://pcc-ni.net/",
+          "quote": "The PCC can provide you with free support and advice.",
+          "official": true,
+          "publisher": "Patient and Client Council",
+          "checked": true
+        },
+        {
+          "url": "https://pcc-ni.net/",
+          "quote": "we offer a free independent advocacy service to support you, so your voice is heard.",
+          "official": true,
+          "publisher": "Patient and Client Council",
+          "checked": true
+        },
+        {
+          "url": "https://pcc-ni.net/pcc-support/",
+          "quote": "With your permission we can support you, speak on your behalf and constructively engage with service providers to seek a resolution.",
+          "official": true,
+          "publisher": "Patient and Client Council",
+          "checked": true
+        },
+        {
+          "url": "https://pcc-ni.net/",
+          "quote": "Alternatively fill in our Online Contact Form",
+          "official": true,
+          "publisher": "Patient and Client Council",
+          "checked": true
+        },
+        {
+          "url": "https://pcc-ni.net/",
+          "quote": "Freephone: 0800 917 0222",
+          "official": true,
+          "publisher": "Patient and Client Council",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "records",
+      "body": "Belfast Health and Social Care Trust",
+      "what": "To get copies of medical records from Belfast Trust, the patient uses the subject access route under UK GDPR / the Data Protection Act 2018. The Trust says the request should be made in writing to the relevant department, with photo ID, and it provides a downloadable subject access application form rather than an online form.",
+      "how": "email",
+      "url": "https://belfasttrust.hscni.net/wpfd_file/subject-access-application-form/",
+      "wall": "Downloadable form rather than an online submission form.",
+      "points": [
+        "The Trust says requests for personal information including health records are handled under UK GDPR and the Data Protection Act 2018.",
+        "The patient should submit the request in writing to the relevant department.",
+        "The Trust provides a downloadable subject access application form.",
+        "The Trust says to send photographic ID.",
+        "The records route is not an online form; it is a download/contact route."
+      ],
+      "appliesIf": "A patient wants copies of their own Belfast Trust medical records.",
+      "alternatives": [
+        "Write to the relevant department using the data protection route."
+      ],
+      "missing": [
+        "Whether the patient wants only Emergency Department records, imaging, and reports, or the wider hospital record.",
+        "Whether anyone is applying on the patient’s behalf, which may require proof of authority or consent."
+      ],
+      "sources": [
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/",
+          "quote": "If you want to ask us for information that we may hold about you personally, this will be dealt with under the UK GDPR and the Data Protection Act 2018.",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/",
+          "quote": "This would include information relating to Health and Social Care records, employment and training records.",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+          "quote": "Please submit your request in writing to the relevant department.",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+          "quote": "Or download the subject access application form.",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+          "quote": "You should also send a copy of photographic ID, for example your driving licence or passport.",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/wpfd_file/subject-access-application-form/",
+          "quote": "Subject Access Application Form",
+          "official": true,
+          "publisher": "Belfast Health and Social Care Trust",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    }
+  ],
+  "foundAt": "2026-11-08T00:21:17.819Z"
+}

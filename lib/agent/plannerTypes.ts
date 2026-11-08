@@ -1,7 +1,7 @@
 import type { EnquiryMessage, EnquiryOutcome } from "./enquiryTypes";
 import type { Funding, Step3Event, Step3Result, Stats, TraceStep } from "./legalAidTypes";
 import type { Draft } from "./draft";
-import type { LedgerEntry } from "./ledger";
+import type { LedgerEntry } from "./ledgerSummary";
 import type { Place, RouteMap } from "./routeTypes";
 
 /**
