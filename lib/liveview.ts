@@ -56,7 +56,8 @@ export type LiveEvent =
   | { type: "pages"; pages: LivePage[] }
   | { type: "stats"; stats: LiveStats }
   | { type: "end" }
-  | { type: "control"; enabled: boolean };
+  | { type: "control"; enabled: boolean }
+  | { type: "submitted"; flow: string }; // the user pressed Submit on a form the agent filled (see closeWhenSubmitted in lib/browser.ts)
 type Listener = (e: LiveEvent) => void;
 
 /** Every input may name the tab it is for; without `pageId` it goes to the focused tab, else the newest. */
@@ -120,6 +121,11 @@ function publish(e: LiveEvent) {
   }
 }
 const publishPages = () => publish({ type: "pages", pages: bus.pages.map((p) => p.meta) });
+
+/** Tell the app that the user sent a form the agent filled. `flow` names the step: "nhs", "spso" or "yellowcard". */
+export function announceSubmitted(flow: string) {
+  publish({ type: "submitted", flow });
+}
 
 /** Subscribe. If a session is live, the tab list, the latest frame of each tab and the stats are replayed immediately. */
 export function subscribeLive(listener: Listener): () => void {
@@ -254,6 +260,7 @@ export async function liveInput(input: LiveInput): Promise<string> {
     await restreamAll();
     return "ok";
   }
+  if (input.type === "close" || input.type === "back") console.log(`[live-input] ${input.type}`);
   const wanted = "pageId" in input ? input.pageId : undefined;
   const top = bus.pages.find((p) => p.meta.pageId === (wanted ?? bus.focus)) ?? bus.pages.at(-1);
   const page = top?.page;
@@ -268,11 +275,22 @@ export async function liveInput(input: LiveInput): Promise<string> {
     case "move":
       await mouse("mouseMoved", input.x, input.y);
       return "ok";
-    case "click":
+    case "click": {
       await mouse("mouseMoved", input.x, input.y);
       await mouse("mousePressed", input.x, input.y, { button: "left", buttons: 1, clickCount: 1 });
       await mouse("mouseReleased", input.x, input.y, { button: "left", buttons: 0, clickCount: 1 });
+      // Diagnostics (2026-11-08, NHS Submit check): where the user's click landed on the page.
+      const at = await page
+        .evaluate(([x, y]) => {
+          const el = document.elementFromPoint(x, y) as HTMLElement | null;
+          if (!el) return "nothing";
+          const text = (el.innerText || (el as HTMLInputElement).value || "").trim().replace(/\s+/g, " ").slice(0, 40);
+          return `<${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}${el.getAttribute("type") ? " type=" + el.getAttribute("type") : ""}> "${text}"`;
+        }, [input.x, input.y] as const)
+        .catch(() => "unknown");
+      console.log(`[live-input] click at ${Math.round(input.x)},${Math.round(input.y)} on ${host(page.url())}: ${at}`);
       return "ok";
+    }
     case "wheel":
       await mouse("mouseWheel", input.x, input.y, { deltaX: input.dx, deltaY: input.dy });
       return "ok";

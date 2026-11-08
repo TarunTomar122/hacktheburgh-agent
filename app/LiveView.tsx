@@ -24,6 +24,7 @@ type LiveMsg =
   | Frame
   | { type: "pages"; pages: LivePage[] }
   | { type: "stats"; stats: LiveStats }
+  | { type: "submitted"; flow: string } // the user pressed Submit on a filled form (lib/browser.ts closeWhenSubmitted)
   | { type: "end" }
   | { type: "idle" }
   | { type: "control"; enabled: boolean };
@@ -237,6 +238,9 @@ export default function LiveView() {
           modeRef.current = "live";
           setMode("live");
         }
+      } else if (msg.type === "submitted") {
+        // The page saw the form go in: screens that listen can mark the step as sent.
+        window.dispatchEvent(new CustomEvent("agent-submitted", { detail: msg.flow }));
       } else if (msg.type === "stats") {
         setStats(msg.stats);
       } else if (msg.type === "end") {
