@@ -714,7 +714,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
 
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
   const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
-  const checker = fundingStep ? `${fundingStep.body}'s checker` : routeMap ? "the legal aid checker" : "SLAB's calculator";
+  const checker = fundingStep ? `the official checker (${fundingStep.body})` : routeMap ? "the legal aid checker" : "SLAB's calculator";
   const registerName = routeMap?.steps.find((x) => x.kind === "lawyers")?.body ?? (routeMap ? "the official register" : "the Law Society register");
   const checkerUrl = fundingStep?.url ?? (routeMap ? undefined : SLAB_CALC);
   const funding =
@@ -762,9 +762,9 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
           )}
         </Row>
 
-        {(result as PlannerResult).scheme && (
+        {(result as PlannerResult).scheme && !/does not (describe|say|mention)/i.test((result as PlannerResult).scheme!.text) && (
           <Row crew="robin" topic="Compensation scheme" title={(result as PlannerResult).scheme!.body}>
-            <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text}</p>
+            <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ")}</p>
             {(result as PlannerResult).scheme!.quote && (
               <Quote source={(result as PlannerResult).scheme!.body} href={(result as PlannerResult).scheme!.url}>
                 {(result as PlannerResult).scheme!.quote}

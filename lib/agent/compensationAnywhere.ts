@@ -80,6 +80,10 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
         const f = firms.get(String(a.firm_id ?? ""));
         if (name === "check_funding") return fundingQuote ? `${fundingSource}: "${short(fundingQuote.quote, 200)}"` : short(out, 200);
         if (name === "search_register") return short(out.split("\n")[0], 200);
+        if (name === "web_search") {
+          const hits = [...out.matchAll(/^\d+\. (.*?) — (\S+)/gm)];
+          return hits.length ? `${hits.length} results for "${short(String(a.query ?? ""), 60)}". Top: ${host(hits[0][2])}.` : "No useful results.";
+        }
         if (name === "read_scheme" && scheme) return `${scheme.body}: ${short(scheme.text, 220)}`;
         if (name === "check_firm" && f) return f.excluded ? `Ruled out ${f.name}: ${f.excluded}.` : `Checked ${f.name} on its own website.`;
         if (name === "fill_enquiry") {
@@ -175,7 +179,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           }
           case "check_firm": {
             const firm = firms.get(s("firm_id"));
-            if (!firm) return "Unknown firm id. Use one from search_register.";
+            if (!firm) return "Could not check: unknown firm id. Use one from search_register.";
             const r = await kit.inTab(thought, "robin", short(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, ""), 26), async (p, note) => {
               let f = firm;
               let how = "the register gave its web address";
