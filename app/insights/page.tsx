@@ -36,6 +36,32 @@ const STEP_WHY: Partial<Record<Flow, string>> = {
   escalation: "The reasoning model works out if you can go to the independent body and what to send.",
   enquiries: "Kit fills each firm's form; quick decisions pick the right fields.",
 };
+/** The ledger's job names in plain words. Unknown jobs fall back to their own name. */
+const TASK_WORDS: [RegExp, string][] = [
+  [/planner$/, "Plans the crew's next moves and changes the plan"],
+  [/^discovery (robin|iona|nell)$/, "Runs one crew member's own short research loop"],
+  [/^read_page$/, "Reads a page or PDF and pulls out quotes that code then checks"],
+  [/^explore_judge$/, "Chooses which link or button to try next on a site"],
+  [/^explore_pdf_check$/, "Checks whether a PDF is the document it needs"],
+  [/^auto_record$/, "Turns what was read into a step of your route"],
+  [/^route_takeaways$/, "Writes the plain-language 'what to know' lines"],
+  [/^decisions$/, "Answers yes, no or pick-one questions with a confidence"],
+  [/^directory_/, "Works a lawyer register: its search form, results and entries"],
+  [/^find_firms$/, "Picks the real law firms out of search results"],
+  [/^questionnaire_/, "Answers an online checker's questions, one page at a time"],
+  [/^investigat/, "Searches for and judges published decisions and reports"],
+  [/^guidance_source$/, "Checks a guidance page comes from a credible clinical source"],
+  [/^guidance_applicability$/, "Checks a guideline applies to someone like you"],
+  [/^patient_age_band$/, "Works out your age group from your story, nothing more"],
+  [/^care_comparison$/, "Compares the guideline with what happened to you"],
+  [/^enquiry_draft$/, "Writes your enquiry to the solicitors"],
+  [/^complaint_draft$/, "Writes your complaint"],
+  [/^time_limit$/, "Reads the time limit from the official page"],
+  [/^escalation_/, "Works out when and how to go to the independent body"],
+  [/^handoff_relevance$/, "Decides whether a sign-in or check needs you"],
+];
+const taskWords = (t: string) => TASK_WORDS.find(([re]) => re.test(t))?.[1] ?? t.replace(/_/g, " ");
+const DATA_WORDS: Record<string, string> = { place: "where your care happened", health: "your health story", money: "your money answers", identity: "your name and contact details" };
 const modelLabel = (id: string) => id.replace(/^local:/, "").replace(/^qwen3:8b$/, "Qwen3 8B");
 
 export default function Insights() {
@@ -74,12 +100,17 @@ async function Dashboard() {
   const modelsByFlow = (["discovery", "compensation", "complaint", "escalation", "enquiries"] as Flow[]).map((flow) => {
     // The latest finished runs of this step (any age: some steps run less often than others).
     const rs = runs.filter((r) => r.finished && r.flow === flow).slice(0, 15);
-    const by = new Map<string, { model: string; where: string; calls: number; ms: number; crew: Set<string> }>();
+    const by = new Map<string, { model: string; where: string; calls: number; ms: number; crew: Set<string>; tasks: Map<string, number>; data: Set<string> }>();
     for (const r of rs)
       for (const m of r.models) {
-        const cur = by.get(m.model) ?? { model: m.model, where: m.where, calls: 0, ms: 0, crew: new Set<string>() };
+        const cur = by.get(m.model) ?? { model: m.model, where: m.where, calls: 0, ms: 0, crew: new Set<string>(), tasks: new Map<string, number>(), data: new Set<string>() };
         cur.calls += m.calls;
         cur.ms += m.ms;
+        for (const [t, n] of Object.entries(m.tasks ?? {})) {
+          const w = taskWords(t);
+          cur.tasks.set(w, (cur.tasks.get(w) ?? 0) + n);
+        }
+        m.data.forEach((d) => cur.data.add(d));
         if (CREW.some((c) => c.id === m.agent)) cur.crew.add(m.agent);
         by.set(m.model, cur);
       }
@@ -118,12 +149,24 @@ async function Dashboard() {
           {modelsByFlow.map((f) => <div key={f.flow} className="grid gap-2 sm:grid-cols-[14rem_1fr]">
             <div><p className="text-sm font-medium text-ink">{FLOW_NAME[f.flow]} <span className="font-normal text-muted">· {f.runs} runs</span></p>{STEP_WHY[f.flow] && <p className="mt-1 text-xs leading-5 text-muted">{STEP_WHY[f.flow]}{f.models.some((m) => m.where === "local") ? " Your private details go to the model on this Mac." : ""}</p>}</div>
             <div className="flex flex-wrap gap-3">
-              {f.models.map((m) => <div key={m.model} className="flex items-center gap-3 rounded-card border border-line bg-white px-4 py-3" title={`${modelLabel(m.model)}: ${m.calls} calls, ${(m.ms / m.calls / 1000).toFixed(1)} s each on average`}>
-                <span className="flex -space-x-1.5">{[...m.crew].map((c) => <Avatar key={c} id={c} size="size-6" />)}</span>
-                <span className="text-sm text-ink">{modelLabel(m.model)}</span>
-                <span className={m.where === "local" ? "rounded-full bg-teal-soft px-2 py-0.5 text-xs text-teal" : "rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand"}>{m.where === "local" ? "On this Mac" : "Cloud"}</span>
-                <span className="text-xs tabular-nums text-muted">{m.calls} calls · {(m.ms / m.calls / 1000).toFixed(1)} s each</span>
-              </div>)}
+              {f.models.map((m) => {
+                const role = MODEL_ROLES.find((r) => r.id === m.model);
+                const sees = [...m.data].map((d) => DATA_WORDS[d] ?? d);
+                return <details key={m.model} className="group rounded-card border border-line bg-white open:basis-full open:border-brand/40">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden" title="Open: why this model, what it gets and what it does">
+                    <span className="flex -space-x-1.5">{[...m.crew].map((c) => <Avatar key={c} id={c} size="size-6" />)}</span>
+                    <span className="text-sm text-ink">{modelLabel(m.model)}</span>
+                    <span className={m.where === "local" ? "rounded-full bg-teal-soft px-2 py-0.5 text-xs text-teal" : "rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand"}>{m.where === "local" ? "On this Mac" : "Cloud"}</span>
+                    <span className="text-xs tabular-nums text-muted">{m.calls} calls · {(m.ms / m.calls / 1000).toFixed(1)} s each</span>
+                    <span aria-hidden className="ml-auto text-sm text-muted group-open:rotate-45 transition-transform">+</span>
+                  </summary>
+                  <div className="grid gap-5 border-t border-line-soft px-4 py-4 text-sm sm:grid-cols-3">
+                    <div><p className="text-xs uppercase tracking-widest text-muted">Why this model</p><p className="mt-2 leading-6 text-ink-2">{role ? role.why : "Configured for this job."}</p></div>
+                    <div><p className="text-xs uppercase tracking-widest text-muted">What it gets</p><p className="mt-2 leading-6 text-ink-2">{sees.length ? `The job's own text, and from you: ${sees.join(", ")}.` : "Public web pages and the crew's notes. None of your details."}</p><p className="mt-1 text-xs text-muted">{m.where === "local" ? "Runs on this Mac: nothing leaves it." : "Runs in the cloud."}</p></div>
+                    <div><p className="text-xs uppercase tracking-widest text-muted">What it does here</p><ul className="mt-2 space-y-1.5 text-ink-2">{[...m.tasks.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => <li key={t} className="flex gap-3"><span className="w-10 shrink-0 text-right tabular-nums text-muted">{n}×</span><span>{t}</span></li>)}</ul></div>
+                  </div>
+                </details>;
+              })}
             </div>
           </div>)}
         </div>
