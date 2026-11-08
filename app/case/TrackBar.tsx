@@ -6,6 +6,7 @@ import type { Profile } from "../../lib/profile";
 import { cx, LockIcon } from "../ui";
 import { milestones, summarise } from "./progress";
 import { STEPS } from "./steps";
+import { InsightsButton } from "./insights";
 
 const Check = ({ size = 10 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -90,7 +91,12 @@ export default function TrackBar({ profile, active, onSelect }: { profile: Profi
           })}
         </nav>
 
-        <div ref={pop} className="relative ml-auto">
+        {/* Patient insights (D84): the lightbulb button opens them in a pop-up. Renders nothing unless NEXT_PUBLIC_INSIGHTS=1. */}
+        <div className="ml-auto">
+          <InsightsButton profile={profile} />
+        </div>
+
+        <div ref={pop} className="relative">
           <button
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}

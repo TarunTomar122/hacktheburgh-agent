@@ -43,7 +43,7 @@ export async function fillNhsForm(page: Page, facts: CaseFacts, draft: Draft, op
   emit({ type: "status", message: "Opening the NHS Lothian form" });
   await page.goto(NHS_LOTHIAN_FORM, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("textarea", { timeout: 20000 });
-  await dismissCookies(page, 2500);
+  if ((await dismissCookies(page, 2500)) !== "none") emit({ type: "status", message: "Cleared a cookie banner covering the page" });
   const args = {
     page,
     goal: "Fill in the NHS Lothian online feedback/complaint form using the saved values. Do not submit.",
@@ -68,7 +68,7 @@ export async function fillNhsForm(page: Page, facts: CaseFacts, draft: Draft, op
 export async function fillNhsComplaint(facts: CaseFacts, draft: Draft, opts: { onEvent?: OnEvent; keepOpen?: boolean; extra?: ExtraAnswers } = {}): Promise<Step1Result> {
   if (!supportsLothian(facts)) throw new Error(SCOPE_NOTE);
   const runDir = path.join(process.cwd(), ".runs", new Date().toISOString().replace(/[:.]/g, "-"));
-  const emit = makeLogger(runDir, opts.onEvent);
+  const emit = makeLogger(runDir, opts.onEvent, 1);
   const { browser, page } = await openSession();
   let reviewing = false;
   try {

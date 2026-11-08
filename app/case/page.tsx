@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
-import { setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
+import { addStepEffort, setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
 import { Button, Callout, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
@@ -143,6 +143,7 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
     try {
       const done = await streamAgent("/api/agent/step1", { facts: profile.facts, draft, extra }, () => {});
       setResult(done);
+      if (done.effort) addStepEffort(1, done.effort); // patient insights: what Elliot did on this run
       if (done.status === "ready_to_submit") setProgress({ nhsFilled: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

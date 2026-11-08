@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import { goalsFrom } from "../../lib/agent/track";
 import { KIND_CHOICES, SEVERITY_CHOICES, YELLOW_CARD_SITE, yellowCardProblems, type YellowCardAnswers } from "../../lib/agent/yellowCardAnswers";
-import { setProgress, setYellowCard, skipStep, type Profile } from "../../lib/profile";
+import { addStepEffort, setProgress, setYellowCard, skipStep, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, Field, PageTitle } from "../ui";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
@@ -48,6 +48,7 @@ export default function YellowCardStep({ profile }: { profile: Profile }) {
     try {
       const done = await streamAgent("/api/agent/yellowcard", { facts: profile.facts, answers, extra: answered.current, resume }, () => {}); // no log on the page: the live panel shows the browser, like the NHS and ombudsman steps
       setResult(done);
+      if (done.effort) addStepEffort(6, done.effort); // patient insights
       if (done.status === "ready_to_submit") setProgress({ ycFilled: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

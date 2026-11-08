@@ -7,6 +7,7 @@ import type { Draft } from "./agent/draft";
 import { emptyFacts, type CaseFacts } from "./agent/facts";
 import type { SpsoAnswers } from "./agent/spsoAnswers";
 import type { YellowCardAnswers } from "./agent/yellowCardAnswers";
+import { addEffort, type Effort } from "./agent/effort";
 import { EMPTY_FUNDING, type Funding, type Step3Result } from "./agent/legalAidTypes";
 import type { EnquiryMessage, EnquiryOutcome, EnquiryRecord } from "./agent/enquiryTypes";
 import type { TrackId, TrackRecommendation } from "./agent/track";
@@ -35,7 +36,9 @@ export type Profile = {
   /** Step 2 (ombudsman). Opens after the NHS replies; answers are asked there, not at onboarding (D29). Missing in older saved profiles. */
   ombudsman?: { unlocked: boolean; answers: Partial<SpsoAnswers> };
   /** Milestones the app cannot work out from other data. nhsSent / spsoSent are self-reported (we cannot see the user press Send). Missing in older profiles. */
-  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; ycFilled?: boolean; ycSent?: boolean; skipped?: number[] };
+  progress?: { nhsFilled?: boolean; nhsSent?: boolean; spsoFilled?: boolean; spsoSent?: boolean; ycFilled?: boolean; ycSent?: boolean; skipped?: number[]; at?: Partial<Record<ProgressFlag, string>> };
+  /** Patient insights (branch patient-insights): what Elliot did per step (1 NHS, 2 ombudsman, 6 Yellow Card), counted from the run logs and added across re-runs. */
+  effort?: Partial<Record<number, Effort>>;
   /** Step 6 (Yellow Card, proposed): what is being reported, asked on the step only (D33). */
   yellowCard?: Partial<YellowCardAnswers>;
   /** Step 3 (D36): the calculator's money answers (asked on the step only, D33) and the result. `sample` = the result came from the fixture, not a real run. */
@@ -412,9 +415,24 @@ export function skipStep(step: number) {
   if (p && !cur.includes(step)) write({ ...p, progress: { ...p.progress, skipped: [...cur, step] } });
 }
 
+type ProgressFlag = "nhsFilled" | "nhsSent" | "spsoFilled" | "spsoSent" | "ycFilled" | "ycSent";
+
 export function setProgress(patch: NonNullable<Profile["progress"]>) {
   const p = read();
-  if (p) write({ ...p, progress: { ...p.progress, ...patch } });
+  if (!p) return;
+  // Patient insights: remember when each milestone first happened, for the case timeline. Older cases simply have no dates.
+  const at = { ...p.progress?.at };
+  const now = new Date().toISOString();
+  for (const [k, v] of Object.entries(patch)) if (v === true && k !== "skipped" && k !== "at" && !at[k as ProgressFlag]) at[k as ProgressFlag] = now;
+  write({ ...p, progress: { ...p.progress, ...patch, at } });
+}
+
+/** Patient insights: add a finished run's effort to its step (several runs of a step add up; websites are counted once). */
+export function addStepEffort(step: number, effort: Effort) {
+  const p = read();
+  if (!p) return;
+  const cur = p.effort?.[step];
+  write({ ...p, effort: { ...p.effort, [step]: cur ? addEffort(cur, effort) : effort } });
 }
 
 /** Add to the saved conversation (used when a step asks the user for something that was missing). */

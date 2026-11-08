@@ -125,7 +125,7 @@ export async function startYellowCardReport(page: Page, product: string, emit: O
   emit({ type: "status", message: "Opening the Yellow Card reporting site" });
   await page.goto(YELLOW_CARD_SITE, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
-  await dismissCookies(page, 3000);
+  if ((await dismissCookies(page, 3000)) !== "none") emit({ type: "status", message: "Cleared a cookie banner covering the page" });
   const chosen = await pickProduct(page, product, emit);
   if (!chosen) return null;
   // Seen as a plain element in the accessibility tree, so match by text on anything clickable rather than by role.
@@ -432,7 +432,7 @@ export type YellowCardResult = BrowserRun & { screenshot?: string; runDir: strin
 
 export async function fillYellowCard(facts: CaseFacts, answers: YellowCardAnswers, opts: { onEvent?: OnEvent; keepOpen?: boolean; extra?: ExtraAnswers; resume?: boolean } = {}): Promise<YellowCardResult> {
   const runDir = path.join(process.cwd(), ".runs", "yellowcard-" + new Date().toISOString().replace(/[:.]/g, "-"));
-  const emit = makeLogger(runDir, opts.onEvent);
+  const emit = makeLogger(runDir, opts.onEvent, 6);
   // Resume: carry on from the page the last run stopped on. Otherwise (or if that browser has gone) start again from the site's home page.
   const parked = opts.resume ? takeParked() : (dropParked(true), null);
   const { browser, page } = parked ?? (await openSession());

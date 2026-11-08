@@ -90,14 +90,14 @@ export type SpsoResult = BrowserRun & { screenshot?: string; runDir: string };
  */
 export async function fillSpsoComplaint(facts: CaseFacts, draft: Draft, answers: SpsoAnswers, opts: { onEvent?: OnEvent; keepOpen?: boolean; extra?: ExtraAnswers } = {}): Promise<SpsoResult> {
   const runDir = path.join(process.cwd(), ".runs", "spso-" + new Date().toISOString().replace(/[:.]/g, "-"));
-  const emit = makeLogger(runDir, opts.onEvent);
+  const emit = makeLogger(runDir, opts.onEvent, 2);
   const { browser, page } = await openSession();
   let reviewing = false;
   try {
     emit({ type: "status", message: "Opening the SPSO complaint form" });
     await page.goto(SPSO_FORM, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
-    await dismissCookies(page, 2500);
+    if ((await dismissCookies(page, 2500)) !== "none") emit({ type: "status", message: "Cleared a cookie banner covering the page" });
 
     const run = await runDecisionAgent({
       page,

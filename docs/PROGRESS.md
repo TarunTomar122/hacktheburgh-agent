@@ -8,6 +8,12 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 · Lea + Claude · IN PROGRESS (branch `patient-insights`, not committed) · Patient insights (D84, proposed)
+Shows the patient what Elliot did on their case, from its own run logs, with hurdles cleared, a run curve and a case timeline, in a pop-up opened by a lightbulb "Insights" button. Verified on all three demos (Yellow Card 5 hurdles, compensation 3, complaint 1). Full log and what is not done: `docs/plans/patient-insights-plan.md`.
+- **Verified live** on the Yellow Card site (fictional Isla, nothing sent): 1 website, 6 pages, 19 fields, 61 s, 5 logged hurdles, all shown on the case page.
+- `tsc`, `eslint .` and `scripts/test-effort.ts` pass.
+- **Dropped:** the policy-maker / four-nation idea, in favour of the patient (`NOT_DOING.md`).
+
 ### 2026-11-08 - Om + Claude - DONE - Yellow Card only reports "ready" on Step 4 of 4
 
 Run 2026-11-08 04:09 ended `ready_to_submit` on `/new-report` while the page was still a loading spinner: an empty page has no required fields, so the engine called it done, and the app would have marked step 6 filled. The old guard only caught `/`, `/report-guide` and `/about-you`.

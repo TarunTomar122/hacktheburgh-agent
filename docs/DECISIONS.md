@@ -410,4 +410,16 @@ Why: Lea wants the app to be multi-purpose within the medical topic, and the Yel
 - **Not seen:** the Yellow Card confirmation page (never submitted while probing). `SUBMITTED_TEXT` now also matches "thank you for your report / reporting", which is a guess. If it does not trigger, send the confirmation page's wording and add it.
 - **Compensation path (steps 3 and 4):** nothing to detect. The agent sends the firms' forms itself after the user's OK in step 4, and that step already marks each as sent.
 
-<!-- Add new entries above this line. Next number: D84 -->
+**D84 · 2026-11-08 · Lea (asked), Claude (built on branch `patient-insights`) · proposed, not merged**
+**Patient insights: show the patient the work Elliot did on their case, counted from its own run logs.**
+- **What:** a lightbulb "Insights" button in the step bar opens a pop-up with: headline numbers (hurdles cleared, websites, pages, fields, questions Elliot asked you), "Hurdles Elliot cleared for you" (a curated list by kind, each with its page), a step table, a curve of the last run, and a case timeline. Plan and log: `docs/plans/patient-insights-plan.md`.
+- **Rules:**
+  - Counts only, never estimates such as "hours saved".
+  - A hurdle exists only if a run logged it.
+  - A time limit is shown only if read on an official page.
+  - No organisation is cast as at fault: the process involves many bodies, websites and rules, and Elliot offers a simpler way through. Never "your case would have been dropped".
+- **Safety net:** built on its own branch; the screens render only with `NEXT_PUBLIC_INSIGHTS=1`.
+- **Not:** a policy-maker view or comparisons between nations (dropped, `NOT_DOING.md`).
+- **Touches:** the shared logger (`lib/agent/events.ts`, all form runs), `lib/profile.ts` (`effort`, `progress.at`), one status line in `decisionAgent.ts`, `StepAside.tsx` and `app/case/page.tsx`. Tell Tarun and Om before merging.
+
+<!-- Add new entries above this line. Next number: D85 -->

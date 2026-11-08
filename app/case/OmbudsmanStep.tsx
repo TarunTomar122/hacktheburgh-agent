@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { defaultAssumptions, spsoProblems, wordCount, type SpsoAnswers } from "../../lib/agent/spsoAnswers";
-import { setDraft, setOmbudsman, setProgress as markProgress, skipStep, type Profile } from "../../lib/profile";
+import { addStepEffort, setDraft, setOmbudsman, setProgress as markProgress, skipStep, type Profile } from "../../lib/profile";
 import { Button, Callout, control, cx, Eyebrow, LockIcon, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
@@ -120,6 +120,7 @@ function Unlocked({ profile }: { profile: Profile }) {
     try {
       const done = await streamAgent("/api/agent/step2", { facts: profile.facts, draft, answers: approved, extra }, () => {});
       setResult(done);
+      if (done.effort) addStepEffort(2, done.effort); // patient insights
       if (done.status === "ready_to_submit") markProgress({ spsoFilled: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

@@ -95,6 +95,8 @@ export async function runDecisionAgent(opts: {
   const lookedAgain = new Set<string>(); // pages re-observed once before asking the user
   const movedOnFrom = new Set<string>(); // pages left with a next/continue control because nothing was missing (once each, so it cannot loop)
   const sameClicks = new Map<string, number>(); // page + control -> times clicked, to catch a site that keeps refusing the same click
+  // Patient insights: a box the page hid and drew itself, ticked through its label (only ever one the user agreed to).
+  const hiddenBox = () => emit({ type: "status", message: "Ticked a box the page had hidden or drawn itself (you had agreed to it)" });
   let unsure: string[] = [];
   /**
    * An action threw. Up to MAX_ACTION_RETRIES times, forget the attempt so the field is tried again on a fresh look; after that, give up and
@@ -130,7 +132,7 @@ export async function runDecisionAgent(opts: {
         for (const e of todo) {
           const tsig = `t:${e.name}:${e.label}`;
           attempted.add(tsig);
-          const res = await tickCheckbox(page, e);
+          const res = await tickCheckbox(page, e, hiddenBox);
           emit({ type: "action", step, tool: "check", args: { id: e.id, label: e.label.slice(0, 40), reason: "the user chose this box" }, result: res });
           if (res !== "ok") retryLater(tsig, e.label, res);
         }
@@ -184,7 +186,7 @@ export async function runDecisionAgent(opts: {
       const p = a && a.type === "predicate" ? a.probability : 0;
       if (p < AGREE_PROBABILITY) continue; // user has not said yes: leave unticked
       if (!opts.allowCheckboxes) { emit({ type: "blocked", step, reason: `BLOCKED: model thinks the user agreed (p=${p.toFixed(2)}) but this task does not allow ticking consent boxes` }); continue; }
-      const res = await tickCheckbox(page, c.el);
+      const res = await tickCheckbox(page, c.el, hiddenBox);
       emit({ type: "action", step, tool: "check", args: { id: c.el.id, label: c.el.label.slice(0, 40), probability: +p.toFixed(2) }, result: res });
       if (res === "ok") acted++;
       else if (retryLater(c.sig, c.el.label, res)) failed++;
@@ -391,7 +393,8 @@ async function applyChoice(page: Page, el: El, choice: string, byKey: Map<string
 }
 
 async function tickRadio(page: Page, el: El): Promise<string> { return tickCheckbox(page, el); }
-async function tickCheckbox(page: Page, el: El): Promise<string> {
+/** `onLabel` is told when the box could only be ticked through its label (a hidden, self-drawn box): a hurdle for the patient insights. */
+async function tickCheckbox(page: Page, el: El, onLabel?: () => void): Promise<string> {
   const loc = page.locator(`[data-aid="${el.id}"]`);
   await pointAt(page, loc);
   try {
@@ -407,7 +410,10 @@ async function tickCheckbox(page: Page, el: El): Promise<string> {
         return box.checked;
       })
       .catch(() => false);
-    if (viaLabel) return "ok";
+    if (viaLabel) {
+      onLabel?.();
+      return "ok";
+    }
     return `error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
   }
 }

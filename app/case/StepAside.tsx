@@ -6,6 +6,7 @@ import { Eyebrow } from "../ui";
 import { milestones } from "./progress";
 import { STEPS } from "./steps";
 import { Tick } from "./TrackBar";
+import { StepEffort } from "./insights";
 
 /** The right-hand column of a step page: what this step does, its checklist, and what the path gets you. Sticky, compact. */
 export default function StepAside({ profile, step }: { profile: Profile; step: number }) {
@@ -33,6 +34,7 @@ export default function StepAside({ profile, step }: { profile: Profile; step: n
             </ul>
           </div>
         )}
+        <StepEffort profile={profile} step={step} />
         {chosen && (
           <div>
             <Eyebrow>What this path can get you</Eyebrow>
