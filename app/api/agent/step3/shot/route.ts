@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const u = new URL(req.url);
   const run = u.searchParams.get("run") ?? "";
   const file = u.searchParams.get("file") ?? "";
-  if (!/^(step[34]|complaint|discovery)-[0-9T-]+Z?$/.test(run) || !/^[a-zA-Z0-9-]+\.jpg$/.test(file)) return new Response("Not found", { status: 404 });
+  if (!/^(step[34]|complaint|discovery|escalation)-[0-9T-]+Z?(-[a-z0-9]{4})?$/.test(run) || !/^[a-zA-Z0-9-]+\.jpg$/.test(file)) return new Response("Not found", { status: 404 });
   // A run on this machine first, then the recorded demo run that ships with the repo (D63).
   for (const dir of [path.join(process.cwd(), ".runs", run), path.join(process.cwd(), "demo", run)]) {
     try {

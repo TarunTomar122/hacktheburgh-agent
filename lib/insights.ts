@@ -193,7 +193,7 @@ export function browserEvidence(runs: RunSummary[]): { title: string; run: strin
   ];
   return jobs.flatMap((job) => {
     for (const r of runs) {
-      if (!r.finished || !/^(step[34]|complaint|discovery)-[0-9T-]+Z?$/.test(r.id)) continue;
+      if (!r.finished || !/^(step[34]|complaint|discovery|escalation)-[0-9T-]+Z?(-[a-z0-9]{4})?$/.test(r.id)) continue;
       if (!r.access.some((a) => a.kind === "task" && job.reason.test(a.reason))) continue;
       const files = readdirSync(path.join(process.cwd(), ".runs", r.id)).filter((f) => job.shot.test(f)).sort();
       if (files.length) return [{ title: job.title, run: r.id, file: files[files.length - 1] }];
