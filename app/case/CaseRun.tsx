@@ -11,6 +11,7 @@ import FirmResults from "./FirmResults";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
 import { usePlannerRun } from "./usePlannerRun";
+import { useBrowserQuestionNotice } from "./useBrowserQuestionNotice";
 
 /**
  * "Prepare your case" (D52, D62). Elliot's crew works through the case as a story, one step at a time.
@@ -521,6 +522,7 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
 /* ------------------------------------------------------------------ the one question */
 
 function QuestionCard({ q, more, onAnswer }: { q: AskSpec; more: number; onAnswer: (id: string, v: string | null) => Promise<boolean> }) {
+  useBrowserQuestionNotice(true);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -540,7 +542,7 @@ function QuestionCard({ q, more, onAnswer }: { q: AskSpec; more: number; onAnswe
   };
   const site = crew === "nell" ? "slab.org.uk" : "";
   return (
-    <section className="rise flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-amber/30 border-l-4 border-l-amber bg-amber-soft/40 px-5 py-4" role="region" aria-live="polite" aria-label="A question for you">
+    <section data-agent-question tabIndex={-1} className="rise flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-amber/30 border-l-4 border-l-amber bg-amber-soft/40 px-5 py-4" role="region" aria-live="polite" aria-label="A question for you">
       <div className="min-w-[16rem] flex-1">
         <p className="text-[16px] font-medium leading-6 text-ink">{q.question}</p>
         <p className="mt-0.5 text-[12px] leading-5 text-muted">

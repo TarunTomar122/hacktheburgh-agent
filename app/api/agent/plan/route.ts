@@ -17,16 +17,16 @@ export async function POST(req: Request) {
     return Response.json({ error: "Complete your profile before making a complaint" }, { status: 400 });
   }
   const enc = new TextEncoder();
-  let cancelled = false;
+  let closed = false;
   let ping: ReturnType<typeof setInterval> | undefined;
   const stream = new ReadableStream({
     cancel() {
-      cancelled = true;
+      closed = true;
       clearInterval(ping);
     },
     async start(controller) {
       const send = (o: unknown) => {
-        if (!cancelled) controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+        if (!closed) controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
       };
       // Keep the connection alive while the crew waits for the user's answer.
       ping = setInterval(() => send({ type: "ping" }), 15000);
@@ -37,7 +37,11 @@ export async function POST(req: Request) {
         send({ type: "error", message: e instanceof Error ? e.message.split("\n")[0] : String(e) });
       } finally {
         clearInterval(ping);
-        if (!cancelled) controller.close();
+        // Approval can still log through this callback after the response ends.
+        if (!closed) {
+          closed = true;
+          controller.close();
+        }
       }
     },
   });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import { Button, control, Eyebrow } from "../ui";
 import type { DoneEvent } from "./streamAgent";
+import { useBrowserQuestionNotice } from "./useBrowserQuestionNotice";
 
 /** "* Forenames: (unsure, confidence 0.58)" -> "Forenames" */
 const clean = (s: string) => s.replace(/\s*\((?:unsure|no answer|no saved value fits|chosen option not found)[^)]*\)\s*$/i, "").replace(/^\s*\*\s*|\s*\*\s*$/g, "").replace(/:\s*$/, "").trim();
@@ -15,6 +16,7 @@ const clean = (s: string) => s.replace(/\s*\((?:unsure|no answer|no saved value 
 export default function AgentAsk({ result, busy, onAnswer }: { result: DoneEvent; busy: boolean; onAnswer: (extra: ExtraAnswers) => void }) {
   const items = (result.unfilled.length ? result.unfilled : result.question ? [result.question] : []).map(clean).filter(Boolean);
   const [values, setValues] = useState<string[]>(() => items.map(() => ""));
+  useBrowserQuestionNotice(result.unfilled.length > 0 && !busy);
   // No concrete question (the agent got stuck on a page): offer a retry instead of a meaningless question.
   if (result.unfilled.length === 0) {
     return (
@@ -29,7 +31,7 @@ export default function AgentAsk({ result, busy, onAnswer }: { result: DoneEvent
   }
   const ready = values.every((v) => v.trim());
   return (
-    <section className="overflow-hidden rounded-card border border-brand/30 bg-white">
+    <section data-agent-question tabIndex={-1} className="overflow-hidden rounded-card border border-brand/30 bg-white">
       <div className="space-y-1 bg-brand-soft/60 px-6 py-4">
         <Eyebrow className="text-brand">The form asked something we do not know</Eyebrow>
         <p className="text-sm text-ink-2">Answer below and we will fill it in again. Nothing has been sent.</p>

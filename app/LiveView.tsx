@@ -93,6 +93,12 @@ export default function LiveView() {
   const [mode, setMode] = useState<Mode>("hidden");
   // Closed until the user clicks the floating button: the agents work in the background (Tarun, 2026-11-07).
   const [open, setOpen] = useState(false);
+  const [questionPending, setQuestionPending] = useState(false);
+  useEffect(() => {
+    const onQuestion = (event: Event) => setQuestionPending((event as CustomEvent<boolean>).detail);
+    window.addEventListener("live-question", onQuestion);
+    return () => window.removeEventListener("live-question", onQuestion);
+  }, []);
   // True when a page opened the panel for the user (the "live-open" event) rather than the user clicking the button.
   const autoOpened = useRef(false);
   const [url, setUrl] = useState("");
@@ -482,6 +488,23 @@ export default function LiveView() {
     );
   }
 
+  function questionNotice(close: () => void) {
+    if (!questionPending) return null;
+    return (
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-card border border-amber/30 bg-amber-soft p-3">
+        <p role="status" className="text-sm text-ink">An agent needs your answer. Return to the case screen to continue.</p>
+        <Button size="sm" onClick={() => {
+          close();
+          requestAnimationFrame(() => {
+            const question = document.querySelector<HTMLElement>("[data-agent-question]");
+            question?.focus({ preventScroll: true });
+            question?.scrollIntoView({ block: "center" });
+          });
+        }}>Return to question</Button>
+      </div>
+    );
+  }
+
   /** Inline mode: a clicked tile opens here, centred, at a normal scale. */
   function watchModal() {
     const page = pages.find((p) => p.pageId === focused);
@@ -490,7 +513,7 @@ export default function LiveView() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-label={page?.label ?? "Browser"}>
         <button aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={() => focus(null)} />
-        <div className="rise relative flex flex-col gap-3 rounded-card bg-white p-5">
+        <div className="rise relative flex max-h-full flex-col gap-3 overflow-y-auto rounded-card bg-white p-5">
           <div className="flex items-center gap-3">
             {who && (
               // eslint-disable-next-line @next/next/no-img-element -- tiny static avatar
@@ -507,7 +530,8 @@ export default function LiveView() {
               Close
             </Button>
           </div>
-          <div className="flex" style={{ width: size.width, height: size.height }}>
+          {questionNotice(() => focus(null))}
+          <div className="flex min-h-0" style={{ width: size.width, height: size.height }}>
             {bigView()}
           </div>
         </div>
@@ -522,6 +546,10 @@ export default function LiveView() {
       style={inline ? undefined : { width }}
       aria-label="The agent's browser, live"
     >
+      {!inline && questionNotice(() => {
+        autoOpened.current = false;
+        setOpen(false);
+      })}
       {!inline && (
       <div
         role="separator"
