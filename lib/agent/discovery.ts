@@ -431,7 +431,7 @@ You do not search or read yourself in this run: call update_plan with one short 
       doing: (name, a) => {
         switch (name) {
           case "web_search":
-            return `Searching: ${short(String(a.query ?? ""), 60)}`;
+            return `Searching: ${String(a.query ?? "")}`;
           case "read_page":
             return `Reading ${host(String(a.url ?? "")) || "a page"}`;
           case "record_step":
