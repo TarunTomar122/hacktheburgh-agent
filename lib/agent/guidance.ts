@@ -95,8 +95,8 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   // A PDF can come out with broken spacing ("f or first -line"): such quotes are not shown to the patient; look for a clean page.
   const clean = (q: { quote: string; checked: boolean }) => q.checked && q.quote.split(/\s+/).filter((w) => /^[a-z]{1,2}$/i.test(w)).length <= q.quote.split(/\s+/).length * 0.25;
   const hostOf = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
-  /** Who published a page: the guidance body when it is on the body's own site, otherwise the page's own title or site (never the body by default). */
-  const publisherOf = (url: string, title: string) => (g?.body && hostOf(url) && hostOf(start) && (hostOf(url) === hostOf(start) || hostOf(url).endsWith(`.${hostOf(start)}`)) ? g.body : title || hostOf(url));
+  /** Who published a page: the guidance body when it is on the body's own site, otherwise the site it is on (never the body by default; a page title is not a publisher). */
+  const publisherOf = (url: string, title: string) => (g?.body && hostOf(url) && hostOf(start) && (hostOf(url) === hostOf(start) || hostOf(url).endsWith(`.${hostOf(start)}`)) ? g.body : hostOf(url) || title);
   type Cand = { url: string; title: string; quotes: string[] };
   type Judged = { cand: Cand; verdicts: ApplicabilityVerdict[]; applicable: string[]; rejected: ApplicabilityVerdict[]; foreign: boolean };
   /** Does this page's recommendation apply to this patient (age group, condition, setting, place)? A page that does not is not the end of the search. */
@@ -126,35 +126,39 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
       tried.push(j);
       return j.applicable.length ? j : null;
     };
-    const found = await exploreSite(ctx, start, `the clinical guidance recommendation about ${condition}`, { want: "page" });
-    const hit1 = await tryPage(found.ok ? found.url : start);
-    if (hit1) return { best: hit1, tried };
-    // The body's own site did not lead there (or what it had is not for this patient): search for its guidance on this condition, its own site first, then anywhere.
-    await note.log("recover", `Nothing that applies on ${found.ok ? found.url : start}; searching for guidance on ${condition}`);
+    // Fast first: three searches at once through the search API (the body's own site, the body by name, the place), and the
+    // pages read with plain requests where they allow it. The browser explores the body's site only if that finds nothing,
+    // and general guidance from elsewhere (labelled) comes last. Everything stops at the time budget, so the forms never wait long.
+    const until = Date.now() + Number(process.env.GUIDANCE_BUDGET_MS ?? 100_000);
+    const left = () => until - Date.now();
     const host = new URL(start).hostname.replace(/^www\./, "");
     const queries = [`site:${host} ${condition} recommendation`, `${g?.body ?? ""} guideline ${condition} recommendation ${where}`, `${condition} clinical guideline recommendation ${where}`];
-    let reads = 0;
-    for (const q of queries) {
-      if (reads >= 5) break;
-      const hits = await webSearch(p, q, note, kit.track).catch(() => []);
-      for (const h of hits.slice(0, 3)) {
-        if (reads >= 5) break;
-        if (seen.has(h.url)) continue;
-        reads++;
-        const j = await tryPage(h.url);
-        if (j) return { best: j, tried };
-      }
+    const lists = await Promise.all(queries.map((q) => webSearch(p, q, note, kit.track).catch(() => [])));
+    const cands: string[] = [];
+    for (let i = 0; i < 3; i++) for (const l of lists) if (l[i] && !cands.includes(l[i].url)) cands.push(l[i].url);
+    for (const url of cands.slice(0, 6)) {
+      if (left() < 8000) break;
+      const j = await tryPage(url);
+      if (j) return { best: j, tried };
+    }
+    if (left() > 30_000) {
+      await note.log("recover", `Searches found nothing that applies; exploring ${host} for its guidance on ${condition}`);
+      const found = await exploreSite(ctx, start, `the clinical guidance recommendation about ${condition}`, { want: "page", maxHops: 3 });
+      const hit = await tryPage(found.ok ? found.url : start);
+      if (hit) return { best: hit, tried };
     }
     // Nothing from this place's own bodies fits: general clinical practice for the condition from anywhere reputable, clearly labelled as not from here.
-    await note.log("recover", `Nothing from ${where || "this place"} fits; looking for general clinical guidance on ${condition}`);
-    const general = await webSearch(p, `${condition} clinical guideline management recommendation`, note, kit.track).catch(() => []);
-    let more = 0;
-    for (const h of general) {
-      if (more >= 3) break;
-      if (seen.has(h.url)) continue;
-      more++;
-      const j = await tryPage(h.url, true);
-      if (j) return { best: j, tried };
+    if (left() > 10_000) {
+      await note.log("recover", `Nothing from ${where || "this place"} fits; looking for general clinical guidance on ${condition}`);
+      const general = await webSearch(p, `${condition} clinical guideline management recommendation`, note, kit.track).catch(() => []);
+      let more = 0;
+      for (const h of general) {
+        if (more >= 3 || left() < 5000) break;
+        if (seen.has(h.url)) continue;
+        more++;
+        const j = await tryPage(h.url, true);
+        if (j) return { best: j, tried };
+      }
     }
     return { best: null, tried };
   }, 360_000);

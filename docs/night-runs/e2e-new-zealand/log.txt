@@ -78,3 +78,25 @@ RESEARCH discovery-2026-11-08T06-10-55-007Z 2.0 min: complaint=Health and Disabi
 [248s] case [robin] Checked Jania Baigent on its own website.
 [250s] case [robin] Checked Adam Ross on its own website.
 [284s] case [robin] Could not finish: checked Robert Gapes's website
+[289s] case [robin] Searched the web, 10 results
+[291s] case [robin] Searched the web, 10 results
+[291s] case [robin] Searched the web
+[291s] case [robin] Searched the web
+[293s] case [robin] Searched the web
+[310s] case [robin] Searched New Zealand Law Society
+[315s] case [iona] Found the clinical guidance
+[316s] case [elliot] Shortlist available Auckland ACC lawyers
+[318s] case [elliot] Jania Baigent: fit 21%
+[322s] case [elliot] Prepare the shortlisted firm forms
+[342s] case [kit] Jania Baigent: No online enquiry form on their website
+[365s] case [kit] Adam Ross: No online enquiry form on their website
+[369s] case [elliot] ACC treatment injury looks like the main compensation route here, and a lawyer would be most useful if ACC cover, entitlements, or any review or appeal becomes disputed. I found two Auckland accident 
+
+CASE step3-2026-11-08T06-12-38-343Z 4.2 min (research 2.0 min)
+  funding: unlikely "This page does not say whether an adult can get legal aid for a clinical negligence claim, whether no win no fee is allowed, or whether there is a cap. It only "
+  firms: 3 found, 2 checked on their sites, shortlist jania-baigent, adam-ross
+  guidance: What X-ray views are recommended for diagnosing a suspected scaphoid fracture?: "For suspected scaphoid fractures, a standard 3-view radiographic examination of the wrist (posteroanterior, lateral, and"; gaps 2; decisions 0
+  enquiries: Jania Baigent: no_form (0 fields); Adam Ross: no_form (0 fields)
+  questions to the patient: 0
+  pages fetch 6 / browser 2; firms fetch 0 / browser 2; searches api 15 cache 0 browser 0; browser jobs 5
+  browser because: page: the page is built by scripts (almost no text without a browser) | task: searched the lawyer register with its own search filters (its search box) | firm: their home page: the site refused a plain request (403), a bot check | firm: their home page: the site answered 999 | page: the site refused a plain request (403), a bot check | task: searched the lawyer register with its own search filters (area of law) | task: filled Jania Baigent's enquiry form (0 fields) and stopped before Send | task: filled Adam Ross's enquiry form (0 fields) and stopped before Send

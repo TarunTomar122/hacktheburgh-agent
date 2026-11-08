@@ -166,7 +166,8 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             fundingQuote = r.value.quotes.find((q) => q.checked);
             fundingSource = f?.body ?? r.value.title;
             calculatorText = r.value.answer;
-            verdict = /not (available|in scope|covered)|no longer|unlikely/i.test(r.value.answer) ? "unlikely" : "unknown";
+            // A page that does not say is not a "no": only a clear statement that legal aid is not available counts.
+            verdict = /does not (say|mention|state|specify)|doesn't say|not clear|unclear/i.test(r.value.answer) ? "unknown" : /\b(legal aid|it) is not (available|in scope|covered)|no longer (available|covered|funded)|not (eligible|available) for (clinical|medical)/i.test(r.value.answer) ? "unlikely" : "unknown";
             kit.finding(`${fundingSource}: ${r.value.answer}`, r.value.url, "nell");
             kit.emit({ type: "verdict", verdict });
             return `${r.value.answer}\nQuotes: ${r.value.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ")}`;
