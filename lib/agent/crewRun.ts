@@ -260,7 +260,8 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
           const a = await ask({ agent: "Planner", crew: "elliot", question: String(args.question ?? ""), why, kind: (String(args.kind ?? "text") as AskSpec["kind"]) || "text", options: args.options as string[] | undefined });
           out = a === null ? "The user did not answer. Carry on without it." : `The user answered: ${a}`;
         } else if (call.name === "finish") out = "Finished.";
-        else out = await flow.exec(call, args, thought, kit);
+        // The crew member who owns the call is the one on the ledger and the access log, also for work outside a browser tab.
+        else out = await withLedger({ agent: who }, () => flow.exec(call, args, thought, kit));
       } catch (e) {
         out = `Error: ${(e instanceof Error ? e.message : String(e)).split("\n")[0]}`;
       }

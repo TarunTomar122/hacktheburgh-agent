@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { allRuns, browserReasons, type Flow, type RunSummary } from "../../lib/insights";
 
@@ -26,7 +27,15 @@ const CREW = [
   { id: "kit", name: "Kit", job: "Fills each firm's enquiry form and stops before Send.", why: "The only one who types your name and contact details." },
 ];
 
-export default async function Insights() {
+export default function Insights() {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-6xl px-8 py-12 text-[14px] text-muted">Reading the runs…</main>}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+async function Dashboard() {
   await connection(); // read the run folders on every visit, never at build time
   const runs = allRuns();
   const recent = runs.filter((r) => r.finished);

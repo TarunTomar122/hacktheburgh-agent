@@ -700,7 +700,7 @@ export async function vetFirmQuick(firm: FirmFinding, note: Note, track: Tracker
   const by = new Map(answers.map((a) => [a.name, a]));
   const actsForPatients = tri(by.get("defends")) === "yes" ? "no" : tri(by.get("patients"));
   // Only the browser may rule a firm out or leave it unclear: a plain request may have missed part of the page.
-  if (actsForPatients !== "yes") return { ok: false, why: `the plain page did not clearly say they act for patients (${said(by.get("patients"))}), so the browser looks properly` };
+  if (actsForPatients !== "yes") return { ok: false, why: actsForPatients === "no" ? "the plain page suggests they do not act for patients; only the browser may rule a firm out, so it checks" : "the plain page did not clearly say they act for patients, so the browser looks properly" };
   const noWinNoFee = tri(by.get("nwnf"));
   await note.log("decide", `Acts for patients: ${said(by.get("patients"))}`, { confidence: conf(by.get("patients")) });
   await note.log("decide", `Offers no win, no fee: ${said(by.get("nwnf"))}`, { confidence: conf(by.get("nwnf")) });
