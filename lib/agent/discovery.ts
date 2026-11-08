@@ -10,28 +10,22 @@ import { parseSpeed, speedLabel, type Speed } from "./discoverySpeed";
 import { confidenceOf, evidenceOf, ROUTE_KINDS, type Place, type RouteKind, type RouteMap, type RouteStep, type Source } from "./routeTypes";
 import { checkClaimNumbers, formatQuantity, isEnactedUrl, parseQuantities, scrubUnbacked, type EvidenceQuote } from "./evidence-claims";
 import { CREW, type CrewId, type DiscoveryResult, type Thought } from "./plannerTypes";
-import { exploreSite, normText, normUrl, quoteInText, readPage, type PageReading } from "./workers/explore";
+import { normText, normUrl, quoteInText, readPage, type PageReading } from "./workers/explore";
 import type { WorkerCtx } from "./workers/types";
 
 /**
  * Discovery (night plan, "Elliot anywhere"): the crew works out, live, how the health and legal system works for this
- * patient's place, and finds the real pages and forms. Nothing about any country or site is in this file: the place
+ * patient's place, and finds the real pages. Nothing about any country or site is in this file: the place
  * comes from the patient's words, the sites from live search and exploration, and every fact from a quote that code
  * finds in the page it came from.
  */
 
-const WHO = { who: { type: "string", enum: ["robin", "iona", "nell"], description: "Which crew member does this: Robin (rules, bodies, lawyers, and finding the real online forms), Iona (clinical guidance), Nell (funding)." } };
+const WHO = { who: { type: "string", enum: ["robin", "iona", "nell"], description: "Which crew member does this: Robin (rules, bodies, lawyers, free help and records), Iona (clinical guidance), Nell (funding)." } };
 
 const TOOLS = [
   PLAN_TOOL,
   tool("web_search", "Search the web (a search API, with a browser search as backup) to find candidate pages; then open them to read and quote. Use it to find the official pages; prefer government, health service, ombudsman, regulator, court and law society sites.", { query: { type: "string" }, ...WHO }, ["query", "who"]),
   tool("read_page", "Open a page and answer a question from it, with short verbatim quotes and links worth following.", { url: { type: "string" }, question: { type: "string" }, ...WHO }, ["url", "question", "who"]),
-  tool("explore_site", "From a page, find your way through the site (menus, links, buttons, its search box) to the page or online form that meets a goal. Reports the path taken, the form's fields, and any wall (login, CAPTCHA, phone or post only).", {
-    url: { type: "string" },
-    goal: { type: "string", description: "e.g. 'the online form to complain about care at <hospital>'" },
-    want: { type: "string", enum: ["form", "page"] },
-    ...WHO,
-  }, ["url", "goal", "want", "who"]),
   tool("record_step", "Record one part of the route once you have read it on real pages. Quotes must be copied word for word from pages you opened in this run; code checks them.", {
     kind: { type: "string", enum: ROUTE_KINDS.map((k) => k.kind) },
     body: { type: "string", description: "Who: the organisation's name as it calls itself" },
@@ -39,7 +33,7 @@ const TOOLS = [
     points: { type: "array", items: { type: "string" }, description: "Up to 6 key facts, each short and backed by one of the quotes: time limits, stages and response times, caps or thresholds, conditions, costs, what is free" },
     deadline: { type: "string", description: "The time limit, in the source's words, if there is one" },
     how: { type: "string", enum: ["online_form", "email", "post", "phone", "login_required", "court", "unknown"] },
-    url: { type: "string", description: "The page or online form found" },
+    url: { type: "string", description: "The official page found" },
     wall: { type: "string", description: "Anything that stops an agent: login, CAPTCHA, phone or post only" },
     requires: { type: "array", items: { type: "string" }, description: "What must happen first, in the source's terms (e.g. the provider's final response)" },
     applies_if: { type: "string", description: "When this route applies at all (e.g. public care only; a value limit)" },
@@ -51,9 +45,9 @@ const TOOLS = [
   FINISH_TOOL,
 ];
 
-const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real pages and online forms they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. You can only open pages this run found: a search result, or a link or path on a page already opened.
+const SYSTEM = (place: Place) => `You lead a crew that works out, live in a browser, how the health and legal system works for one patient, and finds the real official pages they will need. You have no list of websites: find everything by searching and exploring, and trust only what you read on official pages in this run. You can only open pages this run found: a search result, or a link or path on a page already opened.
 The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply (countries with several systems, like the UK nations, Australian or US states, differ).
-Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for). Robin also looks for the online complaint form where it is quick to find (one or two attempts per body); the form itself is not the goal here, and if it is hidden, blocked or needs a login, note that in "wall" and move on. Never ask the patient to sign in. Never fill anything here.
+Your crew: Robin (complaints, ombudsman or regulator, compensation route, lawyers, free help, records), Iona (the clinical guidance doctors follow there), Nell (how a claim can be paid for). Do NOT look for online forms in this phase (a later step finds and fills them): for how to complain or apply, record the official page that explains it. Never ask the patient to sign in. Never fill anything here.
 Find, for this place: ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
 How to work:
 - Start with update_plan. Give different crew members jobs in the SAME turn so they work at the same time (one tool call each); one member's calls run in order.
@@ -63,7 +57,7 @@ How to work:
 - Laws change: for any statute or regulation use the current, amended (consolidated or revised) text, never the as-enacted original; if a page is the original, find the revised version before recording a period.
 - Sources can be out of date (schemes get renamed, limits change). When two sources disagree, prefer the body's own current page over third parties and the newer over the older; record the conflict in "what" ("X's page still says ...").
 - When what you read contradicts your plan or your memory, say so with update_plan (drop or replace the step) and follow what the official page says.
-- For complaint and escalation, go all the way to the actual online form with explore_site (want: form) and report its fields or the wall that stops it. The patient will use it.
+- For complaint and escalation, record the official page that explains how to complain or apply. Do not hunt for the form itself.
 - For lawyers, find the official register or directory the profession runs, and how to search it (by area of law and place). For funding, find any official online eligibility checker.
 - Breadth first, then depth: record_step each part as soon as one official page backs it (you can record it again later with more), so all 8 parts are on the map even if time runs out. Then go deep.
 - Go deep: a part is only done when you have its key facts from the body's own pages (time limits, stages and response times, caps or thresholds, conditions, costs, what is free), not just a home page. Read the second-level pages (eligibility, "how we handle", guidance documents). Do not stop at a finder page: for funding, find out whether the help actually covers this kind of claim for an adult.
@@ -81,7 +75,7 @@ const withoutWho = (t: (typeof TOOLS)[number]) => {
   const { who: _who, ...props } = params.properties;
   return { ...t, parameters: { ...params, properties: props, required: params.required.filter((r) => r !== "who") } };
 };
-const WORK_TOOLS = ["web_search", "read_page", "explore_site", "record_step"];
+const WORK_TOOLS = ["web_search", "read_page", "record_step"];
 
 const AutoStep = z.object({
   record: z.boolean(),
@@ -102,7 +96,7 @@ const BATCH_NOTE = `Speed: call every independent tool in the same turn (many se
 const WORKER_SYSTEM = (place: Place, id: CrewId, brief: string) => `You are ${CREW[id].name}, one member of a crew that works out, live, how the health and legal system works for one patient, and finds the real official pages. The lead gave you this job: ${brief}
 The patient's place: ${[place.hospital, place.city, place.region, place.country].filter(Boolean).join(", ")} (${place.careSetting} care). The rules of THAT place apply.
 Parts of the route (kinds): ${ROUTE_KINDS.map((k) => `${k.kind}: ${k.question}`).join(" | ")}.
-Searches are scarce (about 12 for the whole crew, so use at most 3): ONE query returns about 10 pages, so aim each at one part and then read the pages and follow their links instead of searching again. Work fast: call many tools in one turn (several searches and reads at the same time). You can only open pages this run found (search results, or links on pages you opened). Search, read the official pages, and record_step each part as soon as an official page backs it, with 1-3 verbatim quotes copied from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only for the body itself or a government, health service, ombudsman, regulator, court or professional body. Use current consolidated law, never the as-enacted text. Time limits come from the national rules AND the provider's page. For a complaint or escalation, try explore_site (want: form) once or twice per body; if the form is hidden, blocked or needs a login, put it in "wall" and move on. Never ask the patient anything, never sign in, never fill anything. Say "not found" honestly. When you have all you can in a few turns, call member_done.`;
+Searches are scarce (about 12 for the whole crew, so use at most 3): ONE query returns about 10 pages, so aim each at one part and then read the pages and follow their links instead of searching again. Work fast: call many tools in one turn (several searches and reads at the same time). You can only open pages this run found (search results, or links on pages you opened). Search, read the official pages, and record_step each part as soon as an official page backs it, with 1-3 verbatim quotes copied from pages you opened (code checks them; unchecked quotes count for nothing). Mark a source official only for the body itself or a government, health service, ombudsman, regulator, court or professional body. Use current consolidated law, never the as-enacted text. Time limits come from the national rules AND the provider's page. Do not look for online forms; record the official page that explains how to complain or apply. Never ask the patient anything, never sign in, never fill anything. Say "not found" honestly. When you have all you can in a few turns, call member_done.`;
 
 export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; runId?: string; speed?: string | Speed } = {}): Promise<DiscoveryResult> {
   const speed: Speed = typeof opts.speed === "object" ? opts.speed : parseSpeed(opts.speed ?? process.env.DISCOVERY_SPEED ?? "fast"); // fast unless told otherwise
@@ -133,7 +127,6 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const allowed = (u: string) => known.has(hostOf(u));
   const opened = new Set<string>(); // hosts whose pages were really opened (for "official")
   const visited = new Set<string>(); // exact pages opened in this run (normalised URLs)
-  const forms = new Set<string>(); // pages where explore_site really reached a form
   const signedIn = new Set<string>(); // pages the patient signed in on, so the crew could carry on
   const titles = new Map<string, string>(); // url -> normalised page title + first heading (for officialness)
   const rememberTitle = async (p: Page) => {
@@ -193,12 +186,6 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
     const out2 = await readOne({ ...a, url: alt }, who, thought, kit);
     return `${out}\nTried another page instead: ${alt}\n${speed.autorecord ? await autoRecord({ ...a, url: alt }, out2, who, kit) : out2}`;
   };
-  const recoverExplore = async (a: Record<string, unknown>, out: string, who: CrewId, thought: Thought, kit: CrewKit): Promise<string> => {
-    if (!/^Not found/.test(out)) return out;
-    const hits = await searchOne({ query: `${host(String(a.url ?? ""))} ${String(a.goal ?? "")}`.slice(0, 160) }, who, thought, kit);
-    return /^(Could not|No results|Search limit)/.test(hits) ? out : `${out}\nOther pages a search found (read_page one of them):\n${hits}`;
-  };
-
   /** Read one page for the crew; returns what the planner sees. */
   const readOne = async (a: Record<string, unknown>, who: CrewId, thought: Thought, kit: CrewKit): Promise<string> => {
     const url = String(a.url ?? "");
@@ -232,39 +219,11 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
     return `${v.title} (${v.url})\n${v.answer}\nQuotes: ${v.quotes.filter((q) => q.checked).map((q) => `"${q.quote}"`).join(" | ") || "none checked"}\nLinks: ${v.links.map((l) => `${l.text} -> ${l.url}`).join("; ")}`;
   };
 
-  const exploreOne = async (a: Record<string, unknown>, who: CrewId, thought: Thought, kit: CrewKit): Promise<string> => {
-    const url = String(a.url ?? "");
-    if (!allowed(url)) return `Blocked: ${url} was not found in this run. Search for it, or follow a link from a page you opened.`;
-    const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
-      const v = await exploreSite(ctxFor(kit, p, note, who), url, String(a.goal ?? ""), { want: a.want === "form" ? "form" : "page" });
-      if (!p.isClosed()) {
-        if (!/\.pdf(\?|#|$)/i.test(p.url())) {
-          remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
-          await rememberTitle(p);
-        }
-        if (!v.wall) opened.add(hostOf(p.url()));
-      }
-      return v;
-    }, 150_000);
-    if (!r.ok) return `Could not explore ${url}: ${r.error}`;
-    const v = r.value;
-    learn(v.url);
-    v.path.forEach((x) => learn(x.url));
-    visited.add(keyOf(v.url));
-    v.path.forEach((x) => visited.add(keyOf(x.url)));
-    if (v.ok && v.form) forms.add(keyOf(v.url));
-    if (v.handedOff) signedIn.add(keyOf(v.url));
-    const path = v.path.map((s, i) => `${i + 1}. ${s.via} -> ${s.url}`).join("\n");
-    if (!v.ok) return `Not found. ${v.summary}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail}) at ${v.wall.url}` : ""}\nPath:\n${path}`;
-    if (v.form) kit.finding(`${host(v.url)}: online form found (${v.form.fields.length} fields${v.form.multiPage ? ", several pages" : ""})`, v.url, who);
-    return `Found: ${v.url}\n${v.summary}${v.form ? `\nForm fields: ${v.form.fields.map((f) => `${f.label}${f.required ? "*" : ""}`).join(", ")}${v.form.multiPage ? " (several pages)" : ""}` : ""}${v.wall ? `\nWall: ${v.wall.kind} (${v.wall.detail})` : ""}\nPath:\n${path}`;
-  };
-
   const searchOne = async (a: Record<string, unknown>, who: CrewId, thought: Thought, kit: CrewKit): Promise<string> => {
     const r = await kit.inTab(thought, who, "Search", (p, note) => webSearch(p, String(a.query ?? ""), note, kit.track), 150_000);
     if (!r.ok) return `Could not search: ${r.error}`;
     r.value.forEach((x) => learn(x.url));
-    return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || (searchBudgetUsed(kit.track) ? "Search limit reached for this run: do not search again. Read pages you already found, follow their links, or use explore_site on a site you know." : "No results.");
+    return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || (searchBudgetUsed(kit.track) ? "Search limit reached for this run: do not search again. Read pages you already found, follow their links." : "No results.");
   };
 
   /** Record one route step (the code checks every quote, number, officialness and form claim). */
@@ -326,7 +285,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
       deadline: deadlineOk ? String(a.deadline) : undefined,
       ...deadlineCheckOf(deadlineOk ? String(a.deadline) : undefined, sources),
       // "online form" only where the crew really reached a form; a URL only if this run opened that page (code checks).
-      how: ((h) => (h === "online_form" && !(a.url && forms.has(keyOf(String(a.url)))) ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"),
+      how: ((h) => (h === "online_form" ? "unknown" : h))((String(a.how ?? "unknown") as RouteStep["how"]) || "unknown"), // forms are found later, when the case is filed
       url: a.url && visited.has(keyOf(String(a.url))) ? String(a.url) : undefined,
       wall: a.wall ? String(a.wall) : undefined,
       handedOff: a.url && signedIn.has(keyOf(String(a.url))) ? true : undefined,
@@ -355,7 +314,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   return runCrew<DiscoveryResult>(
     {
       prefix: "discovery",
-      system: SYSTEM(place) + `\n${SEARCH_NOTE}` + (speed.batch ? `\n${BATCH_NOTE}` : "") + (speed.workers ? `\nYou do not search or read yourself in this run: update_plan, then assign_jobs ONCE so Robin, Iona and Nell work at the same time (give each concrete briefs: Robin the hospital, complaint, escalation, compensation, lawyers, free help and records, and the forms; Iona the clinical guidance; Nell the funding). You get the merged route back. If a part is still missing or weak, assign_jobs once more with only the gaps; otherwise finish. You may record_step too.` : ""),
+      system: SYSTEM(place) + `\n${SEARCH_NOTE}` + (speed.batch ? `\n${BATCH_NOTE}` : "") + (speed.workers ? `\nYou do not search or read yourself in this run: update_plan, then assign_jobs ONCE (there is only one round) so Robin, Iona and Nell work at the same time (give each concrete briefs: Robin the hospital, complaint, escalation, compensation, lawyers, free help and records; Iona the clinical guidance; Nell the funding). You get the merged route back. When they report back, record_step anything still unrecorded that they reported with quotes, then finish. You may record_step too.` : ""),
       tools: speed.workers ? [PLAN_TOOL, ASSIGN_TOOL, ...TOOLS.filter((t) => t.name === "record_step"), ASK_TOOL, FINISH_TOOL] : TOOLS,
       ...(speed.fastmodel || speed.workers ? { turnModel: (turn: number) => (turn === 1 && !speed.workers ? { model: MODELS.draft, effort: "low" as const } : { model: MODELS.browser, effort: "low" as const }) } : {}),
       ...(speed.batch ? { tabLimit: 6 } : {}),
@@ -363,15 +322,15 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
         ? {
             workers: {
               model: { model: MODELS.browser, effort: "low" as const },
-              maxTurns: 6,
-              maxRounds: 2,
+              maxTurns: 3,
+              maxRounds: 1,
               take: () => pending.splice(0),
               system: (id: CrewId, brief: string) => WORKER_SYSTEM(place, id, brief),
               tools: () => [...TOOLS.filter((t) => WORK_TOOLS.includes(t.name)).map(withoutWho), MEMBER_DONE],
               merge: (round: number) => {
                 const have = ROUTE_KINDS.map((k) => ({ k, s: steps.get(k.kind) }));
                 const lines = have.map(({ k, s }) => (s ? `- ${k.kind}: ${s.body} (${s.confidence}${s.deadline ? `, limit ${s.deadline}` : ""}${s.deadlineCheck === "one_site" ? ", limit on one site only" : ""})` : `- ${k.kind}: NOT FOUND`));
-                return `Round ${round} is over. The route so far:\n${lines.join("\n")}\n${round >= 2 ? "No more worker rounds: record_step anything you can still back from what was reported, then finish." : "If an important part is missing or weak, assign_jobs once more with only those gaps; otherwise finish."}`;
+                return `Round ${round} is over. The route so far:\n${lines.join("\n")}\n${round >= 1 ? "No more worker rounds: record_step anything you can still back from what was reported, then finish." : "If an important part is missing or weak, assign_jobs once more with only those gaps; otherwise finish."}`;
               },
             } satisfies WorkersSpec,
           }
@@ -387,8 +346,6 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             return `Searching: ${short(String(a.query ?? ""), 60)}`;
           case "read_page":
             return `Reading ${host(String(a.url ?? "")) || "a page"}`;
-          case "explore_site":
-            return `Finding ${a.want === "form" ? "the form" : "the page"} on ${host(String(a.url ?? "")) || "a site"}`;
           case "record_step":
             return "Writing down what we found";
           case "assign_jobs":
@@ -409,10 +366,9 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
           return hits.length ? `${hits.length} results for "${String(a.query ?? "")}". Top: ${host(hits[0][2])}.` : "No useful results.";
         }
         if (name === "read_page") return out.split("\n")[1] ?? out;
-        if (name === "explore_site") return out.startsWith("Found:") ? out.split("\n")[1] ?? out : out;
         return out.split("\n")[0];
       },
-      failed: (name, out) => /^(Error|Could not|Blocked)/.test(out) || (name === "explore_site" && /^Not found/.test(out)),
+      failed: (name, out) => /^(Error|Could not|Blocked)/.test(out) || false,
       exec: async (call, a, thought, kit) => {
         const who = whoOf(a);
         switch (call.name) {
@@ -421,10 +377,6 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
           case "read_page": {
             const out = await readOne(a, who, thought, kit);
             return speed.selfrecover ? await recoverRead(a, out, who, thought, kit) : speed.autorecord ? await autoRecord(a, out, who, kit) : out;
-          }
-          case "explore_site": {
-            const out = await exploreOne(a, who, thought, kit);
-            return speed.selfrecover ? await recoverExplore(a, out, who, thought, kit) : out;
           }
           case "record_step":
             return recordStep(a, kit);
