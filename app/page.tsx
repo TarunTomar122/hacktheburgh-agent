@@ -107,7 +107,7 @@ export default function Onboarding() {
 
   function start() {
     createProfile(facts, messages);
-    if (helpRoute === "email" || helpRoute === "formal") {
+    if (helpRoute === "formal") {
       setTrack({ chosen: "complaint", complaintMode: helpRoute });
     } else if (helpRoute === "compensation") {
       setTrack({ chosen: "compensation" });

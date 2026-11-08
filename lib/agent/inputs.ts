@@ -35,9 +35,8 @@ export const OUTCOME_CHOICES = [
 export const COMPENSATION_CHOICE = "Compensation for what happened";
 
 export const HELP_ROUTES = [
-  { label: "Ask for an explanation or apology", value: "email" },
-  { label: "Make a formal complaint", value: "formal" },
-  { label: "Explore compensation", value: "compensation" },
+  { label: "Ask for compensation", value: "compensation" },
+  { label: "File an NHS complaint", value: "formal" },
 ] as const;
 export type HelpRoute = (typeof HELP_ROUTES)[number]["value"];
 
