@@ -1,7 +1,7 @@
 import type { CaseFacts } from "./facts";
 import type { Emit } from "./planner";
 import { webSearch } from "./planner";
-import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool } from "./crewRun";
+import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, tabName } from "./crewRun";
 import { score, slug, vetFirm, type Evidence } from "./legalAid";
 import type { FirmFinding, Route, Verdict } from "./legalAidTypes";
 import { draftEnquiry, fillOne, keepForApproval } from "./enquiry";
@@ -116,7 +116,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               ...(facts.postcode ? [{ key: "postcode", description: "The patient's postcode (place only)", value: facts.postcode }] : []),
             ];
             // The research no longer hunts for forms, so Nell looks for the place's own checker here: from the funding page she finds its online checker or calculator and answers it, asking the patient for what only they know (income, savings).
-            const attempt = await kit.inTab(thought, "nell", short(f?.body ?? "Funding", 26), async (p, note) => {
+            const attempt = await kit.inTab(thought, "nell", tabName(f?.body ?? "Funding"), async (p, note) => {
               let target: string | null = f?.how === "online_form" ? url : null;
               if (!target) {
                 const found = await exploreSite({ page: p, note, track: kit.track }, url, "the official online eligibility checker or calculator for legal aid or other funded legal help", { want: "form", maxHops: 4 });
@@ -137,7 +137,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               kit.emit({ type: "verdict", verdict });
               return `Checker result (${verdict}): ${r.value.result}${r.value.caveats.length ? `\nCaveats: ${r.value.caveats.map((c) => c.quote).join(" | ")}` : ""}\nThe checker asked ${r.value.answers.length} question(s); the patient's answers stay on their device.`;
             }
-            const r = await kit.inTab(thought, "nell", short(f?.body ?? "Funding", 26), (p, note) => readPage({ page: p, note, track: kit.track }, url, "Can an adult get legal aid for a clinical negligence (medical negligence) claim here? Is no win no fee allowed, with any cap? Is there free legal advice in any scheme?"), 90_000);
+            const r = await kit.inTab(thought, "nell", tabName(f?.body ?? "Funding"), (p, note) => readPage({ page: p, note, track: kit.track }, url, "Can an adult get legal aid for a clinical negligence (medical negligence) claim here? Is no win no fee allowed, with any cap? Is there free legal advice in any scheme?"), 90_000);
             if (!r.ok) return `Could not read the funding rules: ${r.error}`;
             fundingQuote = r.value.quotes.find((q) => q.checked);
             fundingSource = f?.body ?? r.value.title;
@@ -153,7 +153,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const urls = [...new Set([c?.url, ...(c?.sources.map((x) => x.url) ?? [])].filter((u): u is string => !!u))].slice(0, 4);
             if (!urls.length) return "Could not read the scheme: discovery found no compensation page.";
             const question = "How does a patient get compensation through this scheme: how does a claim start, who decides, is there a cap or threshold, what are the time limits, does the patient get free legal advice, and does using it stop them going to court?";
-            const r = await kit.inTab(thought, "robin", short(c?.body ?? "Scheme", 26), async (p, note) => {
+            const r = await kit.inTab(thought, "robin", tabName(c?.body ?? "Scheme"), async (p, note) => {
               let best: Awaited<ReturnType<typeof readPage>> | null = null;
               for (const u of urls) {
                 const v = await readPage({ page: p, note, track: kit.track }, u, question);
@@ -183,7 +183,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const url = /^[a-z][a-z0-9+.-]*:/i.test(rawUrl) ? rawUrl : `https://${rawUrl.replace(/^\/+/, "")}`; // old routes may hold an address without https://
             const where = route.place.city || facts.postcode || route.place.region;
             if (s("area")) areaOfLaw = s("area");
-            const r = await kit.inTab(thought, "robin", short(l?.body ?? "Register", 26), (p, note) => searchDirectory({ page: p, note, track: kit.track }, { url, goal: `Find lawyers or firms who do ${s("area") || "clinical negligence"} near ${where}`, criteria: [{ label: "area of law", value: s("area") || "clinical negligence / medical negligence" }, { label: "location", value: where }], maxResults: 12 }), 4 * 60 * 1000);
+            const r = await kit.inTab(thought, "robin", tabName(l?.body ?? "Register"), (p, note) => searchDirectory({ page: p, note, track: kit.track }, { url, goal: `Find lawyers or firms who do ${s("area") || "clinical negligence"} near ${where}`, criteria: [{ label: "area of law", value: s("area") || "clinical negligence / medical negligence" }, { label: "location", value: where }], maxResults: 12 }), 4 * 60 * 1000);
             if (!r.ok) return `Could not search the register: ${r.error}`;
             const d = r.value;
             if (d.outcome === "wall") return `Blocked: ${d.wall?.kind ?? "wall"} on ${host(url)} (${d.wall?.detail ?? d.summary}). Try another official directory from the route map, or web search for firms.`;
@@ -202,7 +202,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
           case "check_firm": {
             const firm = firms.get(s("firm_id"));
             if (!firm) return "Could not check: unknown firm id. Use one from search_register.";
-            const r = await kit.inTab(thought, "robin", short(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, ""), 26), async (p, note) => {
+            const r = await kit.inTab(thought, "robin", tabName(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "")), async (p, note) => {
               let f = firm;
               let how = "the register gave its web address";
               if (!f.website) {
@@ -255,14 +255,14 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const g = proof.guideline?.points[0];
             drafting ??= (async () => {
               // Nell -> Kit: the funding checker's own words travel into the message, as an estimate, never as eligibility.
-              const funding = fundingQuote?.checked ? `On funding: ${fundingSource}'s online checker says "${short(fundingQuote.quote, 90)}". I understand this is only an estimate.` : "I would also like to know how a case like this could be funded.";
+              const funding = fundingQuote?.checked ? `On funding: ${fundingSource}'s online checker says "${(fundingQuote.quote.replace(/\s+/g, " ").trim().match(/^.*?[.!?](\s|$)/)?.[0]?.trim() ?? fundingQuote.quote)}". I understand this is only an estimate.` : "I would also like to know how a case like this could be funded.";
               return (message = await draftEnquiry(facts, undefined, g && proof.gaps?.[0] ? { guideline: proof.guideline!.name, point: g.text, question: proof.gaps[0].question } : undefined, { place: placeName, funding }));
             })().catch((e) => {
               drafting = null; // a failed draft is tried again by the next firm
               throw e;
             });
             const msg = await drafting;
-            const r = await kit.inTab(thought, "kit", short(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, ""), 24), async (p, note) => {
+            const r = await kit.inTab(thought, "kit", tabName(firm.name.replace(/\s+(LLP|Ltd|Limited|Solicitors)\b.*$/i, "")), async (p, note) => {
               const o = await fillOne(p, firm, { facts, message: msg, area: areaOfLaw }, note, kit.track, (x) => kit.emit({ type: "enquiry", enquiry: x }));
               if (o.status === "ready_to_send" || o.status === "needs_input") {
                 keepForApproval(firm.id, { page: p, firm, email: facts.email, runId: kit.runId, tracer: kit.tracer, note });

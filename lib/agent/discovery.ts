@@ -4,7 +4,7 @@ import type { CaseFacts } from "./facts";
 import { pageText } from "./legalAid";
 import { searchBudgetUsed, searchViaApi, webSearch, type Emit } from "./planner";
 import { detectPlace } from "./place";
-import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit, type WorkersSpec } from "./crewRun";
+import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit, type WorkersSpec, tabName } from "./crewRun";
 import { MODELS, structured } from "./llm";
 import { parseSpeed, speedLabel, type Speed } from "./discoverySpeed";
 import { confidenceOf, evidenceOf, ROUTE_KINDS, type Place, type RouteKind, type RouteMap, type RouteStep, type Source } from "./routeTypes";
@@ -208,7 +208,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
   const readOne = async (a: Record<string, unknown>, who: CrewId, thought: Thought, kit: CrewKit): Promise<string> => {
     const url = String(a.url ?? "");
     if (!allowed(url)) return `Blocked: ${url} was not found in this run. Search for it, or follow a link from a page you opened.`;
-    const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
+    const r = await kit.inTab(thought, who, tabName(host(url)), async (p, note) => {
       const v = await readPage(ctxFor(kit, p, note, who), url, String(a.question ?? ""));
       if (!p.isClosed()) {
         // The DOM text belongs to the page the browser shows; a PDF's text is checked by the reader itself (workerChecked).

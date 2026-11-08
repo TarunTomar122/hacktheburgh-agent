@@ -37,9 +37,13 @@ export type BoardInput = {
   checker?: string;
 };
 
-const clamp = (t: string, n: number) => (t.length <= n ? t : `${t.slice(0, n - 1).replace(/\s+\S*$/, "")}…`);
-/** A finding without its "Publisher: " lead-in, cut to one line. */
-const lineOf = (t: string) => clamp(t.replace(/^[^:]{1,70}:\s+/, "").replace(/\s+/g, " ").trim(), 120);
+/** Whole sentences only: the first one, never cut mid-way and never ended with "…". */
+const sentence = (t: string) => {
+  const one = t.replace(/\s+/g, " ").trim();
+  return one.match(/^.*?[.!?](\s|$)/)?.[0]?.trim() ?? one;
+};
+/** A finding without its "Publisher: " lead-in, as its first whole sentence. */
+const lineOf = (t: string) => sentence(t.replace(/^[^:]{1,70}:\s+/, ""));
 const first = (t: string) => (t.match(/^.*?[.!?](\s|$)/)?.[0] ?? t).trim();
 const SKIPPED = "Skipped, as you asked.";
 const NO_GUIDELINE_TOPIC = /NICE|guideline/i;
@@ -79,7 +83,7 @@ export function boardParts(i: BoardInput): Part[] {
       const top = i.result?.shortlist.length;
       const checked = (i.result?.firms ?? i.firms).filter((f) => f.sources?.includes("website"));
       const names = (i.result ? i.result.shortlist.map((id) => i.result!.firms.find((f) => f.id === id)).filter((f): f is NonNullable<typeof f> => !!f) : checked).map((f) => f.name);
-      const summary = names.length ? clamp(names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : ""), 120) : undefined;
+      const summary = names.length ? names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : "") : undefined;
       if (status === "skipped") return { ...base, headline: "Not checked this time" };
       if (i.result) return { ...base, summary, headline: top ? `${top} solicitor${top === 1 ? "" : "s"} who could take your case` : "No suitable solicitor found yet", chip: `${n} checked on their own sites` };
       return { ...base, summary, headline: n ? `${n} firm${n === 1 ? "" : "s"} checked so far` : status === "working" ? "Looking for solicitors near you" : "Not started" };
@@ -90,7 +94,7 @@ export function boardParts(i: BoardInput): Part[] {
       const point = ev.guideline?.points[0];
       const nothing = ev.investigation && !ev.investigation.items.length ? "No published decisions or awards found" : undefined;
       const found = ev.investigation?.items.length ? `${ev.investigation.items.length} published decision${ev.investigation.items.length === 1 ? "" : "s"} or award${ev.investigation.items.length === 1 ? "" : "s"} found` : undefined;
-      const summary = gap ? clamp(gap.question, 120) : point ? clamp(point.text, 120) : found ?? nothing;
+      const summary = gap ? sentence(gap.question) : point ? sentence(point.text) : found ?? nothing;
       if (status === "skipped") return { ...base, headline: "Not checked this time" };
       if (gap) return { ...base, summary, headline: "One question worth asking", chip: ev.guideline && NO_GUIDELINE_TOPIC.test(ev.guideline.name) ? "From published guidance" : "From the guidance" };
       if (point) return { ...base, summary, headline: "What the guidance says", chip: "From published guidance" };
@@ -100,7 +104,7 @@ export function boardParts(i: BoardInput): Part[] {
     const ready = outs.filter((o) => o.status === "ready_to_send" || o.status === "needs_input");
     const typed = ready.reduce((n, o) => n + o.filled.length, 0);
     if (status === "skipped") return { ...base, headline: "Not prepared this time" };
-    const summary = ready.length ? clamp(ready.map((o) => o.firmName).join(", "), 120) : undefined;
+    const summary = ready.length ? ready.map((o) => o.firmName).join(", ") : undefined;
     if (ready.length) return { ...base, summary, headline: `${ready.length} enquir${ready.length === 1 ? "y" : "ies"} ready for you to check`, chip: `${typed} details filled, nothing sent` };
     return { ...base, headline: status === "working" ? "Filling in the solicitors' forms" : status === "done" ? "No enquiry form could be filled" : "Not started" };
   });

@@ -21,6 +21,8 @@ import { CREW, type AskSpec, type CrewId, type PlanStep, type Say, type Thought 
  */
 
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
+/** A browser tab's name: whole words only, never cut mid-word and never ended with "…". */
+export const tabName = (s: string, n = 40) => (s.length <= n ? s : s.slice(0, n).replace(/\s+\S*$/, "").trim() || s.slice(0, n));
 export const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
 /** "Reading x.org" -> "Read x.org": the crew's present-tense status line, said as done. */

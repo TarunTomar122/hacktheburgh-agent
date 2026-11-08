@@ -4,7 +4,7 @@ import { missingRequired } from "./facts";
 import { modelFor, structured } from "./llm";
 import type { Draft } from "./draft";
 import type { Emit } from "./planner";
-import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit } from "./crewRun";
+import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, type CrewKit, tabName } from "./crewRun";
 import type { CrewId, EscalationInput, EscalationResult, Thought } from "./plannerTypes";
 import { cleanRoute, type RouteMap } from "./routeTypes";
 import { isEnactedUrl, vetClaim } from "./evidence-claims";
@@ -131,7 +131,7 @@ export async function runEscalationAnywhere(facts: CaseFacts, routeIn: RouteMap,
 
   const ctxFor = (kit: CrewKit, p: WorkerCtx["page"], note: WorkerCtx["note"], who: CrewId): WorkerCtx => ({ page: p, note, track: kit.track, ask: (spec) => kit.ask({ ...spec, crew: who }) });
   const tab = (kit: CrewKit, thought: Thought, who: CrewId, task: string) => <T,>(work: (ctx: WorkerCtx) => Promise<T>, ms: number) =>
-    kit.inTab(thought, who, short(task, 26), (p, note) => work(ctxFor(kit, p, note, who)), ms);
+    kit.inTab(thought, who, tabName(task), (p, note) => work(ctxFor(kit, p, note, who)), ms);
 
   return runCrew<EscalationResult>(
     {

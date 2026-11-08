@@ -107,8 +107,7 @@ function PartRow({ part: p, input, checkerUrl }: { part: Part; input: BoardInput
               .filter((o) => o.filled.length)
               .map((o) => (
                 <p key={o.firmId} className="text-[14px] leading-6 text-ink-2">
-                  <span className="font-medium text-ink">{o.firmName}</span>: Kit typed or picked {o.filled.length} detail{o.filled.length === 1 ? "" : "s"} ({o.filled.slice(0, 4).map((x) => x.label).join(", ")}
-                  {o.filled.length > 4 ? ", …" : ""}) and stopped before Send.
+                  <span className="font-medium text-ink">{o.firmName}</span>: Kit typed or picked {o.filled.length} detail{o.filled.length === 1 ? "" : "s"} ({o.filled.slice(0, 4).map((x) => x.label).join(", ")}{o.filled.length > 4 ? ` and ${o.filled.length - 4} more` : ""}) and stopped before Send.
                 </p>
               ))}
           {p.status !== "done" && <p className="text-[13px] text-muted">{p.status === "working" ? `${CREW[p.crew].name} is still on this.` : "Nothing yet."}</p>}

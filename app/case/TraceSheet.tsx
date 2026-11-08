@@ -35,9 +35,10 @@ const hostOf = (s: TraceStep) => {
     return "";
   }
 };
-const words = (t: string, n = 8) => {
-  const w = t.replace(/\s+/g, " ").trim().split(" ");
-  return w.length > n ? `${w.slice(0, n).join(" ")}…` : t.trim();
+/** The first whole sentence (never cut mid-way, never ended with "…"); the rest sits behind "Show details". */
+const words = (t: string) => {
+  const one = t.replace(/\s+/g, " ").trim();
+  return one.match(/^.*?[.!?](\s|$)/)?.[0]?.trim() ?? one;
 };
 /** What a step is called on the timeline: five to eight words. The full text and details sit behind "Show details". */
 function label(s: TraceStep): string {

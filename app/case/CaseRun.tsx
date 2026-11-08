@@ -860,7 +860,6 @@ function QuestionCard({ q, more, onAnswer, currency }: { q: AskSpec; more: numbe
 
 /* ------------------------------------------------------------------ after */
 
-const clamp = (t: string, n: number) => (t.length <= n ? t : `${t.slice(0, n - 1).replace(/\s+\S*$/, "")}…`);
 const first1 = (t: string) => t.match(/^.*?[.!?](\s|$)/)?.[0]?.trim() ?? t;
 
 /** A part of the case file that opens on click: the headline and one short line first, the detail only when asked for. */
@@ -956,7 +955,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
         </FoldRow>
 
         {(result as PlannerResult).scheme && !/does not (describe|say|mention)/i.test((result as PlannerResult).scheme!.text) && (
-          <FoldRow crew="robin" topic="Compensation scheme" title={clamp((result as PlannerResult).scheme!.body, 80)} summary={clamp(first1((result as PlannerResult).scheme!.text), 110)}>
+          <FoldRow crew="robin" topic="Compensation scheme" title={(result as PlannerResult).scheme!.body} summary={first1((result as PlannerResult).scheme!.text)}>
             <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text}</p>
             {(result as PlannerResult).scheme!.quote && (
               <Quote source={(result as PlannerResult).scheme!.body} href={(result as PlannerResult).scheme!.url}>
@@ -980,7 +979,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
           )}
         </FoldRow>
 
-        <FoldRow crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked yet"} summary={gap ? clamp(gap.question, 110) : point ? clamp(point.text, 110) : undefined}>
+        <FoldRow crew="iona" topic="Medical evidence" title={gap ? "One question worth asking" : point ? "What the guidance says" : "Evidence not checked yet"} summary={gap ? first1(gap.question) : point ? first1(point.text) : undefined}>
           {gap && point ? (
             <div className="space-y-4">
               <Said label="What doctors are advised to do">

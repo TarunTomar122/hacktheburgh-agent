@@ -1,3 +1,4 @@
+import { tabName } from "./crewRun";
 import type { CaseFacts } from "./facts";
 import { compareCare, type GuidelineReading } from "./evidence";
 import type { CrewKit } from "./crewRun";
@@ -109,7 +110,7 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
       return { error: `Found guidance on ${cand.url} but could not check that it applies to this patient (${e instanceof Error ? e.message.slice(0, 120) : "check failed"}), so it is not used.` };
     }
   };
-  const r = await kit.inTab(thought, "iona", (g?.body ?? "Guidance").slice(0, 26), async (p, note) => {
+  const r = await kit.inTab(thought, "iona", tabName(g?.body ?? "Guidance"), async (p, note) => {
     const ctx = { page: p, note, track: kit.track };
     const tried: Judged[] = [];
     const seen = new Set<string>();

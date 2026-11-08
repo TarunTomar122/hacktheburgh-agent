@@ -7,7 +7,7 @@ import type { GuidelineReading } from "./evidence";
 import { findGuidance } from "./guidance";
 import { describeInvestigation, describeIssue, investigate, supportFor } from "./investigate";
 import type { Emit } from "./planner";
-import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool } from "./crewRun";
+import { ASK_TOOL, FINISH_TOOL, PLAN_TOOL, runCrew, short, tool, tabName } from "./crewRun";
 import type { ComplaintResult, CrewId, EvidenceResult, Investigation } from "./plannerTypes";
 import { cleanRoute, type RouteMap, type RouteStep } from "./routeTypes";
 import { exploreSite, readPage } from "./workers/explore";
@@ -114,7 +114,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             const url = body?.url ?? body?.sources[0]?.url;
             if (!url) return "Could not read the rules: discovery found no page for the complaint body.";
             const page = body?.how === "online_form" && body.sources[0]?.url ? body.sources[0].url : url;
-            const r = await kit.inTab(thought, "robin", short(body?.body ?? "Rules", 26), (p, note) => readPage(ctxFor(p, note, "robin"), page, "How does a patient complain: the stages, response times, the time limit for complaining, and what to include?"), 90_000);
+            const r = await kit.inTab(thought, "robin", tabName(body?.body ?? "Rules"), (p, note) => readPage(ctxFor(p, note, "robin"), page, "How does a patient complain: the stages, response times, the time limit for complaining, and what to include?"), 90_000);
             if (!r.ok) return `Could not read the rules: ${r.error}`;
             const today = new Date().toISOString().slice(0, 10);
             const lim = await structured({
@@ -157,7 +157,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             fills++;
             for (const x of (a.answers as { label: string; value: string }[] | undefined) ?? []) if (x?.label && x?.value) extra.push({ label: String(x.label), value: String(x.value) });
             const d = draft;
-            const r = await kit.inTab(thought, "kit", short(body?.body ?? "Form", 26), async (p, note) => {
+            const r = await kit.inTab(thought, "kit", tabName(body?.body ?? "Form"), async (p, note) => {
               const ctx = ctxFor(p, note, "kit");
               let url = body?.how === "online_form" ? body.url : undefined;
               if (!url) {
@@ -199,7 +199,7 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             let to = "";
             let toQuote = "";
             if (page) {
-              const r = await kit.inTab(thought, "robin", short(`${body?.body ?? "Provider"} contact`, 26), (p, note) => readPage({ page: p, note, track: kit.track }, page, "Exactly which email address or postal address should a patient send a complaint to? Quote the address."), 90_000);
+              const r = await kit.inTab(thought, "robin", tabName(`${body?.body ?? "Provider"} contact`), (p, note) => readPage({ page: p, note, track: kit.track }, page, "Exactly which email address or postal address should a patient send a complaint to? Quote the address."), 90_000);
               if (r.ok) {
                 // Only an email address that code finds inside a checked quote from their page counts (never the model's answer text).
                 const q = r.value.quotes.find((x) => x.checked && /[\w.+-]+@[\w-]+(\.[\w-]+)+/.test(x.quote));
