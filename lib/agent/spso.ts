@@ -114,7 +114,7 @@ export async function fillSpsoComplaint(facts: CaseFacts, draft: Draft, answers:
     emit({ type: "done", status: run.status, summary: run.summary, unfilled: run.unfilled, question: run.question, screenshot });
     if (opts.keepOpen && process.env.HEADLESS !== "1") {
       reviewing = true;
-      closeWhenSubmitted(page, browser); // the browser closes once the user has submitted (D57)
+      closeWhenSubmitted(page, browser, { flow: "spso" }); // the browser closes once the user has submitted (D57), and the app marks the step sent
     }
     return { ...run, screenshot, runDir };
   } finally {

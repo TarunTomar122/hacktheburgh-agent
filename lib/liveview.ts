@@ -56,7 +56,8 @@ export type LiveEvent =
   | { type: "pages"; pages: LivePage[] }
   | { type: "stats"; stats: LiveStats }
   | { type: "end" }
-  | { type: "control"; enabled: boolean };
+  | { type: "control"; enabled: boolean }
+  | { type: "submitted"; flow: string }; // the user pressed Submit on a form the agent filled (see closeWhenSubmitted in lib/browser.ts)
 type Listener = (e: LiveEvent) => void;
 
 /** Every input may name the tab it is for; without `pageId` it goes to the focused tab, else the newest. */
@@ -120,6 +121,11 @@ function publish(e: LiveEvent) {
   }
 }
 const publishPages = () => publish({ type: "pages", pages: bus.pages.map((p) => p.meta) });
+
+/** Tell the app that the user sent a form the agent filled. `flow` names the step: "nhs", "spso" or "yellowcard". */
+export function announceSubmitted(flow: string) {
+  publish({ type: "submitted", flow });
+}
 
 /** Subscribe. If a session is live, the tab list, the latest frame of each tab and the stats are replayed immediately. */
 export function subscribeLive(listener: Listener): () => void {

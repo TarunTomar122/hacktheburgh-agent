@@ -1,36 +1,46 @@
 import type { CaseFacts } from "./facts";
-import { COMPENSATION_CHOICE, OUTCOME_CHOICES } from "./inputs";
+import { COMPENSATION_CHOICE, FAULTY_PRODUCT_CHOICE, LEGACY_SIDE_EFFECT_CHOICE, OUTCOME_CHOICES, SIDE_EFFECT_CHOICE } from "./inputs";
 import type { Tri } from "./legalAidTypes";
 
 /**
- * Which way to go after onboarding (D42). Two tracks, one recommended, each with a fit % and the reasons for it.
+ * Which way to go after onboarding (D42). Three tracks (the Yellow Card one is proposed, feature/yellow-card), one recommended, each with a fit % and the reasons for it.
  * Client-safe: the story signals come from the server (lib/agent/trackSignals.ts, /api/agent/track).
  *
  * Fit = how well the track matches what the user told us. It is NOT a chance of success: we have no outcome data,
  * and the weights below are our judgement.
  */
 
-export type TrackId = "complaint" | "compensation";
+export type TrackId = "complaint" | "compensation" | "yellowcard";
+
+/** In the order they are shown and tie-broken. */
+export const TRACK_IDS: TrackId[] = ["complaint", "compensation", "yellowcard"];
 
 export const TRACKS: Record<TrackId, { title: string; short: string; what: string; gets: string; steps: number[] }> = {
   complaint: {
     title: "Make a complaint",
     short: "Complaint",
-    what: "We write your complaint and fill in NHS Lothian's form. If their final reply doesn't put things right, we take it to the ombudsman.",
+    what: "Elliot writes your complaint and fills in NHS Lothian's form. If their final reply doesn't put things right, he takes it to the ombudsman.",
     gets: "An explanation, an apology, changes to how things are done. Not money.",
     steps: [1, 2],
   },
   compensation: {
     title: "Claim compensation",
     short: "Compensation",
-    what: "We check whether legal aid could pay for a solicitor, find medical negligence solicitors who act for patients, and help you contact them.",
+    what: "Elliot checks whether legal aid could pay for a solicitor, finds medical negligence solicitors who act for patients, and helps you contact them.",
     gets: "Money for what happened, if a solicitor takes your case and it succeeds.",
     steps: [3, 4],
   },
+  yellowcard: {
+    title: "Report a medicine problem",
+    short: "Yellow Card",
+    what: "Elliot fills in a Yellow Card report for you: the UK scheme where anyone can report a side effect, or a faulty or fake medicine or medical device, to the medicines regulator (MHRA). You check it on their form and send it yourself.",
+    gets: "The regulator learns about the problem, so it can spot safety issues and protect others. Not money, and not a reply about your own care.",
+    steps: [6],
+  },
 };
 
-/** What the AI read in the story: probabilities 0-1, or null if it could not be asked. */
-export type TrackSignals = { lasting: number | null; costs: number | null };
+/** What the AI read in the story: probabilities 0-1, or null if it could not be asked. `medicine` is missing in recommendations saved before the Yellow Card track. */
+export type TrackSignals = { lasting: number | null; costs: number | null; medicine?: number | null };
 
 export type TrackReason = { label: string; points: number; max: number; status: Tri; evidence: string };
 export type TrackFit = { fit: number; reasons: TrackReason[] };
@@ -42,7 +52,15 @@ const [EXPLANATION, APOLOGY, CHANGES, SUPPORT] = OUTCOME_CHOICES;
 export function goalsFrom(desiredOutcome: string | null) {
   const t = (desiredOutcome ?? "").toLowerCase();
   const has = (choice: string) => t.includes(choice.toLowerCase().slice(0, 18));
-  return { explanation: has(EXPLANATION), apology: has(APOLOGY), changes: has(CHANGES), support: has(SUPPORT), money: has(COMPENSATION_CHOICE) || /\bcompensation\b|\bmoney\b/.test(t) };
+  return {
+    explanation: has(EXPLANATION),
+    apology: has(APOLOGY),
+    changes: has(CHANGES),
+    support: has(SUPPORT),
+    money: has(COMPENSATION_CHOICE) || /\bcompensation\b|\bmoney\b/.test(t),
+    sideEffect: has(SIDE_EFFECT_CHOICE) || has(LEGACY_SIDE_EFFECT_CHOICE),
+    faultyProduct: has(FAULTY_PRODUCT_CHOICE),
+  };
 }
 
 const ticked = (yes: boolean, label: string, max: number): TrackReason => ({
@@ -54,7 +72,7 @@ const ticked = (yes: boolean, label: string, max: number): TrackReason => ({
 });
 
 const fromStory = (p: number | null, label: string, max: number, invert = false): TrackReason => {
-  if (p === null) return { label, points: 0, max, status: "unknown", evidence: "We could not read this from your story." };
+  if (p === null) return { label, points: 0, max, status: "unknown", evidence: "Elliot could not read this from your story." };
   const q = invert ? 1 - p : p;
   return {
     label,
@@ -87,9 +105,27 @@ export function recommendTrack(f: CaseFacts, s: TrackSignals): TrackRecommendati
     fromStory(s.costs, "It has cost you money, work or study", 20),
     ticked(g.support, SUPPORT, 10),
   ]);
-  return {
-    recommended: compensation.fit > complaint.fit ? "compensation" : "complaint",
-    tracks: { complaint, compensation },
-    at: new Date().toISOString(),
-  };
+  // Either Yellow Card box counts once: a report covers side effects and faulty or fake products alike.
+  const report = g.sideEffect || g.faultyProduct;
+  const yellowcard = total([
+    {
+      label: "You want to report a medicine or device problem",
+      points: report ? 60 : 0,
+      max: 60,
+      status: report ? "yes" : "no",
+      evidence: report
+        ? `You ticked "${g.sideEffect ? SIDE_EFFECT_CHOICE : FAULTY_PRODUCT_CHOICE}".`
+        : `You did not tick "${SIDE_EFFECT_CHOICE}".`,
+    },
+    fromStory(s.medicine ?? null, "Your story is about a medicine, vaccine or device", 40),
+  ]);
+  const tracks = { complaint, compensation, yellowcard };
+  // Highest fit wins; a tie keeps the earlier track in TRACK_IDS.
+  const recommended = TRACK_IDS.reduce((best, id) => (tracks[id].fit > tracks[best].fit ? id : best), TRACK_IDS[0]);
+  return { recommended, tracks, at: new Date().toISOString() };
+}
+
+/** Recommendations saved before the Yellow Card track have no score for it; treat them as missing so a new one is fetched. */
+export function isCurrentRecommendation(rec: TrackRecommendation | undefined): rec is TrackRecommendation {
+  return !!rec && TRACK_IDS.every((id) => rec.tracks[id] !== undefined);
 }

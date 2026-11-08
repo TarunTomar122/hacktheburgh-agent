@@ -26,8 +26,8 @@ export async function runStep4(body: { facts: CaseFacts; message: EnquiryMessage
     throw dropped();
   });
   if (res.status === 404) throw new Error(notReady);
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the agents");
-  if (!res.body) throw new Error("The agents returned no progress stream");
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start Elliot's crew");
+  if (!res.body) throw new Error("Elliot's crew returned no progress stream");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let pending = "";
@@ -55,7 +55,7 @@ export async function runStep4(body: { facts: CaseFacts; message: EnquiryMessage
     await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
-  if (!result) throw new Error("The agents stopped before giving a result. You can try again.");
+  if (!result) throw new Error("Elliot's crew stopped before giving a result. You can try again.");
   return result;
 }
 
@@ -100,7 +100,7 @@ export async function editEnquiry(firmId: string, edits: FieldEdit[], current: E
   return data.enquiry as EnquiryOutcome;
 }
 
-const SAMPLE_NOTE = "Not sent: this is sample or recorded data from a demo persona. We never send fictional enquiries to real firms.";
+const SAMPLE_NOTE = "Not sent: this is sample or recorded data from a demo persona. Elliot never sends fictional enquiries to real firms.";
 
 /** Ask the agent to press Send on one firm's filled form, after putting in the user's edits. Only the consents listed are ticked. */
 export async function sendEnquiry(firmId: string, consents: string[], current: EnquiryOutcome, edits: FieldEdit[] = [], local = false): Promise<EnquiryOutcome> {

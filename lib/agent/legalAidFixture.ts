@@ -40,9 +40,9 @@ const rows = (o: { la?: boolean; active?: boolean; miles?: number | null; lawsoc
   ["distance", "Close to you", o.miles == null ? 0 : Math.max(0, Math.round(15 - o.miles)), 15, o.miles == null ? "unknown" : o.miles < 5 ? "yes" : "no", o.miles == null ? "No distance on SLAB's list" : `SLAB's finder: ${o.miles} miles from EH1`],
   ["lawsoc", "Found on the Law Society register", o.lawsoc ? 10 : 0, 10, o.lawsoc === null ? "unknown" : o.lawsoc ? "yes" : "no", o.lawsoc ? "Same firm name on the Law Society of Scotland directory" : "Not looked up"],
   ["patients", "Acts for patients", o.patients === "yes" ? 15 : 0, 15, o.patients ?? "unknown", o.patients === "yes" ? "The model read their medical negligence page: acts for patients (confidence 0.93)" : "Could not tell from their website"],
-  ["nwnf", "Offers no win no fee", o.nwnf === "yes" ? 10 : 0, 10, o.nwnf ?? "unknown", o.nwnf === "yes" ? "Their page mentions 'no win, no fee' (confidence 0.81)" : "Not mentioned on the pages we read"],
+  ["nwnf", "Offers no win no fee", o.nwnf === "yes" ? 10 : 0, 10, o.nwnf ?? "unknown", o.nwnf === "yes" ? "Their page mentions 'no win, no fee' (confidence 0.81)" : "Not mentioned on the pages Elliot read"],
   ["form", "Has an online enquiry form", o.form ? 5 : 0, 5, o.form ? "yes" : "unknown", o.form ? "Found a contact form step 4 can fill in" : "No form found"],
-  ["checked", "We could read their website", o.checked ? 5 : 0, 5, o.checked ? "yes" : "no", o.checked ? "Website opened normally" : "Website not checked"],
+  ["checked", "Elliot could read their website", o.checked ? 5 : 0, 5, o.checked ? "yes" : "no", o.checked ? "Website opened normally" : "Website not checked"],
 ];
 
 export const FIXTURE_FIRMS: FirmFinding[] = [

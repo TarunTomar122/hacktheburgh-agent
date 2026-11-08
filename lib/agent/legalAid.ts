@@ -228,7 +228,7 @@ async function runCalculator(page: Page, funding: Funding, note: Note, track: Tr
   if (verdict === "unknown") {
     // Recovery: the agent stopped before the estimate appeared. Fill the same answers directly, then read again.
     note("No estimate yet; filling the rest directly");
-    await note.log("recover", "The agent stopped before the estimate appeared, so the remaining answers were filled directly");
+    await note.log("recover", "Elliot stopped before the estimate appeared, so the remaining answers were filled directly");
     await fillCalculatorDirectly(page, funding, track);
     await page.waitForTimeout(1500);
     ({ verdict, quote } = readVerdict(await page.evaluate(() => document.body.innerText)));
@@ -346,7 +346,7 @@ export async function runFinder(page: Page, note: Note, track: Tracker, location
   if (cards.length === 0) {
     // Recovery: the hidden radios sometimes defeat the agent. Do the same search with direct clicks.
     note("Agent missed it; retrying with direct clicks");
-    await note.log("recover", "The agent's search showed no firms (the radio buttons are hidden). Doing the same search with direct clicks", { shot: true });
+    await note.log("recover", "Elliot's search showed no firms (the radio buttons are hidden). Doing the same search with direct clicks", { shot: true });
     await page.goto(SLAB_FINDER, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(1000);
     await chooseFinderLocation(page, location);
@@ -456,7 +456,7 @@ export function score(f: FirmFinding, route: Route, ev: Evidence = {}): FirmFind
     { key: "patients", label: "Represents patients", max: 20, points: f.actsForPatients === "yes" ? 20 : 0, status: f.actsForPatients, evidence: ev.patients ?? "Website not checked" },
     { key: "nwnf", label: "Offers no win, no fee", max: la ? 10 : 30, points: f.noWinNoFee === "yes" ? (la ? 10 : 30) : 0, status: f.noWinNoFee, evidence: ev.nwnf ?? "Website not checked" },
     { key: "form", label: "Has an online enquiry form", max: 10, points: f.enquiryUrl ? 10 : 0, status: f.enquiryUrl ? "yes" : checked ? "no" : "unknown", evidence: ev.form ?? (f.enquiryUrl ? `Form at ${f.enquiryUrl}` : "Website not checked") },
-    { key: "checked", label: "We could read their website", max: 15, points: checked ? 15 : 0, status: checked ? "yes" : f.website ? "unknown" : "no", evidence: ev.checked ?? (f.website ? "Not one of the firms we visited" : "No website on SLAB's list") },
+    { key: "checked", label: "Elliot could read their website", max: 15, points: checked ? 15 : 0, status: checked ? "yes" : f.website ? "unknown" : "no", evidence: ev.checked ?? (f.website ? "Not one of the firms Elliot visited" : "No website on SLAB's list") },
   ];
   if (miles === null) rows.splice(rows.findIndex((row) => row.key === "distance"), 1);
   const points = rows.reduce((n, r) => n + r.points, 0);
@@ -622,7 +622,7 @@ export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: 
     }
   }
   if (enquiryUrl) await pointAt(page, page.locator(formSel).first());
-  await note.log("found", enquiryUrl ? "Found an enquiry form step 4 can fill in" : "No enquiry form found on the pages we opened", { shot: true });
+  await note.log("found", enquiryUrl ? "Found an enquiry form step 4 can fill in" : "No enquiry form found on the pages Elliot opened", { shot: true });
   note(
     [actsForPatients === "yes" ? "Represents patients" : actsForPatients === "no" ? "Defends claims" : "Unclear who they act for", noWinNoFee === "yes" ? "no win no fee" : null, enquiryUrl ? "form found" : "no form found"]
       .filter(Boolean)
@@ -658,7 +658,7 @@ export async function runStep3(funding: Funding, opts: { onEvent?: Emit } = {}):
   const ctx = { context, emit, track, tracer, first: page };
   const evidence = new Map<string, Evidence>();
   try {
-    emit({ type: "status", message: "Starting the agents" });
+    emit({ type: "status", message: "Starting Elliot's crew" });
 
     // Phase 1, in parallel: the calculator and SLAB's lawyer list.
     const calc = funding.skipped ? null : agent(ctx, "SLAB calculator", (p, note) => runCalculator(p, funding, note, track), 120_000);

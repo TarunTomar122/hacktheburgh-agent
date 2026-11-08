@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/track";
+import { isCurrentRecommendation, TRACK_IDS, TRACKS, type TrackId, type TrackRecommendation } from "../../lib/agent/track";
 import { setTrack, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import { CheckRow, FitRing } from "./scoreParts";
@@ -14,8 +14,10 @@ import { STEPS } from "./steps";
  * told us, never a chance of success.
  */
 export default function TrackChoice({ profile, onChosen }: { profile: Profile; onChosen: (firstStep: number) => void }) {
-  const rec = profile.track?.rec;
-  const simple = emailOnlyGoals(profile.facts.desiredOutcome);
+  // A recommendation saved before the Yellow Card track has no score for it: ask again.
+  const saved = profile.track?.rec;
+  const rec = isCurrentRecommendation(saved) ? saved : undefined;
+  const simple = emailOnlyGoals(profile.facts.desiredOutcome); // never true when a Yellow Card box is ticked: it only allows explanation/apology
   const [error, setError] = useState<string | null>(null);
   const asked = useRef(false);
 
@@ -38,7 +40,7 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
 
   if (simple) return <section className="space-y-6">
     <h1 className="display text-[40px]">Start by asking for a response</h1>
-    <p className="text-ink-2">You asked for an explanation, an apology, or both. We can prepare one editable email from your story for the hospital or clinic involved.</p>
+    <p className="text-ink-2">You asked for an explanation, an apology, or both. Elliot can prepare one editable email from your story for the hospital or clinic involved.</p>
     <p className="text-sm text-muted">You check the recipient and send it yourself. It may take follow-up; no complaint form is filled and no ombudsman step starts automatically.</p>
     <div className="flex flex-wrap gap-3">
       <Button onClick={() => { setTrack({ chosen: "complaint", complaintMode: "email" }); onChosen(1); }}>Ask for an explanation or apology</Button>
@@ -62,8 +64,11 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
     );
   }
 
-  const best = rec.recommended;
-  const other: TrackId = best === "complaint" ? "compensation" : "complaint";
+  // D80: if they ticked several paths in onboarding, suggest the best-fitting of those and offer only the rest of them.
+  const wanted = profile.track?.wanted?.length ? profile.track.wanted : null;
+  const pool = wanted ?? TRACK_IDS;
+  const best = wanted ? pool.reduce((b, t) => (rec.tracks[t].fit > rec.tracks[b].fit ? t : b), pool[0]) : rec.recommended;
+  const others = pool.filter((t) => t !== best);
   const steps = (t: TrackId) => STEPS.filter((s) => TRACKS[t].steps.includes(s.n));
 
   return (
@@ -73,20 +78,25 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
           We suggest you <span className="text-brand">{TRACKS[best].title.toLowerCase()}</span>
         </h1>
         <p className="mt-4 max-w-2xl text-[15px] leading-6 text-ink-2">{TRACKS[best].what}</p>
+        {wanted && (
+          <p className="mt-2 max-w-2xl text-[13px] leading-5 text-muted">
+            You asked for help with {wanted.length} things. We work on one at a time: start with this one, and switch to the others whenever you like from your profile.
+          </p>
+        )}
       </div>
 
       <section className="rounded-card border border-brand/40 bg-white">
         <div className="flex items-center gap-6 border-b border-line-soft p-6">
-          <FitRing fit={rec.tracks[best].fit} size={104} title="How well this track fits what you told us. Not a chance of success." />
+          <FitRing fit={rec.tracks[best].fit} size={104} title="How well this track fits what you told Elliot. Not a chance of success." />
           <div className="min-w-0">
             <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">What you can get</div>
             <p className="mt-1 text-[17px] leading-6 text-ink">{TRACKS[best].gets}</p>
-            <p className="mt-2 text-xs text-muted">Fit is how well this matches what you told us. It is not a chance of winning.</p>
+            <p className="mt-2 text-xs text-muted">Fit is how well this matches what you told Elliot. It is not a chance of winning.</p>
           </div>
         </div>
         <div className="grid gap-8 p-6 sm:grid-cols-[1fr_220px]">
           <div>
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Why we suggest it</div>
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.1em] text-muted">Why Elliot suggests it</div>
             <ul>
               {rec.tracks[best].reasons.map((r) => (
                 <CheckRow key={r.label} row={r} />
@@ -113,16 +123,20 @@ export default function TrackChoice({ profile, onChosen }: { profile: Profile; o
         </div>
       </section>
 
-      <section className="flex items-center gap-5 rounded-card bg-subtle p-5">
-        <FitRing fit={rec.tracks[other].fit} size={56} title="How well this track fits what you told us. Not a chance of success." />
-        <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-medium text-ink">Or: {TRACKS[other].title.toLowerCase()}</div>
-          <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{TRACKS[other].gets}</p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={() => choose(other)}>
-          Choose this instead
-        </Button>
-      </section>
+      {others.map((other) => (
+        <section key={other} className="flex items-center gap-5 rounded-card bg-subtle p-5">
+          {/* A path they ticked themselves gets no score: the NHS complaint stores no outcome sentence (D76), so its fit would read 0%. */}
+          {!wanted && <FitRing fit={rec.tracks[other].fit} size={56} title="How well this track fits what you told Elliot. Not a chance of success." />}
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-medium text-ink">{wanted ? "Also: " : "Or: "}{TRACKS[other].title.toLowerCase()}</div>
+            {wanted && <p className="text-xs text-teal">You ticked this too.</p>}
+            <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{TRACKS[other].gets}</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => choose(other)}>
+            {wanted ? "Start with this instead" : "Choose this instead"}
+          </Button>
+        </section>
+      ))}
     </div>
   );
 }

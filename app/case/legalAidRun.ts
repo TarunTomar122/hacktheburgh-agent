@@ -16,8 +16,8 @@ export async function runStep3(body: { facts: CaseFacts; funding: Funding }, onE
     throw dropped();
   });
   if (res.status === 404) throw new Error("The step 3 agents are not connected yet. Add ?fixture=1 to the address to see sample data.");
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start the agents");
-  if (!res.body) throw new Error("The agents returned no progress stream");
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not start Elliot's crew");
+  if (!res.body) throw new Error("Elliot's crew returned no progress stream");
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let pending = "";
@@ -45,7 +45,7 @@ export async function runStep3(body: { facts: CaseFacts; funding: Funding }, onE
     await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
-  if (!result) throw new Error("The agents stopped before giving a result. You can try again.");
+  if (!result) throw new Error("Elliot's crew stopped before giving a result. You can try again.");
   return result;
 }
 

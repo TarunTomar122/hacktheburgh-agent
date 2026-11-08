@@ -185,7 +185,7 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
   if (verdict === "unknown" && !funding.skipped) {
     // Recovery: something did not register on the page. Fill every answer again by label, then read again.
     note("No estimate yet; filling the answers again");
-    await note.log("recover", "SLAB showed no estimate after the answers, so the agent filled them again by their labels", { shot: true });
+    await note.log("recover", "SLAB showed no estimate after the answers, so Elliot filled them again by their labels", { shot: true });
     await fillCalculatorDirectly(page, funding, track);
     await page.waitForTimeout(1500);
     ({ verdict, quote } = readVerdict(await page.evaluate(() => document.body.innerText)));

@@ -12,6 +12,7 @@ import { fillOne } from "../lib/agent/enquiry";
 import { SAMPLE_DRAFT, SAMPLE_FACTS, SAMPLE_SPSO } from "../lib/agent/sample";
 import { SPSO_AGENT_OPTIONS, SPSO_FORM, spsoValues } from "../lib/agent/spso";
 import type { AgentEvent } from "../lib/agent/events";
+import { startYellowCardReport, YELLOW_CARD_AGENT_OPTIONS, yellowCardValues } from "../lib/agent/yellowCard";
 
 const v = (key: string, description: string, value: string): Value => ({ key, description, value });
 const MSG = "I would like advice about a missed wrist fracture. I attended A&E at the Royal Infirmary of Edinburgh in early July 2026 and was told it was a sprain. A second X-ray in August showed a scaphoid fracture that has not healed.";
@@ -62,6 +63,22 @@ const ENQ: { id: string; name: string; website: string; enquiryUrl?: string; con
   { id: "balfour", name: "Balfour and Manson", website: "https://www.balfour-manson.co.uk/" },
   { id: "drummond", name: "Drummond Miller", website: "https://www.drummondmiller.co.uk/" },
 ];
+/**
+ * Step 6 (proposed): pick a product from the Yellow Card suggestions, start the report and fill the first pages.
+ * A few steps only, and the engine can never click Register, Submit or Send (YELLOW_CARD_AGENT_OPTIONS), so nothing is sent.
+ */
+async function yellowCardCheck(page: Page): Promise<Check> {
+  const chosen = await startYellowCardReport(page, "amoxicillin", () => {});
+  if (!chosen) return { pass: false, why: "no product chosen from the suggestions" };
+  const answers = { kind: "side_effect" as const, product: "amoxicillin", reaction: MSG, privacyAgreed: true };
+  await runDecisionAgent({ page, goal: "Fill in the Yellow Card report page by page using the saved values. Never register, set a password or send the report.", values: yellowCardValues(SAMPLE_FACTS, answers), allowCheckboxes: true, ...YELLOW_CARD_AGENT_OPTIONS, maxSteps: 8 });
+  const a = await els(page), f: string[] = [];
+  if (await page.locator("input[type=password]").evaluateAll((xs) => xs.some((x) => (x as HTMLInputElement).value !== "")).catch(() => false)) f.push("a password was typed");
+  if (/about-you/.test(page.url())) expectVal(a, /First Name/i, SAMPLE_FACTS.firstName ?? "", f);
+  else if (/report-guide|\/$/.test(page.url())) f.push(`stuck at ${page.url()}`);
+  return f.length ? verdict(f) : { pass: true, why: `chose "${chosen}", reached ${new URL(page.url()).pathname}` };
+}
+
 async function enquiryCheck(page: Page, e: (typeof ENQ)[number]): Promise<Check> {
   const firm = { id: e.id, name: e.name, town: "Edinburgh", distanceMiles: null, website: e.website, email: null, phone: null, sources: ["slab" as const], legalAid: true, activeRecently: true, actsForPatients: "unknown" as const, noWinNoFee: "unknown" as const, enquiryUrl: e.enquiryUrl ?? null, score: 0, reasons: [], excluded: null };
   const o = await fillOne(page, firm, { facts: SAMPLE_FACTS, message: { subject: "Benchmark test (never sent)", body: "Benchmark test message. This form is never submitted." } });
@@ -120,6 +137,7 @@ const TASKS: Task[] = [
     values: spsoValues(SAMPLE_FACTS, SAMPLE_DRAFT, SAMPLE_SPSO), allowCheckboxes: true, ...SPSO_AGENT_OPTIONS,
     check: async (page) => { const t = await pageText(page); const missing = ["Review and send your complaint", "Ailsa", "Reid", "14 Example Street", "July 2026", "DEMO-0001"].filter((x) => !t.includes(x)); return /\/form\/review\/?$/.test(page.url()) && missing.length === 0 ? { pass: true, why: "reached the review page with the right details; nothing sent" } : { pass: false, why: `url ${page.url()} missing ${missing.join(", ") || "-"}` }; } },
   // Step 4 (D45): find each firm's enquiry form (looking harder when no URL is known) and fill it, stopping before Send.
+  { id: "yellowcard", url: "https://yellowcard.mhra.gov.uk/", goal: "", values: [], decisionsOnly: true, check: async () => ({ pass: false, why: "custom" }), custom: yellowCardCheck },
   ...ENQ.map((e): Task => ({ id: `enq-${e.id}`, url: e.website, goal: "", values: [], decisionsOnly: true, check: async () => ({ pass: false, why: "custom" }), custom: (page) => enquiryCheck(page, e) })),
   { id: "lawsoc", url: "https://www.lawscot.org.uk/find-a-solicitor/", goal: "Search the directory for firms: set the location and area of law from the saved values, then run the search.", allowSubmit: true, maxSteps: 8,
     values: [v("search_location", "City or postcode to search in", "Edinburgh"), v("area_of_law", "Area of law needed", "Accident and injury")],

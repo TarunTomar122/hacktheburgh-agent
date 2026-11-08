@@ -31,11 +31,14 @@ export function milestones(p: Profile): Milestone[] {
     { step: 4, label: "Enquiries sent", done: (p.enquiries ?? []).some((e) => e.status === "sent" || e.status === "replied" || e.status === "not_interested") },
     { step: 4, label: "A firm replied", done: (p.enquiries ?? []).some((e) => e.status === "replied") },
     { step: 5, label: "Case file complete", done: false },
+    { step: 6, label: "Product and problem described", done: !!p.yellowCard?.product?.trim() && !!(p.yellowCard?.reaction ?? p.facts.incidentSummary)?.trim() }, // the step pre-fills "what happened" from the story
+    { step: 6, label: "Yellow Card form filled in and checked", done: g.ycFilled === true },
+    { step: 6, label: "Report sent to the MHRA", done: g.ycSent === true },
   ].map((m) => ({ ...m, done: m.done || skipped.includes(m.step) }));
 }
 
 export function summarise(ms: Milestone[]) {
   const done = ms.filter((m) => m.done).length;
-  const next = ms.find((m) => !m.done && m.step <= 4);
+  const next = ms.find((m) => !m.done && m.step !== 5); // step 5 (case file) is not built yet
   return { done, total: ms.length, pct: Math.round((done / ms.length) * 100), next: next?.label ?? null };
 }

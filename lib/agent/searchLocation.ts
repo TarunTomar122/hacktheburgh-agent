@@ -10,7 +10,7 @@ export type SearchLocation = z.infer<typeof SearchLocation>;
 
 type LocationQuestion = { question: string; why: string; kind: "yes_no" | "text" };
 export async function askSearchLocation(ask: (question: LocationQuestion) => Promise<string | null>): Promise<SearchLocation> {
-  const permission = await ask({ question: "May we use your postcode to find solicitors near you?", why: "With your permission, we share the postcode you provide with SLAB's solicitor finder. You can continue without location.", kind: "yes_no" });
+  const permission = await ask({ question: "May Elliot use your postcode to find solicitors near you?", why: "With your permission, Elliot shares the postcode you provide with SLAB's solicitor finder. You can continue without location.", kind: "yes_no" });
   if (permission?.trim().toLowerCase() !== "yes") return { allowed: false };
   while (true) {
     const postcode = await ask({ question: "What is the patient's postcode to search from?", why: "Use the patient's location, not the hospital's. This finder covers Scotland. Skip to continue without location.", kind: "text" });

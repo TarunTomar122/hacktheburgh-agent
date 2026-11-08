@@ -149,7 +149,7 @@ async function findForm(page: Page, firm: FirmFinding, note: Note, track: Tracke
       ]).catch(() => null);
       const a = decided?.answers[0];
       if (a?.type === "choice") pick = options[Number(a.choice)] ?? pick;
-      await note.log("decide", decided ? `Chose "${pick.text || pick.href}" out of ${options.length} contact options` : `The model was unavailable, so we tried the first contact option, "${pick.text || pick.href}"`, {
+      await note.log("decide", decided ? `Chose "${pick.text || pick.href}" out of ${options.length} contact options` : `The model was unavailable, so Elliot tried the first contact option, "${pick.text || pick.href}"`, {
         confidence: a?.type === "choice" ? a.confidence : undefined,
         detail: options.map((o) => `${o === pick ? "→ " : "  "}${o.text || "(no text)"}  ${o.href}`).join("\n"),
       });
@@ -274,7 +274,7 @@ export async function fillOne(
   const missing = form.unfilled.filter((l) => !CONSENT_RE.test(l));
   if (missing.length > 0) {
     note("Needs an answer from you");
-    return { ...base, status: "needs_input", formUrl, filled: form.filled, unfilled: missing, consents: form.consents, fields: form.fields, question: `Their form asks for: ${missing.join(", ")}. We do not have this.`, note: `The form asks for something we do not know (${missing.join(", ")})` };
+    return { ...base, status: "needs_input", formUrl, filled: form.filled, unfilled: missing, consents: form.consents, fields: form.fields, question: `Their form asks for: ${missing.join(", ")}. Elliot does not have this.`, note: `The form asks for something we do not know (${missing.join(", ")})` };
   }
   if (run.status === "needs_input" && run.question && !/confirm/i.test(run.question)) await note.log("check", run.question);
   if (form.consents.length) await note.log("check", `${form.consents.length} consent box${form.consents.length === 1 ? "" : "es"} left unticked for your approval`, { detail: form.consents.join("\n") });
@@ -356,7 +356,7 @@ export async function runEnquiries(
       if (last!.status === "no_form") {
         const next = reserves.shift();
         if (next) {
-          put({ ...last!, note: `No online enquiry form, so we swapped in ${next.name}` });
+          put({ ...last!, note: `No online enquiry form, so Elliot swapped in ${next.name}` });
           tracer.add({ agent: label(f), color: "#e64d00", kind: "recover", text: `${f.name} has no online form; swapping in ${next.name}`, firms: [f.id, next.id] });
           order.push(next.id);
           put({ ...base(next), status: "finding_form", note: `Replacing ${f.name}`, swappedFor: f.name });
@@ -386,7 +386,7 @@ export async function runEnquiries(
 
 /** Why the server refuses to send, or null. Checked before anything else (D45). */
 export function sendGate(email: string | null): string | null {
-  if (email && /@(.+\.)?example\.(com|org|net)$/i.test(email.trim())) return "Not sent: this is a demo persona. We never send fictional enquiries to real firms.";
+  if (email && /@(.+\.)?example\.(com|org|net)$/i.test(email.trim())) return "Not sent: this is a demo persona. Elliot never sends fictional enquiries to real firms.";
   if (process.env.ALLOW_REAL_SEND !== "1") return "Not sent: real sending is switched off on this server (ALLOW_REAL_SEND is not set).";
   return null;
 }
@@ -512,7 +512,7 @@ export async function sendEnquiry(firmId: string, agreed: string[], edits: Field
   const text = (await pageText(page)).replace(/\s+/g, " ");
   const captcha = (await page.locator("iframe[src*='recaptcha'][title*='challenge' i], iframe[src*='hcaptcha']").count().catch(() => 0)) > 0 || /captcha|verify you are human|i'?m not a robot/i.test(text);
   if (captcha) {
-    await note.log("fail", "A CAPTCHA appeared after Send. We do not try to get past it: open the browser window and finish it yourself.", { shot: true });
+    await note.log("fail", "A CAPTCHA appeared after Send. Elliot does not try to get past it: open the browser window and finish it yourself.", { shot: true });
     return { ...base, status: "failed", note: "A CAPTCHA appeared after Send. Finish it yourself in the browser window." };
   }
   const thanks = text.match(/[^.]*\b(thank you|thanks|received|has been sent|we will be in touch|we'll be in touch|been submitted)\b[^.]*\./i);
@@ -523,5 +523,5 @@ export async function sendEnquiry(firmId: string, agreed: string[], edits: Field
   }
   const err = text.match(/[^.]*\b(required|invalid|please (enter|complete|fill)|error)\b[^.]*\./i);
   await note.log("fail", err ? `The form showed an error: ${err[0]}` : "No confirmation appeared after Send", { shot: true });
-  return { ...base, status: "failed", note: err ? `Their form said: ${err[0].trim().slice(0, 160)}` : "We pressed Send but saw no confirmation. Check the browser window." };
+  return { ...base, status: "failed", note: err ? `Their form said: ${err[0].trim().slice(0, 160)}` : "Elliot pressed Send but saw no confirmation. Check the browser window." };
 }

@@ -353,8 +353,61 @@ Numbers and sources (all shown on screen as estimates): the ombudsman does not n
 
 **D78 · 2026-11-08 · Om (asked), Claude (built) · decided**
 **A test-only login bypass, and a fix for big cases never saving.** (1) Om hates logging in again and again while testing. With `DEV_LOGIN=1` in `.env.local` (already added on Om's Mac; ignored in production builds), `/welcome` shows a small "Dev: skip login (test only)" link. It goes to `/dev-login`, which sets an httpOnly cookie and signs you in as a fixed fake user (`sub` `dev|local`, name "Dev tester", email `dev@example.invalid` or `DEV_LOGIN_EMAIL`), no Auth0 round trip. Everything that reads the session (`lib/auth0.ts` `sessionUser()`, `proxy.ts`, `/api/profile`, `/welcome`) accepts it; Log out drops the cookie and returns to `/welcome`. The cookie only matches the dev server that set it, so restarting `npm run dev` signs you out (D77). The dev user's case saves to the database under `dev|local` like any account. **Risk:** never set `DEV_LOGIN=1` where other people can reach the server (for example a public tunnel to `npm run dev`); remove the line from `.env.local` before demo day. (2) `lib/profile.ts` sent every save with `keepalive: true`, which browsers refuse above 64 KiB (checked in Chromium: a 70 KB PUT throws, a 40 KB one works). A case carrying a full agent run could pass that, so it never saved (header stuck on "error", retrying every 8 s). Now `keepalive` is used only below 60,000 bytes.
+**D79 · 2026-11-07 · Lea (asked), Claude (built on branch `feature/yellow-card`) · proposed, not merged**
+**A third track: "Report a medicine problem" (MHRA Yellow Card), alongside the two in D42, which stay unchanged.**
+- **Onboarding:** the outcome question gets two more boxes: "Report a side effect from a medicine or vaccine" and "Report a faulty or fake medicine, prescription item or device".
+- **Recommendation:** the track's fit is 60 points if either box is ticked, plus up to 40 from a third story signal ("is this mainly about a medicine, vaccine or device?", Decisions API). The highest fit wins; ties keep the order complaint, compensation, Yellow Card. Fit is still never a chance of success. Recommendations saved before this have no Yellow Card score and are fetched again.
+- **Step 6, "Yellow Card report"** (numbered 6 so steps 1-5 keep their numbers): asks only what the site needs: what kind of report, the product name, what happened, and the MHRA privacy agreement.
+  - The agent types the product into the site's search. The model *chooses* the matching suggestion (D21).
+  - It presses "Start report" and fills the pages with `runDecisionAgent`.
+  - It never registers, sets a password, submits or sends. Those elements are filtered out before the model sees them.
+  - The user checks the report and sends it themselves.
+- **New demo persona:** Isla Grant (fictional), with a reaction to amoxicillin.
 
-**D79 · 2026-11-08 · Om (asked), Claude (built) · decided**
+Why: Lea wants the app to be multi-purpose within the medical topic, and the Yellow Card form adds kinds of interaction we lacked: a search box with suggestions, a branching start page, and a sign-up offer to decline.
+**Limits:**
+- Pages after `/about-you` were never seen.
+- The guessed final-page address (`stopAtUrl`) is untested. The filter on submit, send and register labels is the real guard.
+- Not run end to end. `tsc`, `eslint` and the bench task were not run here, because Node is not on this machine's PATH.
+
+**D80 · 2026-11-08 · Lea (asked), Claude (built on branch `feature/yellow-card`) · proposed, not merged. Partly supersedes D76**
+**The onboarding "What would you like help with?" question is a tick-list again, not a single choice.**
+- **Why:** Lea: someone may want compensation *and* to complain or report a medicine.
+- **Options:** the four `HELP_ROUTES` (compensation, NHS complaint, side effect, faulty or fake product), "Anything else (optional)", and "I'm not sure yet: suggest a path for me".
+- **Where it leads:**
+  - One path ticked: straight to it, as in D76.
+  - Several: the suggestion page offers only the ticked paths (`track.wanted`), with the best fit first. The others are labelled "You ticked this too", with no fit score: the NHS complaint stores no outcome sentence (D76), so its score would read 0%.
+  - None, or "not sure": the full suggestion page.
+- The app still works on one path at a time (D42); the user switches from the profile.
+- **Tell Om:** this reverses D76's single choice. D76's removal of the apology route is kept.
+
+**Also: the agent engine asks instead of guessing** (`lib/agent/decisionAgent.ts`, Tarun's area; `npm run bench` not rerun):
+1. An action that throws is retried on a fresh look (at most twice), and the engine never navigates in the same step.
+2. When the model wants to ask but nothing specific is unresolved:
+   - it first looks again once (the page may still be loading)
+   - then it asks the model which of the page's own unanswered fields is missing (a choice, D21) and asks the user about those fields by name; a tick box is asked as 'Do you agree to "X"? (yes or no)'
+   - if nothing is missing, it presses the allowed next or continue control once
+   - otherwise it says plainly where it is stuck, with no answer box
+3. The same click on the same unchanged page a third time stops and asks what is missing.
+4. A yes to a tick-box question becomes plain agreement in `extra.ts`, so the box is ticked only because the user agreed.
+
+**D81 · 2026-11-08 · Om (asked), Claude (built) · decided**
 **"Delete all my data" now removes the case from the database for good.** Before, it wrote a tombstone (the row stayed, with `user_id` and `email`, profile set to null) so other devices would clear their copy. Now `DELETE /api/profile` deletes the row outright, so nothing about the user is left in Tiger (no case, no email, no id). To keep other devices from re-uploading a deleted case, each browser keeps two small markers in `localStorage`: "synced" (this browser has exchanged its case with the server) and "delete pending". A browser that has synced before and finds no server row clears its own copy; one that has never synced uploads as before. If the delete request fails (offline), the pending marker retries it on the next pull and the local copy stays gone. **Known edges:** (1) a second device that edits the case after the delete and before its next pull will upload it again, recreating the row; (2) if the database is ever wiped by hand, every browser that had synced will clear its local copy on its next pull (the local copy is no longer a backup); (3) old tombstone rows from before this change keep their email until removed with `DELETE FROM case_profiles WHERE profile IS NULL;` in the Tiger console. The persistence test now checks the row and the user's email are gone.
 
-<!-- Add new entries above this line. Next number: D80 -->
+**D82 · 2026-11-08 · Om (asked), Claude (built) · decided. Supersedes the onboarding question of D76 and D80**
+**The last onboarding question is the outcome checklist again, and the recommendation page suggests the path.**
+- **Options:** the five outcomes of D42 (an explanation, an apology, changes so it does not happen to someone else, treatment or support, compensation) plus one medicine option, "Report a prescription or side effect from a medicine". The two medicine boxes of D79 are merged into it; the Yellow Card step still asks whether it is a side effect, a faulty product or a fake one.
+- **Where it leads:** always the recommendation page (D42). Nothing is chosen for the user on the way out of onboarding. `track.wanted` is no longer set by onboarding.
+- **Kept from D76:** the story is not asked twice, the login email fills the contact email, the new welcome page. **Kept from D80:** the agent engine asks instead of guessing.
+- **Old cases:** a saved case with the earlier wording "Report a side effect from a medicine or vaccine" still counts as a side effect (`LEGACY_SIDE_EFFECT_CHOICE`).
+
+## D83 - Pressing Submit in the agent's browser marks the step as sent; the page's button then changes (Om, 2026-11-08)
+
+- **What:** when the user presses Submit/Send on a form the agent filled (NHS Lothian, the ombudsman, Yellow Card), the app now does what "I've pressed Submit" does: marks that step as sent and nothing more (revised 04:02: it first jumped to step 2 itself; Om wanted it simpler). The page does not move. On the NHS step the "Skip and continue to step 2 (demo)" button becomes "Continue to Ombudsman" (same in `ComplaintRun.tsx`), and skips nothing. The ombudsman and Yellow Card are the last step of their path and show "Marked as sent".
+- **How:** `closeWhenSubmitted` (lib/browser.ts, D57) already noticed a POST plus a new confirmation text. It now takes `flow` ("nhs", "spso", "yellowcard") and announces it on the live stream (`submitted` event, lib/liveview.ts). `LiveView` turns it into a window event `agent-submitted`; `app/case/page.tsx` listens and sets `nhsSent` / `spsoSent` / `ycSent`.
+- **Kept:** the "I've pressed Submit" buttons stay as a fallback, because detection depends on the site showing a confirmation text (`SUBMITTED_TEXT`).
+- **NHS form (Ninja Forms, invisible reCAPTCHA):** success message is in `.nf-response-msg`, so that is watched too, and the watcher logs `[submit-watch]` lines (POST host/path, form messages) to the dev terminal. 2026-11-08 03:58: a real submit from the live view produced no POST line at all, cause not yet known.
+- **Not seen:** the Yellow Card confirmation page (never submitted while probing). `SUBMITTED_TEXT` now also matches "thank you for your report / reporting", which is a guess. If it does not trigger, send the confirmation page's wording and add it.
+- **Compensation path (steps 3 and 4):** nothing to detect. The agent sends the firms' forms itself after the user's OK in step 4, and that step already marks each as sent.
+
+<!-- Add new entries above this line. Next number: D84 -->

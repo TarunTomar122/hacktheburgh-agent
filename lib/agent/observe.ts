@@ -119,7 +119,8 @@ async function observeOnce(page: Page): Promise<Observation> {
         id: id++,
         kind,
         name,
-        label: label.slice(0, kind === "checkbox" ? 500 : 140),
+        // 240, not 140: when the agent asks the user a form's question, it shows this label (Yellow Card's 150-character "mistake in the prescription…" question was cut off).
+        label: label.slice(0, kind === "checkbox" ? 500 : 240),
         group: kind === "radio" || kind === "checkbox" ? groupOf(e).slice(0, 140) : "",
         required: el.required || e.getAttribute("aria-required") === "true" || /(^\s*\*|\*\s*$)/.test(label),
         value: kind === "select" ? text(el.selectedOptions?.[0]) : kind === "radio" || kind === "checkbox" ? "" : el.value ?? "",

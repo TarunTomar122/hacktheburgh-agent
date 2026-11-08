@@ -30,15 +30,15 @@ export const OUTCOME_CHOICES = [
   "Changes so it does not happen to someone else",
   "Treatment or support to put things right",
   "Compensation for what happened",
+  "Report a prescription or side effect from a medicine",
 ] as const;
 /** Ticking this points towards the compensation track (D42). */
 export const COMPENSATION_CHOICE = "Compensation for what happened";
-
-export const HELP_ROUTES = [
-  { label: "Ask for compensation", value: "compensation" },
-  { label: "File an NHS complaint", value: "formal" },
-] as const;
-export type HelpRoute = (typeof HELP_ROUTES)[number]["value"];
+/** Ticking either of these points towards the Yellow Card track (proposed, feature/yellow-card). Their first 18 characters must stay distinct: goalsFrom matches on them. */
+export const SIDE_EFFECT_CHOICE = "Report a prescription or side effect from a medicine";
+/** The wording before the two medicine options were merged into one. Cases saved with it still count as a side effect (track.ts). */
+export const LEGACY_SIDE_EFFECT_CHOICE = "Report a side effect from a medicine or vaccine";
+export const FAULTY_PRODUCT_CHOICE = "Report a faulty or fake medicine, prescription item or device";
 
 const blank = (v: string | null | undefined) => v === null || v === undefined || v.trim() === "";
 
@@ -259,7 +259,8 @@ export function inputFor(target: Target, f: CaseFacts, opts: { emailDeclined?: b
         disclaimer: EMAIL_DISCLAIMER,
       };
     case "outcome":
-      return { kind: "choice", target, options: [...HELP_ROUTES] };
+      // The outcome checklist (D42): what they would like to come out of this. The ticks feed the recommended path (track.ts).
+      return { kind: "checklist", target, options: OUTCOME_CHOICES, otherLabel: "Anything else you would like to add (optional)", noneLabel: "I have nothing to add" };
     case "done":
       return { kind: "none", target };
   }
@@ -283,13 +284,13 @@ export function questionFor(target: Target, f: CaseFacts, opts: { emailDeclined?
     case "who":
       return "Is this about your own care, or someone else's?";
     case "contact":
-      return "Now a few practical details, so that we can fill in forms for you.";
+      return "Now a few practical details, so that Elliot can fill in forms for you.";
     case "contactMethod":
       return opts.emailDeclined ? "That is fine. Would you prefer a letter or a phone call?" : "How should NHS Lothian reply to your complaint?";
     case "emailRisk":
       return "Email is quick, but it is not completely private. A message could, rarely, reach the wrong person or go missing, and NHS Lothian cannot take responsibility if that happens. Are you happy to be contacted by email on that basis?";
     case "outcome":
-      return "What would you like help with?";
+      return "Last question. What would you most like to come out of this? Tick all that apply.";
     case "done":
       return `Thank you${name ? `, ${name}` : ""}. I have what I need. Please check everything below. You can change any of it later in your profile. Nothing has been sent to the NHS yet.`;
   }
@@ -348,8 +349,6 @@ export function patchFromAnswer(
       return p;
     }
     case "outcome": {
-      const route = HELP_ROUTES.find((option) => option.value === answer.value);
-      if (route) return { desiredOutcome: route.value === "compensation" ? COMPENSATION_CHOICE + "." : "" };
       if (answer.none === true) return { desiredOutcome: "" };
       const chosen = Array.isArray(answer.chosen) ? answer.chosen : [];
       return { desiredOutcome: outcomeSentence(chosen, s("other")) };

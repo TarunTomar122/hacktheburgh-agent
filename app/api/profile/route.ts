@@ -79,7 +79,7 @@ export async function PUT(req: Request) {
   }
 }
 
-/** Deletes the user's saved case from the database completely (D79). Idempotent: deleting nothing is also a success. */
+/** Deletes the user's saved case from the database completely (D81). Idempotent: deleting nothing is also a success. */
 export async function DELETE() {
   try {
     const u = await who();

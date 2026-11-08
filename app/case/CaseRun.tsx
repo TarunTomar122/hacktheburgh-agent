@@ -629,7 +629,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
         ? { title: "Legal aid looks unlikely", text: "SLAB's calculator says you probably do not qualify. Many firms take claims like yours on a no win, no fee basis instead; Robin checked which ones say so." }
         : result.verdict === "skipped" || skipped("nell") || !reached("nell")
           ? { title: "Funding not checked", text: skipped("nell") || !reached("nell") ? "Nell did not check legal aid this time. A solicitor can check it with you, or run the crew again." : "You skipped the money questions. A solicitor can check legal aid with you." }
-          : { title: "Funding is unclear", text: "We could not read an estimate from SLAB's calculator. A solicitor can check legal aid with you." };
+          : { title: "Funding is unclear", text: "Elliot could not read an estimate from SLAB's calculator. A solicitor can check legal aid with you." };
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -689,7 +689,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
                   {point.text}
                 </Quote>
               </Said>
-              <Said label="What you told us">{gap.timeline}</Said>
+              <Said label="What you told Elliot">{gap.timeline}</Said>
               <Said label="Why it matters">This may be a gap in your care, or there may be a good reason for it. Only your medical records can show which, and a solicitor will check them.</Said>
               <div className="rounded-[6px] bg-purple-soft px-4 py-3">
                 <p className="text-[13px] font-medium text-purple">The question to ask</p>
