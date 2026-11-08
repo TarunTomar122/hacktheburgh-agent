@@ -376,7 +376,7 @@ type SearchHit = { title: string; url: string; snippet: string };
  * job, and an API never shows a bot check. Only the query leaves the machine (never patient values). The browser then opens
  * the pages, so every quote is still checked against a page this run really read. Returns null if no key or it failed.
  */
-const LINKUP_PER_RUN = Number(process.env.LINKUP_MAX_PER_RUN ?? 12); // one query returns 10 pages: a run needs about 8 aimed queries, not dozens
+const LINKUP_PER_RUN = Number(process.env.LINKUP_MAX_PER_RUN ?? 24); // one query returns 10 pages: research needs about 8 aimed queries; the case step adds firm searches and fallbacks
 const LINKUP_TOTAL = Number(process.env.LINKUP_MAX_TOTAL ?? 5000); // and one machine never spends more than this in total
 const linkupUsed = new WeakMap<object, number>();
 function linkupAllowed(track: Tracker): boolean {

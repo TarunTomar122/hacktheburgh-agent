@@ -1,6 +1,6 @@
 // One case end to end, headless: research the place (discovery), then prepare the case (compensation), timed.
 //   HEADLESS=1 npx tsx --env-file=.env.local scripts/e2e-case.ts <persona> [--route=.runs/<discovery>/route.json]
-// Questions from the crew get fictional answers (money 14000, yes/no "No", choice: the first option). Nothing is sent:
+// Questions from the crew get fictional answers (money 14000, yes/no "No" except "I have read / I agree" which gets "Yes", choice: the first option). Nothing is sent:
 // the crew stops before every Send. Prints how each page and job reached the web (fetch, search API, cache, browser).
 process.env.HANDOFF_WAIT_MS ??= "0";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -23,7 +23,7 @@ function listener(tag: string) {
     if (e.type === "run") runId = e.runId;
     if (e.type === "say" && e.say.kind !== "assign") console.log(`[${s()}] ${tag} [${e.say.from}] ${e.say.text.slice(0, 200)}`);
     if (e.type === "ask") {
-      const a = e.ask.kind === "money" || e.ask.kind === "number" ? "14000" : e.ask.kind === "yes_no" ? "No" : e.ask.kind === "choice" ? (e.ask.options?.[0] ?? null) : null;
+      const a = e.ask.kind === "money" || e.ask.kind === "number" ? "14000" : e.ask.kind === "yes_no" ? (/confirm|agree|understand|accept|disclaimer|read the/i.test(e.ask.question) ? "Yes" : "No") : e.ask.kind === "choice" ? (e.ask.options?.[0] ?? null) : null;
       console.log(`[${s()}] ${tag} ASK (${e.ask.kind}) ${e.ask.question} -> ${a}`);
       setTimeout(() => answerQuestion(runId, e.ask.id, a), 800);
     }

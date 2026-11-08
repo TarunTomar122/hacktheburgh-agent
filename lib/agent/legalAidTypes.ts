@@ -61,7 +61,7 @@ export type FirmFinding = {
   website: string | null;
   email: string | null;
   phone: string | null;
-  sources: ("slab" | "lawsoc" | "website")[];
+  sources: ("slab" | "lawsoc" | "website" | "search")[]; // "search": found by a web search (its own site still has to be checked)
   legalAid: boolean; // registered with SLAB for civil legal aid, medical negligence
   activeRecently: boolean; // SLAB "active in the last 12 months" filter
   actsForPatients: Tri; // read from the firm's own site; "no" = defends the NHS or insurers
