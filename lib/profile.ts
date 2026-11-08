@@ -175,12 +175,14 @@ async function call(method: "GET" | "PUT" | "DELETE", body?: unknown): Promise<{
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
+    const text = body === undefined ? undefined : JSON.stringify(body);
     const res = await fetch("/api/profile", {
       method,
-      headers: body === undefined ? undefined : { "content-type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: text === undefined ? undefined : { "content-type": "application/json" },
+      body: text,
       signal: ctrl.signal,
-      keepalive: method !== "GET",
+      // keepalive lets the last save survive a closing tab, but the browser refuses it above 64 KiB (the fetch throws, so a big case would never save).
+      keepalive: method !== "GET" && text !== undefined && new Blob([text]).size < 60_000,
     });
     return { status: res.status, data: (await res.json().catch(() => ({}))) as Record<string, unknown> };
   } catch {
