@@ -22,7 +22,11 @@ export const STEPS: Step[] = [
 
 /** The same four steps for a place with a route map: the funding body and the lawyer register are the ones found for that place. */
 export function routeSteps(map: RouteMap): Step[] {
-  const body = (kind: "funding" | "lawyers") => map.steps.find((s) => s.kind === kind)?.body;
+  // A short name only: if the research left a sentence there, the step says it plainly instead.
+  const body = (kind: "funding" | "lawyers") => {
+    const b = map.steps.find((s) => s.kind === kind)?.body?.trim();
+    return b && b.length <= 40 && !/[.:;]/.test(b) ? b : undefined;
+  };
   const funding = body("funding");
   const lawyers = body("lawyers");
   return [

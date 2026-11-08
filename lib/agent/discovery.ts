@@ -28,7 +28,7 @@ const TOOLS = [
   tool("read_page", "Open a page and answer a question from it, with short verbatim quotes and links worth following.", { url: { type: "string" }, question: { type: "string" }, ...WHO }, ["url", "question", "who"]),
   tool("record_step", "Record one part of the route once you have read it on real pages. Quotes must be copied word for word from pages you opened in this run; code checks them.", {
     kind: { type: "string", enum: ROUTE_KINDS.map((k) => k.kind) },
-    body: { type: "string", description: "Who: the organisation's name as it calls itself" },
+    body: { type: "string", description: "Who: ONLY the organisation's name as it calls itself, under 8 words (a board, ombudsman, register or scheme name). Never a sentence; the sentence goes in \"what\"." },
     what: { type: "string", description: "One or two plain sentences for the patient" },
     points: { type: "array", items: { type: "string" }, description: "Up to 6 key facts, each short and backed by one of the quotes: time limits, stages and response times, caps or thresholds, conditions, costs, what is free" },
     deadline: { type: "string", description: "The time limit, in the source's words, if there is one" },
@@ -185,7 +185,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
       const prev = steps.get(draft.kind);
       if (prev && prev.confidence !== "unconfirmed" && (prev.points?.length ?? 0) >= draft.points.length) return out;
       const picked = draft.quotes.filter((i) => i >= 0 && i < quotes.length);
-      recordStep({ kind: draft.kind, body: draft.body, what: draft.what, points: draft.points, deadline: draft.deadline || undefined, how: draft.how, url: v.url, sources: (picked.length ? picked : quotes.map((_, i) => i)).slice(0, 4).map((i) => ({ url: v.url, quote: quotes[i], official: draft.official, publisher: draft.publisher || host(v.url) })) }, kit);
+      const bodyName = draft.body.length > 70 || /[.;]\s/.test(draft.body) ? draft.publisher || host(v.url) : draft.body;
+      recordStep({ kind: draft.kind, body: bodyName, what: draft.what, points: draft.points, deadline: draft.deadline || undefined, how: draft.how, url: v.url, sources: (picked.length ? picked : quotes.map((_, i) => i)).slice(0, 4).map((i) => ({ url: v.url, quote: quotes[i], official: draft.official, publisher: draft.publisher || host(v.url) })) }, kit);
       const now = steps.get(draft.kind);
       if (now) kit.finding(`${labelOf(draft.kind)}: ${now.body}`, v.url, who);
       return `${out}\nAuto-recorded ${draft.kind} (${now?.confidence ?? "unconfirmed"}) from this page. Record it yourself only if you have more to add.`;
@@ -274,6 +275,7 @@ Quotes:\n${s.sources.filter((x) => x.checked).map((x) => `- ${x.quote} (${hostOf
   const recordStep = (a: Record<string, unknown>, kit: CrewKit): string => {
     const kind = String(a.kind) as RouteKind;
     if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
+    if (String(a.body ?? "").length > 70 || /[.;]\s/.test(String(a.body ?? ""))) return "Error: body must be only the organisation's name (under 8 words), not a sentence. Put the sentence in \"what\" and record_step again.";
     // "official" needs both: the model's judgement of the publisher, and a page on that host really opened in this run.
     // "official" needs three things: the model's judgement, a page on that host really opened in this run, and (code) that page
     // naming its publisher or the body itself. Unknown text (e.g. a PDF) keeps the model's judgement only with the host check.
