@@ -170,7 +170,8 @@ ROUTE MAP:\n${JSON.stringify({ place: route.place, steps: route.steps.map((s) =>
             }
             const o = r.value.out;
             form = {
-              status: o.status === "ready_to_submit" ? "ready_to_submit" : o.status === "needs_input" ? "needs_input" : "failed",
+              // Fields filled but the finishing button not identified: that is "filled as far as we could", not a failure.
+              status: o.status === "ready_to_submit" ? "ready_to_submit" : o.status === "needs_input" || (o.status === "failed" && o.pages.some((pg) => pg.filled.length > 0)) ? "needs_input" : "failed",
               filled: o.pages.flatMap((pg) => pg.filled),
               unfilled: o.unfilled,
               note: o.summary,
