@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { missingForOnboarding, missingRequired } from "../../lib/agent/facts";
 import { TRACKS } from "../../lib/agent/track";
 import { setDraft, setOmbudsman, setProgress, skipStep, useProfile, type Profile } from "../../lib/profile";
+import { useAccount } from "../AccountMenu";
 import { Button, Callout, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
@@ -26,6 +27,8 @@ import { supportsLothian } from "../../lib/agent/complaintScope";
 
 export default function CasePage() {
   const profile = useProfile();
+  const account = useAccount();
+  const leaving = useRef(false); // set while "Delete all my data" is finishing, so the page does not jump away first
   const [picked, setActive] = useState<number | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -54,7 +57,7 @@ export default function CasePage() {
   useEffect(() => {
     // A full page load, not router.replace: with Cache Components the start page you left earlier is kept alive with its state, so a client-side
     // return would show the old "check your details" screen (D76) instead of a blank form.
-    if (profile === null) window.location.replace("/");
+    if (profile === null && !leaving.current) window.location.replace("/");
   }, [profile]);
 
   if (!profile) return null;
@@ -79,7 +82,12 @@ export default function CasePage() {
           <ProfileTab
             profile={profile}
             onClose={() => setProfileOpen(false)}
-            onDeleted={() => window.location.replace("/")}
+            onDeleting={() => {
+              leaving.current = true;
+            }}
+            // After "Delete all my data" a signed-in user is signed out and lands on the login screen (/auth/logout ends at /welcome).
+            // A demo case or a browser-only case goes back to the start page.
+            onDeleted={(wasDemo) => window.location.replace(!wasDemo && account.sub ? "/auth/logout" : "/")}
             onSwitched={(n) => {
               setActive(n);
               setProfileOpen(false);

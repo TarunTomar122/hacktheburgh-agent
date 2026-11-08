@@ -30,7 +30,7 @@ export const FIELD_LABELS: Record<string, string> = {
 const input = control;
 
 
-export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleted: () => void; onSwitched?: (firstStep: number) => void }) {
+export default function ProfileTab({ profile, onClose, onDeleting, onDeleted, onSwitched }: { profile: Profile; onClose: () => void; onDeleting?: () => void; onDeleted: (wasDemo: boolean) => void; onSwitched?: (firstStep: number) => void }) {
   const demo = useDemo();
   const saved = useSyncStatus() !== "off"; // saving to the account is on (D75)
   const f = profile.facts;
@@ -275,10 +275,12 @@ export default function ProfileTab({ profile, onClose, onDeleted, onSwitched }: 
         <section className="space-y-2 border-t border-line pt-6">
           <Eyebrow>Your data</Eyebrow>
           <button
-            onClick={() => {
-              if (window.confirm(demo ? "Close this demo case?" : saved ? "Delete everything saved about your case, on every device you use?" : "Delete everything saved about your case on this device?")) {
-                clearProfile();
-                onDeleted();
+            onClick={async () => {
+              if (window.confirm(demo ? "Close this demo case?" : saved ? "Delete everything saved about your case, on every device you use? You will be signed out." : "Delete everything saved about your case on this device?")) {
+                const wasDemo = demo;
+                onDeleting?.(); // the page must not jump to the start page while the server is still deleting
+                await clearProfile();
+                onDeleted(wasDemo);
               }
             }}
             className="text-sm font-medium text-danger underline underline-offset-2"

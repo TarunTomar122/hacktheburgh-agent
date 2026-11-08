@@ -8,6 +8,10 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - "Delete all my data" signs you out to the login screen
+
+Before, it went to the start page (onboarding) with the user still signed in. Now, for a signed-in user, it waits for the server's delete to finish (`clearProfile()` returns a promise, at most 8 s; a failed delete is still retried at the next sign-in via the pending marker, D81) and then goes to `/auth/logout`, which ends on `/welcome` (the same route as the Log out button). The case page's "no case, go to the start page" jump waits while this happens. A demo case, or a case kept only in the browser (no accounts), still goes to the start page. The confirm text now says "You will be signed out." Files: `lib/profile.ts`, `app/case/ProfileTab.tsx`, `app/case/page.tsx`. `tsc` and eslint clean; not yet tried in a browser.
+
 ### 2026-11-08 - Om + Claude - DONE - Clean edge under the blue (D86)
 
 Removed the stepped stripes under the blue header and the profile's blue band, at Om's request: `Stripes` (`app/case/Header.tsx`) draws nothing, so the case pages, profile, start page and `/welcome` all change. Supersedes the stripes of D31; `docs/DESIGN.md` updated. `tsc` and eslint clean; not yet seen in a browser.

@@ -501,7 +501,8 @@ export function upsertEnquiries(records: (Partial<EnquiryRecord> & Pick<EnquiryR
   write({ ...p, enquiries: cur });
 }
 
-export function clearProfile() {
+/** Resolves once the server has answered the delete (or at once when there is nothing to tell it), so the caller can sign out safely. */
+export async function clearProfile(): Promise<void> {
   if (inDemo()) {
     exitDemo(); // the demo copy goes; the real case is untouched
     return;
@@ -514,10 +515,9 @@ export function clearProfile() {
   clearTimeout(pushTimer);
   flagSet(pendingKey(), true); // retried on the next pull if this request does not get through
   flagSet(syncedKey(), false);
-  void call("DELETE").then((r) => {
-    if (r?.status === 200) flagSet(pendingKey(), false);
-    setStatus(r?.status === 200 ? "saved" : "error");
-  });
+  const r = await call("DELETE"); // at most 8 s; if it fails, the pending marker retries it on the next sign-in
+  if (r?.status === 200) flagSet(pendingKey(), false);
+  setStatus(r?.status === 200 ? "saved" : "error");
 }
 
 /** undefined while loading (server render), null when nothing saved, else the profile. */
