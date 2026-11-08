@@ -155,9 +155,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
               const v = await readPage(ctxFor(kit, p, note, who), url, String(a.question ?? ""));
               if (!p.isClosed()) {
-                const t = [await pageText(p), await fullText(p)].join("\n");
-                remember(v.url, t);
-                remember(p.url(), t);
+                // The DOM text belongs to the page the browser shows; a PDF's text is checked by the reader itself (workerChecked).
+                if (!/\.pdf(\?|#|$)/i.test(v.url) && keyOf(v.url) === keyOf(p.url())) remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
                 if (!v.wall) opened.add(hostOf(v.url));
               }
               return v;
@@ -176,9 +175,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const r = await kit.inTab(thought, who, short(host(url), 26), async (p, note) => {
               const v = await exploreSite(ctxFor(kit, p, note, who), url, String(a.goal ?? ""), { want: a.want === "form" ? "form" : "page" });
               if (!p.isClosed()) {
-                const t = [await pageText(p), await fullText(p)].join("\n");
-                remember(p.url(), t);
-                remember(v.url, t);
+                if (!/\.pdf(\?|#|$)/i.test(p.url())) remember(p.url(), [await pageText(p), await fullText(p)].join("\n"));
                 if (!v.wall) opened.add(hostOf(p.url()));
               }
               return v;
@@ -196,7 +193,16 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             const kind = String(a.kind) as RouteKind;
             if (!ROUTE_KINDS.some((k) => k.kind === kind)) return `Error: unknown kind ${kind}`;
             // "official" needs both: the model's judgement of the publisher, and a page on that host really opened in this run.
-            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
+            // "official" needs three things: the model's judgement, a page on that host really opened in this run, and (code) that page
+            // naming its publisher or the body itself. Unknown text (e.g. a PDF) keeps the model's judgement only with the host check.
+            const bodyName = normText(String(a.body ?? ""));
+            const names = (s: Source) => {
+              const t = texts.get(keyOf(String(s.url)));
+              if (!t) return true;
+              const pub = normText(String(s.publisher ?? ""));
+              return (bodyName.length > 3 && t.includes(bodyName)) || (pub.length > 3 && t.includes(pub));
+            };
+            const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
             const checkedText = sources.filter((x) => x.checked).map((x) => normText(x.quote)).join(" ");
             const backed = (claim?: string) => !claim || (claim.match(/\d[\d,.]*/g) ?? []).every((n) => checkedText.includes(normText(n)));
@@ -214,7 +220,8 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               alternatives: Array.isArray(a.alternatives) ? (a.alternatives as string[]).map(String) : undefined,
               missing: Array.isArray(a.missing) ? (a.missing as string[]).map(String) : undefined,
               sources,
-              confidence: confidenceOf(sources),
+              // The headline (who) must be backed too: the body's name appears in a checked quote or on a page whose quote checked.
+              confidence: sources.some((x) => x.checked && (normText(x.quote).includes(bodyName) || (texts.get(keyOf(x.url)) ?? "").includes(bodyName))) ? confidenceOf(sources) : "unconfirmed",
               by: ROUTE_KINDS.find((k) => k.kind === kind)!.crew,
             };
             steps.set(kind, step);

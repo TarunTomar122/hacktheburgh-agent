@@ -65,7 +65,7 @@ export const WHY: Record<ScoreItem["key"], string> = {
 
 /** The same explanations, looked up by the short labels used on chips. */
 export const whyFor = (label: string): string | undefined =>
-  ({ "Takes legal aid": WHY.legal_aid, "Represents patients": WHY.patients, "No win no fee": WHY.nwnf, "Online form": WHY.form, "Enquiry form": WHY.form, "On the Law Society register": WHY.lawsoc })[label];
+  ({ "Takes legal aid": WHY.legal_aid, "Represents patients": WHY.patients, "No win no fee": WHY.nwnf, "Online form": WHY.form, "Enquiry form": WHY.form, "On the official register": WHY.lawsoc })[label];
 
 const BAR: Record<ScoreItem["status"], string> = { yes: "bg-teal", no: "bg-danger/60", unknown: "bg-fade" };
 const MARK: Record<ScoreItem["status"], { t: string; cls: string }> = {

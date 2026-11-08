@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
-import { CREW, type AskSpec, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
+import { CREW, type AskSpec, type PlannerResult, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 import { setCaseRun, setEnquiry, setLegalAid, skipStep, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
@@ -636,6 +636,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
   const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
   const checker = fundingStep ? `${fundingStep.body}'s checker` : "SLAB's calculator";
+  const registerName = routeMap?.steps.find((x) => x.kind === "lawyers")?.body ?? "the Law Society register";
   const checkerUrl = fundingStep?.url ?? SLAB_CALC;
   const funding =
     result.verdict === "likely"
@@ -682,8 +683,19 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
           )}
         </Row>
 
+        {(result as PlannerResult).scheme && (
+          <Row crew="robin" topic="Compensation scheme" title={(result as PlannerResult).scheme!.body}>
+            <p className="text-[15px] leading-6 text-ink">{(result as PlannerResult).scheme!.text}</p>
+            {(result as PlannerResult).scheme!.quote && (
+              <Quote source={(result as PlannerResult).scheme!.body} href={(result as PlannerResult).scheme!.url}>
+                {(result as PlannerResult).scheme!.quote}
+              </Quote>
+            )}
+          </Row>
+        )}
+
         <Row crew="robin" topic="Solicitors" title={top.length ? `${top.length} solicitor${top.length === 1 ? "" : "s"} who could take your case` : "No solicitors checked yet"}>
-          <p className="text-[15px] leading-6 text-ink">{top.length ? "Robin checked each firm's own website and the Law Society register. These fit you best." : "Robin did not get to check any firms before the run ended."}</p>
+          <p className="text-[15px] leading-6 text-ink">{top.length ? `Robin checked each firm's own website and ${registerName}. These fit you best.` : "Robin did not get to check any firms before the run ended."}</p>
           <ul className="mt-2 divide-y divide-line-soft">
             {top.map((f) => (
               <FirmLine key={f.id} f={f} />
@@ -700,7 +712,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
           {gap && point ? (
             <div className="space-y-4">
               <Said label="What doctors are advised to do">
-                <Quote source={`NICE guideline ${ev.guideline!.name.match(/NG\d+/)?.[0] ?? ""}, ${point.id}`.replace(" ,", ",")} href={ev.guideline!.url} inline>
+                <Quote source={/NG\d+/.test(ev.guideline!.name) ? `NICE guideline ${ev.guideline!.name.match(/NG\d+/)![0]}, ${point.id}` : ev.guideline!.name} href={ev.guideline!.url} inline>
                   {point.text}
                 </Quote>
               </Said>

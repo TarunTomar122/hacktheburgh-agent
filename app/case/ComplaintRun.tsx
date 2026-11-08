@@ -64,12 +64,13 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   if (!route && !supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
   if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => go()} kit={KIT} />;
   if (saved && !again) return <ComplaintFile body={body} profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
-  return <Intro body={body} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
+  // The recorded complaint run is the Scotland one: only offer it when there is no route map for another place.
+  return <Intro body={body} recorded={!route} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;
 }
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ body, profile, onStart, onDemo, onSkip, error }: { body: string; profile: Profile; onStart: () => void; onDemo: (toEnd: boolean) => void; onSkip: () => void; error?: string }) {
+function Intro({ body, recorded, profile, onStart, onDemo, onSkip, error }: { body: string; recorded: boolean; profile: Profile; onStart: () => void; onDemo: (toEnd: boolean) => void; onSkip: () => void; error?: string }) {
   const missing = missingRequired(profile.facts);
   return (
     <div className="mx-auto max-w-5xl py-4">
@@ -94,8 +95,8 @@ function Intro({ body, profile, onStart, onDemo, onSkip, error }: { body: string
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>
       <DemoBar>
-        <DemoButton onClick={() => onDemo(false)}>Play a recorded run, fast</DemoButton>
-        <DemoButton onClick={() => onDemo(true)}>Jump to the finished complaint</DemoButton>
+        {recorded && <DemoButton onClick={() => onDemo(false)}>Play a recorded run, fast</DemoButton>}
+        {recorded && <DemoButton onClick={() => onDemo(true)}>Jump to the finished complaint</DemoButton>}
         <DemoButton onClick={onSkip}>Skip and continue to step 2</DemoButton>
       </DemoBar>
     </div>

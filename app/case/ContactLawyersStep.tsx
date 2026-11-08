@@ -323,7 +323,7 @@ function FirmModal({ o, firm, steps, onClose, onSteps, onReview }: { o: EnquiryO
         { label: "Takes legal aid for medical negligence", v: firm.legalAid ? "yes" : "unknown", why: WHY.legal_aid },
         { label: "Represents patients", v: firm.actsForPatients, why: WHY.patients },
         { label: "Offers no win, no fee", v: firm.noWinNoFee, why: WHY.nwnf },
-        { label: "On the Law Society register", v: firm.sources.includes("lawsoc") ? "yes" : "unknown", why: WHY.lawsoc },
+        { label: "On the official register", v: firm.sources.includes("lawsoc") ? "yes" : "unknown", why: WHY.lawsoc },
         { label: "Online enquiry form", v: o.formUrl || firm.enquiryUrl ? "yes" : "no", why: WHY.form },
       ]
     : [];

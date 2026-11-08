@@ -30,7 +30,7 @@ const FLAGS: { id: Flag; label: string; test: (f: FirmFinding) => boolean }[] = 
   { id: "nwnf", label: "No win no fee", test: (f) => f.noWinNoFee === "yes" },
   { id: "patients", label: "Represents patients", test: (f) => f.actsForPatients === "yes" },
   { id: "form", label: "Has an enquiry form", test: (f) => !!f.enquiryUrl },
-  { id: "lawsoc", label: "On the Law Society register", test: (f) => (statusOf(f, "lawsoc") ? statusOf(f, "lawsoc") === "yes" : f.sources.includes("lawsoc")) },
+  { id: "lawsoc", label: "On the official register", test: (f) => (statusOf(f, "lawsoc") ? statusOf(f, "lawsoc") === "yes" : f.sources.includes("lawsoc")) },
   { id: "website", label: "Website checked", test: (f) => (statusOf(f, "checked") ? statusOf(f, "checked") === "yes" : f.sources.includes("website")) },
 ];
 const FITS = [0, 50, 70, 85];
