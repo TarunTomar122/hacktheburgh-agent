@@ -25,14 +25,9 @@ const KIND: Record<TraceStep["kind"], { label: string; cls: string }> = {
   result: { label: "Result", cls: "bg-ink text-white" },
 };
 
-/** The steps that tell the story (what was found, checked, decided), for the one-line summary at the top. */
-const STORY: TraceStep["kind"][] = ["found", "check", "decide", "recover", "fail", "result"];
 /** What the history shows by default: outcomes only. The agents' moment-to-moment thinking ("promising", scores) is behind "Show every step". */
 const OUTCOMES: TraceStep["kind"][] = ["found", "check", "recover", "fail", "result"];
-const oneLine = (t: string, n = 110) => {
-  const x = t.replace(/\s+/g, " ").replace(/^[^:]{3,60}: (promising|dead end|unlikely)\.\s*/i, "").trim();
-  return x.length > n ? `${x.slice(0, n - 1).trimEnd()}…` : x;
-};
+const oneLine = (t: string) => t.replace(/\s+/g, " ").replace(/^[^:]{3,60}: (promising|dead end|unlikely)\.\s*/i, "").trim();
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 const shotUrl = (runId: string | undefined, file: string) => `/api/agent/step3/shot?run=${encodeURIComponent(runId ?? "")}&file=${encodeURIComponent(file)}`;
@@ -55,7 +50,6 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [every, setEvery] = useState(false);
   const steps = useMemo(() => [...scope.steps].sort((a, b) => a.t - b.t || a.i - b.i).filter((s) => !hidden.has(s.agent) && (every || OUTCOMES.includes(s.kind))), [scope.steps, hidden, every]);
-  const story = scope.steps.filter((s) => OUTCOMES.includes(s.kind)).sort((a, b) => a.t - b.t);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -81,20 +75,6 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
               Close
             </Button>
           </div>
-
-          {!scope.whole && story.length > 0 && (
-            <ol aria-label="Summary" className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
-              {story.map((s, k) => (
-                <li key={s.i} className="flex items-center gap-1.5">
-                  {k > 0 && <span aria-hidden className="text-faint">→</span>}
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-ink">
-                    <span aria-hidden className="size-1.5 rounded-full" style={{ background: s.color }} />
-                    {oneLine(s.text, 70)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
 
           {scope.whole && agents.length > 1 && (
             <div className="flex flex-wrap gap-1.5" aria-label="Show or hide an agent">
@@ -144,7 +124,7 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
                   </span>
                   {every && s.confidence !== undefined && <Confidence value={s.confidence} />}
                 </div>
-                <p className="text-[14px] leading-5 text-ink">{every ? s.text : oneLine(s.text, 160)}</p>
+                <p className="text-[14px] leading-5 text-ink">{every ? s.text : oneLine(s.text)}</p>
                 {s.url && (
                   <a href={s.url} target="_blank" rel="noreferrer" className="block break-all text-[12px] text-brand underline-offset-2 hover:underline">
                     {s.url.replace(/^https?:\/\/(www\.)?/, "")}
