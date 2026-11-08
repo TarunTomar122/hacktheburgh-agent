@@ -197,11 +197,14 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
             // "official" needs three things: the model's judgement, a page on that host really opened in this run, and (code) that page
             // naming its publisher or the body itself. Unknown text (e.g. a PDF) keeps the model's judgement only with the host check.
             const bodyName = normText(String(a.body ?? ""));
+            // Compound names ("Healthcare Improvement Scotland / SIGN", "NIPSO (Ombudsman)"): any part names the body.
+            const bodyParts = String(a.body ?? "").split(/\s*(?:\/|\(|\)|,|\band\b|&)\s*/).map(normText).filter((x) => x.length > 3);
+            const namesBody = (t: string) => (bodyName.length > 3 && t.includes(bodyName)) || bodyParts.some((x) => t.includes(x));
             const names = (s: Source) => {
               const t = texts.get(keyOf(String(s.url)));
               if (!t) return true;
               const pub = normText(String(s.publisher ?? ""));
-              return (bodyName.length > 3 && t.includes(bodyName)) || (pub.length > 3 && t.includes(pub));
+              return namesBody(t) || (pub.length > 3 && t.includes(pub));
             };
             const sources: Source[] = ((a.sources as Source[]) ?? []).slice(0, 6).map((s) => ({ url: String(s.url), quote: String(s.quote), official: !!s.official && opened.has(hostOf(String(s.url))) && names(s), publisher: String(s.publisher ?? host(String(s.url))), checked: check(String(s.url), String(s.quote)) }));
             // A claim with numbers (a time limit, a cap) only stands if those numbers appear in a checked quote.
@@ -222,7 +225,7 @@ export async function runDiscovery(facts: CaseFacts, opts: { onEvent?: Emit; run
               missing: Array.isArray(a.missing) ? (a.missing as string[]).map(String) : undefined,
               sources,
               // The headline (who) must be backed too: the body's name appears in a checked quote or on a page whose quote checked.
-              confidence: sources.some((x) => x.checked && (normText(x.quote).includes(bodyName) || (texts.get(keyOf(x.url)) ?? "").includes(bodyName))) ? confidenceOf(sources) : "unconfirmed",
+              confidence: sources.some((x) => x.checked && (namesBody(normText(x.quote)) || namesBody(texts.get(keyOf(x.url)) ?? ""))) ? confidenceOf(sources) : "unconfirmed",
               by: ROUTE_KINDS.find((k) => k.kind === kind)!.crew,
             };
             steps.set(kind, step);

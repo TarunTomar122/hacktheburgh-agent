@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Right body and channels/stages, but it missed the key statutory 6-month-from-awareness/12-month cap time limit."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "Right ombudsman, but it only reached the checker, not the live SPSO form page, and missed the outage/9-month delay and some scope limits."
+    },
+    {
+      "kind": "compensation",
+      "found": false,
+      "body": "missing",
+      "facts": "missing",
+      "page": "none",
+      "note": "It omitted the compensation route entirely: no NHS redress, only a civil negligence claim with a 3-year limitation."
+    },
+    {
+      "kind": "funding",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Good catch that Scottish legal aid is available for medical negligence, but it missed the main tests, QOCS and capped success-fee details."
+    },
+    {
+      "kind": "lawyers",
+      "found": false,
+      "body": "missing",
+      "facts": "missing",
+      "page": "none",
+      "note": "It gave no route to actually find a claimant medical-negligence solicitor or the SLAB/Law Society tools."
+    },
+    {
+      "kind": "guideline",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Right Scottish guidance body, but it missed the key nuance that there is no SIGN scaphoid guideline and NICE NG38 is the practical reference."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "PASS is the right independent support service, though direct PASS contact details and scope were thin."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "Records route was essentially correct: portal needs login, and the SAR form can be sent by email or post."
+    }
+  ],
+  "score": 5,
+  "smart": "It correctly recognised a major Scotland-specific point many agents miss: civil legal aid is available for medical negligence in Scotland.",
+  "worst": "It missed the compensation route altogether, including that there is no NHS redress scheme and the only route is a civil claim subject to the Scottish 3-year limitation."
+}

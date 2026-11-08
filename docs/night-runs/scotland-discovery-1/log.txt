@@ -1,0 +1,202 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+PLACE: {"country":"United Kingdom","region":"Scotland","city":"Edinburgh","hospital":"Royal Infirmary of Edinburgh, Accident & Emergency department","careSetting":"public","why":"The patient says they were seen at the Royal Infirmary of Edinburgh A&E, and the address/postcode are in Edinburgh, Scotland."}
+[18s] [elliot] Set the work plan and split the first searches across the crew.
+[22s] [elliot → robin] Find the provider’s own page proving who runs the Royal Infirmary of Edinburgh and that it is NHS public care.
+[22s] [elliot → iona] Find the Scottish clinical guidance body used for hospital care in Scotland.
+[22s] [elliot → nell] Find official funding and compensation sources for medical negligence claims in Scotland.
+[22s] [elliot → kit] Find the provider’s complaint route and any online complaint form.
+[42s] [kit → elliot] 7 results for "site:nhslothian.scot NHS Lothian complaint form official". Top: nhslothian.scot.
+[42s] [robin → elliot] 7 results for "site:nhslothian.scot Royal Infirmary of Edinburgh who runs …". Top: org.nhslothian.scot.
+[42s] [iona → elliot] 10 results for "Scotland official clinical guidelines body NHS Scotland SIG…". Top: monitor.ppcprotect.com.
+[43s] [nell → elliot] 10 results for "Scotland official medical negligence legal aid success fee …". Top: ad.doubleclick.net.
+[49s] [elliot → robin] Read the provider’s own hospital page to prove who runs the Royal Infirmary of Edinburgh.
+[49s] [elliot → kit] Read the NHS Lothian complaint form page for route details and any links onward.
+[49s] [elliot → iona] Read the Scottish clinical guidance page to identify the body publishing guidance in Scotland.
+[49s] [elliot → nell] Read the Scottish success fee/legal aid source from an official body.
+[56s] [nell → elliot] The page says legal aid is an alternative to funding by a success fee agreement, and you cannot use both at the same time for the same work. If a client has ever received legal aid in the case, SLAB has priority over re…
+[56s] [robin → elliot] The page says the Royal Infirmary of Edinburgh is a major acute teaching hospital in Edinburgh that provides a full range of acute medical and surgical services, including a 24-hour A&E. It is run by NHS Lothian, as sho…
+[57s] [kit → elliot] The page says the online feedback form is for sending your feedback/complaint to the Patient Experience Team for a response, and it also says you will receive a copy by email. It notes the form “cannot be saved so must …
+[58s] [iona → elliot] The page says SIGN is a group that develops guidelines with health and social care professionals and patients. Its role in clinical guidance is to produce recommendations for the best standards of care and help professi…
+[63s] [elliot] Now that the provider is confirmed as NHS Lothian, switch to the provider complaint route and the Scottish routes above and around it.
+[68s] [elliot → robin] Find NHS Lothian’s detailed complaints page and procedure PDF on its own site.
+[68s] [elliot → kit] Find the Scottish NHS complaint escalation body and its official complaint form.
+[68s] [elliot → nell] Find official Scottish legal aid eligibility information and any checker for medical negligence/civil claims.
+[81s] [robin → elliot] 6 results for "site:nhslothian.scot NHS Lothian compliments concerns compl…". Top: nhslothian.scot.
+[81s] [elliot → robin] Find the official solicitor directory run by the Scottish profession.
+[81s] [kit → elliot] 10 results for "Scotland NHS complaint escalate SPSO official complain form…". Top: spso.org.uk.
+[81s] [elliot → kit] Find NHS Lothian official records/access to health records pages.
+[81s] [nell → elliot] 3 results for "site:mygov.scot legal aid Scotland civil legal aid checker …". Top: mygov.scot.
+[94s] [kit → elliot] 9 results for "site:nhslothian.scot access medical records NHS Lothian off…". Top: nhslothian.scot.
+[94s] [robin → elliot] 4 results for "site:lawscot.org.uk find a solicitor medical negligence Edi…". Top: lawscot.org.uk.
+[94s] [elliot → robin] Find the free independent patient advice service for NHS complaints in Scotland/Lothian.
+[107s] [robin → elliot] 10 results for "Scotland Patient Advice and Support Service official NHS co…". Top: pass-scotland.org.uk.
+[119s] [elliot → robin] Read NHS Lothian’s current complaints handling procedure for deadlines, stages and response times.
+[119s] [elliot → kit] Read NHS Lothian’s records request page for how to get medical records and whether it is free.
+[119s] [elliot → nell] Read the Scottish legal aid civil cases page for what it covers and the official eligibility checker route.
+[123s] [robin → elliot] The page says complaints can be made by the person affected or by a representative, friend, relative, or advocate, but only with the person’s permission or consent. It also says the Patient Advice and Support Service (P…
+[123s] [elliot → robin] Read the official Scottish solicitor directory page for how to search by area of law and place.
+[125s] [nell → elliot] Civil legal aid can help with solicitor costs to prepare a case and speak for you in court, and examples include divorce/ending a civil partnership and disputes about children, compensation for injuries or medical negli…
+[128s] [kit → elliot] A patient can request copies of their health records through the "Request for Records Portal" or by downloading a "Subject Access Request Form" and returning it by email or post to the SAR team. The page says to discuss…
+[128s] [elliot → kit] Read SPSO’s complaints page for prerequisites, deadlines, and how to complain.
+[136s] [kit → elliot] This page does not give the rules for when someone can complain to SPSO or any deadlines. It says only that you can start by using the secure online complaints form, and points to pages about how to complain and what ha…
+[160s] [robin → elliot] I hit a problem: Blocked: bot_check at https://www.lawscot.org.uk/find-a-solicitor/?Name=scotland%20law%20firm&type=firm (The site's browser check did not clear within 20 secon…
+[160s] [elliot → robin] Read the official PASS support page for free independent help with NHS complaints.
+[169s] [robin → elliot] The page says PASS is an independent service that provides free, accessible and confidential information, advice and support about NHS healthcare. It also says PASS can help you through the process of providing feedback…
+[179s] [elliot] Some official pages were thin or blocked, so switch to site exploration and second-level official pages for the missing deadlines, fields and funding rules.
+[185s] [elliot → kit] Walk NHS Lothian’s site to the actual complaint form and capture the fields the patient would see.
+[185s] [elliot → robin] Find official Scottish NHS complaint timing rules on a national page to compare with NHS Lothian.
+[185s] [elliot → nell] Find official Scottish rules on success fee caps / no win no fee in civil claims.
+[196s] [kit → elliot] Found the form "Online Feedback Form – Your Rights & Privacy" in 0 moves: 13 fields (10 required), ends with "Submit".
+[196s] [elliot → kit] Walk SPSO’s site to the actual online complaint form and capture prerequisites, steps and any wall.
+[198s] [robin → elliot] 3 results for "site:nhsinform.scot making a complaint about your NHS care …". Top: nhsinform.scot.
+[198s] [elliot → robin] Find official Scottish sources on medical negligence claim time limits and whether there is a special NHS redress/no-fault scheme.
+[198s] [nell → elliot] 3 results for "site:legislation.gov.uk Scotland success fee caps damages b…". Top: legislation.gov.uk.
+[210s] [robin → elliot] 3 results for "site:mygov.scot OR site:gov.scot medical negligence Scotlan…". Top: mygov.scot.
+[210s] [elliot → robin] Find an accessible official public page for the Scottish solicitor directory if the Law Society search page is bot-protected.
+[214s] [kit → elliot] Found the online process "Complaint checker | SPSO" in 1 move: it starts with a question wizard (choices first, then the form). "Making a complaint | SPSO" only explains the process; the application form itself was foun…
+[223s] [robin → elliot] 1 results for "site:lawscot.org.uk "Find a Scottish solicitor" official pu…". Top: lawscot.org.uk.
+[231s] [elliot → robin] Read the national NHS complaints page for complaint deadlines, response times and SPSO escalation timing.
+[231s] [elliot → nell] Read the Scottish regulations page for the official success fee caps in Scotland.
+[239s] [robin → elliot] This page does not say the time limits for making an NHS complaint, the early or investigation response times, or when someone can go to the SPSO. It only says that if you’re unhappy, you’ve a right to complain using th…
+[239s] [elliot → robin] Find an official Scottish limitation/court source for medical negligence claims and any patient redress scheme.
+[239s] [nell → elliot] For personal injury or death claims, the cap is 20% for the first £100,000, 10% for the amount over £100,000 but not exceeding £500,000, and 2.5% for the amount over £500,000. The regulation also sets a 35% cap for empl…
+[258s] [robin → elliot] 10 results for "site:legislation.gov.uk medical negligence Scotland limitat…". Top: radiotimes.com.
+[258s] [elliot → robin] Find an accessible public page on the Law Society site about using Find a Solicitor.
+[278s] [robin → elliot] 8 results for "site:lawscot.org.uk/forthepublic "find a solicitor"". Top: solicitors.lawsociety.org.uk.
+[278s] [elliot → robin] Read PASS’s own page on making an NHS complaint for independent help and any timing pointers.
+[286s] [robin → elliot] This page only says that it provides access to its complaints guidance and navigation to sections on the NHS complaints procedure and how to make a complaint. It does not give any details here about the help PASS gives,…
+[294s] [elliot → robin] Read NHS Lothian’s current feedback/complaints leaflet for provider-side complaint time limits and response targets.
+[294s] [elliot → nell] Find the Scottish limitation statute or official court guidance for personal injury/medical negligence claim time limits.
+[294s] [elliot → kit] Walk NHS Lothian’s records request page to the usable portal or form and capture any wall or fields.
+[298s] [robin → elliot] The leaflet says to complain within six months of the event, or of finding out you have a reason to complain, but no longer than 12 months after the event itself. It sets out two stages: 'early resolution' and 'investig…
+[298s] [elliot → robin] Read the SPSO NHS model complaints procedure for national NHS complaint stages and timings in Scotland.
+[298s] [robin → elliot] I hit a problem: Blocked: not_found at https://www.spso.org.uk/sites/spso/files/csa/OriginalCHPs/NHSMCHPMarch2021.pdf (PDF not readable (its text could not be extracted reliabl…
+[298s] [elliot → robin] Find an official NHS or Scottish Government page about compensation for poor NHS treatment in Scotland.
+[307s] [nell → elliot] 3 results for "site:legislation.gov.uk Prescription and Limitation Scotlan…". Top: legislation.gov.uk.
+[318s] [robin → elliot] 10 results for "site:nhsinform.scot compensation NHS care Scotland official…". Top: dictionary.cambridge.org.
+[318s] [elliot → robin] Find a public-facing Law Society of Scotland page explaining the Find a Solicitor service if the search tool page is blocked.
+[327s] [kit → elliot] I hit a problem: Not found. Reached lothian.ams-sar.com (nhslothian.scot > "Request for Records Portal opens a new …"), but it needs the user to sign in or create an account: h…
+[337s] [robin → elliot] 10 results for "site:lawscot.org.uk/forthepublic "Find a Solicitor" "Law So…". Top: devon-defence.co.uk.
+[348s] [elliot → robin] Find a national NHS Scotland complaints quick guide with exact stage 1 timing and deadline wording.
+[348s] [elliot → kit] Find SPSO pages that state when a complaint must be brought and that the organisation must be complained to first.
+[348s] [elliot → nell] Find an official page on advice and assistance legal aid in Scotland for early legal advice.
+[356s] [kit → elliot] 5 results for "site:spso.org.uk SPSO how to complain public service 12 mon…". Top: spso.org.uk.
+[356s] [nell → elliot] 3 results for "site:mygov.scot advice and assistance Scotland legal aid of…". Top: mygov.scot.
+[356s] [elliot → nell] Read the limitation statute section for the personal injury/medical negligence claim time limit.
+[363s] [nell → elliot] Section 17 sets a time limit of three years for personal injury actions. The period runs, in the ordinary case, "from the date when the injuries were sustained"; for a continuing act, it runs from that date or the date …
+[369s] [robin → elliot] 10 results for "site:nes.scot NHS Scotland complaints procedure public quic…". Top: nhs.uk.
+[369s] [elliot → robin] Find official pages on suing/claiming compensation for medical negligence in Scotland or that complaints are not for compensation.
+[388s] [robin → elliot] 2 results for "site:nhsinform.scot site:mygov.scot site:gov.scot medical n…". Top: zhihu.com.
+[388s] [elliot → robin] Find an accessible official Scottish solicitor finder page or domain run by the profession.
+[408s] [robin → elliot] 9 results for "site:findasolicitor.scot OR site:lawscot.org.uk Scottish so…". Top: en.wikipedia.org.
+[413s] [elliot → kit] Read SPSO’s detailed how-to-complain page for the prerequisite and deadline wording.
+[413s] [elliot → nell] Read mygov.scot’s advice and assistance page for early legal advice funding.
+[413s] [elliot → robin] Find an official page on FindaSolicitor.scot or Law Society of Scotland that is readable and explains how the directory works.
+[422s] [nell → elliot] Advice and assistance can help with the costs of legal advice from a solicitor if you can't afford it; it can include advice on your legal rights and options, help with negotiations and paperwork, help if you're accused…
+[422s] [kit → elliot] The page says you should complain directly to the organisation first: “Make your complaint directly to the organisation.” It says that after the organisation’s final decision, “you can then bring your complaint to us,” …
+[427s] [robin → elliot] 1 results for ""Find a Scottish solicitor by searching name, postcode, tow…". Top: lawscot.org.uk.
+[427s] [elliot → robin] Find an official readable page on NHS Scotland complaints quick guide with the early resolution five-working-day target.
+[440s] [robin → elliot] 1 results for ""Quick guide to the NHS complaints handling procedure" Scot…". Top: nes.scot.nhs.uk.
+[440s] [elliot → robin] Find official NHS/Scottish guidance on whether compensation is outside the NHS complaints process.
+[459s] [robin → elliot] 10 results for "site:nhsinform.scot site:mygov.scot site:nhslothian.scot co…". Top: dictionary.cambridge.org.
+[465s] [elliot → robin] Read the NHS Scotland public quick guide PDF for exact complaint stage timings.
+[467s] [robin → elliot] I hit a problem: Blocked: not_found at https://www.nes.scot.nhs.uk/media/x1wkngwf/20231031_nhs_complaints_procedure_public_quick_guide.pdf (PDF not readable (its text could not…
+[467s] [elliot → robin] Find official NHS Lothian or NHS inform wording that complaints are not the route for compensation.
+[486s] [robin → elliot] 10 results for "site:nhslothian.scot site:nhsinform.scot "compensation" "co…". Top: dictionary.cambridge.org.
+[486s] [elliot → robin] Find an accessible Law Society of Scotland public page about using a solicitor or finding a solicitor.
+[505s] [robin → elliot] 7 results for "site:lawscot.org.uk/forthepublic site:lawscot.org.uk "Find …". Top: icloud.com.
+[505s] [elliot → robin] Read the Law Society public page if found in search results to look for a solicitor-finding link or wording.
+[512s] [robin → elliot] Yes. The page explicitly points the public to an online search tool and says, “If you’re looking for a solicitor, visit FindaSolicitor.scot.” It also has a “Find a Solicitor” section and a FAQ item for “Finding a solici…
+[512s] [elliot → robin] Find an official page on FindaSolicitor.scot specifically.
+[518s] [robin → elliot] 5 results for "site:findasolicitor.scot "Find a Solicitor" official Scotla…". Top: reallymoving.com.
+[528s] [elliot → robin] Find NHS Lothian’s actual complaint-information page, not just the form or leaflet.
+[528s] [elliot → kit] Find an official regulator page for SAR timing and fees in the UK/Scotland.
+[528s] [elliot → iona] Read Healthcare Improvement Scotland’s clinical guidance hub page for the wider body/guidance role in Scotland.
+[536s] [iona → elliot] The page says Healthcare Improvement Scotland is the national authority for evidence-based advice, guidance and standards for health and care professionals, and that this work helps provide safer, more effective care. I…
+[540s] [kit → elliot] 5 results for "site:ico.org.uk subject access request fee one month offici…". Top: ico.org.uk.
+[541s] [robin → elliot] 7 results for "site:nhslothian.scot NHS Lothian how do I make a complaint …". Top: nhslothian.scot.
+[541s] [elliot → robin] Re-read the NHS Lothian feedback leaflet for the early-resolution target and SPSO wording.
+[544s] [robin → elliot] The leaflet says the early resolution stage is called “early resolution” and that if a complaint is straightforward and can be easily resolved, staff will try to sort it out in working days or less, unless there are exc…
+[544s] [elliot → robin] Find official Scottish Government or NHS pages on whether there is a no-fault or redress scheme for NHS treatment injury in Scotland.
+[556s] [robin → elliot] 5 results for "site:gov.scot NHS treatment injury no-fault compensation Sc…". Top: gov.scot.
+[565s] [elliot → robin] Read NHS Lothian’s complaint page for provider-side wording on how to complain and any timing details.
+[565s] [elliot → kit] Read the ICO SAR guide for timing and fees that apply to NHS Lothian record requests.
+[572s] [kit → elliot] The guide says that in most cases you cannot charge a fee to comply with a SAR, but you can charge a “reasonable fee” in certain cases. It also says you must respond “without undue delay, and within one month of receipt…
+[572s] [elliot → kit] Find an SPSO page that states the deadline to bring a complaint to the Ombudsman.
+[573s] [robin → elliot] This page does not say how to make a complaint or give time limits, stages, response times, or SPSO information; it only shows the page title and related links. The related links suggest those details may be on other pa…
+[573s] [elliot → robin] Find current official Scottish Government material showing the no-blame redress idea was a consultation/proposal, not a live NHS compensation scheme.
+[585s] [kit → elliot] 10 results for "site:spso.org.uk SPSO complaint within 12 months official". Top: spso.org.uk.
+[585s] [robin → elliot] 6 results for "site:gov.scot "No-blame" redress scheme consultation clinic…". Top: consult.gov.scot.
+[585s] [elliot → robin] Find an official page linking complaints and compensation or legal action in NHS Scotland.
+[598s] [robin → elliot] 3 results for "site:nhsinform.scot "complaints" compensation legal action …". Top: nhsinform.scot.
+[607s] [elliot → kit] Read SPSO’s deadline page for the Ombudsman time limit wording.
+[607s] [elliot → robin] Read NHS Lothian’s time-limit page for the provider’s complaint deadline wording.
+[615s] [kit → elliot] SPSO says it does not normally investigate complaints if you have known about the problem for more than 12 months before complaining. It may still look at the complaint if “certain circumstances stopped you from making …
+[617s] [robin → elliot] NHS Lothian says, "Normally, you must make your complaint within six months of" the event or finding out you have a reason to complain, and it adds "but no longer than 12 months after the event itself."
+[617s] [elliot → robin] Read NHS Lothian’s complaint-process page for stage and response-time wording.
+[625s] [robin → elliot] NHS Lothian says it aims to resolve complaints “as quickly as possible and as close to the point where the issue occurred.” If a complaint is straightforward, staff will aim to resolve it within five working days; if it…
+[625s] [elliot → robin] Read the Scottish Government no-blame redress page to see whether it is only a consultation/proposal.
+[631s] [robin → elliot] This page presents the no-blame redress scheme as a consultation paper, not a live scheme. It says, “This public consultation seeks views on draft proposals for a ‘No-blame’ Redress Scheme in Scotland for Harm Resulting…
+[631s] [elliot → robin] Find an accessible Law Society of Scotland FAQ page on finding a solicitor if the search page itself is blocked.
+[644s] [robin → elliot] 2 results for "site:lawscot.org.uk/for-the-public/frequently-asked-questio…". Top: lawscot.org.uk.
+[654s] [elliot → robin] Read the Law Society FAQ page for wording on how the public can find a solicitor.
+[654s] [elliot → kit] Try to reach the profession’s Find a Solicitor tool and see whether the public search fields are reachable or blocked.
+[661s] [robin → elliot] It says that if you are looking for a solicitor, you should use the “Find a Solicitor” search tool. Under “Finding a solicitor,” it says they can help you find one through the “Find a Solicitor” section, and that you ca…
+[661s] [elliot → robin] Read the Law Society areas-of-law page to confirm the relevant search category for a patient claim.
+[667s] [robin → elliot] Yes. The page lists “Medical negligence - claimant” as an area of law, and also “Medical negligence - defender.”
+[667s] [elliot → robin] Read NHS Lothian’s patient experience page for how to contact the team besides the form.
+[670s] [robin → elliot] I hit a problem: Could not read https://www.nhslothian.scot/yourrights/patient-experience-team-tell-us-about-your-experience/: page.waitForTimeout: Target page, context or brow…
+[678s] [kit → elliot] I hit a problem: Not found. No online form found after 2 moves (24s); the site's own route is offline. "Tell us about your experience – Your Rights & Privacy" gives an offline …
+[678s] [elliot → kit] Read the SPSO complaint time-limit page for fuller wording if needed.
+[685s] [kit → elliot] The page says the normal limit is one year from when the person first knew of the problem, and that the SPSO would not normally investigate complaints that arrive outside that period. It also says the SPSO may, in certa…
+[694s] [elliot → robin] Find official Scottish Courts or government guidance on starting a personal injury claim in Scotland.
+[694s] [elliot → nell] Read the Scottish civil legal aid estimator page if accessible for the checker route.
+[694s] [elliot → kit] Read the SPSO complaint checker page to see whether it explains the first steps or prerequisites.
+[700s] [kit → elliot] It first asks, “Is your complaint about a Scottish public service?” The page does not say anything about needing to do something before you can continue, beyond answering “Yes,” “No,” or “Not sure.”
+[704s] [nell → elliot] The page says the civil legal aid estimator “helps you work out if you are likely to qualify financially for civil legal aid,” and “Once you complete these fields, an estimate will automatically be provided.” It also ch…
+[722s] [robin → elliot] 5 results for "site:scotcourts.gov.uk personal injury claim Scotland offic…". Top: scotcourts.gov.uk.
+[722s] [elliot → robin] Find official NHS or government wording that compensation is not awarded through the complaints process.
+[742s] [robin → elliot] 10 results for "site:nhslothian.scot site:nhsinform.scot site:spso.org.uk c…". Top: dictionary.cambridge.org.
+[742s] [elliot → robin] Retry NHS Lothian’s patient experience page to capture contact methods for complaints.
+[750s] [robin → elliot] NHS Lothian says you can contact the Patient Experience Team “By email” at LOTH.Feedback@nhs.scot, “By telephone” at 0131 536 3370, and “In writing” to “Patient Experience Team – NHS Lothian, Waverley Court, 4 East Mark…
+[758s] [elliot → robin] Find official Scottish Courts guidance on personal injury actions, which is the likely court route for medical negligence compensation.
+[758s] [elliot → kit] Read the provider complaint page again via the alternate linked path, to check for form link and route.
+[766s] [kit → elliot] The page says the online feedback form is for feedback/complaints to NHS Lothian and that, when submitted, it “will be sent to the Patient Experience Team for response.” It also says the form “cannot be saved so must be…
+[771s] [robin → elliot] 6 results for "site:scotcourts.gov.uk personal injury actions Scotland off…". Top: scotcourts.gov.uk.
+[771s] [elliot → robin] Find official Scottish Government or NHS wording connecting treatment injury compensation to court/legal action.
+[791s] [robin → elliot] 10 results for "site:gov.scot site:nhsinform.scot site:mygov.scot treatment…". Top: dictionary.cambridge.org.
+[791s] [elliot → robin] Read the Scottish Government consultation cover letter for no-blame redress to confirm it was a proposal.
+[798s] [robin → elliot] The page explicitly frames the material as a consultation with draft proposals. It says, “This public consultation seeks views on draft proposals for a ‘No-blame’ Redress Scheme in Scotland for Harm Resulting from Clini…
+[807s] [elliot → robin] Read the National Personal Injury Court page for the official Scottish court route for injury claims.
+[807s] [elliot → nell] Read the Scottish Legal Aid mygov landing page for the official find-a-solicitor route.
+[814s] [nell → elliot] The page says that to apply for legal aid, you need to find a solicitor that does legal aid work, and that they will help you through the application process. It does not mention applying to SLAB by name on this page.
+[815s] [robin → elliot] The page says the court deals with personal injury actions and motions, and that its procedures are available throughout Scotland, including for people acting on their own behalf. It does not mention any value threshold…
+[815s] [elliot → robin] Read the Scottish Courts ordinary cause page for how larger court actions are raised.
+[822s] [robin → elliot] The page says an ordinary cause can be raised in the sheriff court where the claim value is over £5,000. The key wording is: "The Ordinary Cause procedure can be used in the sheriff court where the value of the claim is…
+[822s] [elliot → robin] Read the NHS Lothian role page to see whether it says the Patient Experience Team is the central point for complaints.
+[830s] [robin → elliot] The page says the Patient Experience Team is the central point for receiving patient feedback for NHS Lothian, and that it manages all complaints, concerns, feedback and compliments. It also says they receive feedback b…
+[841s] [elliot → robin] Find official wording on whether NHS complaints can award compensation, to separate the complaint route from the court route.
+[841s] [elliot → nell] Read mygov’s using-a-solicitor page for the official route to find a solicitor if needed.
+[847s] [nell → elliot] The page says you can find a solicitor in your area through the Law Society of Scotland, and you can search by area of law, your postcode, or the name of the firm and whether they're registered to provide legal aid. It …
+[860s] [robin → elliot] No useful results.
+[860s] [elliot → robin] Read the Law Society find-a-solicitor page again in case the browser check clears this time and reveals search options.
+[886s] [robin → elliot] I hit a problem: Blocked: bot_check at https://www.lawscot.org.uk/find-a-solicitor/?Name=scotland%20law%20firm&type=firm (The site's browser check did not clear within 20 secon…
+[902s] [elliot → you] Complain: NHS Lothian. Royal Infirmary of Edinburgh A&E is NHS Lothian public care. Complain first to NHS Lothian’s Patient Experience Team, usually through its online feedback form or by email, phone or post. (one offic
+[911s] [elliot → you] Complain: NHS Lothian. Royal Infirmary of Edinburgh A&E is NHS Lothian public care. Complain first to NHS Lothian’s Patient Experience Team, usually through its online feedback form or by email, phone or post. (one offic
+[916s] [elliot → robin] Get exact single-sentence quotes for NHS Lothian’s complaint deadline and stage wording so the complaint record will validate.
+[919s] [robin → elliot] (1) “Normally, you must make your complaint within six months of: • the event you want to complain about, or • finding out you have a reason to complain, but no longer than 12 months after the event itself.” (2) The pag…
+[932s] [elliot → you] Complain: NHS Lothian. Royal Infirmary of Edinburgh A&E is NHS Lothian public care. Complain first to NHS Lothian’s Patient Experience Team, usually through its online feedback form or by email, phone or post. (one offic
+[940s] [elliot → you] If that fails: Scottish Public Services Ombudsman. If NHS Lothian’s final complaint answer is not good enough, the independent body is the Scottish Public Services Ombudsman (SPSO). You can only go there after the organi
+[944s] [elliot → you] Free help: PASS (Patient Advice and Support Service). PASS gives free, independent help to people using NHS Scotland, including support with raising concerns or complaints about NHS care. (not confirmed yet)
+[952s] [elliot → you] Your records: NHS Lothian. You can ask NHS Lothian for your records through its Request for Records Portal or by sending its Subject Access Request form by email or post. The portal itself needs sign-in or account creati
+[959s] [elliot → you] Clinical guidance: Healthcare Improvement Scotland / SIGN. In Scotland, national clinical guidance for professionals is published through Healthcare Improvement Scotland, including SIGN guidelines. NHSScotland also uses 
+[968s] [elliot → you] Paying for help: Scottish Legal Aid Board / mygov.scot. An adult in Scotland may get legal aid for a medical negligence claim, and can also fund a case by a success fee agreement ('no win no fee'), but not both for the s
+
+RUN discovery-2026-11-08T00-12-48-747Z in 16.2 min, 30 turns, stats {"agents":90,"sites":20,"pages":188,"actions":150}
+- complaint: NHS Lothian | online_form https://www.nhslothian.scot/yourrights/online-feedback-form/ | likely (6/6 checked)
+- escalation: Scottish Public Services Ombudsman | online_form https://www.spso.org.uk/form/complaint-checker | confirmed (6/6 checked)
+- funding: Scottish Legal Aid Board / mygov.scot | online_form https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/ | unconfirmed (6/6 checked)
+- guideline: Healthcare Improvement Scotland / SIGN | unknown https://www.healthcareimprovementscotland.scot/clinical-guidance-for-professionals/ | unconfirmed (5/5 checked)
+- advice: PASS (Patient Advice and Support Service) | unknown https://www.nhslothian.scot/yourrights/support-services/ | unconfirmed (2/2 checked)
+- records: NHS Lothian | login_required https://lothian.ams-sar.com/ | likely (5/5 checked) | wall: The Request for Records Portal asks the user to sign in or create an account before the form starts.
