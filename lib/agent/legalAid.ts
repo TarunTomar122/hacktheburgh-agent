@@ -201,7 +201,7 @@ export function readVerdict(text: string): { verdict: Verdict; quote: string } {
     .map((l) => (/[.!?]$/.test(l) ? l : `${l}.`))
     .join(" ");
   if (!block || /once you complete these fields/i.test(block)) return { verdict: "unknown", quote: block };
-  const verdict: Verdict = /do not qualify|not qualify|not eligible|unlikely/i.test(block) ? "unlikely" : /likely to qualify|automatically qualify|you qualify/i.test(block) ? "likely" : "unknown";
+  const verdict: Verdict = /do not qualify|not qualify|not to qualify|likely not|not eligible|not be eligible|unlikely/i.test(block) ? "unlikely" : /likely to qualify|automatically qualify|you qualify/i.test(block) ? "likely" : "unknown";
   return { verdict, quote: block.slice(0, 300) };
 }
 

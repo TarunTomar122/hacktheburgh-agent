@@ -34,7 +34,7 @@ const STEPS: Step[] = [
 const NHS_PAGE = "https://www.nhslothian.scot/yourrights/patient-experience-team-tell-us-about-your-experience/how-do-i-make-a-complaint/";
 
 export default function ComplaintRun({ profile, onContinue }: { profile: Profile; onContinue: () => void }) {
-  const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "complaint", caseId: profile.createdAt });
+  const { state, start, answer, replay, skip, pause, switchToRecording } = usePlannerRun({ scope: "complaint", caseId: profile.createdAt });
   const saved = profile.complaintRun;
   const [again, setAgain] = useState(false);
 
@@ -66,7 +66,7 @@ export default function ComplaintRun({ profile, onContinue }: { profile: Profile
   };
 
   if (!route && !supportsLothian(profile.facts)) return <UnsupportedComplaint key={JSON.stringify(profile.facts)} facts={profile.facts} />;
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => go()} kit={KIT} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => go()} onRecorded={hasDemo ? () => switchToRecording({ flow: "complaint", place }) : undefined} kit={KIT} />;
   if (saved && !again) return <ComplaintFile body={body} profile={profile} run={saved.result} sample={saved.sample} onAgain={() => setAgain(true)} onContinue={onContinue} onSkip={skipToStepTwo} />;
   // A recorded run is offered only if one was made for this case's place.
   return <Intro body={body} recorded={hasDemo} profile={profile} error={state.status === "error" ? state.error : undefined} onStart={go} onDemo={demo} onSkip={skipToStepTwo} />;

@@ -17,6 +17,26 @@ import { CREW, type AskSpec, type CrewId, type ComplaintResult, type DiscoveryRe
  */
 
 type Rec = { t: number; e: PlannerEvent };
+type LiveTab = { pageId: string; label: string; color: string; url: string; state: "starting" | "working" | "done" | "failed"; note: string };
+
+/** Tell the browser panel about a recorded run's browsers, in the same messages a live run sends (app/LiveView.tsx). */
+const toPanel = (detail: unknown) => window.dispatchEvent(new CustomEvent("live-replay", { detail }));
+function playBrowser(r: { runId: string; tabs: Map<string, LiveTab> }, e: PlannerEvent) {
+  if (e.type === "agent") {
+    const t = e.tile;
+    const pageId = `rec-${r.runId}-${t.id}`;
+    // A tab whose job is done closes; the panel keeps its last picture as a tile, as it does for a live run.
+    if (t.state === "done" || t.state === "failed") r.tabs.delete(pageId);
+    else r.tabs.set(pageId, { pageId, label: t.label, color: t.color, url: t.url, state: t.state, note: t.note ?? "" });
+    toPanel({ type: "pages", pages: [...r.tabs.values()] });
+  } else if (e.type === "trace" && e.step.shot) {
+    const tab = [...r.tabs.values()].reverse().find((x) => x.label === e.step.agent);
+    if (!tab) return;
+    const src = `/api/agent/step3/shot?run=${encodeURIComponent(r.runId)}&file=${encodeURIComponent(e.step.shot)}`;
+    toPanel({ type: "frame", pageId: tab.pageId, data: "", src, url: e.step.url ?? tab.url, width: 1300, height: 900 });
+  }
+}
+const endBrowsers = () => toPanel({ type: "end" });
 
 export type CrewState = { state: "idle" | "working" | "waiting" | "done"; note: string; since: number };
 export type Finding = { i: number; text: string; source?: string; crew?: CrewId; t: number };
@@ -115,7 +135,7 @@ export function usePlannerRun(scope?: RunScope) {
   const flowRef = useRef<string>("compensation");
   const abort = useRef<AbortController | null>(null);
   // Demo playback (D63): a real recorded run, played faster. Gaps are shortened; skipping jumps ahead.
-  const rec = useRef<{ events: Rec[]; i: number; timer?: ReturnType<typeof setTimeout> } | null>(null);
+  const rec = useRef<{ events: Rec[]; i: number; timer?: ReturnType<typeof setTimeout>; runId: string; speed: number; tabs: Map<string, LiveTab> } | null>(null);
   const stopReplay = () => {
     clearTimeout(rec.current?.timer);
     rec.current = null;
@@ -262,7 +282,7 @@ export function usePlannerRun(scope?: RunScope) {
 
   /** Show how a run ended when the stream is over and no result came (nothing else will arrive). */
   const settle = useCallback(() => {
-    setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation ? undefined : "The run ended without a result" } : cur));
+    setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation || cur.medicine ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation || cur.medicine ? undefined : "The run ended without a result" } : cur));
   }, []);
 
   /**
@@ -391,41 +411,55 @@ export function usePlannerRun(scope?: RunScope) {
     if (!res?.ok) setS((cur) => ({ ...cur, paused: !paused }));
   }, []);
 
+  /** One recorded event: onto the screen, and its browsers (tabs and screenshots) into the browser panel (app/LiveView.tsx). */
+  const play = useCallback(
+    (e: PlannerEvent) => {
+      apply(e);
+      const r = rec.current;
+      if (r) playBrowser(r, e);
+    },
+    [apply],
+  );
+
   const tick = useCallback(() => {
     const r = rec.current;
     if (!r) return;
     // Everything recorded within 80ms arrives together.
     const t = r.events[r.i]?.t ?? 0;
-    while (r.i < r.events.length && r.events[r.i].t - t < 80) apply(r.events[r.i++].e);
+    while (r.i < r.events.length && r.events[r.i].t - t < 80) play(r.events[r.i++].e);
     if (r.i >= r.events.length) {
+      endBrowsers();
       rec.current = null;
-      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation ? undefined : "The recording ended without a result" } : cur));
+      setS((cur) => (cur.status === "running" ? { ...cur, status: cur.result || cur.complaint || cur.discovery || cur.escalation || cur.medicine ? "done" : "error", error: cur.result || cur.complaint || cur.discovery || cur.escalation || cur.medicine ? undefined : "The recording ended without a result" } : cur));
       return;
     }
     const gap = r.events[r.i].t - r.events[r.i - 1].t;
-    r.timer = setTimeout(tick, Math.min(1600, Math.max(30, gap / 6)));
-  }, [apply]);
+    r.timer = setTimeout(tick, Math.min(9600 / r.speed, Math.max(30, gap / r.speed)));
+  }, [play]);
 
   const replay = useCallback(
-    async (opts: { toEnd?: boolean; place?: string; flow?: "compensation" | "complaint" | "discovery" } = {}) => {
+    // fast: the whole recording in about 20 seconds (the demo's "use the recorded run" when a live step is slow).
+    async (opts: { toEnd?: boolean; fast?: boolean; place?: string; flow?: "compensation" | "complaint" | "discovery" | "medicine" } = {}) => {
       abort.current?.abort();
       stopReplay();
       setS({ ...initial(), status: "running", startedAt: Date.now(), demo: true });
       const res = await fetch(`/api/agent/plan/demo?flow=${opts.flow && opts.flow !== "compensation" ? opts.flow : "step3"}${opts.place ? `&place=${encodeURIComponent(opts.place)}` : ""}`).catch(() => null);
-      const data = res?.ok ? ((await res.json()) as { events: Rec[] }) : null;
+      const data = res?.ok ? ((await res.json()) as { runId: string; events: Rec[] }) : null;
       if (!data?.events.length) {
         setS((cur) => ({ ...cur, status: "error", error: "No recorded demo run is available yet." }));
         return;
       }
-      rec.current = { events: data.events, i: 0 };
+      const span = Math.max(1, (data.events.at(-1)?.t ?? 0) - (data.events[0]?.t ?? 0));
+      rec.current = { events: data.events, i: 0, runId: data.runId, tabs: new Map(), speed: opts.fast ? Math.max(6, span / 20_000) : 6 };
       if (opts.toEnd) {
-        for (const x of data.events) apply(x.e);
+        for (const x of data.events) play(x.e);
+        endBrowsers();
         rec.current = null;
         return;
       }
       tick();
     },
-    [apply, tick],
+    [play, tick],
   );
 
   /** Demo control: skip one crew member's work (or "all": wrap up now). Live runs tell the server; playback jumps ahead. */
@@ -447,14 +481,14 @@ export function usePlannerRun(scope?: RunScope) {
           });
           to = last + 1;
         }
-        while (r.i < to) apply(r.events[r.i++].e);
+        while (r.i < to) play(r.events[r.i++].e);
         tick();
         return;
       }
       const runId = runIdRef.current;
       if (runId) await fetch("/api/agent/plan/skip", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ runId, crew }) }).catch(() => null);
     },
-    [apply, tick],
+    [play, tick],
   );
 
   const reset = useCallback(() => {
@@ -495,5 +529,16 @@ export function usePlannerRun(scope?: RunScope) {
     window.dispatchEvent(new CustomEvent("live-access", { detail: { fetch: n((x) => x.via === "fetch"), browserPages: n((x) => x.via === "browser" && (x.kind === "page" || x.kind === "firm")), searches: n((x) => x.kind === "search" && x.via !== "browser"), jobs: n((x) => x.kind === "task") } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the list only grows; its length is the change
   }, [accessCount]);
-  return { state: s, start, answer, reset, replay, skip, pause, cancel: () => cancel(runIdRef.current) };
+  /** Demo: a live step is taking too long. Stop it and play the recorded run for this place instead, in about 20 seconds, browsers and all. */
+  const switchToRecording = useCallback(
+    async (opts: { place?: string; flow?: "compensation" | "complaint" | "discovery" | "medicine" } = {}) => {
+      const live = runIdRef.current;
+      runIdRef.current = undefined;
+      await replay({ ...opts, fast: true });
+      void cancel(live);
+    },
+    [cancel, replay],
+  );
+
+  return { state: s, start, answer, reset, replay, skip, pause, switchToRecording, cancel: () => cancel(runIdRef.current) };
 }

@@ -10,7 +10,7 @@ export const placeOf = (p: Profile) => {
 };
 
 /** Is there a recorded run of this flow for this place? (Demo controls only show when there is.) */
-export function useDemoAvailable(flow: "step3" | "complaint" | "discovery" | "escalation", place: string) {
+export function useDemoAvailable(flow: "step3" | "complaint" | "discovery" | "escalation" | "medicine", place: string) {
   const [ok, setOk] = useState(false);
   useEffect(() => {
     void fetch(`/api/agent/plan/demo?flow=${flow}&place=${encodeURIComponent(place)}`).then((r) => setOk(r.ok)).catch(() => setOk(false));

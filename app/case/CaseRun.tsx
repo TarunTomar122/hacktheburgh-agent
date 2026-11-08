@@ -60,7 +60,7 @@ function useFresh(value: number | null, ms: number): number | null {
 const SLAB_CALC = "https://www.slab.org.uk/new-to-legal-aid/eligibility-estimators/estimator-civil-legal-aid/";
 
 export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profile; onReviewEnquiries: () => void }) {
-  const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "case", caseId: profile.createdAt });
+  const { state, start, answer, replay, skip, pause, switchToRecording } = usePlannerRun({ scope: "case", caseId: profile.createdAt });
   // Decided once when the screen opens (not on every render): the first visit to this step starts the case by itself.
   const [autoNow] = useState(() => !autoStarted(`case:${profile.createdAt}`));
   const place = placeOf(profile);
@@ -114,6 +114,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
           return skip(crew);
         }}
         onRetry={() => go()}
+        onRecorded={hasDemo ? () => switchToRecording({ place }) : undefined}
         currency={routeMap ? currencyOf(routeMap.place.country) : undefined}
         main={
           <CaseBoard
@@ -227,7 +228,7 @@ type RunState = ReturnType<typeof usePlannerRun>["state"];
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
-export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COMPENSATION_KIT, currency = "£", main }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; kit?: CrewKit; currency?: string; main?: React.ReactNode }) {
+export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, onRecorded, kit = COMPENSATION_KIT, currency = "£", main }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onPause?: (paused: boolean) => void; onRetry?: () => void; /** demo: stop the live run and play the recorded one for this place, fast */ onRecorded?: () => void; kit?: CrewKit; currency?: string; main?: React.ReactNode }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   // The clock stops while the run is paused: it adds each second to the total only when not paused, so a pause never counts.
@@ -414,6 +415,7 @@ export function Workspace({ state, onAnswer, onSkip, onPause, onRetry, kit = COM
           <DemoButton disabled={state.skipped.includes("all")} onClick={() => onSkip("all")}>
             {state.skipped.includes("all") ? "Wrapping up" : "Finish now"}
           </DemoButton>
+          {onRecorded && !state.demo && <DemoButton onClick={onRecorded}>Use the recorded run</DemoButton>}
         </DemoBar>
       )}
 

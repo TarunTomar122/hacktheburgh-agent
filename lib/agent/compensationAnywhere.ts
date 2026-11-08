@@ -159,7 +159,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               fundingQuote = r.value.resultQuote;
               fundingSource = f?.body ?? "The legal aid checker";
               calculatorText = r.value.result;
-              verdict = /\b(not (likely|eligible)|unlikely|ineligible|disqualif\w*|do(es)? not qualify|not qualify|cannot get|can't get|won't get)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
+              verdict = /\b(not (likely|eligible)|likely not|not to qualify|not be eligible|unlikely|ineligible|disqualif\w*|do(es)? not qualify|would not qualify|not qualify|cannot get|can't get|won't get|won't qualify)\b/i.test(r.value.result) ? "unlikely" : /\b(likely to (qualify|get)|you (may|could|can) (qualify|get)|eligible|qualify)\b/i.test(r.value.result) ? "likely" : "unknown";
               if (!r.value.result.trim() && !r.value.answers.length) verdict = "skipped"; // the checker got no answers (skipped), so there is no estimate to read
               kit.finding(`${fundingSource}: ${r.value.result}`, checkerUrl, "nell");
               kit.emit({ type: "verdict", verdict });
@@ -350,7 +350,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
               return o;
             }, 150_000);
             const o: EnquiryOutcome = r.ok ? r.value : { firmId: firm.id, firmName: firm.name, status: "failed", formUrl: null, filled: [], unfilled: [], consents: [], note: `Stopped: ${r.error}` };
-            recordAccess({ via: "browser", kind: "task", reason: `filled ${firm.name}'s enquiry form (${o.filled.length} field${o.filled.length === 1 ? "" : "s"}) and stopped before Send`, url: o.formUrl ?? firm.website ?? undefined });
+            recordAccess({ via: "browser", kind: "task", reason: o.status === "no_form" ? `looked for ${firm.name}'s enquiry form in the browser and found none` : `filled ${firm.name}'s enquiry form (${o.filled.length} field${o.filled.length === 1 ? "" : "s"}) and stopped before Send`, url: o.formUrl ?? firm.website ?? undefined });
             enquiries.set(firm.id, o);
             kit.emit({ type: "enquiry", enquiry: o });
             if (o.status === "ready_to_send" && o.formUrl) firms.set(firm.id, { ...firms.get(firm.id)!, enquiryUrl: o.formUrl });

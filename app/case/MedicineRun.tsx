@@ -10,6 +10,7 @@ import { Workspace, type CrewKit } from "./CaseRun";
 import { CrewMark } from "./crew/Crew";
 import StepStrip, { type Step } from "./crew/StepStrip";
 import { usePlannerRun } from "./usePlannerRun";
+import { placeOf, useDemoAvailable } from "./useDemo";
 
 /**
  * Report a medicine problem (the optional extra step, shown when the story involves a medicine). Same crew screen as the
@@ -26,12 +27,14 @@ const STEPS: Step[] = [
 ];
 
 export default function MedicineRun({ profile, route }: { profile: Profile; route?: RouteMap }) {
-  const { state, start, answer, skip, pause } = usePlannerRun({ scope: "medicine", caseId: profile.createdAt });
+  const { state, start, answer, skip, pause, switchToRecording } = usePlannerRun({ scope: "medicine", caseId: profile.createdAt });
+  const place = placeOf(profile);
+  const hasDemo = useDemoAvailable("medicine", place);
   const go = () => start(profile.facts, undefined, "medicine_anywhere", route);
   const live = state.status === "running" || state.says.length > 0;
   if (live) {
     const r = state.medicine;
-    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={go} kit={KIT} main={<Board report={r ?? null} running={state.status === "running"} />} />;
+    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={go} onRecorded={hasDemo ? () => switchToRecording({ flow: "medicine", place }) : undefined} kit={KIT} main={<Board report={r ?? null} running={state.status === "running"} />} />;
   }
   const where = [profile.facts.region, profile.facts.country].filter(Boolean).join(", ");
   return (

@@ -17,7 +17,7 @@ import { KEPT, summarize, type Summary, type TraceLite } from "./browserInfo";
  * When the browser closes, the panel shows a short notice and then closes itself (D38).
  */
 
-type Frame = { type: "frame"; pageId?: string; data: string; url: string; width: number; height: number };
+type Frame = { type: "frame"; pageId?: string; data: string; url: string; width: number; height: number; /** a recorded run's screenshot (an image URL) instead of a live frame */ src?: string };
 type LivePage = { pageId: string; label: string; color: string; url: string; state: "starting" | "working" | "done" | "failed"; note: string };
 type LiveStats = { agents: number; sites: number; pages: number; actions: number };
 type LiveMsg =
@@ -194,13 +194,17 @@ export default function LiveView() {
 
   useEffect(() => {
     const es = new EventSource("/api/live");
-    es.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data) as LiveMsg;
+    // A recorded run (app/case/usePlannerRun.ts replay) plays its browsers through the same messages: its tabs and its
+    // screenshots arrive as "live-replay" window events instead of from the server.
+    const onReplay = (e: Event) => handle((e as CustomEvent<LiveMsg>).detail);
+    window.addEventListener("live-replay", onReplay);
+    es.onmessage = (ev) => handle(JSON.parse(ev.data) as LiveMsg);
+    function handle(msg: LiveMsg) {
       if (msg.type === "frame") {
         clearTimeout(closeTimer.current); // a new session started while the old notice was still showing
         // Set the images directly instead of through state: many frames a second should not re-render React.
         const id = msg.pageId ?? SINGLE;
-        const src = `data:image/jpeg;base64,${msg.data}`;
+        const src = msg.src ?? `data:image/jpeg;base64,${msg.data}`;
         srcs.current.set(id, src);
         sizes.current.set(id, { width: msg.width, height: msg.height });
         urls.current.set(id, msg.url);
@@ -282,8 +286,9 @@ export default function LiveView() {
       } else if (msg.type === "control") {
         setControl(msg.enabled);
       }
-    };
+    }
     return () => {
+      window.removeEventListener("live-replay", onReplay);
       es.close();
       clearTimeout(closeTimer.current);
     };

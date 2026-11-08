@@ -8,7 +8,7 @@ import path from "node:path";
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const asked = params.get("flow");
-  const flow = asked === "complaint" || asked === "discovery" || asked === "escalation" ? asked : "step3";
+  const flow = asked === "complaint" || asked === "discovery" || asked === "escalation" || asked === "medicine" ? asked : "step3";
   // ?place=Wales: only a recording made for that place (demo/<run>/meta.json), so a Welsh case never plays a Scottish run.
   const place = params.get("place")?.toLowerCase() ?? null;
   const root = path.join(process.cwd(), "demo");

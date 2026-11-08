@@ -29,7 +29,7 @@ const STEPS: Step[] = [
 ];
 
 export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profile: Profile; saved?: RouteMap; onDone: (route: RouteMap, sample: boolean) => void; onSkip?: () => void }) {
-  const { state, start, answer, replay, skip, pause } = usePlannerRun({ scope: "discovery", caseId: profile.createdAt });
+  const { state, start, answer, replay, skip, pause, switchToRecording } = usePlannerRun({ scope: "discovery", caseId: profile.createdAt });
   const done = useRef<string | null>(null);
   useEffect(() => {
     const r = state.discovery;
@@ -78,7 +78,7 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
   if (live) {
     const f = profile.facts as { region?: string | null; country?: string | null };
     const route: RouteMap = state.route ?? { runId: "", place: { country: f.country ?? "", region: f.region ?? "", city: "", hospital: "", careSetting: "unknown", why: "" }, system: "", summary: "", steps: [], foundAt: "" };
-    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => start(profile.facts, undefined, "discovery")} kit={KIT} main={<RouteMapCard route={route} compact={state.status === "running"} handoff={state.handoffs.find((h) => !h.outcome) ?? null} onRerun={state.status === "running" ? undefined : more} />} />;
+    return <Workspace state={state} onAnswer={answer} onSkip={skip} onPause={pause} onRetry={() => start(profile.facts, undefined, "discovery")} onRecorded={hasDemo ? () => switchToRecording({ flow: "discovery", place }) : undefined} kit={KIT} main={<RouteMapCard route={route} compact={state.status === "running"} handoff={state.handoffs.find((h) => !h.outcome) ?? null} onRerun={state.status === "running" ? undefined : more} />} />;
   }
   if (saved && state.status !== "error") {
     const t = PERSONA_PICKER_ENABLED ? readResearchTime(profile.createdAt) : null;
