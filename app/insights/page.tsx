@@ -53,6 +53,7 @@ async function Dashboard() {
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
   };
   const latest = logged[0];
+  const lanesRun = recent.find((r) => r.flow === "compensation" && r.lanes.length >= 3) ?? recent.find((r) => r.lanes.length >= 3);
   const jobs = logged.flatMap((r) => r.access.filter((a) => a.kind === "task"));
   const firms = logged.flatMap((r) => r.access.filter((a) => a.kind === "firm"));
   const reasons = browserReasons(logged);
@@ -128,6 +129,40 @@ async function Dashboard() {
           ))}
         </div>
       </section>
+
+      {/* The crew at work, on one clock */}
+      {lanesRun && (
+        <section className="space-y-4">
+          <Title>
+            The crew working at the same time <span className="text-[14px] text-muted">({FLOW_NAME[lanesRun.flow]}{lanesRun.place ? `, ${lanesRun.place}` : ""}, {mins(lanesRun.ms)})</span>
+          </Title>
+          <p className="max-w-[70ch] text-[14px] leading-6 text-ink-2">Each bar is a stretch of work by one crew member in the latest run. Where bars overlap, they were working at the same time: that is why the whole step takes minutes, not the sum of everyone&apos;s work ({mins(lanesRun.lanes.reduce((n, l) => n + l.spans.reduce((m, [a, b]) => m + (b - a), 0), 0))} of work in {mins(lanesRun.ms)}).</p>
+          <div className="space-y-2">
+            {lanesRun.lanes.map((l) => (
+              <div key={l.crew} className="grid grid-cols-[6rem_1fr] items-center gap-4">
+                <span className="flex items-center gap-2 text-[13px] capitalize text-ink-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- tiny static avatar */}
+                  <img src={`/crew/${l.crew}-256.png`} alt="" aria-hidden className="size-5 object-contain" />
+                  {l.crew}
+                </span>
+                <div className="relative h-5 rounded-[4px] bg-subtle">
+                  {l.spans.map(([a, b], i) => (
+                    <div key={i} className="absolute inset-y-0 rounded-[4px] bg-ink-2" style={{ left: `${(a / lanesRun.ms) * 100}%`, width: `max(3px, calc(${((b - a) / lanesRun.ms) * 100}% - 2px))` }} title={`${l.crew}: working from ${mins(a)} to ${mins(b)}`} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="grid grid-cols-[6rem_1fr] gap-4 text-[11px] text-muted">
+              <span />
+              <span className="flex justify-between tabular-nums">
+                <span>0</span>
+                <span>{mins(lanesRun.ms / 2)}</span>
+                <span>{mins(lanesRun.ms)}</span>
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* The latest run, line by line */}
       {latest && (

@@ -25,6 +25,8 @@ export type RunSummary = {
   asks: number;
   models: { agent: string; model: string; where: "local" | "cloud"; calls: number; tokens: number; ms: number; data: string[] }[];
   access: Access[];
+  /** When each crew member was working (from the run's crew events): the parallel work, on one clock. */
+  lanes: { crew: string; spans: [number, number][] }[];
 };
 
 const FLOW: [RegExp, Flow][] = [[/^discovery-/, "discovery"], [/^complaint-/, "complaint"], [/^escalation-/, "escalation"], [/^step3-/, "compensation"], [/^step4-/, "enquiries"]];
@@ -46,6 +48,8 @@ function readRun(dir: string, id: string): RunSummary | null {
   let asks = 0;
   const searches = { api: 0, cache: 0, browser: 0 };
   const models = new Map<string, RunSummary["models"][number]>();
+  const open = new Map<string, number>();
+  const spans = new Map<string, [number, number][]>();
   for (const line of readFileSync(file, "utf8").split("\n")) {
     if (!line) continue;
     let x: Ev;
@@ -57,6 +61,15 @@ function readRun(dir: string, id: string): RunSummary | null {
     last = Math.max(last, x.t);
     const e = x.e;
     if (e.type === "stats") stats = { ...stats, ...(e.stats as typeof stats) };
+    else if (e.type === "crew") {
+      const id = String(e.id);
+      if (e.state === "working") {
+        if (!open.has(id)) open.set(id, x.t);
+      } else if (open.has(id)) {
+        spans.set(id, [...(spans.get(id) ?? []), [open.get(id)!, x.t]]);
+        open.delete(id);
+      }
+    }
     else if (/_result$|^result$/.test(e.type)) finished = true;
     else if (e.type === "ask") asks++;
     else if (e.type === "place" || e.type === "route") {
@@ -113,6 +126,7 @@ function readRun(dir: string, id: string): RunSummary | null {
     asks,
     models: [...models.values()],
     access,
+    lanes: ["elliot", "nell", "robin", "iona", "kit"].map((crew) => ({ crew, spans: [...(spans.get(crew) ?? []), ...(open.has(crew) ? [[open.get(crew)!, last] as [number, number]] : [])] })).filter((l) => l.spans.length),
   };
   cache.set(id, { mtime, run });
   return run;
