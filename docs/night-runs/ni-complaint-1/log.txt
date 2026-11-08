@@ -1,0 +1,4 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[4s] [elliot] Set the complaint steps before checking the Trust's rules and time limit.
+[7s] [elliot → robin] Check Belfast Trust's complaint process and whether this patient's September 2026 complaint is still within the normal time limit.
