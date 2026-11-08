@@ -1,8 +1,8 @@
 # Elliot
 
-**A crew of browser agents that helps a patient after medical harm, wherever they live.**
+**A crew of browser agents that helps a patient after medical negligence, wherever they live.**
 
-A patient tells Elliot what happened in their own words. A crew of five AI agents then works the real web for them, live and in parallel. They work out how complaints, compensation and legal aid work in that patient's country, run the official eligibility checker, search the professional register, check each law firm on its own website, find the clinical guideline that applies, and fill in each firm's own enquiry form. Then they stop before Send, so the patient has the final word.
+A patient tells Elliot what happened in their own words. A crew of five AI agents then works the web for them, live and in parallel. They work out how complaints, compensation and legal aid work in that patient's country, run the official eligibility checker, search the professional register, check each law firm on its own website, find the clinical guideline that applies, and fill in each firm's own enquiry form. Then they stop before Send, so the patient has the final word.
 
 Built in 24 hours at HackTheBurgh 2026 for the Wordsmith.AI challenge: *"Make the most complicated end-to-end agentic AI browser-use workflow."*
 
