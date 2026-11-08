@@ -1,0 +1,87 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[7s] research [elliot] Map routes for this hospital
+[11s] research [iona] Could not finish: read nice.org.uk
+[11s] research [iona] Could not finish: read nhs.uk
+[12s] research [nell] Could not finish: read gov.uk
+[12s] research [nell] Could not finish: read resolution.nhs.uk
+[13s] research [robin] Searched the web, 10 results
+[13s] research [robin] Searched the web, 10 results
+[16s] research [robin] Read rbht.nhs.uk
+[16s] research [robin] Could not finish: read guysandstthomas.nhs.uk
+[17s] research [robin] Could not finish: read guysandstthomas.nhs.uk
+[17s] research [robin] Read ombudsman.org.uk
+[18s] research [iona] Read westnorthants.gov.uk
+[18s] research [robin] Read cheshireandmerseyside.nhs.uk
+[18s] research [robin] Searched the web, 1 results
+[20s] research [robin] Read ombudsman.org.uk
+[20s] research [robin] Read elft.nhs.uk
+[20s] research [elliot] Could not finish: wrote down what we found
+[21s] research [elliot] Wrote down what we found
+[21s] research [robin] Read england.nhs.uk
+[21s] research [robin] Could not finish: read resolution.nhs.uk
+[21s] research [robin] Could not finish: read guysandstthomas.nhs.uk
+[22s] research [robin] Read my.avma.org.uk
+[23s] research [nell] Read rethink.org
+[23s] research [robin] Read sra.org.uk
+[23s] research [robin] Read avma.org.uk
+[23s] research [elliot] Wrote down what we found
+[23s] research [robin] Could not finish: read gsttfoundation.org.uk
+[24s] research [elliot] Could not finish: wrote down what we found
+[26s] research [nell] Searched the web, 10 results
+[26s] research [robin] Read evelinalondon.nhs.uk
+[26s] research [robin] Read legislation.gov.uk
+[26s] research [elliot] Could not finish: wrote down what we found
+[26s] research [robin] Could not finish: read gov.uk
+[27s] research [elliot] Wrote down what we found
+[27s] research [robin] Read legislation.gov.uk
+[27s] research [robin] Read rbht.nhs.uk
+[29s] research [elliot] Wrote down what we found
+[29s] research [robin] Read ombudsman.org.uk
+[30s] research [robin] Read ombudsman.org.uk
+[30s] research [robin] Searched the web, 10 results
+[31s] research [elliot] Could not finish: wrote down what we found
+[33s] research [elliot] Wrote down what we found
+[33s] research [nell] Read legislation.gov.uk
+[34s] research [nell] Read legalaidlearning.justice.gov.uk
+[34s] research [nell] Read gov.uk
+[35s] research [elliot] Wrote down what we found
+[38s] research [elliot] I found the main routes reported for St Thomas’ Hospital: the trust complaint route, the Ombudsman escalation route, the legal aid and lawyer routes, independent NHS complaints advocacy, and a records
+
+RESEARCH discovery-2026-11-08T06-21-51-054Z-s6he 0.7 min: complaint=Guy’s and St Thomas’ NHS Foundation Trust (confirmed); escalation=Parliamentary and Health Service Ombudsman (confirmed); compensation=Legislation.gov.uk (likely); funding=GOV.UK (likely); lawyers=AvMA (confirmed); guideline=West Northamptonshire Council (likely); advice=Independent NHS complaints advocacy (confirmed); records=Royal Brompton & Harefield hospitals (likely)
+  pages fetch 20 / browser 5; firms fetch 0 / browser 0; searches api 12 cache 0 browser 1; browser jobs 0
+  browser because: search: the search API did not answer, so a search engine was opened in the browser | page: the site refused a plain request (403), a bot check | page: the site answered 404
+
+[48s] case [elliot] Start checks and lawyer search
+[53s] case [robin] 8 firms found by search.
+[80s] case [iona] Found the clinical guidance
+[81s] case ASK (choice) Choose the problem you need help with. -> Children, families, relationships
+[81s] case [nell] Choose the problem you need help with.
+[86s] case ASK (choice) Children and social services, children in care -> Children and social services, children in care
+[86s] case [nell] Children and social services, children in care
+[93s] case [nell] Could not finish: checked funding with GOV.UK
+[100s] case [iona] I looked on the official sites and found no published decisions to cite.
+[103s] case [robin] Searched AvMA
+[111s] case [elliot] Check best firm websites now
+[118s] case [robin] Ruled out Moore Barlow LLP: Website sends you to knightsplc.com.
+[121s] case [robin] Checked Anthony Gold Solicitors LLP (London) on its own website.
+[122s] case [robin] Checked Osbornes Law on its own website.
+[131s] case [robin] Checked Russell-Cooke on its own website.
+[135s] case [elliot] Replace ruled out firms
+[138s] case [robin] Checked Duncan Lewis on its own website.
+[140s] case [robin] Checked Bindmans LLP (London) on its own website.
+[143s] case [elliot] Bindmans LLP (London): fit 84%
+[147s] case [elliot] Prepare the enquiry forms
+[160s] case [kit] Filled Bindmans LLP (London)'s enquiry form
+[162s] case [kit] Filled Duncan Lewis's enquiry form
+[162s] case [kit] Filled Osbornes Law's enquiry form
+[165s] case [elliot] I found London firms that handle patient clinical negligence claims and prepared one enquiry form without sending it. The strongest shortlist is Bindmans, Osbornes, and Duncan Lewis, with no win no fe
+
+CASE step3-2026-11-08T06-22-27-677Z-pvhc 2.1 min (research 0.7 min)
+  funding: unknown ""
+  firms: 20 found, 6 checked on their sites, shortlist bindmans-london, osbornes, duncan-lewis
+  guidance: pmc.ncbi.nlm.nih.gov: "In cases of suspected scaphoid fracture where the initial radiographs are negative, a supplementary MRI, or alternativel"; gaps 3; decisions 0
+  enquiries: Bindmans LLP (London): ready_to_send (6 fields); Duncan Lewis: needs_input (10 fields); Osbornes Law: could_not_fill (0 fields)
+  questions to the patient: 2
+  pages fetch 1 / browser 1; firms fetch 2 / browser 4; searches api 10 cache 0 browser 0; browser jobs 5
+  browser because: page: a bot check or 'enable JavaScript' wall | task: answered the place's own eligibility checker (2 questions; each answer changes the next question) | task: searched the lawyer register with its own search filters (location) | firm: their home page: the site answered 404 | firm: their home page: a login page | firm: their home page: the site refused a plain request (403), a bot check | firm: the plain page did not clearly say they act for patients, so the browser looks properly | task: filled Bindmans LLP (London)'s enquiry form (6 fields) and stopped before Send | task: filled Duncan Lewis's enquiry form (10 fields) and stopped before Send | task: filled Osbornes Law's enquiry form (0 fields) and stopped before Send

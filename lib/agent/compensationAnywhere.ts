@@ -130,7 +130,7 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             const url = f?.url ?? f?.sources[0]?.url;
             if (!url) return "Could not check funding: discovery found no funding page.";
             const known: Value[] = [
-              { key: "case_type", description: "What kind of legal case this is (civil, criminal or children's): a CIVIL case, a claim about harm from medical care (clinical negligence)", value: "Civil" },
+              { key: "case_type", description: "What the legal problem is: a CIVIL claim about harm from medical care (clinical negligence, also called medical negligence; not criminal, not family). Fits questions like 'what type of case', 'what is your problem about', 'choose the problem you need help with'", value: "Civil: clinical negligence (harm from medical treatment)" },
               ...(facts.complainingFor === "me" ? [{ key: "who_for", description: "Who needs the help: the patient themself, an adult", value: "Myself" }] : []),
               ...fundingKnown(opts.funding),
               { key: "country", description: "Where the patient lives", value: placeName, public: true },
@@ -351,6 +351,15 @@ ROUTE MAP:\n${JSON.stringify(route.steps.map((s) => ({ kind: s.kind, body: s.bod
             kit.emit({ type: "enquiry", enquiry: o });
             if (o.status === "ready_to_send" && o.formUrl) firms.set(firm.id, { ...firms.get(firm.id)!, enquiryUrl: o.formUrl });
             kit.finding(`${firm.name}: ${o.status === "ready_to_send" ? "enquiry form filled, waiting for your OK" : o.note}`, o.formUrl ?? undefined, "kit");
+            if (o.status === "no_form" || o.status === "could_not_fill") {
+              // No usable online form: the next best firm checked on its own site takes its place on the shortlist (D46).
+              const next = [...firms.values()].filter((x) => !x.excluded && x.sources.includes("website") && !shortlistIds.includes(x.id) && !enquiries.has(x.id)).sort((x, y) => score(y, routeKind, evidence.get(y.id)).score - score(x, routeKind, evidence.get(x.id)).score)[0];
+              if (next) {
+                shortlistIds = [...shortlistIds.filter((id) => id !== firm.id), next.id];
+                kit.finding(`${firm.name}'s form could not be used, so ${next.name} takes its place`, undefined, "kit");
+                return `${firm.name}: ${o.status === "no_form" ? "no online form" : "the form could not be filled"}. ${next.name} (${next.id}) is now on the shortlist instead: call fill_enquiry for ${next.id}.`;
+              }
+            }
             return `${firm.name}: ${o.status}. ${o.note}`;
           }
           default:

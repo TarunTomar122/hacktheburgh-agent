@@ -1,0 +1,79 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[6s] research [elliot] Map hospital routes now
+[11s] research [nell] Searched the web, 10 results
+[14s] research [robin] Read solicitors.lawsociety.org.uk
+[14s] research [robin] Read my.avma.org.uk
+[14s] research [robin] Read avma.org.uk
+[15s] research [robin] Read cavuhb.nhs.wales
+[16s] research [robin] Read cavuhb.nhs.wales
+[16s] research [iona] Read nice.org.uk
+[16s] research [robin] Read gov.wales
+[16s] research [iona] Read gov.wales
+[17s] research [robin] Read cavuhb.nhs.wales
+[17s] research [robin] Searched the web, 10 results
+[17s] research [iona] Read nice.org.uk
+[17s] research [robin] Searched the web, 10 results
+[17s] research [elliot] Wrote down what we found
+[17s] research [robin] Searched the web, 10 results
+[18s] research [robin] Searched the web, 10 results
+[19s] research [robin] Read llaiswales.org
+[19s] research [robin] Read cavuhb.nhs.wales
+[19s] research [robin] Read gov.wales
+[19s] research [elliot] Wrote down what we found
+[20s] research [elliot] Wrote down what we found
+[20s] research [robin] Could not finish: read llaiswales.org
+[21s] research [robin] Read ombudsman.wales
+[22s] research [robin] Read gov.wales
+[22s] research [robin] Read ombudsman.wales
+[22s] research [nell] Read gov.uk
+[23s] research [elliot] Could not finish: wrote down what we found
+[23s] research [nell] Read legislation.gov.uk
+[23s] research [nell] Read legislation.gov.uk
+[24s] research [robin] Read jcc.nhs.wales
+[24s] research [elliot] Could not finish: wrote down what we found
+[25s] research [robin] Read gov.wales
+[26s] research [elliot] Wrote down what we found
+[26s] research [robin] Read england.nhs.uk
+[27s] research [robin] Read legislation.gov.uk
+[28s] research [elliot] Wrote down what we found
+[28s] research [elliot] Could not finish: wrote down what we found
+[29s] research [robin] Read ombudsman.wales
+[30s] research [robin] Read gov.wales
+[35s] research [elliot] Wrote down what we found
+[36s] research [robin] Read legislation.gov.uk
+[38s] research [robin] Read legislation.gov.uk
+[38s] research [robin] Read legislation.gov.uk
+[41s] research [elliot] You have a public-hospital complaints route through Cardiff and Vale University Health Board, and if that does not resolve things you can go to the Public Services Ombudsman for Wales. For compensatio
+
+RESEARCH discovery-2026-11-08T06-21-48-781Z-78mq 0.9 min: complaint=Cardiff and Vale University Health Board (confirmed); escalation=Public Services Ombudsman for Wales (confirmed); compensation=GOV.WALES (likely); funding=Legislation.gov.uk (likely); lawyers=AvMA (confirmed); guideline=National Institute for Health and Care Excellence (NICE) (confirmed); advice=Llais (likely); records=Cardiff and Vale University Health Board (likely)
+  pages fetch 28 / browser 1; firms fetch 0 / browser 0; searches api 13 cache 0 browser 0; browser jobs 0
+  browser because: page: the site answered 404
+
+[56s] case [elliot] Start funding, scheme, firms, guidance
+[62s] case [robin] Read how GOV.WALES works
+[63s] case [robin] 5 firms found by search.
+[71s] case [nell] Checked funding with Legislation.gov.uk
+[78s] case [iona] I looked on the official sites and found no published decisions to cite.
+[113s] case [iona] Found the clinical guidance
+[154s] case [robin] Searched AvMA
+[160s] case [elliot] Check nearby firms after funding result
+[163s] case [robin] Checked Harding Evans on its own website.
+[163s] case [robin] Checked Geldards LLP on its own website.
+[164s] case [robin] Checked JCP Solicitors on its own website.
+[174s] case [robin] Checked Howells Legal on its own website.
+[177s] case [elliot] Geldards LLP: fit 79%
+[180s] case [elliot] Prepare forms for shortlisted firms
+[194s] case [kit] Filled Geldards LLP's enquiry form
+[199s] case [kit] Filled Howells Legal's enquiry form
+[218s] case [kit] Filled Harding Evans's enquiry form
+[222s] case [elliot] I found local claimant clinical negligence firms in or near Cardiff and checked which ones act for patients and offer no win no fee. Geldards and Howells have enquiry forms ready to send; Harding Evan
+
+CASE step3-2026-11-08T06-22-38-668Z-us8r 2.8 min (research 0.9 min)
+  funding: unknown "The page does not say whether an adult can get legal aid for a clinical negligence claim. It says no win no fee is allowed through conditional fee agreements an"
+  firms: 17 found, 4 checked on their sites, shortlist geldards, harding-evans, howells-legal
+  guidance: msdmanuals.com: "If a scaphoid fracture is suspected and imaging is nondiagnostic, presumptive treatment with a thumb spica splint and fo"; gaps 2; decisions 0
+  enquiries: Geldards LLP: ready_to_send (7 fields); Howells Legal: ready_to_send (4 fields); Harding Evans: could_not_fill (1 fields)
+  questions to the patient: 0
+  pages fetch 6 / browser 2; firms fetch 3 / browser 1; searches api 8 cache 0 browser 0; browser jobs 4
+  browser because: page: the site answered 404 | page: the site refused a plain request (403), a bot check | task: searched the lawyer register with its own search filters (location) | firm: their home page: a plain request failed (network or certificate) | task: filled Geldards LLP's enquiry form (7 fields) and stopped before Send | task: filled Howells Legal's enquiry form (4 fields) and stopped before Send | task: filled Harding Evans's enquiry form (1 field) and stopped before Send

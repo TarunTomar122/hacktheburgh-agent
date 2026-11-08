@@ -6,7 +6,7 @@ import type { EvidenceResult, Thought } from "./plannerTypes";
 import type { RouteMap } from "./routeTypes";
 import { exploreSite, readPage } from "./workers/explore";
 import { webSearch } from "./planner";
-import { structured, modelFor } from "./llm";
+import { EFFORT, MODELS, structured, modelFor } from "./llm";
 import { z } from "zod";
 
 /** Empty the draft inputs that come from clinical guidance. Call it whenever guidance is dropped (no applicable guidance, or replanning drops the guidance step), so a stale or irrelevant quote can never reach the draft. */
@@ -74,6 +74,32 @@ export async function checkApplicability(patient: { ageBand: string; condition: 
   });
 }
 
+const Credible = z.object({
+  credible: z.boolean().describe("true only for a health service, government or regulator, a clinical guideline body, a professional medical society or royal college, a university hospital, or a peer-reviewed or professional medical reference (journal, PubMed, a medical manual). false for a private clinic or practice selling services, a blog, a forum, a marketing or law-firm page, or anything you cannot tell"),
+  kind: z.string().describe("Two to five words: what kind of publisher this is"),
+});
+const credibleCache = new Map<string, Promise<z.infer<typeof Credible>>>();
+/** Is this page from a source a patient's solicitor would take seriously? Public facts only (address, title, site): no patient data. */
+export function credibleSource(source: { url: string; title: string }): Promise<z.infer<typeof Credible>> {
+  let host = "";
+  try {
+    host = new URL(source.url).hostname.replace(/^www\./, "");
+  } catch {}
+  const hit = credibleCache.get(host);
+  if (hit) return hit;
+  const p = structured({
+    model: MODELS.browser,
+    effort: EFFORT.browser,
+    instructions: "Say whether a web page comes from a credible clinical source. Judge the publisher from the web address and title.",
+    input: `Address: ${source.url}\nTitle: ${source.title}`,
+    schema: Credible,
+    name: "guidance_source",
+    data: [],
+  }).catch(() => ({ credible: false, kind: "could not check" }));
+  credibleCache.set(host, p);
+  return p;
+}
+
 /**
  * Iona's guidance step for any place (night plan, "Elliot anywhere"): on the guidance body discovery found, find the
  * recommendation about the patient's condition, quote it word for word (checked by code), and compare it with the
@@ -102,6 +128,12 @@ export async function findGuidance(kit: CrewKit, thought: Thought, route: RouteM
   /** Does this page's recommendation apply to this patient (age group, condition, setting, place)? A page that does not is not the end of the search. */
   const judge = async (cand: Cand, foreign = false): Promise<Judged | { error: string }> => {
     try {
+      // A recommendation from a clinic's marketing page or a blog is not guidance: only credible clinical sources count.
+      const src = await credibleSource(cand);
+      if (!src.credible) {
+        const reason = `Not a clinical source (${src.kind}), so not used.`;
+        return { cand, verdicts: cand.quotes.map((quote, i) => ({ id: `${i + 1}`, verdict: "does_not_apply" as const, reason, quote })), applicable: [], rejected: cand.quotes.map((quote, i) => ({ id: `${i + 1}`, verdict: "does_not_apply" as const, reason, quote })), foreign };
+      }
       const band = await ageBandOf(facts);
       const verdicts = await checkApplicability({ ageBand: band.band.replace(/_/g, " "), condition, setting, place: where || "not stated" }, { body: publisherOf(cand.url, cand.title), title: cand.title, url: cand.url }, cand.quotes, { otherPlaceOk: foreign });
       return { cand, verdicts, applicable: cand.quotes.filter((_, i) => verdicts[i].verdict === "applies"), rejected: verdicts.filter((v) => v.verdict !== "applies"), foreign };
