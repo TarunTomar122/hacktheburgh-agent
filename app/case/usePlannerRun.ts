@@ -293,7 +293,7 @@ export function usePlannerRun(scope?: RunScope) {
   useEffect(() => {
     if (!slot) return;
     const st = readStored(scopeRef.current);
-    if (st?.seen && st.status !== "running" && scopeRef.current?.scope !== "discovery") return; // already shown and saved by this screen: it shows its own file (the research screen keeps its crew and history, so it always reattaches)
+    if (st?.seen && st.status !== "running" && scopeRef.current?.scope !== "discovery" && scopeRef.current?.scope !== "case") return; // already shown and saved by this screen: it shows its own file (the research and case screens keep their crew and history, so they always reattach)
     const ctrl = new AbortController();
     abort.current = ctrl;
     void (async () => {

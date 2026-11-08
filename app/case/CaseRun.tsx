@@ -8,6 +8,7 @@ import { setCaseRun, setEnquiry, setLegalAid, skipStep, upsertEnquiries, type Ca
 import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
 import StepStrip, { routeSteps } from "./crew/StepStrip";
+import CaseBoard from "./CaseBoard";
 import FirmResults from "./FirmResults";
 import InvestigationList from "./Investigation";
 import { ScoreRow, whyFor } from "./scoreParts";
@@ -74,6 +75,11 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
   useEffect(() => {
     const r = state.result;
     if (state.status !== "done" || !r || persisted.current === r.runId) return;
+    // A run picked up again after a reload is already in the case file: saving it again would undo the firms you picked.
+    if (r.runId && saved?.runId === r.runId) {
+      persisted.current = r.runId;
+      return;
+    }
     persisted.current = r.runId ?? "x";
     // A firm whose form needs a detail only the user has still goes to the review (D64), so it is kept like a ready one.
     const ready = r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => e.firmId);
@@ -83,13 +89,17 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
     upsertEnquiries(r.enquiries.filter((e) => e.status === "ready_to_send" || e.status === "needs_input").map((e) => ({ firmId: e.firmId, firmName: e.firmName, status: e.status === "ready_to_send" ? ("ready_to_send" as const) : ("draft" as const) })));
     const run: CaseRunRecord = { runId: r.runId ?? "", says: r.says, plan: r.plan, evidence: r.evidence, asks: r.asks, recoveries: r.recoveries, turns: r.turns, durationMs: (state.endedAt ?? Date.now()) - (state.startedAt ?? Date.now()), finishedAt: new Date().toISOString() };
     setCaseRun(run);
-  }, [state.status, state.result, state.startedAt, state.endedAt, state.demo]);
+  }, [state.status, state.result, state.startedAt, state.endedAt, state.demo, saved?.runId]);
 
   // Night plan ("Elliot anywhere"): with a route map, the generic crew works with the place's own checker and register.
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
   const go = () => (routeMap ? start(profile.facts, undefined, "compensation_anywhere", routeMap) : start(profile.facts, profile.legalAid?.funding));
-  const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  // A demo skip counts the whole step as done in the progress meter (D60).
+  // The crew screen stays after the run, like the research screen: the case fills in on the left, what the crew did on the right.
+  const [fileOpen, setFileOpen] = useState(false);
+  const live = state.status === "running" || (state.status === "error" && state.says.length > 0) || (state.status === "done" && state.says.length > 0 && !fileOpen);
+  const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
+  const outs = state.result?.enquiries ?? state.enquiries;
+  const ready = outs.filter((o) => o.status === "ready_to_send" || o.status === "needs_input");
   if (live)
     return (
       <Workspace
@@ -102,6 +112,15 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
         }}
         onRetry={() => go()}
         currency={routeMap ? currencyOf(routeMap.place.country) : undefined}
+        main={
+          <CaseBoard
+            input={{ says: state.says, crew: state.crew, firms: state.firms, evidence: state.evidence, enquiries: state.enquiries, result: state.result, skipped: state.skipped, checker: fundingStep?.body }}
+            checkerUrl={fundingStep?.url}
+            next={state.status === "done" && state.result ? (ready.length ? { label: `Check and send ${ready.length} enquir${ready.length === 1 ? "y" : "ies"}`, note: "Kit filled the forms and stopped before Send. You can change anything before it goes.", run: onReviewEnquiries } : { label: "Finish preparing your case", note: "No enquiry form was filled this time. Run the crew again and Kit will prepare them.", run: () => go() }) : undefined}
+            onFile={state.status === "done" && result ? () => setFileOpen(true) : undefined}
+            onAgain={state.status === "done" ? () => go() : undefined}
+          />
+        }
       />
     );
   if (view === "firms" && result)
@@ -114,7 +133,17 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
       </div>
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
-  if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={go} />;
+  if (saved && result)
+    return (
+      <div className="space-y-4">
+        {fileOpen && state.says.length > 0 && (
+          <button className="mx-auto block w-full max-w-4xl text-left text-[13px] text-brand hover:underline" onClick={() => setFileOpen(false)}>
+            ← Back to the crew
+          </button>
+        )}
+        <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={go} />
+      </div>
+    );
   return (
     <Intro
       routeMap={routeMap}

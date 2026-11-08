@@ -72,7 +72,7 @@ export default function DiscoveryRun({ profile, saved, onDone, onSkip }: { profi
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">How it works where you live</h1>
       <p className="mt-3 flex items-center gap-2 text-[15px] text-ink-2">
-        <CrewMark id="elliot" size={28} /> First, the crew researches how complaints and claims work{where ? ` in ${where}` : ""}, from official sites. It takes about 10 minutes. Nothing is filled in or sent.
+        <CrewMark id="elliot" size={28} /> First, the crew researches how complaints and claims work{where ? ` in ${where}` : ""}, from official sites. It takes about a minute. Nothing is filled in or sent.
       </p>
       <div className="mt-12">
         <StepStrip steps={STEPS} />
