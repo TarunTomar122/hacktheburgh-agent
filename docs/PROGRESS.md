@@ -8,6 +8,14 @@ Living log. Newest first. Every entry: what we did, what we tried, what happened
 
 ## Log
 
+### 2026-11-08 - Om + Claude - DONE - Step 1 shows the complaint time limit
+
+- **Correction to the entry below:** the crew's time-limit check is not on screen. Since D69, step 1 is the earlier page and `ComplaintRun.tsx` is not rendered, so the "close" result was never visible.
+- New `app/case/TimeLimitNote.tsx`, on step 1 under the title and above "Fill in NHS Lothian's form": the rule in one sentence, the count from `countTimeLimit` (same code as the crew, from the saved timeline; nothing fetched), and a link to Citizens Advice Scotland as the source. Tones: in time (green), close (amber), may be too late (red), could not be counted (blue).
+- Demo persona: "Time limit: close", counted from 1 July 2026, deadline 1 January 2027.
+- Sources checked 2026-11-08: Citizens Advice Scotland (6 months from the event or from finding out, at most 12 months after the event); gov.scot NHS complaints guidance (same rule); SPSO Act 2002 s10(1) (12 months from first notice of the matter, for step 2, not shown yet).
+- `TIME_LIMIT_SOURCE` moved into `lib/agent/timeLimit.ts` so the page does not import the crew's browser code. `tsc` and eslint clean; not yet seen in a browser.
+
 ### 2026-11-08 - Om + Claude - DONE - Complaint time limit counted in code
 
 The complaint crew's time-limit check asked the model (low effort) whether the patient was within the limit, so a wrong date sum could tell a patient they were in time when they were not.

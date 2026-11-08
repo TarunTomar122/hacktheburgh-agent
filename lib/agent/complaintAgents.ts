@@ -6,7 +6,7 @@ import type { CaseFacts } from "./facts";
 import { EFFORT, MODELS, structured } from "./llm";
 import { pageText, type Note, type Tracker } from "./legalAid";
 import { hasSupport } from "./complaintSupport";
-import { countTimeLimit, type TimeLimitStatus } from "./timeLimit";
+import { countTimeLimit, TIME_LIMIT_SOURCE, type TimeLimitStatus } from "./timeLimit";
 
 /**
  * Robin's two reading skills for the complaint crew (D65). Both open real pages and answer only from them.
@@ -15,7 +15,7 @@ import { countTimeLimit, type TimeLimitStatus } from "./timeLimit";
 
 const NHS_BASE = "https://www.nhslothian.scot/yourrights/patient-experience-team-tell-us-about-your-experience/how-do-i-make-a-complaint/";
 export const NHS_PROCESS_URLS = [NHS_BASE, `${NHS_BASE}what-happens-when-i-complain/`];
-export const TIME_LIMIT_PAGE = "https://www.citizensadvice.org.uk/scotland/health/nhs-healthcare-s/nhs-complaints-s/";
+export const TIME_LIMIT_PAGE = TIME_LIMIT_SOURCE;
 
 async function open(page: Page, url: string, note: Note, track: Tracker, hover: RegExp) {
   note(`Opening ${new URL(url).hostname.replace(/^www\./, "")}`);

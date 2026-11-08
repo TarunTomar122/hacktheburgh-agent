@@ -8,6 +8,7 @@ import { Button, Callout, PageTitle } from "../ui";
 import type { ExtraAnswers } from "../../lib/agent/extra";
 import AgentAsk from "./AgentAsk";
 import AskMissing from "./AskMissing";
+import TimeLimitNote from "./TimeLimitNote";
 import Header from "./Header";
 import CaseRun from "./CaseRun";
 import OmbudsmanStep from "./OmbudsmanStep";
@@ -193,6 +194,8 @@ function StepOne({ profile, onContinue }: { profile: Profile; onContinue: () => 
         title="Complain to NHS Lothian"
         lede="Elliot has written your complaint from what you told him. He fills in NHS Lothian's form with it; you check it there, change anything you like, and press Submit yourself."
       />
+
+      <TimeLimitNote profile={profile} />
 
       <AskMissing profile={profile} scope="nhs" why="NHS Lothian's form needs this. Elliot only asks it now that you are making a complaint." />
 

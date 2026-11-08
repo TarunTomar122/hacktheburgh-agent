@@ -9,6 +9,9 @@
  * Vague dates ("early July 2026") are read as the earliest day they can mean, so the deadline shown is never later than the real one.
  */
 
+/** Citizens Advice Scotland's page on NHS complaints: the source the crew reads and the step 1 note links to. */
+export const TIME_LIMIT_SOURCE = "https://www.citizensadvice.org.uk/scotland/health/nhs-healthcare-s/nhs-complaints-s/";
+
 export type TimeLimitStatus = "within" | "close" | "outside" | "unclear";
 export type TimeLimitCount = { status: TimeLimitStatus; explanation: string; from?: string; deadline?: string };
 
