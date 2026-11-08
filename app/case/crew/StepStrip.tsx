@@ -1,6 +1,7 @@
 "use client";
 
 import { CREW, type CrewId, type Say } from "../../../lib/agent/plannerTypes";
+import type { RouteMap } from "../../../lib/agent/routeTypes";
 import { cx } from "../../ui";
 import type { CrewState } from "../usePlannerRun";
 import { CrewMark, StateMark } from "./Crew";
@@ -18,6 +19,19 @@ export const STEPS: Step[] = [
   { crew: ["iona"], title: "Gather evidence", line: "Iona reads guidelines & past cases" },
   { crew: ["kit"], title: "Fill enquiries", line: "Kit fills each firm's form" },
 ];
+
+/** The same four steps for a place with a route map: the funding body and the lawyer register are the ones found for that place. */
+export function routeSteps(map: RouteMap): Step[] {
+  const body = (kind: "funding" | "lawyers") => map.steps.find((s) => s.kind === kind)?.body;
+  const funding = body("funding");
+  const lawyers = body("lawyers");
+  return [
+    { ...STEPS[0], line: funding ? `Nell checks ${funding}` : "Nell checks what help with costs there is" },
+    { ...STEPS[1], line: lawyers ? `Robin finds and checks firms on ${lawyers}` : "Robin finds and checks firms" },
+    STEPS[2],
+    STEPS[3],
+  ];
+}
 
 export type StepStatus = "pending" | "working" | "waiting" | "done" | "skipped" | "failed";
 

@@ -83,7 +83,7 @@ export default function EscalationRun({ profile, route, goToStepOne, onContinue 
     : undefined;
 
   const live = state.status === "running" || (state.status === "error" && state.says.length > 0);
-  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} kit={KIT} />;
+  if (live) return <Workspace state={state} onAnswer={answer} onSkip={skip} onRetry={() => go()} kit={KIT} />;
   if (saved && !again) return <EscalationFile run={saved.result} profile={profile} goToStepOne={goToStepOne} onAgain={() => setAgain(true)} onContinue={skipToStepThree} />;
   return (
     <Intro

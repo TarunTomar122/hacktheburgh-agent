@@ -23,6 +23,16 @@ const VERDICT: Record<Step3Result["verdict"], { cls: string; chip: string; tip: 
   skipped: { cls: "bg-subtle text-ink-2", chip: "No win no fee search", tip: "You chose not to share money details, so we looked for solicitors who may work on a no win no fee basis." },
 };
 
+/** With a route map the checker is the place's own (named by the crew), so the wording does not assume SLAB. */
+const generalTip = (verdict: Step3Result["verdict"], checker: string) =>
+  verdict === "likely"
+    ? `${checker} says you may qualify financially. A solicitor applies for you, and the case may also be checked for merit.`
+    : verdict === "unlikely"
+      ? `${checker} says you may not qualify financially. Some solicitors take cases like this on a no win no fee basis.`
+      : verdict === "unknown"
+        ? `We could not get an answer from ${checker}. A solicitor can check this with you.`
+        : VERDICT.skipped.tip;
+
 type Flag = "legalAid" | "nwnf" | "patients" | "form" | "lawsoc" | "website";
 const statusOf = (f: FirmFinding, key: string) => f.breakdown?.find((r) => r.key === key)?.status;
 const FLAGS: { id: Flag; label: string; test: (f: FirmFinding) => boolean }[] = [
@@ -54,7 +64,9 @@ export default function FirmResults({
   selected,
   onSelected,
   onContinue,
+  checker,
 }: {
+  checker?: string; // the place's own legal aid checker, when there is a route map (omit for the Scotland version)
   result: Step3Result;
   sample: boolean;
   selected: string[];
@@ -66,7 +78,7 @@ export default function FirmResults({
   const [sort, setSort] = useState<"fit" | "near">("fit");
   const [open, setOpen] = useState<FirmFinding | null>(null);
   const [scope, setScope] = useState<TraceScope | null>(null);
-  const v = VERDICT[result.verdict];
+  const v = { ...VERDICT[result.verdict], tip: checker ? generalTip(result.verdict, checker) : VERDICT[result.verdict].tip };
   const calcSteps = trace.filter((s) => s.agent === CALCULATOR);
   const quoted = result.verdict === "likely" || result.verdict === "unlikely";
   const ruledOut = result.firms.filter((f) => f.excluded).length;

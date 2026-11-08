@@ -1,0 +1,543 @@
+{
+  "runId": "discovery-2026-11-08T00-22-47-247Z",
+  "place": {
+    "country": "New Zealand",
+    "region": "",
+    "city": "Auckland",
+    "hospital": "Auckland City Hospital Emergency Department",
+    "careSetting": "public",
+    "why": "The patient names Auckland City Hospital Emergency Department, and the address is in Ponsonby, Auckland."
+  },
+  "system": "New Zealand",
+  "summary": "Auckland City Hospital is a public Health New Zealand hospital, so complaints start with Health NZ Te Toka Tumai Auckland and can then go to the independent Health and Disability Commissioner if needed. For compensation for treatment harm, New Zealand uses ACC’s treatment-injury scheme rather than an ordinary damages claim, and your records can be requested directly from Auckland Central clinical records using Health NZ’s form.",
+  "steps": [
+    {
+      "kind": "complaint",
+      "body": "Health New Zealand | Te Whatu Ora Auckland | Te Toka Tumai",
+      "what": "Auckland City Hospital is a public hospital service run by Health New Zealand Te Toka Tumai Auckland. For complaints about emergency department care, Health NZ says to raise the concern with the service first if you can, then use the Auckland Central feedback/complaint form or the Consumer Feedback Team.",
+      "how": "online_form",
+      "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/feedback-central",
+      "points": [
+        "Auckland City Hospital is a public hospital service run by this provider.",
+        "Health NZ says working with the service provider directly is the fastest route, and the Auckland page says to speak to staff or the manager first if possible.",
+        "Under the provider’s current page, complaints are acknowledged within 5 working days and the provider aims to complete the investigation within 20 working days.",
+        "Under Right 10 nationally, the provider must decide within 10 working days of written acknowledgement whether the complaint is justified or whether more time is needed.",
+        "If more than 20 additional working days are needed, the provider must tell the consumer within that 10-working-day period and give reasons.",
+        "Health NZ says complaints are confidential and are not added to the clinical record."
+      ],
+      "appliesIf": "Public hospital care at Auckland City Hospital / Health New Zealand Te Toka Tumai Auckland.",
+      "alternatives": [
+        "Phone the Consumer Feedback Team on 09 375 7048.",
+        "Email feedback.auckland@tewhatuora.govt.nz.",
+        "Post to Consumer Feedback Team, Health New Zealand Te Toka Tumai Auckland, Private Bag 92024, Auckland Mail Centre, Auckland 1142.",
+        "If still unhappy, complain to the Health and Disability Commissioner."
+      ],
+      "missing": [
+        "Which Auckland City Hospital service to name on the form (for example Emergency Department).",
+        "The names or roles of staff involved, if known.",
+        "What outcome the patient wants."
+      ],
+      "sources": [
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/auckland-city-hospital",
+          "quote": "Public hospital and community services provided by Health New Zealand | Te Whatu Ora Auckland | Te Toka Tumai.",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/services-support/support-services/rights-privacy/complaints-about-a-health-and-disability-service",
+          "quote": "Discuss your concern with your service provider first",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/feedback-central",
+          "quote": "If you feel uncomfortable talking to them or are not satisfied with their response, you can share your concerns by using this feedback form.",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/feedback-central",
+          "quote": "We will acknowledge your complaint within 5 working days and aim to complete our investigation within 20 working days, keeping you informed if more time is needed.",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/education/online-learning/timeframes-for-responding-to-complaints-under-right-10-of-the-code/",
+          "quote": "A decision on whether the complaint is justified or not, or whether more time is needed to investigate the complaint, must be made by the provider within 10 working days of giving written acknowledgement of receipt of the complaint (Right 10(7)).",
+          "official": false,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/feedback-central",
+          "quote": "Complaints are treated confidentially and are not added to your clinical record.",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "escalation",
+      "body": "Health and Disability Commissioner",
+      "what": "If the hospital’s answer is not good enough, or if complaining directly is not suitable, the independent route is the Health and Disability Commissioner (HDC). HDC has an online complaint form, but it strongly suggests trying the provider first because that is often quickest.",
+      "deadline": "\"The earlier you raise your concerns, the more straightforward they can be to resolve.\"",
+      "how": "online_form",
+      "url": "https://www.hdc.org.nz/making-a-complaint/make-a-complaint/complaint-form/",
+      "points": [
+        "Anyone can complain to HDC.",
+        "HDC suggests speaking directly to the provider first, but this is not an absolute precondition if that route is not suitable.",
+        "The online complaint route starts with a wizard asking whether you are complaining on behalf of someone else.",
+        "Before using HDC’s online form, you should gather your contact details, provider details, NHI number, incident details, supporting documents, and any consent or authority if complaining for someone else.",
+        "HDC may ask the provider to sort the complaint out with you, send it to an advocate, or refer it to another agency such as the Privacy Commissioner.",
+        "HDC says complaint handling can take only a few days or a year or more, and a formal investigation often takes about two years."
+      ],
+      "requires": [
+        "Usually, HDC suggests you speak directly to your provider first."
+      ],
+      "alternatives": [
+        "Ask the Nationwide Health and Disability Advocacy Service for help first.",
+        "Complain to the provider directly through Health New Zealand’s Auckland Central feedback route."
+      ],
+      "missing": [
+        "Whether the patient wants to complain only for themself or on behalf of someone else.",
+        "NHI number, if available.",
+        "Provider details, dates, and supporting documents."
+      ],
+      "sources": [
+        {
+          "url": "https://www.hdc.org.nz/making-a-complaint/complaint-process/",
+          "quote": "Anyone can make a complaint to HDC.",
+          "official": false,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/making-a-complaint/complaint-process/",
+          "quote": "If issues persist, or if the above options are not suitable for you, you can complain to the HDC.",
+          "official": false,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/making-a-complaint/make-a-complaint/",
+          "quote": "As a first step, we suggest you speak directly to your provider.",
+          "official": true,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/making-a-complaint/make-a-complaint/complaint-form/",
+          "quote": "Are you complaining on behalf of someone else?",
+          "official": false,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/making-a-complaint/complaint-process/",
+          "quote": "Ask the provider to sort out your complaint with you, with the help of the Advocacy Service.",
+          "official": false,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/making-a-complaint/complaint-process/",
+          "quote": "It may take only a few days or a year or more.",
+          "official": false,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "compensation",
+      "body": "Accident Compensation Corporation (ACC)",
+      "what": "For treatment-related harm in New Zealand, ACC is the official compensation route. A registered provider can lodge the claim for the patient, and if ACC later makes a decision the patient disagrees with, there is a review route and then an appeal route.",
+      "deadline": "\"You need to apply for a review within three months of our decision.\"",
+      "how": "unknown",
+      "url": "https://www.acc.co.nz/for-providers/lodging-claims/lodging-a-claim-for-a-patient",
+      "points": [
+        "ACC says a treatment injury is a personal injury caused by treatment from a registered health professional.",
+        "To be covered, the injury must involve physical harm or damage.",
+        "It must also not be a necessary part or ordinary consequence of the treatment.",
+        "A registered provider can lodge the claim on behalf of the patient, and the best way is through a practice management system or ACC’s online system.",
+        "Weekly compensation may pay up to 80% of pre-injury income.",
+        "If ACC makes a decision you disagree with, you need to apply for a review within three months of the decision."
+      ],
+      "requires": [
+        "A registered provider to lodge the claim on the patient’s behalf."
+      ],
+      "appliesIf": "Personal injury caused by treatment from a registered health professional in New Zealand.",
+      "alternatives": [
+        "ACC alternative dispute resolution, which can include mediation, conciliation, and facilitation.",
+        "Appeal to the Accident Compensation Appeals District Court Registry after an ACC decision, within the appeal time limit on the Ministry of Justice page."
+      ],
+      "missing": [
+        "Which provider will lodge the ACC treatment injury claim now.",
+        "Whether the patient has wage loss or needs weekly compensation."
+      ],
+      "sources": [
+        {
+          "url": "https://www.acc.co.nz/for-providers/treatment-recovery/treatment-safety",
+          "quote": "A treatment injury is a personal injury caused from treatment provided by a registered health professional.",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        },
+        {
+          "url": "https://www.acc.co.nz/for-providers/treatment-recovery/treatment-safety",
+          "quote": "involve physical harm or damage",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        },
+        {
+          "url": "https://www.acc.co.nz/for-providers/treatment-recovery/treatment-safety",
+          "quote": "not be a necessary part or ordinary consequence of the treatment.",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        },
+        {
+          "url": "https://www.acc.co.nz/for-providers/lodging-claims/lodging-a-claim-for-a-patient",
+          "quote": "As a registered provider, you can lodge claims on behalf of your patient if you think they have an injury we cover.",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        },
+        {
+          "url": "https://www.acc.co.nz/for-providers/lodging-claims/lodging-a-claim-for-a-patient",
+          "quote": "The best and most efficient way to lodge a patient's claim is to use a practice management system (PMS) or our online system.",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        },
+        {
+          "url": "https://www.acc.co.nz/im-injured/financial-support/weekly-compensation/calculating-weekly-compensation-for-employees",
+          "quote": "You may get up to 80% of the income you earned before your injury, before tax and deductions.",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "funding",
+      "body": "New Zealand Ministry of Justice / New Zealand Law Society / ACC",
+      "what": "For an adult in New Zealand, the official pages reviewed do not show legal aid for the initial ACC treatment injury claim itself, which is provider-lodged, but civil legal aid may be available for disputes that could go to a court or tribunal. Lawyers may use conditional-fee ('no win no fee') agreements in some work, but the official pages reviewed do not state a success-fee cap.",
+      "how": "unknown",
+      "url": "https://www.justice.govt.nz/courts/going-to-court/legal-aid/get-legal-aid/can-i-get-family-or-civil-legal-aid/",
+      "points": [
+        "The Ministry of Justice says civil legal aid may be available for civil disputes or problems that could go to court or a tribunal.",
+        "Eligibility for civil legal aid depends on income, assets, merits, and any arrears from a previous legal aid debt.",
+        "For family or civil legal aid, the first step is to find a legal aid lawyer, and the lawyer helps with the application form; no online checker or online application was found on the official pages reviewed.",
+        "The Law Society says a conditional fee agreement must be in writing and include certain details.",
+        "The Law Society page reviewed does not state any cap on conditional fees or success percentages.",
+        "For ACC reviews, ACC says it pays for the costs of an independent review and may also pay other review-related costs such as travel to the hearing."
+      ],
+      "requires": [
+        "For legal aid, a dispute that could go to a court or tribunal and a legal aid lawyer to submit the application.",
+        "For ACC review-cost help, there must already be an ACC decision under review."
+      ],
+      "appliesIf": "Adult needing funding for an ACC treatment-injury dispute, review or appeal in New Zealand.",
+      "alternatives": [
+        "Conditional-fee agreement with a lawyer if offered.",
+        "Self-representation in ACC review/appeal routes.",
+        "ACC review route, where ACC says it pays the independent review costs."
+      ],
+      "missing": [
+        "Whether the patient will need a review or appeal, rather than only an initial ACC claim.",
+        "The patient’s income, assets and any prior legal-aid debt arrears.",
+        "Whether a lawyer is willing to act under a conditional-fee agreement."
+      ],
+      "sources": [
+        {
+          "url": "https://www.justice.govt.nz/courts/going-to-court/legal-aid/get-legal-aid/can-i-get-family-or-civil-legal-aid/",
+          "quote": "Legal aid may be available for civil disputes or problems that could go to court or a tribunal.",
+          "official": false,
+          "publisher": "New Zealand Ministry of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice.govt.nz/courts/going-to-court/legal-aid/get-legal-aid/can-i-get-family-or-civil-legal-aid/",
+          "quote": "Whether you can get civil legal aid depends on any arrears from a previous legal aid debt, your income, assets and the merits of the legal case.",
+          "official": false,
+          "publisher": "New Zealand Ministry of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice.govt.nz/courts/going-to-court/legal-aid/get-legal-aid/can-i-get-family-or-civil-legal-aid/apply-for-family-or-civil-legal-aid/",
+          "quote": "Your first step is to find a legal aid lawyer you want to advise and represent you.",
+          "official": false,
+          "publisher": "New Zealand Ministry of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.org.nz/for-the-public/legal-fees-and-billing/fees-and-payment/",
+          "quote": "a conditional fee (based on success) – a conditional fee agreement must be in writing and must include certain details², such as the way the fee will be determined and when and how the fee will be payable.",
+          "official": true,
+          "publisher": "New Zealand Law Society",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.org.nz/for-the-public/legal-fees-and-billing/fees-and-payment/",
+          "quote": "There are some types of work for which a lawyer can’t enter into a conditional fee agreement, like criminal, family court or immigration proceedings.",
+          "official": true,
+          "publisher": "New Zealand Law Society",
+          "checked": true
+        },
+        {
+          "url": "https://www.acc.co.nz/im-injured/resolve-an-issue/request-an-independent-review",
+          "quote": "We pay for the costs of an independent review. We may also pay other costs related to the review, for example reimbursing the cost for you to get to your review hearing.",
+          "official": false,
+          "publisher": "ACC",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "nell"
+    },
+    {
+      "kind": "lawyers",
+      "body": "New Zealand Law Society",
+      "what": "The official profession-run way to find a lawyer is the New Zealand Law Society’s 'Find a lawyer' directory, with the Law Society registry lookup used to check details. You can search by location and area of law, then verify the lawyer on the register.",
+      "how": "unknown",
+      "url": "https://www.lawsociety.org.nz/for-the-public/find-a-lawyer/",
+      "points": [
+        "The Law Society directory lets you search by name, location, or area of law.",
+        "The filters include areas of law, specialisation, region, district, lawyer type, and speaks.",
+        "The directory lists lawyers who are members of the New Zealand Law Society.",
+        "If you want to check practising status or professional details, the Law Society says to use the Public Register of Lawyers.",
+        "The Ministry of Justice also has a separate Legal Aid Lawyer Finder searchable by region/town, area of law, type of case and language."
+      ],
+      "alternatives": [
+        "Use the New Zealand Law Society registry lookup to verify the lawyer.",
+        "If you need a legal-aid lawyer, use the Ministry of Justice Legal Aid Lawyer Finder."
+      ],
+      "missing": [
+        "What area of law to search under (for example ACC/personal injury/health law).",
+        "Whether the patient wants Auckland-based representation only."
+      ],
+      "sources": [
+        {
+          "url": "https://www.lawsociety.org.nz/for-the-public/find-a-lawyer/",
+          "quote": "Find and contact a lawyer who is a member of the New Zealand Law Society, offering legal services to the public in New Zealand.",
+          "official": true,
+          "publisher": "New Zealand Law Society",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.org.nz/for-the-public/find-a-lawyer/",
+          "quote": "Use our search tool to find a lawyer by name, location, or area of law, including family, property, criminal, commercial, employment, and more.",
+          "official": true,
+          "publisher": "New Zealand Law Society",
+          "checked": true
+        },
+        {
+          "url": "https://www.lawsociety.org.nz/for-the-public/find-a-lawyer/",
+          "quote": "If you are checking a lawyer’s practising status or professional details, you may wish to use the Public Register of Lawyers.",
+          "official": true,
+          "publisher": "New Zealand Law Society",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice.govt.nz/courts/going-to-court/legal-aid/get-legal-aid/legal-aid-lawyer-finder/",
+          "quote": "You can use this tool to find the contact details for legal aid lawyers.",
+          "official": true,
+          "publisher": "New Zealand Ministry of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice.govt.nz/courts/going-to-court/legal-aid/get-legal-aid/legal-aid-lawyer-finder/",
+          "quote": "A region and/or town",
+          "official": true,
+          "publisher": "New Zealand Ministry of Justice",
+          "checked": true
+        }
+      ],
+      "confidence": "confirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "guideline",
+      "body": "Starship Child Health, part of Health New Zealand Te Whatu Ora Te Toka Tumai (Auckland)",
+      "what": "The only accessible Auckland scaphoid-fracture clinical guideline found in this run is published by Starship Child Health, which is part of Health New Zealand Te Toka Tumai Auckland. It is a Starship clinical guideline, so it is an official Auckland guideline source, but it is a paediatric service source rather than clear proof of the adult Auckland City Hospital ED’s exact guideline set.",
+      "how": "unknown",
+      "url": "https://starship.org.nz/guidelines/fracture-clinic-scaphoid-fractures/",
+      "points": [
+        "The guideline page is branded as a Starship clinical guideline.",
+        "It names the service provider as Starship Child Health.",
+        "Starship says it is part of Health New Zealand Te Whatu Ora Te Toka Tumai Auckland.",
+        "The accessible scaphoid guideline says a suspected fracture with negative imaging can be managed in a scaphoid splint with fracture-clinic follow-up in 10 to 14 days."
+      ],
+      "appliesIf": "Using the accessible Auckland official guideline source found in this run; this specific guideline is from paediatric Starship services, not confirmed adult ED guidance.",
+      "alternatives": [
+        "No open-access adult Auckland City Hospital scaphoid guideline source was found in this run."
+      ],
+      "sources": [
+        {
+          "url": "https://starship.org.nz/guidelines/fracture-clinic-scaphoid-fractures/?redirect=true",
+          "quote": "Starship clinical guidelines",
+          "official": true,
+          "publisher": "Starship Child Health",
+          "checked": true
+        },
+        {
+          "url": "https://starship.org.nz/guidelines/fracture-clinic-scaphoid-fractures/?redirect=true",
+          "quote": "Service Provider:\nStarship Child Health",
+          "official": true,
+          "publisher": "Starship Child Health",
+          "checked": true
+        },
+        {
+          "url": "https://starship.org.nz/health-professionals/what-it-means-to-work-here/?redirect=true",
+          "quote": "At Starship we are proud to be part of Health New Zealand Te Whatu Ora Te Toka Tumai (Auckland).",
+          "official": true,
+          "publisher": "Starship Child Health",
+          "checked": true
+        },
+        {
+          "url": "https://starship.org.nz/guidelines/fracture-clinic-scaphoid-fractures/?redirect=true",
+          "quote": "A diagnosis based on this exam in the absence of a visible fracture on imaging can be suitably managed in a scaphoid splint and followed up in a fracture clinic in 10-14 days with x-rays on arrival.",
+          "official": true,
+          "publisher": "Starship Child Health",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "iona"
+    },
+    {
+      "kind": "advice",
+      "body": "Nationwide Health and Disability Advocacy Service",
+      "what": "Free independent help is available from the Nationwide Health and Disability Advocacy Service. It can explain your rights, help you raise concerns, and support you with a complaint against the hospital or alongside an HDC complaint.",
+      "how": "phone",
+      "url": "https://www.hdc.org.nz/advocacy/",
+      "points": [
+        "The service is free.",
+        "It is independent of providers, government agencies and HDC.",
+        "It helps people understand their rights, discuss concerns, talk through options, and make a complaint.",
+        "Contact is available by freephone, email, and live chat via its website."
+      ],
+      "alternatives": [
+        "Complain directly to Health New Zealand Te Toka Tumai Auckland.",
+        "Complain to the Health and Disability Commissioner."
+      ],
+      "sources": [
+        {
+          "url": "https://www.hdc.org.nz/advocacy/",
+          "quote": "The Nationwide Health and Disability Advocacy Service is a free service that operates independently from all health and disability service providers, government agencies and HDC.",
+          "official": true,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/advocacy/",
+          "quote": "If you want to know more about your rights when using health or disability services, get questions answered, or make a complaint, we can help.",
+          "official": true,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/advocacy/",
+          "quote": "Freephone: 0800 555 050",
+          "official": true,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.hdc.org.nz/advocacy/",
+          "quote": "Email: advocacy@advocacy.org.nz",
+          "official": true,
+          "publisher": "Health & Disability Commissioner",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "records",
+      "body": "Health New Zealand | Te Whatu Ora Auckland Central clinical records department",
+      "what": "To get records from Auckland City Hospital, use the Release of personal health information request form, add the requested identification, and send it to the Auckland Central clinical records department. National privacy rules say they must respond as soon as possible and within 20 working days.",
+      "deadline": "\"The agency must respond to a request for information within 20-working days.\"",
+      "how": "email",
+      "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/central/clinical-record-request",
+      "points": [
+        "Use the 'Release of personal health information request form'.",
+        "Health NZ says to complete the form and provide the requested identification.",
+        "For Auckland Central, the completed form can be emailed to GROI@adhb.govt.nz or posted to the clinical records department.",
+        "If you want someone else’s record and they are not your dependant aged 16 or under, written consent is required.",
+        "The Privacy Commissioner says agencies should not usually charge for access to your own information.",
+        "The Privacy Commissioner says the agency must respond within 20 working days."
+      ],
+      "requires": [
+        "Completed Release of personal health information request form.",
+        "Requested identification.",
+        "Written consent if requesting a family member’s record who is not your dependant (16 years or under)."
+      ],
+      "alternatives": [
+        "Post the form to the Clinical records department, Private Bag 92024, Auckland 1023.",
+        "Ask by email, letter, phone, or in person under the Privacy Act, but Health NZ Auckland Central’s page directs patients to use its request form."
+      ],
+      "sources": [
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/central/clinical-record-request",
+          "quote": "Release of personal health information request form",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/central/clinical-record-request",
+          "quote": "Complete the request form and provide the requested identification.",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/central/clinical-record-request",
+          "quote": "GROI@adhb.govt.nz",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.healthnz.govt.nz/hospitals-services/hospitals/auckland/central/clinical-record-request",
+          "quote": "Please note: If the request is for the clinical record of a family member who is not a dependant (16 years or under) then that person's consent is required in writing.",
+          "official": true,
+          "publisher": "Health New Zealand | Te Whatu Ora",
+          "checked": true
+        },
+        {
+          "url": "https://www.privacy.org.nz/your-rights/ask-for-your-information/",
+          "quote": "In most circumstances, you should not be charged to access or correct your personal information.",
+          "official": true,
+          "publisher": "Office of the Privacy Commissioner",
+          "checked": true
+        },
+        {
+          "url": "https://www.privacy.org.nz/your-rights/ask-for-your-information/",
+          "quote": "The agency must respond to a request for information within 20-working days.",
+          "official": true,
+          "publisher": "Office of the Privacy Commissioner",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "robin"
+    }
+  ],
+  "foundAt": "2026-11-08T00:36:47.123Z"
+}

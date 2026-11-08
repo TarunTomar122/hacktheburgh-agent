@@ -1,0 +1,13 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+SCORE 7.3/10
+Smart: It found a very practical Auckland-specific medical-records request page that is more useful for this patient than the generic national records material.
+Worst: The compensation section did not clearly tell the patient that compensatory negligence suits are barred in NZ and that a treatment-injury claim must in practice be lodged by a registered clinician on ACC45 with ACC2152, not self-filed online.
+- complaint: found=true body=right facts=right page=form_found | Found the correct Auckland Central Health NZ complaint form and the main Right 10/provider timing points.
+- escalation: found=true body=right facts=partly page=form_found | Correctly sent escalation to HDC and found the form, but missed useful form details like upload/AI warning and that HDC cannot get compensation.
+- compensation: found=true body=right facts=partly page=right_page | ACC is the right route, but it missed the crucial ‘no compensatory damages suit’ bar and the practical ACC45+ACC2152 provider-lodged process/time limits.
+- funding: found=true body=right facts=partly page=right_page | Civil legal aid through a lawyer was correctly identified, but it missed that legal aid is a loan and the NZ-specific ACC-dispute emphasis.
+- lawyers: found=true body=right facts=partly page=right_page | Correct Law Society directory and register, but it did not capture the useful ACC/Health search categories from the key.
+- guideline: found=true body=partly facts=partly page=right_page | Good local Starship find, but the bigger answer is that NZ has no single national NICE-like body and no clear national adult scaphoid guideline.
+- advice: found=true body=right facts=partly page=wrong_page | The Advocacy Service is right, but it linked the HDC overview rather than the service’s own contact form/page.
+- records: found=true body=right facts=right page=right_page | Excellent Auckland-specific records route with the local clinical records request page, contact details, consent point and 20 working day rule.

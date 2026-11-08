@@ -1,0 +1,13 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown user config "email". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+SCORE 6.6/10
+Smart: It noticed the important live obstacle that NIPSO’s online complaints form is currently unavailable and gave the email/phone fallback.
+Worst: It missed the most important current complaint-rule detail: the 2026 NIPSO Model Complaints Handling Procedure timings, especially the 6-month NIPSO deadline after the Trust’s final response.
+- complaint: found=true body=right facts=partly page=form_found | Correct Trust and actual Belfast online form found, but it missed the new 2026 MCHP timings/details.
+- escalation: found=true body=right facts=partly page=right_page | Correctly identified NIPSO and that the online form is down, but missed the 6-month deadline from the Trust’s final letter.
+- compensation: found=true body=right facts=partly page=wrong_page | Right route is clinical negligence, but it missed the NI pre-action protocol/court structure and linked only the limitation law.
+- funding: found=true body=right facts=right page=right_page | Good on legal aid via solicitor and that success-only/no-win-no-fee court arrangements are not allowed in NI.
+- lawyers: found=true body=right facts=partly page=right_page | Law Society NI directory is right, but it missed that 'Personal Injuries' is the key category and omitted AvMA specialist routes.
+- guideline: found=true body=right facts=partly page=wrong_page | It found the NI NICE-endorsement system, but not the key endorsed guideline NG38 or the scaphoid MRI recommendation.
+- advice: found=true body=right facts=right page=right_page | Correctly found the Patient and Client Council as free independent complaint/advocacy support.
+- records: found=true body=right facts=partly page=right_page | Right Trust SAR route, but it missed the RVH-specific Medical Legal Department contact, photo ID point, and protocol record-request angle.

@@ -53,10 +53,10 @@ export function FitRing({ fit, size = 60, title = "How well this firm fits what 
 
 /** Why each check matters, in plain words (Tarun: "what does this mean?", "why is this important?"). */
 export const WHY: Record<ScoreItem["key"], string> = {
-  legal_aid: "Only firms registered with the Scottish Legal Aid Board can use legal aid to pay for your case.",
+  legal_aid: "Only firms approved by the legal aid body can use legal aid to pay for your case.",
   active: "A firm that did legal aid work this year is still taking these cases.",
   distance: "A nearby office makes it easier to meet in person.",
-  lawsoc: "Every practising solicitor in Scotland must be on this register. It shows the firm is real and regulated.",
+  lawsoc: "Practising solicitors must be on the official register. It shows the firm is real and regulated.",
   patients: "Some firms only defend the NHS or insurers. You need one that takes cases for patients.",
   nwnf: "If the claim is lost, you pay nothing for their work.",
   form: "With an online form, Kit can fill in your enquiry for you. Otherwise you phone or email them.",

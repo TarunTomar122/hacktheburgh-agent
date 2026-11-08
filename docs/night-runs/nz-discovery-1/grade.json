@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "form_found",
+      "note": "Found the correct Auckland Central Health NZ complaint form and the main Right 10/provider timing points."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Correctly sent escalation to HDC and found the form, but missed useful form details like upload/AI warning and that HDC cannot get compensation."
+    },
+    {
+      "kind": "compensation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "ACC is the right route, but it missed the crucial ‘no compensatory damages suit’ bar and the practical ACC45+ACC2152 provider-lodged process/time limits."
+    },
+    {
+      "kind": "funding",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Civil legal aid through a lawyer was correctly identified, but it missed that legal aid is a loan and the NZ-specific ACC-dispute emphasis."
+    },
+    {
+      "kind": "lawyers",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Correct Law Society directory and register, but it did not capture the useful ACC/Health search categories from the key."
+    },
+    {
+      "kind": "guideline",
+      "found": true,
+      "body": "partly",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Good local Starship find, but the bigger answer is that NZ has no single national NICE-like body and no clear national adult scaphoid guideline."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "The Advocacy Service is right, but it linked the HDC overview rather than the service’s own contact form/page."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "Excellent Auckland-specific records route with the local clinical records request page, contact details, consent point and 20 working day rule."
+    }
+  ],
+  "score": 7.3,
+  "smart": "It found a very practical Auckland-specific medical-records request page that is more useful for this patient than the generic national records material.",
+  "worst": "The compensation section did not clearly tell the patient that compensatory negligence suits are barred in NZ and that a treatment-injury claim must in practice be lodged by a registered clinician on ACC45 with ACC2152, not self-filed online."
+}

@@ -1,0 +1,431 @@
+{
+  "runId": "discovery-2026-11-08T00-22-42-550Z",
+  "place": {
+    "country": "United Kingdom",
+    "region": "Northern Ireland",
+    "city": "Belfast",
+    "hospital": "Royal Victoria Hospital, Emergency Department",
+    "careSetting": "public",
+    "why": "The patient says the care was at the Royal Victoria Hospital Emergency Department in Belfast, and Belfast is in Northern Ireland."
+  },
+  "system": "Northern Ireland, United Kingdom",
+  "summary": "Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so you complain to Belfast Trust first, usually within 6 months, using its online complaint form or other contact routes. If you are still unhappy after the Trust’s final response, the independent body is the Northern Ireland Public Services Ombudsman, but its online form page is currently down and it tells people to use email or phone instead. For compensation, the route we found is a clinical negligence court claim, usually via a solicitor, with a 3-year limitation period and possible legal aid subject to means and merits.",
+  "steps": [
+    {
+      "kind": "complaint",
+      "body": "Belfast Health and Social Care Trust",
+      "what": "Royal Victoria Hospital is part of Belfast Health and Social Care Trust, so complaints about its Emergency Department go to Belfast Trust. The Trust says complaints can be made using its online form and that its complaints procedure has two stages.",
+      "deadline": "Normally, you must make your complaint within six months of:",
+      "how": "online_form",
+      "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/feedback-form/",
+      "appliesIf": "Complaints about public HSC care at Royal Victoria Hospital, including its Emergency Department.",
+      "alternatives": [
+        "Email, phone, in writing, or in person.",
+        "Escalation to the Northern Ireland Public Services Ombudsman after the Trust's final response."
+      ],
+      "missing": [
+        "Whether someone else is complaining on the patient's behalf and, if so, whether consent is available."
+      ],
+      "sources": [
+        {
+          "url": "https://belfasttrust.hscni.net/hospitals/rvh/",
+          "quote": "Belfast Health and Social Care Trust",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/making-a-complaint/",
+          "quote": "You can also complain by using our online form, by email, by phone, or in writing.",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/making-a-complaint/",
+          "quote": "Normally, you must make your complaint within six months of:",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/contact-us/compliments-and-complaints/making-a-complaint/",
+          "quote": "Our Complaints Handling Procedure has two stages:",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "escalation",
+      "body": "Northern Ireland Public Services Ombudsman (NIPSO)",
+      "what": "If Belfast Trust's final complaint response is not good enough, the independent body is the Northern Ireland Public Services Ombudsman. NIPSO says you should normally have completed the provider's complaints process first, but the online complaint form is currently unavailable on the page we opened, so the live route is by email or phone.",
+      "how": "email",
+      "url": "https://www.nipso.org.uk/make-complaint/online-complaints-form",
+      "wall": "The NIPSO online complaints form page says the online form is currently unavailable; the page directs users to email nipso@nipso.org.uk or call 0800 343424 instead.",
+      "points": [
+        "NIPSO is for unresolved complaints after the organisation's own process.",
+        "NIPSO says you should normally have complained directly, gone through the complaints process, and received a final response first.",
+        "The current online complaints page says the online form is unavailable.",
+        "The page gives an email and phone route instead.",
+        "Current NIPSO pages opened in this run did not show the deadline, but an official nidirect page says you can refer the complaint after the provider's final decision."
+      ],
+      "requires": [
+        "Complained directly to the organisation",
+        "Gone through its complaints process",
+        "Received a final response to your complaint"
+      ],
+      "appliesIf": "You have already used Belfast Trust's complaint process and are still unhappy with the final decision.",
+      "alternatives": [
+        "Patient and Client Council can help you with the complaint before or alongside escalation."
+      ],
+      "missing": [
+        "The date of Belfast Trust's final complaint response.",
+        "Whether you already received the Trust's final response."
+      ],
+      "sources": [
+        {
+          "url": "https://www.nipso.org.uk/make-complaint",
+          "quote": "Before you make a complaint to us you should normally have:",
+          "official": true,
+          "publisher": "NIPSO",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/make-complaint",
+          "quote": "Received a final response to your complaint",
+          "official": true,
+          "publisher": "NIPSO",
+          "checked": true
+        },
+        {
+          "url": "https://www.nidirect.gov.uk/articles/how-complain-or-raise-concerns-about-health-services",
+          "quote": "If you are not happy with the final decision of the provider organisation, you can refer your complaint to the Northern Ireland Public Services Ombudsman (NIPSO).",
+          "official": true,
+          "publisher": "nidirect",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/make-complaint/online-complaints-form",
+          "quote": "Unfortunately our online complaints form is currently unavailable.",
+          "official": true,
+          "publisher": "NIPSO",
+          "checked": true
+        },
+        {
+          "url": "https://www.nipso.org.uk/make-complaint/online-complaints-form",
+          "quote": "If you would like to make a complaint please contact us at nipso@nipso.org.uk or call 0800 343424.",
+          "official": true,
+          "publisher": "NIPSO",
+          "checked": true
+        }
+      ],
+      "confidence": "confirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "compensation",
+      "body": "Northern Ireland clinical negligence court route",
+      "what": "The compensation route we found for harm from public hospital care in Northern Ireland is a clinical negligence court claim, usually started through a solicitor. We did not find an official no-fault or redress scheme for this kind of hospital negligence in the official pages opened in this run.",
+      "deadline": "(4) Except where paragraph (5) applies, that period is three years from—",
+      "how": "court",
+      "url": "https://www.legislation.gov.uk/nisi/1989/1339/article/7",
+      "points": [
+        "The limitation law says a personal injury action \"may not be brought after the expiration of the period\" and that period is \"three years\" from accrual or the later \"date of knowledge\" of the injured person.",
+        "An official Department of Health flyer says \"you should make contact with a solicitor in the first instance\".",
+        "The Department of Justice says clinical-negligence legal-aid certificates are often first limited to \"investigation of the potential claim under the pre-action protocol\".",
+        "The HSC Directorate of Legal Services says its Clinical Negligence Team is \"the sole provider of advice, representation and training to the Public Health and Social Care sector in Northern Ireland.\""
+      ],
+      "appliesIf": "You want damages for injury or loss caused by negligent hospital care in Northern Ireland.",
+      "alternatives": [
+        "Complaint to Belfast Trust and then NIPSO if you want answers, apology, or service learning rather than court damages."
+      ],
+      "missing": [
+        "Your exact 'date of knowledge' if it differs from the treatment date.",
+        "Your evidence of losses, surgery, symptoms and missed work or coursework."
+      ],
+      "sources": [
+        {
+          "url": "https://www.legislation.gov.uk/nisi/1989/1339/article/7",
+          "quote": "(3) Subject to Article 50, an action to which this Article applies may not be brought after the expiration of the period specified in paragraphs (4) and (5).",
+          "official": true,
+          "publisher": "legislation.gov.uk",
+          "checked": true
+        },
+        {
+          "url": "https://www.legislation.gov.uk/nisi/1989/1339/article/7",
+          "quote": "(4) Except where paragraph (5) applies, that period is three years from—",
+          "official": true,
+          "publisher": "legislation.gov.uk",
+          "checked": true
+        },
+        {
+          "url": "https://www.legislation.gov.uk/nisi/1989/1339/article/7",
+          "quote": "(b) the date of knowledge (if later) of the person injured.",
+          "official": true,
+          "publisher": "legislation.gov.uk",
+          "checked": true
+        },
+        {
+          "url": "https://www.health-ni.gov.uk/sites/default/files/publications/health/doh-neurology-compensation-flyer.PDF",
+          "quote": "you should make contact with a solicitor in the first instance",
+          "official": true,
+          "publisher": "Department of Health",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice-ni.gov.uk/articles/legal-aid-faqs-clinical-negligence-claims",
+          "quote": "Often certificates will initially be limited to investigation of the potential claim under the pre-action protocol, including obtaining the assisted person’s medical records and consideration thereof.",
+          "official": true,
+          "publisher": "Department of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://bso.hscni.net/directorates/operations/legal-services/areas-of-law/clinical-negligence-team/",
+          "quote": "The Clinical Negligence (CN) Team of the Directorate of Legal Services (DLS) is the sole provider of advice, representation and training to the Public Health and Social Care sector in Northern Ireland.",
+          "official": true,
+          "publisher": "Business Services Organisation",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "funding",
+      "body": "Department of Justice / Legal Services Agency Northern Ireland",
+      "what": "Legal aid is available in Northern Ireland for clinical negligence claims, subject to means and merits, and the application is made by a solicitor through LAMS. For contentious court work, the solicitor legislation says an agreement for payment only if the case succeeds is not valid, so the usual 'no win no fee' success-only model is not allowed on the official wording we opened.",
+      "how": "unknown",
+      "url": "https://www.justice-ni.gov.uk/articles/legal-aid-faqs-clinical-negligence-claims",
+      "points": [
+        "The Department says legal aid is available \"subject to means and merits test\".",
+        "For clinical negligence, the Department says: \"You will need to make an application to representation higher.\"",
+        "The Department also says certificates are often first limited to \"investigation of the potential claim under the pre-action protocol\".",
+        "Financial eligibility is based on \"disposable income and capital during the seven days up to and including the date of initial advice\".",
+        "A solicitor must be \"satisfied\" about financial eligibility before applying on LAMS.",
+        "The solicitor legislation says a solicitor cannot stipulate for \"payment only in the event of success in that action or proceeding\" in contentious proceedings."
+      ],
+      "appliesIf": "Funding a Northern Ireland clinical negligence claim.",
+      "alternatives": [
+        "Private payment to a solicitor.",
+        "Ask a solicitor whether any lawful alternative funding or legal-expenses insurance may apply."
+      ],
+      "missing": [
+        "Your income, savings/capital and benefit details for legal aid.",
+        "Whether you have any legal-expenses insurance."
+      ],
+      "sources": [
+        {
+          "url": "https://www.justice-ni.gov.uk/articles/legal-aid",
+          "quote": "In fact, legal aid, subject to means and merits test, is available for many aspects of the law which are triable in a court in Northern Ireland.",
+          "official": true,
+          "publisher": "Department of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice-ni.gov.uk/articles/legal-aid-faqs-clinical-negligence-claims",
+          "quote": "You will need to make an application to representation higher.",
+          "official": true,
+          "publisher": "Department of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice-ni.gov.uk/articles/legal-aid-faqs-clinical-negligence-claims",
+          "quote": "Often certificates will initially be limited to investigation of the potential claim under the pre-action protocol, including obtaining the assisted person’s medical records and consideration thereof.",
+          "official": true,
+          "publisher": "Department of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice-ni.gov.uk/articles/legal-aid-faqs-financial-eligibility-advice-and-assistance",
+          "quote": "Financial eligibility is based on an applicant’s disposable income and capital during the seven days up to and including the date of initial advice,",
+          "official": true,
+          "publisher": "Department of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.justice-ni.gov.uk/articles/legal-aid-faqs-financial-eligibility-advice-and-assistance",
+          "quote": "A solicitor must be “satisfied” as to a client’s financial eligibility before making the application on LAMS.",
+          "official": true,
+          "publisher": "Department of Justice",
+          "checked": true
+        },
+        {
+          "url": "https://www.legislation.gov.uk/nisi/1976/582/article/64",
+          "quote": "(b) any agreement by which a solicitor retained or employed to prosecute any action or other contentious proceeding, stipulates for payment only in the event of success in that action or proceeding;",
+          "official": true,
+          "publisher": "legislation.gov.uk",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "nell"
+    },
+    {
+      "kind": "lawyers",
+      "body": "The Law Society of Northern Ireland",
+      "what": "Patients can use the Law Society of Northern Ireland's solicitor directory to find a solicitor by place and by legal category. For a missed-fracture claim, the category 'Professional negligence' is the clearest directory match, with 'Accidents Including personal injuries' also potentially relevant.",
+      "how": "online_form",
+      "url": "https://lawsoc-ni.org/using-a-solicitor/find-a-solicitor",
+      "points": [
+        "The official directory lets you use filters for a more detailed search.",
+        "You can search by town, city or postcode.",
+        "You can search by solicitor or firm name.",
+        "The glossary includes 'Professional negligence' and 'Accidents Including personal injuries' as categories."
+      ],
+      "appliesIf": "Finding a solicitor in Northern Ireland.",
+      "sources": [
+        {
+          "url": "https://lawsoc-ni.org/using-a-solicitor/find-a-solicitor",
+          "quote": "Use the filters below for a more detailed search, or the map to view by location.",
+          "official": true,
+          "publisher": "The Law Society of Northern Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://lawsoc-ni.org/using-a-solicitor/find-a-solicitor",
+          "quote": "TOWN / CITY / POSTCODE",
+          "official": true,
+          "publisher": "The Law Society of Northern Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://lawsoc-ni.org/using-a-solicitor/glossary-of-categories",
+          "quote": "Professional negligence",
+          "official": true,
+          "publisher": "The Law Society of Northern Ireland",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    },
+    {
+      "kind": "guideline",
+      "body": "Department of Health Northern Ireland / NICE",
+      "what": "Clinicians in Northern Ireland use NICE clinical guidelines, with the Department of Health Northern Ireland setting the local endorsement, implementation, monitoring and assurance process.",
+      "how": "unknown",
+      "url": "https://www.health-ni.gov.uk/articles/nice-clinical-guidelines",
+      "points": [
+        "NICE publishes the clinical guidelines.",
+        "The Department of Health says it has reviewed the process for their endorsement, implementation, monitoring and assurance in Northern Ireland.",
+        "The current arrangements are set out in a Department circular effective from 1 July 2026.",
+        "The guidance does not replace individual professional judgment for the patient in front of the clinician."
+      ],
+      "appliesIf": "Health and social care in Northern Ireland.",
+      "sources": [
+        {
+          "url": "https://www.health-ni.gov.uk/articles/nice-clinical-guidelines",
+          "quote": "NICE Clinical Guidelines make evidence-based recommendations on a wide range of topics from preventing and managing specific conditions to planning broader services and interventions to improve the health of communities",
+          "official": true,
+          "publisher": "Department of Health",
+          "checked": true
+        },
+        {
+          "url": "https://www.health-ni.gov.uk/articles/nice-clinical-guidelines",
+          "quote": "The Department has reviewed its process for the endorsement, implementation, monitoring and assurance of NICE Clinical Guidelines in Northern Ireland.",
+          "official": true,
+          "publisher": "Department of Health",
+          "checked": true
+        },
+        {
+          "url": "https://www.health-ni.gov.uk/articles/nice-clinical-guidelines",
+          "quote": "The arrangements for the endorsement, implementation, monitoring and assurance of NICE Guidelines with a clinical focus in Northern Ireland are detailed in the following circular, which is effective from 1 July 2026.",
+          "official": true,
+          "publisher": "Department of Health",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "iona"
+    },
+    {
+      "kind": "advice",
+      "body": "Patient and Client Council (Northern Ireland)",
+      "what": "The Patient and Client Council offers free, independent advocacy and support for people with health and social care concerns or complaints in Northern Ireland.",
+      "how": "phone",
+      "url": "https://pcc-ni.net/pcc-support/",
+      "points": [
+        "The support is free and confidential.",
+        "PCC can help someone raise an issue or concern.",
+        "PCC can support someone through the HSC complaints process.",
+        "NI Direct also points patients to PCC's freephone support service for questions, concerns or complaints."
+      ],
+      "appliesIf": "Health and social care concerns or complaints in Northern Ireland.",
+      "alternatives": [
+        "You can complain directly to Belfast Health and Social Care Trust.",
+        "If still unhappy after the provider's final response, you can go to the Northern Ireland Public Services Ombudsman."
+      ],
+      "sources": [
+        {
+          "url": "https://pcc-ni.net/",
+          "quote": "The PCC can provide you with free support and advice.",
+          "official": false,
+          "publisher": "Patient and Client Council Northern Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://pcc-ni.net/pcc-support/",
+          "quote": "The PCC offers a regional independent advocacy service, which is free and confidential.",
+          "official": false,
+          "publisher": "Patient and Client Council Northern Ireland",
+          "checked": true
+        },
+        {
+          "url": "https://www.nidirect.gov.uk/articles/how-complain-or-raise-concerns-about-health-services",
+          "quote": "The Patient and Client Council (PCC) offer a freephone support service",
+          "official": true,
+          "publisher": "nidirect",
+          "checked": true
+        }
+      ],
+      "confidence": "unconfirmed",
+      "by": "robin"
+    },
+    {
+      "kind": "records",
+      "body": "Belfast Health and Social Care Trust",
+      "what": "To get a copy of your own health and social care records from Belfast Trust, you ask in writing using the Trust's subject access route. The Trust points patients to a downloadable subject access application form rather than an online form.",
+      "how": "post",
+      "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+      "wall": "The Trust provides a downloadable DOCX subject access application form rather than an online form.",
+      "points": [
+        "The Trust says to submit the request in writing to the relevant department.",
+        "For community Health and Social Care records and other personal information requests, the page directs patients to the Data Protection Officer.",
+        "The page offers a downloadable 'subject access application form'.",
+        "After the Trust has all necessary documents and any fees, it says it has 30 days under UK GDPR to provide the information.",
+        "If the request is complex, it says it may take a further 60 days."
+      ],
+      "appliesIf": "Requests for your own personal information or health and social care records held by Belfast Trust.",
+      "sources": [
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+          "quote": "Please submit your request in writing to the relevant department.",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+          "quote": "Or download the subject access application form.",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        },
+        {
+          "url": "https://belfasttrust.hscni.net/about/access-to-information/data-protection/",
+          "quote": "When we have received all the necessary documentation and fees, we have 30 days under UK GDPR to provide the information requested. If the request is complex, we may have a further 60 days if necessary to respond.",
+          "official": true,
+          "publisher": "Belfast Health & Social Care Trust",
+          "checked": true
+        }
+      ],
+      "confidence": "likely",
+      "by": "robin"
+    }
+  ],
+  "foundAt": "2026-11-08T00:36:02.880Z"
+}

@@ -1,0 +1,71 @@
+{
+  "parts": [
+    {
+      "kind": "complaint",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "form_found",
+      "note": "Correct Trust and actual Belfast online form found, but it missed the new 2026 MCHP timings/details."
+    },
+    {
+      "kind": "escalation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Correctly identified NIPSO and that the online form is down, but missed the 6-month deadline from the Trust’s final letter."
+    },
+    {
+      "kind": "compensation",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "Right route is clinical negligence, but it missed the NI pre-action protocol/court structure and linked only the limitation law."
+    },
+    {
+      "kind": "funding",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "Good on legal aid via solicitor and that success-only/no-win-no-fee court arrangements are not allowed in NI."
+    },
+    {
+      "kind": "lawyers",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Law Society NI directory is right, but it missed that 'Personal Injuries' is the key category and omitted AvMA specialist routes."
+    },
+    {
+      "kind": "guideline",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "wrong_page",
+      "note": "It found the NI NICE-endorsement system, but not the key endorsed guideline NG38 or the scaphoid MRI recommendation."
+    },
+    {
+      "kind": "advice",
+      "found": true,
+      "body": "right",
+      "facts": "right",
+      "page": "right_page",
+      "note": "Correctly found the Patient and Client Council as free independent complaint/advocacy support."
+    },
+    {
+      "kind": "records",
+      "found": true,
+      "body": "right",
+      "facts": "partly",
+      "page": "right_page",
+      "note": "Right Trust SAR route, but it missed the RVH-specific Medical Legal Department contact, photo ID point, and protocol record-request angle."
+    }
+  ],
+  "score": 6.6,
+  "smart": "It noticed the important live obstacle that NIPSO’s online complaints form is currently unavailable and gave the email/phone fallback.",
+  "worst": "It missed the most important current complaint-rule detail: the 2026 NIPSO Model Complaints Handling Procedure timings, especially the 6-month NIPSO deadline after the Trust’s final response."
+}

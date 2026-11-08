@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Step3Result, TraceStep } from "../../lib/agent/legalAidTypes";
+import type { RouteMap } from "../../lib/agent/routeTypes";
 import { CREW, type AskSpec, type PlannerResult, type CrewId, type PlanStep, type Say } from "../../lib/agent/plannerTypes";
 import { setCaseRun, setEnquiry, setLegalAid, skipStep, upsertEnquiries, type CaseRunRecord, type Profile } from "../../lib/profile";
 import { Button, cx } from "../ui";
 import { CREW_ORDER, CrewMark, StateMark } from "./crew/Crew";
-import StepStrip from "./crew/StepStrip";
+import StepStrip, { routeSteps } from "./crew/StepStrip";
 import FirmResults from "./FirmResults";
 import { ScoreRow, whyFor } from "./scoreParts";
 import TraceSheet, { type TraceScope } from "./TraceSheet";
@@ -95,6 +96,7 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
           return skip(crew);
         }}
         onRetry={() => go()}
+        currency={routeMap ? currencyOf(routeMap.place.country) : undefined}
       />
     );
   if (view === "firms" && result)
@@ -103,13 +105,14 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
         <button className="text-[13px] text-brand hover:underline" onClick={() => setView("case")}>
           ← Back to your case file
         </button>
-        <FirmResults result={result} sample={false} selected={profile.legalAid?.selected ?? []} onSelected={(ids) => setLegalAid({ selected: ids })} onContinue={onReviewEnquiries} />
+        <FirmResults checker={routeMap ? (routeMap.steps.find((x) => x.kind === "funding")?.body ?? "The legal aid checker") : undefined} result={result} sample={false} selected={profile.legalAid?.selected ?? []} onSelected={(ids) => setLegalAid({ selected: ids })} onContinue={onReviewEnquiries} />
       </div>
     );
   if (view === "replay" && saved) return <Replay run={saved} trace={result?.trace ?? []} onBack={() => setView("case")} />;
   if (saved && result) return <CaseFile profile={profile} run={saved} result={result} onFirms={() => setView("firms")} onReplay={() => setView("replay")} onReview={onReviewEnquiries} onRestart={go} />;
   return (
     <Intro
+      routeMap={routeMap}
       error={state.status === "error" ? state.error : undefined}
       onStart={go}
       recorded={hasDemo}
@@ -123,7 +126,16 @@ export default function CaseRun({ profile, onReviewEnquiries }: { profile: Profi
 
 /* ------------------------------------------------------------------ before */
 
-function Intro({ onStart, onDemo, recorded, error }: { onStart: () => void; onDemo: (toEnd: boolean) => void; recorded: boolean; error?: string }) {
+/** The money symbol, only where the place makes it obvious ("" otherwise, so we never show the wrong one). */
+function currencyOf(country: string): string {
+  const c = country.trim().toLowerCase();
+  if (/^(united kingdom|uk|england|scotland|wales|northern ireland|great britain)$/.test(c)) return "£";
+  if (/^(ireland|france|germany)$/.test(c)) return "€";
+  if (/^(united states|usa|us|united states of america|new zealand|australia)$/.test(c)) return "$";
+  return "";
+}
+
+function Intro({ onStart, onDemo, recorded, error, routeMap }: { onStart: () => void; onDemo: (toEnd: boolean) => void; recorded: boolean; error?: string; routeMap?: RouteMap }) {
   return (
     <div className="mx-auto max-w-5xl py-4">
       <h1 className="display text-[44px] text-ink">Prepare your case</h1>
@@ -131,7 +143,7 @@ function Intro({ onStart, onDemo, recorded, error }: { onStart: () => void; onDe
         <CrewMark id="elliot" size={28} /> Elliot plans the route, and changes it as he learns.
       </p>
       <div className="mt-12">
-        <StepStrip />
+        <StepStrip steps={routeMap ? routeSteps(routeMap) : undefined} />
       </div>
       <div className="mt-12 flex flex-col items-center gap-4">
         <Button onClick={onStart}>Start preparing my case</Button>
@@ -175,7 +187,7 @@ type RunState = ReturnType<typeof usePlannerRun>["state"];
 export type CrewKit = { workers: CrewId[]; role: (id: CrewId) => string };
 const COMPENSATION_KIT: CrewKit = { workers: ["nell", "robin", "iona", "kit"], role: (id) => CREW[id].role };
 
-export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION_KIT }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onRetry?: () => void; kit?: CrewKit }) {
+export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION_KIT, currency = "£" }: { state: RunState; onAnswer: (id: string, v: string | null) => Promise<boolean>; onSkip: (crew: CrewId | "all") => void; onRetry?: () => void; kit?: CrewKit; currency?: string }) {
   const [scope, setScope] = useState<TraceScope | null>(null);
   const [drawer, setDrawer] = useState<CrewId | "all" | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -240,7 +252,7 @@ export function Workspace({ state, onAnswer, onSkip, onRetry, kit = COMPENSATION
             </button>
           </div>
         </div>
-        {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} />}
+        {question && <QuestionCard key={question.id} q={question} more={state.asks.length - 1} onAnswer={onAnswer} currency={currency} />}
       </section>
 
       <CrewRow state={state} ids={["elliot", ...kit.workers]} onOpen={(id) => setDrawer(id)} />
@@ -428,6 +440,9 @@ function ModelsLine({ entries }: { entries: LedgerEntry[] }) {
   );
 }
 
+/** What a model saw, in plain words. */
+const SAW: Record<string, string> = { place: "where you are", health: "your health story", money: "your money", identity: "who you are" };
+
 /** The whole run: every model, local or cloud, by crew member. */
 function ModelsTable({ entries }: { entries: LedgerEntry[] }) {
   if (!entries.length) return null;
@@ -446,6 +461,7 @@ function ModelsTable({ entries }: { entries: LedgerEntry[] }) {
             <span className="w-14 text-ink">{r.agent in CREW ? CREW[r.agent as CrewId].name : r.agent}</span>
             <span className="text-ink-2">{shortModel(r.model)}</span>
             <span className={cx("rounded-[4px] px-1.5", r.where === "local" ? "bg-teal-soft text-teal" : "bg-subtle text-ink-2")}>{r.where === "local" ? "on this Mac" : "cloud"}</span>
+            {r.data.length > 0 && <span className="text-muted">saw {r.data.map((d) => SAW[d] ?? d).join(", ")}</span>}
             <span className="ml-auto tabular-nums text-muted">
               {r.calls} · {tok(r.inTok + r.outTok)}
             </span>
@@ -596,7 +612,7 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
 
 /* ------------------------------------------------------------------ the one question */
 
-function QuestionCard({ q, more, onAnswer }: { q: AskSpec; more: number; onAnswer: (id: string, v: string | null) => Promise<boolean> }) {
+function QuestionCard({ q, more, onAnswer, currency }: { q: AskSpec; more: number; onAnswer: (id: string, v: string | null) => Promise<boolean>; currency: string }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -658,7 +674,7 @@ function QuestionCard({ q, more, onAnswer }: { q: AskSpec; more: number; onAnswe
         ) : (
           <>
             <label className="flex items-center rounded-ctl border border-line bg-white focus-within:border-brand focus-within:ring-4 focus-within:ring-brand-soft">
-              {q.kind === "money" && <span className="pl-3 text-[14px] text-muted">£</span>}
+              {q.kind === "money" && currency && <span className="pl-3 text-[14px] text-muted">{currency}</span>}
               <input ref={input} value={value} onChange={(e) => setValue(e.target.value)} inputMode={q.kind === "money" || q.kind === "number" ? "numeric" : "text"} className="w-36 bg-transparent px-3 py-1.5 text-[14px] text-ink outline-none" aria-label={q.question} disabled={busy} />
             </label>
             <Button type="submit" size="sm" disabled={busy || !value.trim()}>
@@ -698,9 +714,9 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
 
   const routeMap = profile.route && "map" in profile.route ? profile.route.map : undefined;
   const fundingStep = routeMap?.steps.find((x) => x.kind === "funding");
-  const checker = fundingStep ? `${fundingStep.body}'s checker` : "SLAB's calculator";
-  const registerName = routeMap?.steps.find((x) => x.kind === "lawyers")?.body ?? "the Law Society register";
-  const checkerUrl = fundingStep?.url ?? SLAB_CALC;
+  const checker = fundingStep ? `${fundingStep.body}'s checker` : routeMap ? "the legal aid checker" : "SLAB's calculator";
+  const registerName = routeMap?.steps.find((x) => x.kind === "lawyers")?.body ?? (routeMap ? "the official register" : "the Law Society register");
+  const checkerUrl = fundingStep?.url ?? (routeMap ? undefined : SLAB_CALC);
   const funding =
     result.verdict === "likely"
       ? { title: "Legal aid looks likely", text: `${checker} says you are likely to qualify, so legal aid could pay your solicitor. Nothing to do now: the solicitor applies for it with you.` }
@@ -798,7 +814,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
             <p className="mt-4 text-[13px] leading-5 text-muted">
               {similar.length ? (
                 <>
-                  Similar Scottish court cases:{" "}
+                  Similar {routeMap ? `${routeMap.place.region || routeMap.place.country} ` : "Scottish "}court cases:{" "}
                   {similar.map((c, i) => (
                     <span key={c.url}>
                       {i > 0 && ", "}
@@ -811,7 +827,7 @@ function CaseFile({ profile, run, result, onFirms, onReplay, onReview, onRestart
                 </>
               ) : (
                 <>
-                  Iona found no Scottish court case about a missed injury like yours. That is common: most claims settle without going to court.
+                  Iona found no {routeMap ? `${routeMap.place.region || routeMap.place.country} ` : "Scottish "}court case about a missed injury like yours. That is common: most claims settle without going to court.
                   {other[0] && (
                     <>
                       {" "}
@@ -875,14 +891,18 @@ export function Said({ label, children }: { label: string; children: React.React
 }
 
 /** A quote in the source's own words, with a link to where it came from. */
-export function Quote({ source, href, inline, children }: { source: string; href: string; inline?: boolean; children: React.ReactNode }) {
+export function Quote({ source, href, inline, children }: { source: string; href?: string; inline?: boolean; children: React.ReactNode }) {
   return (
     <figure className={cx(!inline && "mt-3 border-l-2 border-line pl-4")}>
       <blockquote className="font-serif text-[16px] leading-7 text-ink">&ldquo;{children}&rdquo;</blockquote>
       <figcaption className="mt-1 text-[12px] text-muted">
-        <a className="text-brand hover:underline" href={href} target="_blank" rel="noreferrer">
-          {source} ↗
-        </a>
+        {href ? (
+          <a className="text-brand hover:underline" href={href} target="_blank" rel="noreferrer">
+            {source} ↗
+          </a>
+        ) : (
+          source
+        )}
       </figcaption>
     </figure>
   );
