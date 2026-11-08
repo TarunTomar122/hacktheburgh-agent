@@ -16,6 +16,7 @@ import type { FirmFinding, Step3Event, Step3Result } from "./legalAidTypes";
 import { modelFor, structured } from "./llm";
 import { observe, PLACEHOLDER } from "./observe";
 import { assessForm, classifyField, expectFrom, findFinalControl, stillOnUnsentForm, type Expect, type ReadyVerdict } from "./enquiryReady";
+import { usableForms } from "./workers/formKind";
 
 /**
  * Step 4 (D45): contact up to 3 firms. Server only.
@@ -94,8 +95,15 @@ async function releaseTab(firmId: string) {
 
 /* ------------------------------------------------------------------ finding the form */
 
-const FORM_SEL = "form textarea:visible, form input[type=email]:visible, textarea:visible";
-const hasForm = async (page: Page) => (await page.locator(FORM_SEL).count().catch(() => 0)) > 0;
+const FORM_SEL = "form:not([data-signup]) textarea:visible, form:not([data-signup]) input[type=email]:visible, textarea:visible";
+// A newsletter or mailing-list sign-up is not an enquiry form: usableForms disables its boxes and does not count it.
+// Some forms (HubSpot and the like) only load once the page is scrolled: look once more after a scroll.
+const hasForm = async (page: Page) => {
+  if ((await usableForms(page)) > 0) return true;
+  await page.mouse.wheel(0, 2500).catch(() => {});
+  await page.waitForTimeout(2500);
+  return (await usableForms(page)) > 0;
+};
 
 /** A form inside an iframe (embedded form tools): open the iframe's page in the tab so the agent can fill it. */
 async function formInFrame(page: Page): Promise<string | null> {

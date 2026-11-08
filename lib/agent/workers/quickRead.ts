@@ -5,6 +5,8 @@
  * read. The caller then opens the browser as before, so nothing is lost and nothing is claimed that was not read.
  */
 
+import { usableFormHtml } from "./formKind";
+
 export type QuickPage = { kind: "html"; url: string; title: string; text: string; links: { text: string; url: string }[]; /** the page carries a form a person can write in (or an embedded form tool) */ form: boolean } | { kind: "pdf"; url: string; buf: Buffer };
 
 /** Form tools that are embedded with a script: the form itself only appears in a browser, but the page clearly has one. */
@@ -78,7 +80,7 @@ export async function quickFetchWhy(url: string): Promise<{ page: QuickPage | nu
       links.push({ text: t, url: u });
       if (links.length >= 200) break;
     }
-    const form = (/<form\b/i.test(html) && /<textarea\b|type=["']?email/i.test(html)) || EMBEDDED_FORM.test(html);
+    const form = usableFormHtml(html) || EMBEDDED_FORM.test(html); // a newsletter sign-up is not an enquiry form
     return { page: { kind: "html", url: finalUrl, title, text, links, form }, reason: "a plain page" };
   } catch (e) {
     return no(e instanceof Error && /timeout|abort/i.test(e.name + e.message) ? "the site was too slow for a plain request" : "a plain request failed (network or certificate)");

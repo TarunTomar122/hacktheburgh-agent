@@ -26,7 +26,7 @@ export default function Story({ j, roles }: { j: Journey; roles: Role[] }) {
   const dollars = cloud.reduce((n, m) => n + (costOf(m.model, m.inTok, m.outTok) ?? 0), 0) + j.counts.searches * SEARCH_PRICE;
   const counters: [number, string][] = [
     [j.counts.pages, "web pages read"],
-    [j.counts.browserPages, "needed a real browser"],
+    [j.counts.browserPages, "needed a browser"],
     [j.counts.handoffs, "hand-offs between agents"],
     [j.counts.forms, "enquiry forms filled"],
     [j.counts.asks, j.counts.asks === 1 ? "question for the patient" : "questions for the patient"],

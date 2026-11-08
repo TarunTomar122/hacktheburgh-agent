@@ -14,6 +14,7 @@ import { runDecisionAgent } from "./decisionAgent";
 import { decide, type DAnswer } from "./decisions";
 import { makeLogger } from "./events";
 import { quickFetchWhy } from "./workers/quickRead";
+import { usableForms } from "./workers/formKind";
 import {
   AGENT_COLORS,
   type AgentTile,
@@ -619,8 +620,7 @@ export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: 
 
   // Where would step 4 send the enquiry?
   note("Finding their enquiry form");
-  const formSel = "form textarea:visible, form input[type=email]:visible";
-  const hasForm = async () => (await page.locator(formSel).count().catch(() => 0)) > 0;
+  const hasForm = async () => (await usableForms(page)) > 0; // a newsletter sign-up does not count
   let enquiryUrl: string | null = (await hasForm()) ? page.url() : null;
   if (!enquiryUrl) {
     const contact = page.locator("a[href]").filter({ hasText: /contact|enquir|get in touch|make an enquiry/i }).first();
@@ -634,7 +634,7 @@ export async function vetFirm(page: Page, firm: FirmFinding, note: Note, track: 
       if (await hasForm()) enquiryUrl = page.url();
     }
   }
-  if (enquiryUrl) await pointAt(page, page.locator(formSel).first());
+  if (enquiryUrl) await pointAt(page, page.locator("form:not([data-signup]) textarea:visible, form:not([data-signup]) input[type=email]:visible, textarea:visible").first()).catch(() => {});
   await note.log("found", enquiryUrl ? "Found an enquiry form step 4 can fill in" : "No enquiry form found on the pages we opened", { shot: true });
   note(
     [actsForPatients === "yes" ? "Represents patients" : actsForPatients === "no" ? "Defends claims" : "Unclear who they act for", noWinNoFee === "yes" ? "no win no fee" : null, enquiryUrl ? "form found" : "no form found"]
