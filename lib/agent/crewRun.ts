@@ -20,7 +20,14 @@ import { CREW, type AskSpec, type CrewId, type PlanStep, type Say, type Thought 
 const ASK_TIMEOUT_MS = 5 * 60 * 1000;
 export const short = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
-const WHY = { why: { type: "string", description: "One short line, shown to the user as your instruction to the crew member: why this, now." } } as const;
+/** "Reading x.org" -> "Read x.org": the crew's present-tense status line, said as done. */
+function pastTense(doing: string): string {
+  const map: [RegExp, string][] = [[/^Searching/i, "Searched"], [/^Reading/i, "Read"], [/^Opening/i, "Opened"], [/^Exploring/i, "Explored"], [/^Filling/i, "Filled"], [/^Checking/i, "Checked"], [/^Looking/i, "Looked"], [/^Finding/i, "Found"], [/^Comparing/i, "Compared"], [/^Writing/i, "Wrote"], [/^Drafting/i, "Drafted"], [/^Working/i, "Worked"]];
+  for (const [re, to] of map) if (re.test(doing)) return doing.replace(re, to);
+  return doing;
+}
+
+const WHY = { why: { type: "string", description: "Shown to the user as your instruction to the crew member. At most 8 plain words saying what they are about to do, like \"Find the hospital's complaint form\" or \"Check the time limit\". No jargon, no scores, no quotes." } } as const;
 export const tool = (name: string, description: string, props: Record<string, unknown>, required: string[]): FunctionTool => ({
   type: "function",
   name,
@@ -226,8 +233,11 @@ export async function runCrew<R>(flow: CrewFlow<R>, opts: { onEvent?: Emit; keep
         }
         if (busy) {
           const bad = isFailed(call.name, out);
-          const text = bad ? `I hit a problem: ${short(out, 160)}` : flow.describe(call.name, args, out);
-          say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab, ok: !bad });
+          // What the patient reads is one short plain line of what was done; what the page said stays in the details.
+          const full = bad ? out : flow.describe(call.name, args, out);
+          const did = pastTense(flow.doing(call.name, args));
+          const text = bad ? `Could not finish: ${did.charAt(0).toLowerCase()}${did.slice(1)}` : full.length <= 90 && !/[:;]\s.{40,}/.test(full) ? full : did;
+          say({ from: who, to: who === "elliot" ? "you" : "elliot", kind: "report", text, detail: full !== text ? short(full, 1500) : out.includes("\n") ? short(out, 1500) : undefined, tool: call.name, tab: thought.tab, ok: !bad });
           crewState(who, "idle", short(text, 90));
         } else if (call.name === "finish") {
           say({ from: "elliot", to: "you", kind: "done", text: String(args.summary ?? "Done."), tool: call.name });

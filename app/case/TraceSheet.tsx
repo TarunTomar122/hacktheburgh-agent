@@ -27,6 +27,12 @@ const KIND: Record<TraceStep["kind"], { label: string; cls: string }> = {
 
 /** The steps that tell the story (what was found, checked, decided), for the one-line summary at the top. */
 const STORY: TraceStep["kind"][] = ["found", "check", "decide", "recover", "fail", "result"];
+/** What the history shows by default: outcomes only. The agents' moment-to-moment thinking ("promising", scores) is behind "Show every step". */
+const OUTCOMES: TraceStep["kind"][] = ["found", "check", "recover", "fail", "result"];
+const oneLine = (t: string, n = 110) => {
+  const x = t.replace(/\s+/g, " ").replace(/^[^:]{3,60}: (promising|dead end|unlikely)\.\s*/i, "").trim();
+  return x.length > n ? `${x.slice(0, n - 1).trimEnd()}…` : x;
+};
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 const shotUrl = (runId: string | undefined, file: string) => `/api/agent/step3/shot?run=${encodeURIComponent(runId ?? "")}&file=${encodeURIComponent(file)}`;
@@ -47,8 +53,9 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
   const [big, setBig] = useState<string | null>(null);
   const agents = useMemo(() => [...new Map(scope.steps.map((s) => [s.agent, s.color])).entries()], [scope.steps]);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const steps = useMemo(() => [...scope.steps].sort((a, b) => a.t - b.t || a.i - b.i).filter((s) => !hidden.has(s.agent)), [scope.steps, hidden]);
-  const story = scope.steps.filter((s) => STORY.includes(s.kind)).sort((a, b) => a.t - b.t);
+  const [every, setEvery] = useState(false);
+  const steps = useMemo(() => [...scope.steps].sort((a, b) => a.t - b.t || a.i - b.i).filter((s) => !hidden.has(s.agent) && (every || OUTCOMES.includes(s.kind))), [scope.steps, hidden, every]);
+  const story = scope.steps.filter((s) => OUTCOMES.includes(s.kind)).sort((a, b) => a.t - b.t);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -82,8 +89,7 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
                   {k > 0 && <span aria-hidden className="text-faint">→</span>}
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-2.5 py-1 text-ink">
                     <span aria-hidden className="size-1.5 rounded-full" style={{ background: s.color }} />
-                    {s.text}
-                    {s.confidence !== undefined && <span className="tabular-nums text-muted">({s.confidence.toFixed(2)})</span>}
+                    {oneLine(s.text, 70)}
                   </span>
                 </li>
               ))}
@@ -116,6 +122,13 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
 
         <ol className="min-h-0 flex-1 overflow-y-auto px-8 py-5">
           {steps.length === 0 && <li className="text-sm text-muted">No steps recorded for this.</li>}
+          {scope.steps.length > 0 && (
+            <li className="pb-4">
+              <button onClick={() => setEvery((v) => !v)} className="text-[12px] text-muted hover:text-brand hover:underline">
+                {every ? "Show only what was found" : `Show every step (${scope.steps.length})`}
+              </button>
+            </li>
+          )}
           {steps.map((s) => (
             <li key={s.i} className="relative flex gap-4 pb-5 last:pb-0">
               <div className="w-12 shrink-0 pt-0.5 text-right text-[11px] tabular-nums text-muted">+{secs(s.t)}</div>
@@ -129,9 +142,9 @@ export default function TraceSheet({ scope, runId, onClose }: { scope: TraceScop
                   <span className="text-[12px] font-medium" style={{ color: s.color }}>
                     {s.agent}
                   </span>
-                  {s.confidence !== undefined && <Confidence value={s.confidence} />}
+                  {every && s.confidence !== undefined && <Confidence value={s.confidence} />}
                 </div>
-                <p className="text-[14px] leading-5 text-ink">{s.text}</p>
+                <p className="text-[14px] leading-5 text-ink">{every ? s.text : oneLine(s.text, 160)}</p>
                 {s.url && (
                   <a href={s.url} target="_blank" rel="noreferrer" className="block break-all text-[12px] text-brand underline-offset-2 hover:underline">
                     {s.url.replace(/^https?:\/\/(www\.)?/, "")}
