@@ -199,7 +199,8 @@ export async function calculatorAsking(page: Page, funding: Funding, ask: Ask, n
 /* ------------------------------------------------------------------ web search and reading any page */
 
 /**
- * Web search in a browser tab. Brave first (typed into its box, so the user sees it); when a search engine shows a bot
+ * Web search. A search API first when a key is set (Exa, Tavily or Brave: see searchApi); otherwise, or when it fails, a
+ * browser tab: Brave first (typed into its box, so the user sees it); when a search engine shows a bot
  * check, wait once, then move to the next engine (Yahoo, DuckDuckGo's plain HTML page, then Bing) and remember that for a
  * while. Search engines are not about any country, so this is not a site script. Returns at most 10 results, up to 3
  * per site (a big portal must not hide its own deeper pages).
@@ -467,7 +468,7 @@ const TOOLS: FunctionTool[] = [
   }, ["steps"]),
   tool("slab_calculator", "Run SLAB's civil legal aid calculator in a browser tab. It asks the user its money questions itself, only when needed. Returns SLAB's estimate.", {}, []),
   tool("slab_lawyer_list", "Search SLAB's Find a Solicitor for civil legal aid, medical negligence, active firms, nearest first. Returns the firms (ids you can use later).", {}, []),
-  tool("web_search", "Search the web (Brave) in a browser tab. Use it to find firms or sources that are not on SLAB's list, e.g. no win no fee medical negligence solicitors.", { query: { type: "string" } }, ["query"]),
+  tool("web_search", "Search the web (a search API, with a browser search as backup). Use it to find firms or sources that are not on SLAB's list, e.g. no win no fee medical negligence solicitors.", { query: { type: "string" } }, ["query"]),
   tool("visit", "Open any web page in a browser tab and answer a question from it. Use for sites we have no special tool for.", { url: { type: "string" }, question: { type: "string" } }, ["url", "question"]),
   tool("check_firm", "Open a firm's website in a browser tab: find its medical negligence page, read whether it acts for patients and offers no win no fee, and look for its enquiry form. Give firm_id for a known firm, or name + website for a new one.", { firm_id: { type: "string" }, name: { type: "string" }, website: { type: "string" } }, []),
   tool("law_society_check", "Check firms by name on the Law Society of Scotland register, in one browser tab.", { firm_ids: { type: "array", items: { type: "string" } } }, ["firm_ids"]),
@@ -726,7 +727,7 @@ export async function runPlanner(facts: CaseFacts, fundingIn: Partial<Funding> =
       case "web_search": {
         const r = await tabs(() => crewFor(thought, "robin", "Web search", (p, note) => webSearch(p, s("query"), note, track), 60_000));
         if (!r.ok) return `Search failed: ${r.error}`;
-        if (r.value.length) finding(`Web search found ${r.value.length} results for "${short(s("query"), 50)}"`, "Brave Search");
+        if (r.value.length) finding(`Web search found ${r.value.length} results for "${short(s("query"), 50)}"`, "Web search");
         return r.value.map((x, i) => `${i + 1}. ${x.title} — ${x.url}\n   ${x.snippet}`).join("\n") || "No results.";
       }
       case "visit": {

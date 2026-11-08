@@ -21,7 +21,7 @@ const WHO = { who: { type: "string", enum: ["robin", "iona", "nell", "kit"], des
 
 const TOOLS = [
   PLAN_TOOL,
-  tool("web_search", "Search the web in a browser tab. Use it to find the official pages; prefer government, health service, ombudsman, regulator, court and law society sites.", { query: { type: "string" }, ...WHO }, ["query", "who"]),
+  tool("web_search", "Search the web (a search API, with a browser search as backup) to find candidate pages; then open them to read and quote. Use it to find the official pages; prefer government, health service, ombudsman, regulator, court and law society sites.", { query: { type: "string" }, ...WHO }, ["query", "who"]),
   tool("read_page", "Open a page and answer a question from it, with short verbatim quotes and links worth following.", { url: { type: "string" }, question: { type: "string" }, ...WHO }, ["url", "question", "who"]),
   tool("explore_site", "From a page, find your way through the site (menus, links, buttons, its search box) to the page or online form that meets a goal. Reports the path taken, the form's fields, and any wall (login, CAPTCHA, phone or post only).", {
     url: { type: "string" },
